@@ -61,6 +61,14 @@ function dedupeKey(userId: UserId) {
   return `apple_health:${userId}:sleep_sync`;
 }
 
+/** Shortcuts "Get Duration" returns raw seconds. Convert to rounded integer minutes. */
+function toMinutes(value: number | undefined | null): number | null {
+  if (value == null) return null;
+  // Values > 300 are almost certainly seconds (300 min = 5 hrs is a reasonable threshold)
+  const minutes = value > 300 ? value / 60 : value;
+  return Math.round(minutes);
+}
+
 export class AppleHealthSleepSyncOrchestrator {
   constructor(
     private readonly recoveryCheckinRepository: RecoveryCheckinRepository,
@@ -144,21 +152,21 @@ export class AppleHealthSleepSyncOrchestrator {
               id: existing.id,
               userId: input.userId,
               sleepDurationMinutes:
-                payload.sleep_duration_minutes ?? existing.sleepDurationMinutes ?? undefined,
+                toMinutes(payload.sleep_duration_minutes) ?? existing.sleepDurationMinutes ?? undefined,
               restingHeartRate:
-                payload.resting_heart_rate ?? existing.restingHeartRate ?? undefined,
+                (payload.resting_heart_rate != null ? Math.round(payload.resting_heart_rate) : null) ?? existing.restingHeartRate ?? undefined,
               hrv: payload.hrv ?? existing.hrv ?? undefined,
               timeInBedMinutes:
-                payload.time_in_bed_minutes ?? existing.timeInBedMinutes ?? undefined,
+                toMinutes(payload.time_in_bed_minutes) ?? existing.timeInBedMinutes ?? undefined,
               sleepEfficiencyPct:
                 payload.sleep_efficiency_pct ?? existing.sleepEfficiencyPct ?? undefined,
               deepSleepMinutes:
-                payload.deep_sleep_minutes ?? existing.deepSleepMinutes ?? undefined,
+                toMinutes(payload.deep_sleep_minutes) ?? existing.deepSleepMinutes ?? undefined,
               remSleepMinutes:
-                payload.rem_sleep_minutes ?? existing.remSleepMinutes ?? undefined,
+                toMinutes(payload.rem_sleep_minutes) ?? existing.remSleepMinutes ?? undefined,
               coreSleepMinutes:
-                payload.core_sleep_minutes ?? existing.coreSleepMinutes ?? undefined,
-              awakeMinutes: payload.awake_minutes ?? existing.awakeMinutes ?? undefined,
+                toMinutes(payload.core_sleep_minutes) ?? existing.coreSleepMinutes ?? undefined,
+              awakeMinutes: toMinutes(payload.awake_minutes) ?? existing.awakeMinutes ?? undefined,
               sleepRespiratoryRate:
                 payload.sleep_respiratory_rate ?? existing.sleepRespiratoryRate ?? undefined,
               sleepSpo2AvgPct:
@@ -187,8 +195,8 @@ export class AppleHealthSleepSyncOrchestrator {
             const createInput: CreateRecoveryCheckinInput = {
               userId: input.userId,
               checkinDate,
-              sleepDurationMinutes: payload.sleep_duration_minutes ?? null,
-              restingHeartRate: payload.resting_heart_rate ?? null,
+              sleepDurationMinutes: toMinutes(payload.sleep_duration_minutes),
+              restingHeartRate: payload.resting_heart_rate != null ? Math.round(payload.resting_heart_rate) : null,
               hrv: payload.hrv ?? null,
               sleepQuality: null,
               energyLevel: null,
@@ -197,12 +205,12 @@ export class AppleHealthSleepSyncOrchestrator {
               sorenessLevel: null,
               alcoholCount: 0,
               notes: null,
-              timeInBedMinutes: payload.time_in_bed_minutes ?? null,
+              timeInBedMinutes: toMinutes(payload.time_in_bed_minutes),
               sleepEfficiencyPct: payload.sleep_efficiency_pct ?? null,
-              deepSleepMinutes: payload.deep_sleep_minutes ?? null,
-              remSleepMinutes: payload.rem_sleep_minutes ?? null,
-              coreSleepMinutes: payload.core_sleep_minutes ?? null,
-              awakeMinutes: payload.awake_minutes ?? null,
+              deepSleepMinutes: toMinutes(payload.deep_sleep_minutes),
+              remSleepMinutes: toMinutes(payload.rem_sleep_minutes),
+              coreSleepMinutes: toMinutes(payload.core_sleep_minutes),
+              awakeMinutes: toMinutes(payload.awake_minutes),
               sleepRespiratoryRate: payload.sleep_respiratory_rate ?? null,
               sleepSpo2AvgPct: payload.sleep_spo2_avg_pct ?? null,
               sleepHrvAvg: payload.sleep_hrv_avg ?? null,
