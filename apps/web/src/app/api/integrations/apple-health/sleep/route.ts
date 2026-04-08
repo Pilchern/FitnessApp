@@ -20,7 +20,11 @@ const appleHealthSleepPayloadSchema = z.object({
   sleep_spo2_avg_pct: z.number().optional(),
 });
 
-const appleHealthSleepBodySchema = z.array(appleHealthSleepPayloadSchema);
+// Accept either a JSON array [{...}] or a single object {...} — Shortcuts sends a single object
+const appleHealthSleepBodySchema = z.union([
+  z.array(appleHealthSleepPayloadSchema),
+  appleHealthSleepPayloadSchema.transform((item) => [item]),
+]);
 
 export async function POST(request: NextRequest) {
   const env = getServerEnv();
