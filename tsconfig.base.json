@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@fitness-app/application": ["packages/application/src/index.ts"],
+      "@fitness-app/domain": ["packages/domain/src/index.ts"],
+      "@fitness-app/infrastructure": ["packages/infrastructure/src/index.ts"],
+      "@fitness-app/integrations": ["packages/integrations/src/index.ts"],
+      "@fitness-app/jobs": ["packages/jobs/src/index.ts"]
+    }
+  }
+}

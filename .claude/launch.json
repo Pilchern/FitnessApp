@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Next.js (web)",
+      "runtimeExecutable": "/Users/ashleynickpilcher/.nvm/versions/node/v20.20.0/bin/node",
+      "runtimeArgs": ["/Users/ashleynickpilcher/AI-Lab/FitnessApp/apps/web/node_modules/next/dist/bin/next", "dev"],
+      "cwd": "/Users/ashleynickpilcher/AI-Lab/FitnessApp/apps/web",
+      "port": 3000
+    }
+  ]
+}

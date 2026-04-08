@@ -1,0 +1,6 @@
+[build]
+  command = "pnpm build"
+
+[dev]
+  command = "pnpm dev"
+  targetPort = 3000

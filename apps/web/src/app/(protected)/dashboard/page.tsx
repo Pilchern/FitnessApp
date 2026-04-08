@@ -1,0 +1,78 @@
+import Link from "next/link";
+import { InsightCard } from "@/components/shared/insight-card";
+import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
+import { getDashboardData } from "@/features/dashboard/server";
+import { TrainingWeekCard } from "@/features/dashboard/components/training-week-card";
+import { RecoverySnapshotCard } from "@/features/dashboard/components/recovery-snapshot-card";
+import { BodySnapshotCard } from "@/features/dashboard/components/body-snapshot-card";
+import { ScoreHistoryCard } from "@/features/dashboard/components/score-history-card";
+
+export default async function DashboardPage() {
+  const data = await getDashboardData();
+
+  return (
+    <div className="space-y-6">
+      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
+          This week
+        </p>
+        <h1 className="mt-3 font-display text-4xl text-ink">Dashboard</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
+          Your training, recovery, and body at a glance.
+        </p>
+      </section>
+
+      <TrainingWeekCard data={data.trainingWeek} />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <RecoverySnapshotCard latestRecovery={data.latestRecovery} />
+        <BodySnapshotCard
+          latestWeightLb={data.latestWeightLb}
+          weightChangeLb={data.weightChangeLb}
+          latestWaistIn={data.latestWaistIn}
+          waistChangeIn={data.waistChangeIn}
+          latestBodyFatPct={data.latestBodyFatPct}
+          weightTrend={data.weightTrend}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <WeeklyReviewSummaryCard
+          review={data.latestReview}
+          emptyTitle="No weekly review yet"
+          emptyDescription="Complete your first weekly review to start tracking your score over time."
+        />
+        <ScoreHistoryCard reviews={data.recentReviews} />
+      </div>
+
+      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
+              Coaching
+            </p>
+            <h2 className="mt-3 font-display text-2xl text-ink">Insights</h2>
+          </div>
+          <Link
+            href="/insights"
+            className="inline-flex h-11 items-center justify-center rounded-full border border-ink/15 px-5 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
+          >
+            Open all insights
+          </Link>
+        </div>
+
+        {data.topInsights.length === 0 ? (
+          <p className="mt-5 text-sm leading-6 text-ink/75">
+            No insights yet. Keep logging your workouts and recovery — they&apos;ll appear here as patterns emerge.
+          </p>
+        ) : (
+          <div className="mt-5 space-y-4">
+            {data.topInsights.map((insight) => (
+              <InsightCard key={insight.id} insight={insight} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}

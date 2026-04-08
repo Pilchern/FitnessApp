@@ -1,0 +1,53 @@
+"use server";
+
+import { UserProfileService } from "@fitness-app/application";
+import { SupabaseUserProfileRepository } from "@fitness-app/infrastructure";
+import { redirect } from "next/navigation";
+import { requireCurrentUser } from "@/lib/server/auth";
+import { getErrorMessage } from "@/lib/server/get-error-message";
+import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { settingsFormSchema } from "./form-schema";
+import type { SettingsActionState } from "./types";
+
+async function createProfileService() {
+  const client = await createSupabaseRequestClient();
+  return new UserProfileService(new SupabaseUserProfileRepository(client));
+}
+
+function buildProfilePayload(userId: string, formData: FormData) {
+  const parsed = settingsFormSchema.parse({
+    displayName: formData.get("displayName"),
+    timezone: formData.get("timezone"),
+    unitsSystem: formData.get("unitsSystem"),
+    weekStartsOn: formData.get("weekStartsOn"),
+    // Checkboxes are absent from FormData when unchecked — map to boolean
+    goalFatLoss: formData.get("goalFatLoss") === "on",
+    goalPreserveMuscle: formData.get("goalPreserveMuscle") === "on",
+    goalImproveVo2: formData.get("goalImproveVo2") === "on",
+    // Number inputs — empty string means "no target set"; null (absent field) treated as empty
+    dailyProteinGramsTarget: formData.get("dailyProteinGramsTarget") ?? undefined,
+    dailyCaloriesTarget: formData.get("dailyCaloriesTarget") ?? undefined,
+    dailyFiberGramsTarget: formData.get("dailyFiberGramsTarget") ?? undefined,
+  });
+
+  return {
+    userId,
+    ...parsed,
+  };
+}
+
+export async function updateSettingsAction(
+  _previousState: SettingsActionState,
+  formData: FormData,
+): Promise<SettingsActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const profileService = await createProfileService();
+    await profileService.update(buildProfilePayload(user.id, formData));
+    redirect("/settings?saved=true");
+  } catch (error) {
+    return {
+      error: getErrorMessage(error),
+    };
+  }
+}

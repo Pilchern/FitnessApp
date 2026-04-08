@@ -1,0 +1,24 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "jsx": "preserve",
+    "allowJs": false,
+    "incremental": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@fitness-app/application": ["../../packages/application/src/index.ts"],
+      "@fitness-app/domain": ["../../packages/domain/src/index.ts"],
+      "@fitness-app/infrastructure": ["../../packages/infrastructure/src/index.ts"],
+      "@fitness-app/integrations": ["../../packages/integrations/src/index.ts"],
+      "@fitness-app/jobs": ["../../packages/jobs/src/index.ts"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", "playwright.config.ts"]
+}

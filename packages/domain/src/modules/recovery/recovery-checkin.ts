@@ -1,0 +1,32 @@
+import type { EntityId, IsoDate, IsoDateTime, UserId } from "../../shared/ids";
+import type { CanonicalRecordSource } from "../../shared/source";
+
+export type RecoveryCheckin = {
+  id: EntityId;
+  userId: UserId;
+  checkinDate: IsoDate;
+  restingHeartRate: number | null;
+  hrv: number | null;
+  sleepDurationMinutes: number | null;
+  sleepQuality: number | null;
+  energyLevel: number | null;
+  readinessLevel: number | null;
+  stressLevel: number | null;
+  sorenessLevel: number | null;
+  alcoholCount: number;
+  notes: string | null;
+  timeInBedMinutes: number | null;
+  sleepEfficiencyPct: number | null;
+  deepSleepMinutes: number | null;
+  remSleepMinutes: number | null;
+  coreSleepMinutes: number | null;
+  awakeMinutes: number | null;
+  sleepRespiratoryRate: number | null;
+  sleepSpo2AvgPct: number | null;
+  sleepHrvAvg: number | null;
+  sleepAvgHeartRate: number | null;
+  source: CanonicalRecordSource;
+  createdAt: IsoDateTime;
+  updatedAt: IsoDateTime;
+  deletedAt: IsoDateTime | null;
+};
