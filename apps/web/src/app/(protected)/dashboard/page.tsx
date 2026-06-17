@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CoachingBanner } from "@/components/shared/coaching-banner";
 import { InsightCard } from "@/components/shared/insight-card";
 import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
 import { getDashboardData } from "@/features/dashboard/server";
@@ -9,9 +10,14 @@ import { ScoreHistoryCard } from "@/features/dashboard/components/score-history-
 
 export default async function DashboardPage() {
   const data = await getDashboardData();
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="space-y-6">
+      {data.coachingSuggestion && (
+        <CoachingBanner suggestion={data.coachingSuggestion} today={today} />
+      )}
+
       <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           This week

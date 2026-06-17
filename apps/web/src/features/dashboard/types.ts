@@ -1,4 +1,4 @@
-import type { PersistedInsight, SparseTrendPoint } from "@fitness-app/application";
+import type { PersistedInsight, RecoveryCoachingSuggestion, SparseTrendPoint } from "@fitness-app/application";
 import type { RecoveryCheckin, WeeklyReview } from "@fitness-app/domain";
 
 export type TrainingWeekData = {
@@ -22,4 +22,5 @@ export type DashboardData = {
   recentReviews: WeeklyReview[];
   latestReview: WeeklyReview | null;
   topInsights: PersistedInsight[];
+  coachingSuggestion: RecoveryCoachingSuggestion | null;
 };

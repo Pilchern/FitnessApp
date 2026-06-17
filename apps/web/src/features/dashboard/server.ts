@@ -5,6 +5,7 @@ import {
   buildBodyWeightTrend,
   buildCardioWeeklyTotals,
   getCurrentWeekRangeForUser,
+  getRecoveryCoachingSuggestion,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { createCoreServices } from "@/lib/server/services";
@@ -89,6 +90,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   );
   const latestRecovery = sortedRecovery[0] ?? null;
   const latestReview = recentReviews[0] ?? null;
+  const coachingSuggestion = getRecoveryCoachingSuggestion(sortedRecovery.slice(0, 7));
 
   return {
     trainingWeek: {
@@ -111,5 +113,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     recentReviews,
     latestReview,
     topInsights: topInsights.slice(0, 3),
+    coachingSuggestion,
   };
 }

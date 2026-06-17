@@ -7,9 +7,9 @@ import {
 } from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { getErrorMessage } from "@/lib/server/get-error-message";
+import { parseActionError } from "@/lib/server/parse-action-error";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
-import { strengthSessionFormSchema } from "./form-schema";
+import { strengthSessionFormSchema, templateExercisesSchema } from "./form-schema";
 import type { StrengthActionState } from "./types";
 
 async function createStrengthService() {
@@ -74,9 +74,7 @@ export async function createStrengthSessionAction(
     await service.create(buildStrengthPayload(user.id, formData));
     redirect("/strength");
   } catch (error) {
-    return {
-      error: getErrorMessage(error),
-    };
+    return parseActionError(error);
   }
 }
 
@@ -98,9 +96,7 @@ export async function updateStrengthSessionAction(
     await service.update(payload);
     redirect(`/strength/${payload.id}`);
   } catch (error) {
-    return {
-      error: getErrorMessage(error),
-    };
+    return parseActionError(error);
   }
 }
 
@@ -136,27 +132,32 @@ export async function createStrengthTemplateAction(
       return { error: "Template name is required." };
     }
 
-    let parsedExercises: unknown;
+    let rawExercises: unknown;
     try {
-      parsedExercises = JSON.parse(
+      rawExercises = JSON.parse(
         typeof exercisesPayload === "string" ? exercisesPayload : "[]",
       );
     } catch {
       return { error: "Exercise data could not be read. Please try again." };
     }
 
+    const exercisesResult = templateExercisesSchema.safeParse(rawExercises);
+    if (!exercisesResult.success) {
+      return { error: "Invalid exercise data. Please check your template." };
+    }
+
     await service.createStrengthTemplate({
       userId: user.id,
       name: name.trim(),
       definition: {
-        exercises: parsedExercises,
+        exercises: exercisesResult.data,
         notes: null,
       },
     });
 
     redirect("/strength");
   } catch (error) {
-    return { error: getErrorMessage(error) };
+    return parseActionError(error);
   }
 }
 

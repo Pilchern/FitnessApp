@@ -1,6 +1,16 @@
 import { z } from "zod";
 import { optionalString, parseOptionalNumber } from "@/lib/form-utils";
 
+const templateExerciseSchema = z.object({
+  name: z.string().min(1).max(100),
+  sets: z.number().int().min(1).max(20).optional(),
+  reps: z.string().max(20).optional(),
+  rpe: z.number().min(1).max(10).optional(),
+  notes: z.string().max(500).optional(),
+});
+
+export const templateExercisesSchema = z.array(templateExerciseSchema).min(1).max(50);
+
 const parsedStrengthSetSchema = z.object({
   exerciseName: z.string().trim().min(1, "Exercise name is required"),
   setNumber: z.number().int().min(1),

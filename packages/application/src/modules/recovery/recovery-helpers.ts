@@ -1,6 +1,58 @@
 import type { RecoveryCheckin } from "@fitness-app/domain";
 import { buildSparseTrendSeries } from "../../shared/trend-series";
 
+export type RecoveryCoachingSuggestion = {
+  severity: "warning" | "info";
+  headline: string;
+  detail: string;
+};
+
+export function getRecoveryCoachingSuggestion(
+  recentCheckins: RecoveryCheckin[],
+): RecoveryCoachingSuggestion | null {
+  if (recentCheckins.length === 0) return null;
+
+  const latest = recentCheckins[0];
+
+  if (latest.readinessLevel != null && latest.readinessLevel <= 3) {
+    return {
+      severity: "warning",
+      headline: "Low readiness today",
+      detail:
+        "Consider rest or an easy Zone 2 session — pushing hard on low readiness increases injury risk.",
+    };
+  }
+
+  if (latest.readinessLevel === 4) {
+    return {
+      severity: "warning",
+      headline: "Below-average readiness",
+      detail:
+        "A Zone 2 ride or walk today would be more productive than a hard session.",
+    };
+  }
+
+  if (latest.hrv != null && recentCheckins.length >= 2) {
+    const hrvValues = recentCheckins
+      .map((c) => c.hrv)
+      .filter((v): v is number => v != null);
+
+    if (hrvValues.length >= 2) {
+      const avgHrv = hrvValues.reduce((sum, v) => sum + v, 0) / hrvValues.length;
+      if (latest.hrv < avgHrv * 0.8) {
+        return {
+          severity: "info",
+          headline: "HRV dip today",
+          detail:
+            "Your HRV is down today. Easy aerobic work or mobility instead of intensity.",
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
 export type RecoverySummary = {
   averageSleepHours: number | null;
   averageSleepEfficiency: number | null;

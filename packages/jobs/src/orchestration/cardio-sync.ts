@@ -13,14 +13,14 @@ import {
   type OAuthCardioProviderAdapter,
   type StoredProviderCredential,
 } from "@fitness-app/integrations";
-import type { FinalizeOAuthConnectionInput } from "./body-metric-sync";
 import type {
+  FinalizeOAuthConnectionInput,
+  ImportBatchStore,
   IntegrationConnectionStore,
   IntegrationCredentialStore,
-  ImportBatchStore,
   RawImportEventStore,
   SyncJobRunStore,
-} from "./body-metric-sync";
+} from "./shared-types";
 
 export type ConnectCardioProviderInput = {
   userId: UserId;
@@ -43,6 +43,7 @@ export type SyncCardioSessionsResult = {
   rawItemCount: number;
   processedItemCount: number;
   failedItemCount: number;
+  skippedDuplicateCount: number;
 };
 
 function dedupeKey(input: SyncCardioSessionsInput): string {
@@ -237,6 +238,7 @@ export class CardioSyncOrchestrator {
     let rawItemCount = 0;
     let processedItemCount = 0;
     let failedItemCount = 0;
+    let skippedDuplicateCount = 0;
 
     try {
       const lastCursor = input.forceFullResync ? null : connection.lastCursor;
@@ -284,6 +286,8 @@ export class CardioSyncOrchestrator {
         // Track occurredAt only for items that successfully imported, so a
         // failing item doesn't get skipped forever by an advanced cursor.
         const successOccurredAts: string[] = [];
+        // Catch Strava's occasional duplicate-activity-in-same-page quirk.
+        const seenKeys = new Set<string>();
 
         for (let i = 0; i < page.items.length; i++) {
           const item = page.items[i];
@@ -299,6 +303,14 @@ export class CardioSyncOrchestrator {
               await this.rawImportEventStore.markSkipped(rawEvent.id);
               continue;
             }
+
+            const dedupeKey = `${input.userId}|${mapped.sessionDate}|${Math.round(mapped.durationMinutes ?? 0)}`;
+            if (seenKeys.has(dedupeKey)) {
+              await this.rawImportEventStore.markSkipped(rawEvent.id);
+              skippedDuplicateCount += 1;
+              continue;
+            }
+            seenKeys.add(dedupeKey);
 
             const { providerExternalId, ...sessionFields } = mapped;
 
@@ -383,6 +395,7 @@ export class CardioSyncOrchestrator {
         rawItemCount,
         processedItemCount,
         failedItemCount,
+        skippedDuplicateCount,
       });
     } catch (error) {
       const message =
@@ -409,6 +422,7 @@ export class CardioSyncOrchestrator {
       rawItemCount,
       processedItemCount,
       failedItemCount,
+      skippedDuplicateCount,
     };
   }
 }

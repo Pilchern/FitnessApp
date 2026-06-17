@@ -1,6 +1,6 @@
 # Current State — FitnessApp
 
-**Last updated:** 2026-04-05 (sprint 3)
+**Last updated:** 2026-06-17 (sprint 4)
 **Overall health:** Stable. TypeScript clean. All 49 tests pass. Lint clean. Live Supabase project connected. Strava integration live.
 
 ---
@@ -99,6 +99,19 @@ See `TECH_DEBT.md` for full prioritized list.
 - **Local Supabase:** Can be run locally with `supabase start && supabase db reset`
 - **Seed user (local only):** `dev@example.com` / `password1234`
 - **CI/CD:** None configured yet
+
+---
+
+## What Was Done in This Session (2026-06-17, sprint 4)
+
+P2/P3 code quality fixes:
+
+1. **F-042 fixed** — Template exercises now Zod-validated before DB write. `templateExercisesSchema` added to `form-schema.ts`; `createStrengthTemplateAction` uses `.safeParse()` and returns a user-facing error on failure.
+2. **F-056 fixed** — All `getErrorMessage` calls in `strength/actions.ts` replaced with `parseActionError`. Now re-throws redirect errors and surfaces `fieldErrors` from Zod.
+3. **F-060 fixed** — Cross-orchestrator type imports eliminated. Shared store interfaces and input types moved to `packages/jobs/src/orchestration/shared-types.ts`. `body-metric-sync.ts` re-exports them for backward compatibility; `cardio-sync.ts` now imports directly from `./shared-types`.
+4. **A-010 fixed** — In-memory dedup added to `cardio-sync.ts`. Tracks `userId|sessionDate|durationMinutes` per sync run; duplicate items within the same page are skipped and counted as `skippedDuplicateCount` in the result and sync job run log.
+5. **F-047 checked** — Journal search already safe: Supabase JS client parameterizes `.ilike()` patterns; `.limit(500)` already applied before the search branch. No change needed.
+6. **Strength form checked** — Form uses controlled `useState` inputs with `value=` on all fields. State survives server action errors without any additional work. No change needed.
 
 ---
 
