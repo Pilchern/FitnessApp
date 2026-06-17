@@ -75,7 +75,7 @@ function inferSessionKind(activity: StravaRawActivity): CardioSessionKind {
 
   // High intensity signals
   if (/hiit|tabata|sprint|interval|threshold|tempo|race|5k|10k|half marathon|marathon|vo2|max effort|all out/.test(title)) return "vo2";
-  if (/hiit|crossfit/.test(sport)) return "vo2";
+  if (/hiit/.test(sport)) return "vo2";
 
   // Strength/weight training → other
   if (/weight|strength|lift|gym|cross.?train|circuit/.test(title)) return "other";

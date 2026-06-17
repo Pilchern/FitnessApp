@@ -111,7 +111,7 @@ export async function deleteCardioSessionAction(formData: FormData) {
     redirect("/cardio");
   }
 
-  let url = "/cardio";
+  let url = "/cardio?deleted=1";
   try {
     const user = await requireCurrentUser();
     const cardioService = await createCardioService();

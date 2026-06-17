@@ -10,7 +10,7 @@ export async function InsightsScreen() {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Coaching
         </p>
-        <h1 className="mt-3 font-display text-4xl text-ink">Insights</h1>
+        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">Insights</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
           Personalised observations based on your training, recovery, and
           body data. Each insight is grounded in what you&apos;ve actually logged.

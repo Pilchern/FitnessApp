@@ -10,6 +10,25 @@ export type TrainingWeekData = {
   totalMinutes: number;
 };
 
+export type GoalProgress = {
+  label: string;
+  description: string;
+  trend: "improving" | "maintaining" | "declining" | "insufficient_data";
+  trendDetail: string;
+};
+
+export type TodayNutrition = {
+  proteinHitDays: number;
+  fiberTakenDays: number;
+  totalDays: number;
+};
+
+export type NutritionTargetsSnapshot = {
+  calories: number | null;
+  proteinGrams: number | null;
+  fiberGrams: number | null;
+};
+
 export type DashboardData = {
   trainingWeek: TrainingWeekData;
   latestRecovery: RecoveryCheckin | null;
@@ -18,9 +37,14 @@ export type DashboardData = {
   latestWaistIn: number | null;
   waistChangeIn: number | null;
   latestBodyFatPct: number | null;
+  latestBodyDate: string | null;
   weightTrend: SparseTrendPoint[];
   recentReviews: WeeklyReview[];
   latestReview: WeeklyReview | null;
   topInsights: PersistedInsight[];
   coachingSuggestion: RecoveryCoachingSuggestion | null;
+  journalStreak: number;
+  goalProgress: GoalProgress[];
+  todayNutrition: TodayNutrition | null;
+  nutritionTargets: NutritionTargetsSnapshot;
 };

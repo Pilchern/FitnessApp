@@ -79,6 +79,7 @@ export function RecoverySnapshotCard({ latestRecovery }: RecoverySnapshotCardPro
             Recovery
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">Latest check-in</h2>
+          <p className="mt-1 text-xs text-ink/50">Updated {relativeDate(checkinDate)}</p>
         </div>
         <div className="rounded-full border border-ink/10 bg-sand/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink/60">
           {relativeDate(checkinDate)}

@@ -1,7 +1,12 @@
 "use server";
 
-import { StrengthSessionService, TrainingTemplateService } from "@fitness-app/application";
 import {
+  detectPersonalRecords,
+  StrengthSessionService,
+  TrainingTemplateService,
+} from "@fitness-app/application";
+import {
+  SupabaseInsightRepository,
   SupabaseStrengthSessionRepository,
   SupabaseTrainingTemplateRepository,
 } from "@fitness-app/infrastructure";
@@ -70,8 +75,54 @@ export async function createStrengthSessionAction(
 ): Promise<StrengthActionState> {
   try {
     const user = await requireCurrentUser();
-    const service = await createStrengthService();
-    await service.create(buildStrengthPayload(user.id, formData));
+    const client = await createSupabaseRequestClient();
+    const service = new StrengthSessionService(new SupabaseStrengthSessionRepository(client));
+    const payload = buildStrengthPayload(user.id, formData);
+    const session = await service.create(payload);
+
+    const exerciseNames = [...new Set(session.sets.map((s) => s.exerciseName))];
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    const startDate = ninetyDaysAgo.toISOString().slice(0, 10);
+
+    const historical = await service.listByDateRange({
+      userId: user.id,
+      startDate,
+      endDate: session.sessionDate,
+    });
+
+    const allPrs = exerciseNames.flatMap((exerciseName) => {
+      const newSets = session.sets.filter((s) => s.exerciseName === exerciseName);
+      const historicalSets = historical
+        .filter((s) => s.id !== session.id)
+        .flatMap((s) => s.sets.filter((set) => set.exerciseName === exerciseName));
+      return detectPersonalRecords(exerciseName, newSets, historicalSets);
+    });
+
+    if (allPrs.length > 0) {
+      const insightRepo = new SupabaseInsightRepository(client);
+      await insightRepo.upsertMany(
+        allPrs.map((pr) => ({
+          userId: user.id,
+          insightType: `personal_record_${pr.prType}_${pr.exerciseName.toLowerCase().replace(/\s+/g, "_")}`,
+          title: `New ${pr.prType === "weight" ? "Weight" : "Volume"} PR: ${pr.exerciseName}`,
+          body:
+            pr.prType === "weight"
+              ? `You lifted ${pr.newValue}lb on ${pr.exerciseName}${pr.previousBest != null ? `, beating your previous best of ${pr.previousBest}lb` : ""}.`
+              : `You hit a volume of ${pr.newValue}lb on ${pr.exerciseName}${pr.previousBest != null ? `, beating your previous best of ${pr.previousBest}lb` : ""}.`,
+          evidence: {
+            exerciseName: pr.exerciseName,
+            prType: pr.prType,
+            newValue: pr.newValue,
+            previousBest: pr.previousBest,
+            sessionDate: session.sessionDate,
+          },
+          sourceKind: "rule",
+          insightDate: session.sessionDate,
+        })),
+      );
+    }
+
     redirect("/strength");
   } catch (error) {
     return parseActionError(error);

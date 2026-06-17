@@ -9,9 +9,10 @@ import { CardioSummaryCards } from "./cardio-summary-cards";
 
 type CardioScreenProps = {
   editSessionId?: string;
+  deleted?: boolean;
 };
 
-export async function CardioScreen({ editSessionId }: CardioScreenProps) {
+export async function CardioScreen({ editSessionId, deleted }: CardioScreenProps) {
   const data = await getCardioPageData(editSessionId);
 
   return (
@@ -20,7 +21,7 @@ export async function CardioScreen({ editSessionId }: CardioScreenProps) {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           This week
         </p>
-        <h1 className="mt-3 font-display text-4xl text-ink">Cardio</h1>
+        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">Cardio</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
           Log your workouts and cardio sessions. Pick a template to pre-fill the
           basics, then add more detail if you want it.
@@ -40,7 +41,7 @@ export async function CardioScreen({ editSessionId }: CardioScreenProps) {
         formError={data.formError}
       />
 
-      <CardioSessionList sessions={data.sessions} templates={data.templates} />
+      <CardioSessionList sessions={data.sessions} templates={data.templates} deleted={deleted} />
     </div>
   );
 }

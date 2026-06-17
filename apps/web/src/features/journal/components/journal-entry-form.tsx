@@ -5,6 +5,7 @@ import { useActionState, useEffect, useState } from "react";
 import type { CardioSession, JournalEntry } from "@fitness-app/domain";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { formatCardioLinkLabel, toJournalFormValues } from "../helpers";
+import { inferTagsClient } from "../infer-tags-client";
 import type { JournalActionState, JournalFormValues } from "../types";
 
 type JournalEntryFormProps = {
@@ -38,11 +39,25 @@ export function JournalEntryForm({
   const [state, formAction] = useActionState(action, initialState);
   const [values, setValues] = useState<JournalFormValues>(() => toJournalFormValues(entry));
   const [showDeepEntry, setShowDeepEntry] = useState(mode === "edit");
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
 
   useEffect(() => {
     setValues(toJournalFormValues(entry));
     setShowDeepEntry(mode === "edit");
   }, [entry, mode]);
+
+  useEffect(() => {
+    if (values.body.length < 50) {
+      setSuggestedTags([]);
+      return;
+    }
+    const existingTagList = values.tags
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+    const inferred = inferTagsClient(values.body, existingTagList);
+    setSuggestedTags(inferred.filter((t) => !existingTagList.includes(t)));
+  }, [values.body, values.tags]);
 
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
@@ -118,6 +133,29 @@ export function JournalEntryForm({
             }
           />
         </label>
+
+        {suggestedTags.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-ink/50">Suggested:</span>
+            {suggestedTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() =>
+                  setValues((current) => ({
+                    ...current,
+                    tags: current.tags
+                      ? `${current.tags}, ${tag}`
+                      : tag,
+                  }))
+                }
+                className="rounded-full border border-ink/15 bg-sand px-3 py-1 text-xs font-semibold text-ink/60 transition hover:border-pine hover:text-pine"
+              >
+                +{tag}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <div>
           <button

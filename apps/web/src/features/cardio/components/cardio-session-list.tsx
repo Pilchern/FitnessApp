@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { CardioSession } from "@fitness-app/domain";
 import { deleteCardioSessionAction } from "../actions";
@@ -11,12 +12,14 @@ import {
   formatSportType,
 } from "../helpers";
 import type { CardioTemplatePreset } from "../types";
+import { useToast } from "@/components/shared/toast-provider";
 
 const PAGE_SIZE = 14;
 
 type CardioSessionListProps = {
   sessions: CardioSession[];
   templates: CardioTemplatePreset[];
+  deleted?: boolean;
 };
 
 function sessionStatusClassName(status: CardioSession["plannedVsCompleted"]) {
@@ -44,17 +47,32 @@ function findTemplateName(
 export function CardioSessionList({
   sessions,
   templates,
+  deleted,
 }: CardioSessionListProps) {
   const [showAll, setShowAll] = useState(false);
+  const { showToast } = useToast();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (deleted) {
+      showToast("Entry deleted");
+      const url = new URL(window.location.href);
+      url.searchParams.delete("deleted");
+      router.replace(url.pathname + (url.search || ""), { scroll: false });
+    }
+  }, [deleted, showToast, router]);
   const visible = showAll ? sessions : sessions.slice(0, PAGE_SIZE);
 
   if (sessions.length === 0) {
     return (
-      <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 p-8 text-center shadow-panel">
-        <h2 className="font-display text-3xl text-ink">No workouts logged yet</h2>
-        <p className="mt-3 text-sm leading-6 text-ink/75">
-          Pick a template above and log your first workout in under a minute.
-        </p>
+      <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 py-12 shadow-panel">
+        <div className="max-w-sm mx-auto text-center">
+          <div className="text-4xl">🚴</div>
+          <h2 className="mt-4 font-display text-xl text-ink">No cardio logged yet</h2>
+          <p className="mt-2 text-sm text-ink/60">
+            Log your first ride, run, or workout using the form above.
+          </p>
+        </div>
       </section>
     );
   }

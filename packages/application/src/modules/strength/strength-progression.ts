@@ -1,5 +1,65 @@
 import type { StrengthExerciseSet, StrengthSession } from "@fitness-app/domain";
 
+export type PRResult = {
+  exerciseName: string;
+  prType: "weight" | "volume";
+  newValue: number;
+  previousBest: number | null;
+};
+
+export function detectPersonalRecords(
+  exerciseName: string,
+  newSets: Pick<StrengthExerciseSet, "weight" | "reps">[],
+  historicalSets: Pick<StrengthExerciseSet, "weight" | "reps">[],
+): PRResult[] {
+  const results: PRResult[] = [];
+
+  const historicalMaxWeight =
+    historicalSets.length > 0
+      ? Math.max(...historicalSets.map((s) => s.weight ?? 0))
+      : null;
+
+  const historicalMaxVolume =
+    historicalSets.length > 0
+      ? Math.max(
+          ...historicalSets.map((s) =>
+            s.weight != null && s.reps != null ? s.weight * s.reps : 0,
+          ),
+        )
+      : null;
+
+  for (const set of newSets) {
+    if (set.weight != null && set.weight > 0) {
+      if (historicalMaxWeight == null || set.weight > historicalMaxWeight) {
+        results.push({
+          exerciseName,
+          prType: "weight",
+          newValue: set.weight,
+          previousBest: historicalMaxWeight,
+        });
+        break;
+      }
+    }
+  }
+
+  for (const set of newSets) {
+    if (set.weight != null && set.reps != null) {
+      const volume = set.weight * set.reps;
+      if (historicalMaxVolume == null || volume > historicalMaxVolume) {
+        results.push({
+          exerciseName,
+          prType: "volume",
+          newValue: volume,
+          previousBest: historicalMaxVolume,
+        });
+        break;
+      }
+    }
+  }
+
+  return results;
+}
+
 export type VolumeTrendPoint = {
   sessionDate: string;
   totalVolume: number;

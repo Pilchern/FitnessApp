@@ -22,7 +22,7 @@ export async function IntegrationsScreen({
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Integrations
         </p>
-        <h1 className="mt-3 font-display text-4xl text-ink">
+        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
           Connected apps
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">

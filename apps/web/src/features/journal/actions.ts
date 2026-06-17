@@ -1,6 +1,6 @@
 "use server";
 
-import { JournalEntryService, WeeklyReviewService } from "@fitness-app/application";
+import { inferJournalTags, JournalEntryService, WeeklyReviewService } from "@fitness-app/application";
 import {
   SupabaseJournalEntryRepository,
   SupabaseWeeklyReviewRepository,
@@ -40,13 +40,15 @@ async function buildJournalPayload(userId: string, formData: FormData) {
       })
     : null;
 
+  const tags = inferJournalTags(parsed.body, parsed.tags);
+
   return {
     id: parsed.id || undefined,
     userId,
     entryDate: parsed.entryDate,
     title: parsed.title || null,
     body: parsed.body,
-    tags: parsed.tags,
+    tags,
     relatedWeekStart: parsed.relatedWeekStart,
     relatedWeeklyReviewId: relatedReview?.id ?? null,
     relatedCardioSessionId: parsed.relatedCardioSessionId,

@@ -3,6 +3,7 @@ import {
   updateNutritionLogAction,
 } from "../actions";
 import { getNutritionPageData } from "../server";
+import { MacroProgressCard } from "./macro-progress-card";
 import { NutritionLogList } from "./nutrition-log-list";
 import { NutritionQuickForm } from "./nutrition-quick-form";
 import { NutritionSummaryCards } from "./nutrition-summary-cards";
@@ -20,13 +21,20 @@ export async function NutritionScreen({ editLogId }: NutritionScreenProps) {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Nutrition module
         </p>
-        <h1 className="mt-3 font-display text-4xl text-ink">Nutrition</h1>
+        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">Nutrition</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
           Track daily nutrition checks: protein, meal plan adherence,
           post-dinner snacking, junk leakage, and fiber. Keep it fast enough to
           stay consistent.
         </p>
       </section>
+
+      <MacroProgressCard
+        proteinHitDays={data.summary.proteinHitDays}
+        fiberTakenDays={data.summary.fiberTakenDays}
+        totalDays={data.summary.totalDays}
+        targets={data.targets}
+      />
 
       <NutritionSummaryCards summary={data.summary} targets={data.targets} />
 

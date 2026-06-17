@@ -8,8 +8,19 @@ type BodySnapshotCardProps = {
   latestWaistIn: number | null;
   waistChangeIn: number | null;
   latestBodyFatPct: number | null;
+  latestBodyDate: string | null;
   weightTrend: SparseTrendPoint[];
 };
+
+function bodyRelativeDate(isoDate: string): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const logged = new Date(`${isoDate}T00:00:00`);
+  const diffDays = Math.round((today.getTime() - logged.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return `${diffDays} days ago`;
+}
 
 function directionArrow(change: number | null): string {
   if (change == null || change === 0) return "";
@@ -35,6 +46,7 @@ export function BodySnapshotCard({
   latestWaistIn,
   waistChangeIn,
   latestBodyFatPct,
+  latestBodyDate,
   weightTrend,
 }: BodySnapshotCardProps) {
   const hasAnyData = latestWeightLb != null || latestWaistIn != null;
@@ -67,6 +79,9 @@ export function BodySnapshotCard({
             Body
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">Composition</h2>
+          {latestBodyDate ? (
+            <p className="mt-1 text-xs text-ink/50">Updated {bodyRelativeDate(latestBodyDate)}</p>
+          ) : null}
         </div>
         <Link
           href="/body"

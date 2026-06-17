@@ -18,11 +18,14 @@ export function StrengthSessionList({ sessions }: StrengthSessionListProps) {
 
   if (sessions.length === 0) {
     return (
-      <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 p-8 text-center shadow-panel">
-        <h2 className="font-display text-3xl text-ink">No sessions logged yet</h2>
-        <p className="mt-3 text-sm leading-6 text-ink/75">
-          Log your first session above. Add a few sets and you&apos;re done.
-        </p>
+      <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 py-12 shadow-panel">
+        <div className="max-w-sm mx-auto text-center">
+          <div className="text-4xl">🏋️</div>
+          <h2 className="mt-4 font-display text-xl text-ink">No strength sessions yet</h2>
+          <p className="mt-2 text-sm text-ink/60">
+            Start a session to begin tracking your lifts and building your history.
+          </p>
+        </div>
       </section>
     );
   }

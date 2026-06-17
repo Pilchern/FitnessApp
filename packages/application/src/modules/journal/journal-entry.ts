@@ -77,6 +77,54 @@ export interface JournalEntryRepository {
   listByDateRange(query: JournalEntryListQuery): Promise<JournalEntry[]>;
 }
 
+const TAG_RULES: Array<[RegExp, string]> = [
+  [/\b(lift|lifting|weights|strength)\b/, "strength"],
+  [/\b(run|running|ran)\b/, "running"],
+  [/\b(ride|riding|cycling|bike)\b/, "cycling"],
+  [/\b(swim|swimming)\b/, "swimming"],
+  [/\b(zone 2|zone2|z2)\b/, "zone2"],
+  [/\b(vo2|intervals|hiit)\b/, "vo2"],
+  [/\b(sleep|slept|insomnia)\b/, "sleep"],
+  [/\b(stress|stressed|anxiety)\b/, "stress"],
+  [/\b(alcohol|drinks|drinking|wine|beer)\b/, "alcohol"],
+  [/\b(pr|personal record|personal best|pb)\b/, "pr"],
+  [/\b(tired|fatigue|exhausted)\b/, "fatigue"],
+  [/\b(sick|illness|cold|flu)\b/, "illness"],
+  [/\b(travel|traveling|travelling)\b/, "travel"],
+  [/\b(nutrition|diet|eating|macros)\b/, "nutrition"],
+];
+
+export function inferJournalTags(body: string, existingTags: string[]): string[] {
+  const lower = body.toLowerCase();
+  const tagSet = new Set(existingTags);
+  for (const [pattern, tag] of TAG_RULES) {
+    if (!tagSet.has(tag) && pattern.test(lower)) {
+      tagSet.add(tag);
+    }
+  }
+  return Array.from(tagSet);
+}
+
+export function computeJournalStreak(
+  entries: { entryDate: string }[],
+  today: string,
+): number {
+  if (entries.length === 0) return 0;
+
+  const dates = new Set(entries.map((e) => e.entryDate));
+  if (!dates.has(today)) return 0;
+
+  let streak = 1;
+  const cursor = new Date(`${today}T12:00:00`);
+  for (;;) {
+    cursor.setDate(cursor.getDate() - 1);
+    const dateStr = cursor.toISOString().slice(0, 10);
+    if (!dates.has(dateStr)) break;
+    streak++;
+  }
+  return streak;
+}
+
 export class JournalEntryService {
   constructor(private readonly repository: JournalEntryRepository) {}
 

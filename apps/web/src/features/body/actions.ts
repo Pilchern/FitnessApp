@@ -87,7 +87,7 @@ export async function deleteBodyMetricAction(formData: FormData) {
     redirect("/body");
   }
 
-  let url = "/body";
+  let url = "/body?deleted=1";
   try {
     const user = await requireCurrentUser();
     const bodyMetricService = await createBodyMetricService();

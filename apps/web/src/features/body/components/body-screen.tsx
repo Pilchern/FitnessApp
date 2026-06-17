@@ -10,9 +10,10 @@ import { BodyTrendSection } from "./body-trend-section";
 
 type BodyScreenProps = {
   editMetricId?: string;
+  deleted?: boolean;
 };
 
-export async function BodyScreen({ editMetricId }: BodyScreenProps) {
+export async function BodyScreen({ editMetricId, deleted }: BodyScreenProps) {
   const data = await getBodyPageData(editMetricId);
 
   return (
@@ -21,7 +22,7 @@ export async function BodyScreen({ editMetricId }: BodyScreenProps) {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Measurements
         </p>
-        <h1 className="mt-3 font-display text-4xl text-ink">Body</h1>
+        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">Body</h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
           Track your weight and measurements over time. Log the essentials
           quickly — body fat and muscle mass are optional.
@@ -43,7 +44,7 @@ export async function BodyScreen({ editMetricId }: BodyScreenProps) {
         bodyFatTrend={data.bodyFatTrend}
       />
 
-      <BodyMetricList metrics={data.metrics} />
+      <BodyMetricList metrics={data.metrics} deleted={deleted} />
     </div>
   );
 }
