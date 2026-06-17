@@ -1,45 +1,8 @@
 import "server-only";
 
-import {
-  BodyMetricService,
-  buildInsights,
-  CardioSessionService,
-  getTopInsights,
-  getWeekRangeFromStart,
-  RecoveryCheckinService,
-  StrengthSessionSummaryService,
-  UserProfileService,
-  WeeklyReviewService,
-} from "@fitness-app/application";
-import {
-  SupabaseBodyMetricRepository,
-  SupabaseCardioSessionRepository,
-  SupabaseRecoveryCheckinRepository,
-  SupabaseStrengthSessionSummaryRepository,
-  SupabaseUserProfileRepository,
-  SupabaseWeeklyReviewRepository,
-} from "@fitness-app/infrastructure";
+import { getWeekRangeFromStart } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
-
-async function createDependencies() {
-  const client = await createSupabaseRequestClient();
-
-  return {
-    bodyMetricService: new BodyMetricService(new SupabaseBodyMetricRepository(client)),
-    cardioService: new CardioSessionService(new SupabaseCardioSessionRepository(client)),
-    profileService: new UserProfileService(new SupabaseUserProfileRepository(client)),
-    recoveryService: new RecoveryCheckinService(
-      new SupabaseRecoveryCheckinRepository(client),
-    ),
-    strengthSummaryService: new StrengthSessionSummaryService(
-      new SupabaseStrengthSessionSummaryRepository(client),
-    ),
-    weeklyReviewService: new WeeklyReviewService(
-      new SupabaseWeeklyReviewRepository(client),
-    ),
-  };
-}
+import { createCoreServices } from "@/lib/server/services";
 
 function sixMonthsAgoIsoDate() {
   const date = new Date();
@@ -49,31 +12,25 @@ function sixMonthsAgoIsoDate() {
 
 export async function getInsightsData() {
   const user = await requireCurrentUser();
-  const {
-    bodyMetricService,
-    cardioService,
-    profileService,
-    recoveryService,
-    strengthSummaryService,
-    weeklyReviewService,
-  } = await createDependencies();
+  const { insightOrchestrator, ...services } = await createCoreServices();
 
   const startDate = sixMonthsAgoIsoDate();
   const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody] =
     await Promise.all([
-      profileService.getByUserId(user.id),
-      weeklyReviewService.listRecent(user.id, 8),
-      cardioService.listByDateRange({ userId: user.id, startDate }),
-      recoveryService.listByDateRange({ userId: user.id, startDate }),
-      bodyMetricService.listByDateRange({ userId: user.id, startDate }),
+      services.profileService.getByUserId(user.id),
+      services.weeklyReviewService.listRecent(user.id, 8),
+      services.cardioService.listByDateRange({ userId: user.id, startDate }),
+      services.recoveryService.listByDateRange({ userId: user.id, startDate }),
+      services.bodyMetricService.listByDateRange({ userId: user.id, startDate }),
     ]);
+
   const timezone = profile?.timezone || "UTC";
   const weekStarts = new Set<string>(weeklyReviews.map((review) => review.weekStart));
 
   const liftPairs = await Promise.all(
     [...weekStarts].map(async (weekStart) => {
       const { weekEnd } = getWeekRangeFromStart(weekStart);
-      const count = await strengthSummaryService.countCompletedByDateRange({
+      const count = await services.strengthSummaryService.countCompletedByDateRange({
         userId: user.id,
         startDate: weekStart,
         endDate: weekEnd,
@@ -82,7 +39,8 @@ export async function getInsightsData() {
     }),
   );
 
-  const insights = buildInsights({
+  const insights = await insightOrchestrator.generateAndPersist({
+    userId: user.id,
     bodyMetrics: recentBody,
     cardioSessions: recentCardio,
     recoveryCheckins: recentRecovery,
@@ -92,8 +50,5 @@ export async function getInsightsData() {
     timezone,
   });
 
-  return {
-    insights,
-    topInsights: getTopInsights(insights),
-  };
+  return { insights, topInsights: insights.slice(0, 3) };
 }

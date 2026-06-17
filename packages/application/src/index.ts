@@ -8,6 +8,9 @@ export * from "./modules/body-metrics/body-metric-helpers";
 export * from "./modules/cardio/cardio-session";
 export * from "./modules/integrations/integration-status";
 export * from "./modules/insights/insight-rules";
+export * from "./modules/insights/insight-repository";
+export * from "./modules/insights/ai-insight-service";
+export * from "./modules/insights/insight-orchestrator";
 export * from "./modules/journal/journal-entry";
 export * from "./modules/recovery/recovery-checkin";
 export * from "./modules/recovery/recovery-helpers";
@@ -20,6 +23,7 @@ export {
 export * from "./modules/training/training-template";
 export * from "./modules/weekly-reviews/weekly-review";
 export * from "./modules/weekly-reviews/weekly-review-helpers";
+export * from "./modules/profiles/nutrition-target";
 export * from "./modules/profiles/user-profile";
 export * from "./shared/primitives";
 export * from "./shared/timezone";

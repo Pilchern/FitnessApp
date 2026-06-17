@@ -1,4 +1,4 @@
-import { updateSettingsAction } from "../actions";
+import { recomputeNutritionTargetsAction, updateSettingsAction } from "../actions";
 import { getSettingsPageData } from "../server";
 import { SettingsForm } from "./settings-form";
 
@@ -37,6 +37,7 @@ export async function SettingsScreen({ saved }: SettingsScreenProps) {
         profile={data.profile}
         userEmail={data.userEmail}
         action={updateSettingsAction}
+        recomputeNutritionTargetsAction={recomputeNutritionTargetsAction}
       />
     </div>
   );

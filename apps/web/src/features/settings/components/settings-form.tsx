@@ -1,10 +1,13 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { COMMON_TIMEZONES, toSettingsFormValues } from "../helpers";
 import type { SettingsActionState, SettingsFormValues } from "../types";
+import type { NutritionTargets } from "@fitness-app/application";
 import type { UserProfile } from "@fitness-app/domain";
+
+type RecomputeState = { error?: string; targets?: NutritionTargets };
 
 type SettingsFormProps = {
   profile: UserProfile;
@@ -13,6 +16,7 @@ type SettingsFormProps = {
     state: SettingsActionState,
     formData: FormData,
   ) => Promise<SettingsActionState>;
+  recomputeNutritionTargetsAction: () => Promise<RecomputeState>;
 };
 
 const initialState: SettingsActionState = {};
@@ -110,11 +114,28 @@ function RadioPill({
   );
 }
 
-export function SettingsForm({ profile, userEmail, action }: SettingsFormProps) {
+export function SettingsForm({ profile, userEmail, action, recomputeNutritionTargetsAction }: SettingsFormProps) {
   const [state, formAction] = useActionState(action, initialState);
   const [values, setValues] = useState<SettingsFormValues>(() =>
     toSettingsFormValues(profile),
   );
+  const [recomputeState, setRecomputeState] = useState<RecomputeState>({});
+  const [isRecomputing, startRecompute] = useTransition();
+
+  function handleRecompute() {
+    startRecompute(async () => {
+      const result = await recomputeNutritionTargetsAction();
+      setRecomputeState(result);
+      if (result.targets) {
+        setValues((current) => ({
+          ...current,
+          dailyCaloriesTarget: String(result.targets!.dailyCaloriesTarget),
+          dailyProteinGramsTarget: String(result.targets!.dailyProteinGramsTarget),
+          dailyFiberGramsTarget: String(result.targets!.dailyFiberGramsTarget),
+        }));
+      }
+    });
+  }
 
   function set<K extends keyof SettingsFormValues>(
     key: K,
@@ -334,6 +355,25 @@ export function SettingsForm({ profile, userEmail, action }: SettingsFormProps) 
               </p>
             ) : null}
           </label>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <button
+            type="button"
+            onClick={handleRecompute}
+            disabled={isRecomputing}
+            className="inline-flex h-10 items-center justify-center rounded-full border border-pine px-5 text-sm font-semibold text-pine transition hover:bg-pine hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isRecomputing ? "Computing…" : "Recompute from my stats"}
+          </button>
+          {recomputeState.targets ? (
+            <p className="text-sm text-pine">
+              Targets updated — save below to keep them.
+            </p>
+          ) : null}
+          {recomputeState.error ? (
+            <p className="text-sm text-ember">{recomputeState.error}</p>
+          ) : null}
         </div>
       </section>
 

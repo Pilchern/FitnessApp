@@ -1,8 +1,11 @@
 import "server-only";
 
 import {
+  AiInsightService,
   BodyMetricService,
+  buildInsights,
   CardioSessionService,
+  InsightOrchestrator,
   NutritionLogService,
   RecoveryCheckinService,
   StrengthSessionSummaryService,
@@ -12,12 +15,14 @@ import {
 import {
   SupabaseBodyMetricRepository,
   SupabaseCardioSessionRepository,
+  SupabaseInsightRepository,
   SupabaseNutritionLogRepository,
   SupabaseRecoveryCheckinRepository,
   SupabaseStrengthSessionSummaryRepository,
   SupabaseUserProfileRepository,
   SupabaseWeeklyReviewRepository,
 } from "@fitness-app/infrastructure";
+import { getServerEnv } from "./env";
 import { createSupabaseRequestClient } from "./supabase";
 
 /**
@@ -27,6 +32,21 @@ import { createSupabaseRequestClient } from "./supabase";
  */
 export async function createCoreServices() {
   const client = await createSupabaseRequestClient();
+  const env = getServerEnv();
+
+  const aiService = env.ANTHROPIC_API_KEY
+    ? new AiInsightService({
+        apiKey: env.ANTHROPIC_API_KEY,
+        model: env.INSIGHT_AI_MODEL ?? "claude-haiku-4-5-20251001",
+        enabled: env.INSIGHT_AI_ENABLED,
+      })
+    : null;
+
+  const insightOrchestrator = new InsightOrchestrator(
+    new SupabaseInsightRepository(client),
+    aiService,
+    buildInsights,
+  );
 
   return {
     profileService: new UserProfileService(new SupabaseUserProfileRepository(client)),
@@ -44,5 +64,6 @@ export async function createCoreServices() {
     nutritionService: new NutritionLogService(
       new SupabaseNutritionLogRepository(client),
     ),
+    insightOrchestrator,
   };
 }

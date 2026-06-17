@@ -1,12 +1,16 @@
 "use server";
 
-import { UserProfileService } from "@fitness-app/application";
-import { SupabaseUserProfileRepository } from "@fitness-app/infrastructure";
+import { NutritionTargetService, UserProfileService } from "@fitness-app/application";
+import {
+  SupabaseBodyMetricRepository,
+  SupabaseUserProfileRepository,
+} from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import { settingsFormSchema } from "./form-schema";
+import type { NutritionTargets } from "@fitness-app/application";
 import type { SettingsActionState } from "./types";
 
 async function createProfileService() {
@@ -47,5 +51,45 @@ export async function updateSettingsAction(
     redirect("/settings?saved=true");
   } catch (error) {
     return parseActionError(error);
+  }
+}
+
+export async function recomputeNutritionTargetsAction(): Promise<{
+  error?: string;
+  targets?: NutritionTargets;
+}> {
+  try {
+    const user = await requireCurrentUser();
+    const client = await createSupabaseRequestClient();
+    const profileRepository = new SupabaseUserProfileRepository(client);
+    const service = new NutritionTargetService(
+      profileRepository,
+      new SupabaseBodyMetricRepository(client),
+    );
+    const targets = await service.computeNutritionTargets(user.id);
+    const profileService = new UserProfileService(profileRepository);
+    const profile = await profileService.getByUserId(user.id);
+    if (!profile) {
+      return { error: "Profile not found" };
+    }
+    await profileService.update({
+      userId: user.id,
+      displayName: profile.displayName,
+      timezone: profile.timezone,
+      unitsSystem: profile.unitsSystem,
+      weekStartsOn: profile.weekStartsOn,
+      goalFatLoss: profile.goalFatLoss,
+      goalPreserveMuscle: profile.goalPreserveMuscle,
+      goalImproveVo2: profile.goalImproveVo2,
+      dailyProteinGramsTarget: targets.dailyProteinGramsTarget,
+      dailyCaloriesTarget: targets.dailyCaloriesTarget,
+      dailyFiberGramsTarget: targets.dailyFiberGramsTarget,
+    });
+    return { targets };
+  } catch (error) {
+    if (error instanceof Error) {
+      return { error: error.message };
+    }
+    return { error: "Something went wrong. Please try again." };
   }
 }

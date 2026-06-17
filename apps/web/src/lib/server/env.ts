@@ -26,6 +26,12 @@ const serverEnvSchema = z.object({
   INTEGRATION_ENCRYPTION_KEY: optionalEnvStringSchema,
   CRON_SECRET: optionalEnvStringSchema,
   APPLE_HEALTH_WEBHOOK_SECRET: optionalEnvStringSchema,
+  ANTHROPIC_API_KEY: optionalEnvStringSchema,
+  INSIGHT_AI_MODEL: optionalEnvStringSchema,
+  INSIGHT_AI_ENABLED: z.preprocess(
+    (v) => v === "true",
+    z.boolean().default(false),
+  ),
 });
 
 let cachedServerEnv: z.infer<typeof serverEnvSchema> | null = null;
@@ -48,6 +54,9 @@ export function getServerEnv() {
     INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
     APPLE_HEALTH_WEBHOOK_SECRET: process.env.APPLE_HEALTH_WEBHOOK_SECRET,
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    INSIGHT_AI_MODEL: process.env.INSIGHT_AI_MODEL,
+    INSIGHT_AI_ENABLED: process.env.INSIGHT_AI_ENABLED,
   });
 
   return cachedServerEnv;
