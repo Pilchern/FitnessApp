@@ -2,13 +2,21 @@
 
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createPelotonSyncOrchestrator, createStravaSyncOrchestrator, createWithingsSyncOrchestrator } from "@/lib/server/integrations";
+import {
+  createPelotonSyncOrchestrator,
+  createStravaSyncOrchestrator,
+  createWithingsSyncOrchestrator,
+  getWithingsIntegrationConfig,
+} from "@/lib/server/integrations";
 
 function errorRedirectUrl(message: string) {
   return `/integrations?error=${encodeURIComponent(message)}`;
 }
 
 export async function disconnectWithingsAction() {
+  if (!getWithingsIntegrationConfig()) {
+    redirect(errorRedirectUrl("Withings not configured"));
+  }
   let url = "/integrations?status=disconnected";
   try {
     const user = await requireCurrentUser();

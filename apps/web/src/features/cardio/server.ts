@@ -36,17 +36,17 @@ export async function getCardioPageData(
   const { cardioService, trainingTemplateService } = await createDependencies();
   const weekRange = getCurrentWeekRange();
 
-  const [templates, sessions, currentWeekSessions, editingSession] =
-    await Promise.all([
-      trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
-      cardioService.listByDateRange({ userId: user.id }),
-      cardioService.listByDateRange({
-        userId: user.id,
-        startDate: weekRange.startDate,
-        endDate: weekRange.endDate,
-      }),
-      editSessionId ? cardioService.getById(user.id, editSessionId) : Promise.resolve(null),
-    ]);
+  const [templates, sessions, editingSession] = await Promise.all([
+    trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
+    cardioService.listByDateRange({ userId: user.id }),
+    editSessionId ? cardioService.getById(user.id, editSessionId) : Promise.resolve(null),
+  ]);
+
+  const currentWeekSessions = sessions.filter(
+    (session) =>
+      session.sessionDate >= weekRange.startDate &&
+      session.sessionDate <= weekRange.endDate,
+  );
 
   return {
     templates: buildCardioTemplatePresets(templates),

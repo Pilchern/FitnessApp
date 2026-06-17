@@ -25,6 +25,7 @@ export type WeeklyReviewPageData = {
 
 export type WeeklyReviewActionState = {
   error?: string;
+  fieldErrors?: Record<string, string>;
 };
 
 export type WeeklyReviewFormValues = {

@@ -2,14 +2,20 @@ import { z } from "zod";
 
 export const authActionStateSchema = z.object({
   error: z.string().optional(),
+  fieldErrors: z.record(z.string(), z.string()).optional(),
 });
 
 export type AuthActionState = z.infer<typeof authActionStateSchema>;
 
 const safeRedirectPattern = /^\/(?!\/)/;
+const MAX_REDIRECT_LENGTH = 512;
 
 export function sanitizeRedirectTo(value: string | null | undefined) {
   if (!value || !safeRedirectPattern.test(value)) {
+    return "/dashboard";
+  }
+
+  if (value.length > MAX_REDIRECT_LENGTH) {
     return "/dashboard";
   }
 

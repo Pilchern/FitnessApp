@@ -4,6 +4,7 @@ import {
   buildBodyMetricSummary,
   buildBodyWeightTrend,
   buildCardioWeeklyTotals,
+  getCurrentWeekRangeForUser,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { createCoreServices } from "@/lib/server/services";
@@ -14,24 +15,14 @@ function formatIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
 }
 
-function getCurrentWeekStartEnd(weekStartsOn: 0 | 1 = 1): {
-  weekStart: string;
-  weekEnd: string;
-} {
-  const now = new Date();
-  now.setHours(12, 0, 0, 0);
-  const daysSince = weekStartsOn === 1 ? (now.getDay() + 6) % 7 : now.getDay();
-  const start = new Date(now);
-  start.setDate(now.getDate() - daysSince);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  return { weekStart: formatIsoDate(start), weekEnd: formatIsoDate(end) };
-}
-
 function daysAgoIsoDate(days: number) {
   const date = new Date();
   date.setDate(date.getDate() - days);
   return formatIsoDate(date);
+}
+
+function settledOrNull<T>(result: PromiseSettledResult<T>): T | null {
+  return result.status === "fulfilled" ? result.value : null;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -47,16 +38,17 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const profile = await profileService.getByUserId(user.id);
   const weekStartsOn = profile?.weekStartsOn ?? 1;
-  const { weekStart, weekEnd } = getCurrentWeekStartEnd(weekStartsOn);
+  const timezone = profile?.timezone || "UTC";
+  const { weekStart, weekEnd } = getCurrentWeekRangeForUser(timezone, weekStartsOn);
 
   const [
-    cardioThisWeek,
-    liftsCompleted,
-    recentRecovery,
-    recentBody,
-    recentReviews,
-    insightData,
-  ] = await Promise.all([
+    cardioThisWeekResult,
+    liftsCompletedResult,
+    recentRecoveryResult,
+    recentBodyResult,
+    recentReviewsResult,
+    insightDataResult,
+  ] = await Promise.allSettled([
     cardioService.listByDateRange({ userId: user.id, startDate: weekStart, endDate: weekEnd }),
     strengthSummaryService.countCompletedByDateRange({
       userId: user.id,
@@ -74,6 +66,14 @@ export async function getDashboardData(): Promise<DashboardData> {
     weeklyReviewService.listRecent(user.id, 6),
     getInsightsData(),
   ]);
+
+  const cardioThisWeek = settledOrNull(cardioThisWeekResult) ?? [];
+  const liftsCompleted = settledOrNull(liftsCompletedResult) ?? 0;
+  const recentRecovery = settledOrNull(recentRecoveryResult) ?? [];
+  const recentBody = settledOrNull(recentBodyResult) ?? [];
+  const recentReviews = settledOrNull(recentReviewsResult) ?? [];
+  const insightData = settledOrNull(insightDataResult);
+  const topInsights = insightData?.topInsights ?? [];
 
   const cardioTotals = buildCardioWeeklyTotals(cardioThisWeek);
   const bodyMetricSummary = buildBodyMetricSummary(recentBody);
@@ -110,6 +110,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     weightTrend,
     recentReviews,
     latestReview,
-    topInsights: insightData.topInsights.slice(0, 3),
+    topInsights: topInsights.slice(0, 3),
   };
 }

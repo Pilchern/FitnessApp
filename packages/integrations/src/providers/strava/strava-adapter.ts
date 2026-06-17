@@ -270,11 +270,16 @@ export class StravaCardioAdapter implements OAuthCardioProviderAdapter {
       page += 1;
     }
 
-    // cursor = epoch seconds of the most recent activity we fetched
-    const nextCursor =
-      allItems.length > 0 && allItems[0].occurredAt
-        ? String(Math.floor(new Date(allItems[0].occurredAt).getTime() / 1000))
-        : null;
+    // cursor = epoch seconds of the most recent activity we fetched.
+    // Strava `after=` returns oldest-first, so we explicitly take the MAX
+    // occurredAt across all items to guarantee the cursor advances forward.
+    let maxEpoch = 0;
+    for (const it of allItems) {
+      if (!it.occurredAt) continue;
+      const t = Math.floor(new Date(it.occurredAt).getTime() / 1000);
+      if (t > maxEpoch) maxEpoch = t;
+    }
+    const nextCursor = maxEpoch > 0 ? String(maxEpoch) : input.lastCursor ?? null;
 
     return {
       items: allItems,

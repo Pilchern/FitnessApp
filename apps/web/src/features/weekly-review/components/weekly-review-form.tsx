@@ -46,6 +46,7 @@ type AutoFieldProps = {
   manualOverride: boolean;
   onReset: () => void;
   children: ReactNode;
+  fieldError?: string;
 };
 
 function AutoField({
@@ -55,6 +56,7 @@ function AutoField({
   manualOverride,
   onReset,
   children,
+  fieldError,
 }: AutoFieldProps) {
   return (
     <div className="rounded-[1.25rem] border border-ink/10 bg-sand/45 p-4">
@@ -75,6 +77,9 @@ function AutoField({
       <div className="mt-3">
         {children}
       </div>
+      {fieldError ? (
+        <p className="mt-2 text-xs text-ember">{fieldError}</p>
+      ) : null}
       <div className="mt-3 flex items-center justify-between gap-3 text-xs text-ink/60">
         <span>{autoValueLabel}</span>
         {manualOverride ? (
@@ -339,6 +344,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 }`}
                 manualOverride={Boolean(values.manualOverrides.averageWeightLb)}
                 onReset={() => resetAutoField("averageWeightLb")}
+                fieldError={state.fieldErrors?.averageWeightLb}
               >
                 <input
                   id="averageWeightLb"
@@ -360,6 +366,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 }`}
                 manualOverride={Boolean(values.manualOverrides.waistIn)}
                 onReset={() => resetAutoField("waistIn")}
+                fieldError={state.fieldErrors?.waistIn}
               >
                 <input
                   id="waistIn"
@@ -377,6 +384,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 autoValueLabel={`Auto: ${data.autoSummary.liftsCompleted ?? 0}`}
                 manualOverride={Boolean(values.manualOverrides.liftsCompleted)}
                 onReset={() => resetAutoField("liftsCompleted")}
+                fieldError={state.fieldErrors?.liftsCompleted}
               >
                 <input
                   id="liftsCompleted"
@@ -396,6 +404,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 autoValueLabel={`Auto: ${data.autoSummary.ridesCompleted ?? 0}`}
                 manualOverride={Boolean(values.manualOverrides.ridesCompleted)}
                 onReset={() => resetAutoField("ridesCompleted")}
+                fieldError={state.fieldErrors?.ridesCompleted}
               >
                 <input
                   id="ridesCompleted"
@@ -415,6 +424,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 autoValueLabel={`Auto: ${data.autoSummary.zone2Minutes ?? 0} min`}
                 manualOverride={Boolean(values.manualOverrides.zone2Minutes)}
                 onReset={() => resetAutoField("zone2Minutes")}
+                fieldError={state.fieldErrors?.zone2Minutes}
               >
                 <input
                   id="zone2Minutes"
@@ -432,6 +442,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 autoValueLabel={`Auto: ${data.autoSummary.vo2Completed ? "Yes" : "No"}`}
                 manualOverride={Boolean(values.manualOverrides.vo2Completed)}
                 onReset={() => resetAutoField("vo2Completed")}
+                fieldError={state.fieldErrors?.vo2Completed}
               >
                 <select
                   id="vo2Completed"
@@ -455,6 +466,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 }`}
                 manualOverride={Boolean(values.manualOverrides.sleepAverageHours)}
                 onReset={() => resetAutoField("sleepAverageHours")}
+                fieldError={state.fieldErrors?.sleepAverageHours}
               >
                 <input
                   id="sleepAverageHours"
@@ -476,6 +488,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 }`}
                 manualOverride={Boolean(values.manualOverrides.alcoholTotal)}
                 onReset={() => resetAutoField("alcoholTotal")}
+                fieldError={state.fieldErrors?.alcoholTotal}
               >
                 <input
                   id="alcoholTotal"
@@ -565,6 +578,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                     setValues((current) => ({ ...current, confidence: event.target.value }))
                   }
                 />
+                {state.fieldErrors?.confidence ? (
+                  <p className="text-xs text-ember">{state.fieldErrors.confidence}</p>
+                ) : null}
               </label>
             </div>
           </div>

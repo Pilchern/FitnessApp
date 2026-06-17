@@ -99,6 +99,9 @@ export function NutritionQuickForm({
                 }))
               }
             />
+            {state.fieldErrors?.logDate ? (
+              <p className="text-xs text-ember">{state.fieldErrors.logDate}</p>
+            ) : null}
           </label>
 
           <label className="grid gap-2 text-sm font-medium text-ink">
@@ -116,6 +119,9 @@ export function NutritionQuickForm({
                 }))
               }
             />
+            {state.fieldErrors?.alcoholCount ? (
+              <p className="text-xs text-ember">{state.fieldErrors.alcoholCount}</p>
+            ) : null}
           </label>
         </div>
 

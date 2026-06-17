@@ -7,7 +7,7 @@ import {
 import { SupabaseWeeklyReviewRepository } from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { getErrorMessage } from "@/lib/server/get-error-message";
+import { parseActionError } from "@/lib/server/parse-action-error";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import { weeklyReviewFormSchema } from "./form-schema";
 import type { WeeklyReviewActionState } from "./types";
@@ -91,8 +91,6 @@ export async function saveWeeklyReviewAction(
 
     redirect(`/weekly-review?weekStart=${payload.weekStart}`);
   } catch (error) {
-    return {
-      error: getErrorMessage(error),
-    };
+    return parseActionError(error);
   }
 }

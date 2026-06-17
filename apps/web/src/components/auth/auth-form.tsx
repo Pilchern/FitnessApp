@@ -54,6 +54,9 @@ export function AuthForm({
             placeholder="Ashley"
             className="h-12 rounded-2xl border border-ink/10 bg-white px-4 text-base text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20"
           />
+          {state.fieldErrors?.displayName ? (
+            <p className="text-xs text-ember">{state.fieldErrors.displayName}</p>
+          ) : null}
         </label>
       ) : null}
 
@@ -67,6 +70,9 @@ export function AuthForm({
           placeholder="you@example.com"
           className="h-12 rounded-2xl border border-ink/10 bg-white px-4 text-base text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20"
         />
+        {state.fieldErrors?.email ? (
+          <p className="text-xs text-ember">{state.fieldErrors.email}</p>
+        ) : null}
       </label>
 
       <label className="grid gap-2 text-sm font-medium text-ink">
@@ -79,6 +85,9 @@ export function AuthForm({
           placeholder={isSignup ? "Create a password" : "Enter your password"}
           className="h-12 rounded-2xl border border-ink/10 bg-white px-4 text-base text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20"
         />
+        {state.fieldErrors?.password ? (
+          <p className="text-xs text-ember">{state.fieldErrors.password}</p>
+        ) : null}
       </label>
 
       {isSignup ? (
@@ -92,6 +101,9 @@ export function AuthForm({
             placeholder="Repeat your password"
             className="h-12 rounded-2xl border border-ink/10 bg-white px-4 text-base text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20"
           />
+          {state.fieldErrors?.confirmPassword ? (
+            <p className="text-xs text-ember">{state.fieldErrors.confirmPassword}</p>
+          ) : null}
         </label>
       ) : null}
 

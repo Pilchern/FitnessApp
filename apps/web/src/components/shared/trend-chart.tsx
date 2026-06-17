@@ -107,7 +107,11 @@ export function TrendChart({
           viewBox={`0 0 ${chartWidth} ${chartHeight}`}
           className="h-44 w-full"
           role="img"
-          aria-label={`${title} trend chart`}
+          aria-label={
+            first && latest
+              ? `${title}: ${points.length} ${points.length === 1 ? "reading" : "readings"} from ${first.date} to ${latest.date}, current ${formatValue(latest.value)}, change ${buildDeltaLabel(points, formatValue)}.`
+              : `${title} trend chart`
+          }
         >
           <line
             x1={padding.left}

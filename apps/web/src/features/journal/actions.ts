@@ -7,7 +7,7 @@ import {
 } from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { getErrorMessage } from "@/lib/server/get-error-message";
+import { parseActionError } from "@/lib/server/parse-action-error";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import { journalEntryFormSchema } from "./form-schema";
 import type { JournalActionState } from "./types";
@@ -65,9 +65,7 @@ export async function createJournalEntryAction(
     await journalService.create(payload);
     redirect("/journal");
   } catch (error) {
-    return {
-      error: getErrorMessage(error),
-    };
+    return parseActionError(error);
   }
 }
 
@@ -89,9 +87,7 @@ export async function updateJournalEntryAction(
     await journalService.update(payload);
     redirect("/journal");
   } catch (error) {
-    return {
-      error: getErrorMessage(error),
-    };
+    return parseActionError(error);
   }
 }
 
@@ -101,13 +97,15 @@ export async function deleteJournalEntryAction(formData: FormData) {
     redirect("/journal");
   }
 
+  let url = "/journal";
   try {
     const user = await requireCurrentUser();
     const { journalService } = await createDependencies();
     await journalService.archive(user.id, id);
   } catch (error) {
-    console.error("deleteJournalEntryAction: archive failed", error);
+    url = `/journal?error=${encodeURIComponent(
+      error instanceof Error ? error.message : "Delete failed.",
+    )}`;
   }
-
-  redirect("/journal");
+  redirect(url);
 }

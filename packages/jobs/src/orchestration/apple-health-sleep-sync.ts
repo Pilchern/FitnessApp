@@ -61,12 +61,19 @@ function dedupeKey(userId: UserId) {
   return `apple_health:${userId}:sleep_sync`;
 }
 
-/** Shortcuts "Get Duration" returns raw seconds. Convert to rounded integer minutes. */
 function toMinutes(value: number | undefined | null): number | null {
   if (value == null) return null;
-  // Values > 300 are almost certainly seconds (300 min = 5 hrs is a reasonable threshold)
-  const minutes = value > 300 ? value / 60 : value;
-  return Math.round(minutes);
+  // The route schema validates incoming sleep fields as minutes (0..1440).
+  // Defensive ceiling for any caller that bypasses the edge schema: values
+  // >= 1440 (24h * 60) almost certainly came in as seconds; convert and warn.
+  if (value >= 1440) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[apple-health-sleep-sync] sleep value ${value} >= 1440 — assuming seconds and converting to minutes`,
+    );
+    return Math.round(value / 60);
+  }
+  return Math.round(value);
 }
 
 export class AppleHealthSleepSyncOrchestrator {
@@ -79,13 +86,22 @@ export class AppleHealthSleepSyncOrchestrator {
   ) {}
 
   async syncSleep(input: SyncAppleHealthSleepInput): Promise<SyncAppleHealthSleepResult> {
-    const connection = await this.connectionStore.getByUserAndProvider(
+    let connection = await this.connectionStore.getByUserAndProvider(
       input.userId,
       "apple_health",
     );
 
     if (!connection) {
-      throw new Error("No active Apple Health integration connection was found.");
+      connection = await this.connectionStore.saveConnection({
+        userId: input.userId,
+        provider: "apple_health",
+        accountLabel: "Apple Health",
+        providerUserId: null,
+        scopes: [],
+        capabilities: ["sleep"],
+        metadata: { autoCreated: true },
+        status: "active",
+      });
     }
 
     const syncRun = await this.syncJobRunStore.create({

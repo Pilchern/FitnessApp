@@ -4,6 +4,7 @@ import { createStravaAdapter, createStravaSyncOrchestrator } from "@/lib/server/
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 
 const OAUTH_STATE_COOKIE = "strava_oauth_state";
+const OAUTH_USER_COOKIE = "strava_oauth_user_id";
 
 async function requireRouteUser() {
   const supabase = await createSupabaseRequestClient();
@@ -35,7 +36,9 @@ export async function GET(request: NextRequest) {
 
   const cookieStore = await cookies();
   const expectedState = cookieStore.get(OAUTH_STATE_COOKIE)?.value;
+  const expectedUserId = cookieStore.get(OAUTH_USER_COOKIE)?.value;
   cookieStore.delete(OAUTH_STATE_COOKIE);
+  cookieStore.delete(OAUTH_USER_COOKIE);
 
   if (providerError) {
     return redirectWithMessage(
@@ -45,6 +48,13 @@ export async function GET(request: NextRequest) {
   }
 
   if (!code || !state || !expectedState || state !== expectedState) {
+    return redirectWithMessage(
+      request,
+      "error=The%20Strava%20OAuth%20callback%20could%20not%20be%20validated.",
+    );
+  }
+
+  if (!expectedUserId || expectedUserId !== user.id) {
     return redirectWithMessage(
       request,
       "error=The%20Strava%20OAuth%20callback%20could%20not%20be%20validated.",

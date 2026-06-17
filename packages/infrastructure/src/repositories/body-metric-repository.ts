@@ -106,6 +106,12 @@ function toBodyMetricUpdate(input: UpdateBodyMetricInput) {
     body_fat_pct: input.bodyFatPct,
     muscle_mass_lb: input.muscleMassLb,
     muscle_mass_kg: input.muscleMassKg,
+    bone_mass_kg: input.boneMassKg,
+    bone_mass_lb: input.boneMassLb,
+    fat_free_mass_kg: input.fatFreeMassKg,
+    fat_free_mass_lb: input.fatFreeMassLb,
+    hydration_pct: input.hydrationPct,
+    visceral_fat_index: input.visceralFatIndex,
     notes: input.notes,
     ...sourceColumns,
   });
@@ -134,20 +140,40 @@ export class SupabaseBodyMetricRepository implements BodyMetricRepository {
     const sourceExternalId = input.source.sourceExternalId;
 
     if (!sourceExternalId) {
-      return this.create(input);
+      throw new Error("upsertImported requires sourceExternalId");
     }
 
+    // Live row lookup (deleted_at IS NULL). If a soft-deleted tombstone exists
+    // for the same (user, provider, external id), we must NOT revive it — we
+    // detect that with a second targeted lookup and short-circuit.
     const existingResponse = await this.client
       .from("body_metrics")
       .select("*")
       .eq("user_id", input.userId)
       .eq("source_provider", input.source.sourceProvider)
       .eq("source_external_id", sourceExternalId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     throwOnError(existingResponse.error, "Lookup imported body metric");
 
     if (!existingResponse.data) {
+      const tombstoneResponse = await this.client
+        .from("body_metrics")
+        .select("*")
+        .eq("user_id", input.userId)
+        .eq("source_provider", input.source.sourceProvider)
+        .eq("source_external_id", sourceExternalId)
+        .not("deleted_at", "is", null)
+        .maybeSingle();
+
+      throwOnError(tombstoneResponse.error, "Lookup soft-deleted body metric");
+
+      if (tombstoneResponse.data) {
+        // User soft-deleted this row; do not resurrect it on re-import.
+        return mapBodyMetricRow(bodyMetricRowSchema.parse(tombstoneResponse.data));
+      }
+
       return this.create(input);
     }
 
@@ -155,7 +181,6 @@ export class SupabaseBodyMetricRepository implements BodyMetricRepository {
       .from("body_metrics")
       .update({
         ...toBodyMetricInsert(input),
-        deleted_at: null,
       })
       .eq("id", existingResponse.data.id)
       .select("*")

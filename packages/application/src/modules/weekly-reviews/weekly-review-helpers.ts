@@ -8,6 +8,7 @@ import type {
   WeeklyReviewScoreDetails,
   WeeklyReviewSummary,
 } from "@fitness-app/domain";
+import { getZonedDate } from "../../shared/timezone";
 
 export type WeeklyReviewAggregateInput = {
   bodyMetrics: BodyMetric[];
@@ -59,6 +60,28 @@ export function getWeekRangeFromStart(weekStart: IsoDate) {
     weekStart,
     weekEnd: formatIsoDate(end),
   };
+}
+
+export function getCurrentWeekRangeForUser(
+  timezone = "UTC",
+  weekStartsOn: 0 | 1 = 1,
+  referenceDate: Date = new Date(),
+) {
+  const base = getZonedDate(timezone, referenceDate);
+  base.setUTCHours(12, 0, 0, 0);
+
+  const daysSinceWeekStart =
+    weekStartsOn === 1 ? (base.getUTCDay() + 6) % 7 : base.getUTCDay();
+
+  const start = new Date(base);
+  start.setUTCDate(base.getUTCDate() - daysSinceWeekStart);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 6);
+
+  const isoStart = `${start.getUTCFullYear()}-${`${start.getUTCMonth() + 1}`.padStart(2, "0")}-${`${start.getUTCDate()}`.padStart(2, "0")}`;
+  const isoEnd = `${end.getUTCFullYear()}-${`${end.getUTCMonth() + 1}`.padStart(2, "0")}-${`${end.getUTCDate()}`.padStart(2, "0")}`;
+
+  return { weekStart: isoStart, weekEnd: isoEnd };
 }
 
 export function getLastCompletedWeekStart(referenceDate = new Date(), weekStartsOn: 0 | 1 = 1) {

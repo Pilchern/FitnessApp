@@ -58,7 +58,7 @@ export const ensureProfileForUser = cache(async function ensureProfileForUser(
       {
         user_id: user.id,
         display_name: fallbackDisplayName(user),
-        timezone: timezone ?? "America/Chicago",
+        timezone: timezone ?? "UTC",
         units_system: "imperial",
         week_starts_on: 1,
         goal_fat_loss: true,

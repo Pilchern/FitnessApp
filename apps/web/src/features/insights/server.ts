@@ -8,6 +8,7 @@ import {
   getWeekRangeFromStart,
   RecoveryCheckinService,
   StrengthSessionSummaryService,
+  UserProfileService,
   WeeklyReviewService,
 } from "@fitness-app/application";
 import {
@@ -15,6 +16,7 @@ import {
   SupabaseCardioSessionRepository,
   SupabaseRecoveryCheckinRepository,
   SupabaseStrengthSessionSummaryRepository,
+  SupabaseUserProfileRepository,
   SupabaseWeeklyReviewRepository,
 } from "@fitness-app/infrastructure";
 import { requireCurrentUser } from "@/lib/server/auth";
@@ -26,6 +28,7 @@ async function createDependencies() {
   return {
     bodyMetricService: new BodyMetricService(new SupabaseBodyMetricRepository(client)),
     cardioService: new CardioSessionService(new SupabaseCardioSessionRepository(client)),
+    profileService: new UserProfileService(new SupabaseUserProfileRepository(client)),
     recoveryService: new RecoveryCheckinService(
       new SupabaseRecoveryCheckinRepository(client),
     ),
@@ -49,26 +52,23 @@ export async function getInsightsData() {
   const {
     bodyMetricService,
     cardioService,
+    profileService,
     recoveryService,
     strengthSummaryService,
     weeklyReviewService,
   } = await createDependencies();
 
   const startDate = sixMonthsAgoIsoDate();
-  const weeklyReviews = await weeklyReviewService.listRecent(user.id, 8);
+  const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody] =
+    await Promise.all([
+      profileService.getByUserId(user.id),
+      weeklyReviewService.listRecent(user.id, 8),
+      cardioService.listByDateRange({ userId: user.id, startDate }),
+      recoveryService.listByDateRange({ userId: user.id, startDate }),
+      bodyMetricService.listByDateRange({ userId: user.id, startDate }),
+    ]);
+  const timezone = profile?.timezone || "UTC";
   const weekStarts = new Set<string>(weeklyReviews.map((review) => review.weekStart));
-  const recentCardio = await cardioService.listByDateRange({
-    userId: user.id,
-    startDate,
-  });
-  const recentRecovery = await recoveryService.listByDateRange({
-    userId: user.id,
-    startDate,
-  });
-  const recentBody = await bodyMetricService.listByDateRange({
-    userId: user.id,
-    startDate,
-  });
 
   const liftPairs = await Promise.all(
     [...weekStarts].map(async (weekStart) => {
@@ -89,6 +89,7 @@ export async function getInsightsData() {
     weeklyReviews,
     liftsCompletedByWeek: Object.fromEntries(liftPairs),
     now: new Date(),
+    timezone,
   });
 
   return {

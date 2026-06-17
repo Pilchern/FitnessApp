@@ -7,6 +7,7 @@ import type {
   WeeklyReview,
 } from "@fitness-app/domain";
 import { buildWeeklyReviewSummary, getLastCompletedWeekStart, getWeekRangeFromStart } from "../weekly-reviews/weekly-review-helpers";
+import { getZonedDate } from "../../shared/timezone";
 
 export type InsightEngineInput = {
   bodyMetrics: BodyMetric[];
@@ -15,6 +16,7 @@ export type InsightEngineInput = {
   weeklyReviews: WeeklyReview[];
   liftsCompletedByWeek: Record<IsoDate, number>;
   now?: Date;
+  timezone?: string;
 };
 
 function toIsoDate(date: Date) {
@@ -24,9 +26,22 @@ function toIsoDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function toIsoDateUtc(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = `${date.getUTCMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getUTCDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function addDays(value: Date, days: number) {
   const next = new Date(value);
   next.setDate(next.getDate() + days);
+  return next;
+}
+
+function addDaysUtc(value: Date, days: number) {
+  const next = new Date(value);
+  next.setUTCDate(next.getUTCDate() + days);
   return next;
 }
 
@@ -121,16 +136,17 @@ function evaluateCardioBelowTarget(input: InsightEngineInput) {
 
 function evaluateRepeatedMissedSaturday(input: InsightEngineInput) {
   const now = input.now ?? new Date();
-  const current = new Date(now);
-  current.setHours(12, 0, 0, 0);
+  const tz = input.timezone || "UTC";
+  const current = getZonedDate(tz, now);
+  current.setUTCHours(12, 0, 0, 0);
   const saturdayDates: string[] = [];
 
   for (let index = 0; index < 3; index += 1) {
-    const date = addDays(current, -(index * 7));
-    while (date.getDay() !== 6) {
-      date.setDate(date.getDate() - 1);
+    const date = addDaysUtc(current, -(index * 7));
+    while (date.getUTCDay() !== 6) {
+      date.setUTCDate(date.getUTCDate() - 1);
     }
-    saturdayDates.push(toIsoDate(date));
+    saturdayDates.push(toIsoDateUtc(date));
   }
 
   const missed = saturdayDates.filter((date) => {

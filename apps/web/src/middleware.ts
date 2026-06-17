@@ -1,19 +1,8 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { moduleNavigationItems } from "@/lib/navigation";
 
-const protectedPrefixes = [
-  "/dashboard",
-  "/cardio",
-  "/strength",
-  "/recovery",
-  "/body",
-  "/nutrition",
-  "/weekly-review",
-  "/journal",
-  "/insights",
-  "/settings",
-  "/integrations",
-];
+const protectedPrefixes = moduleNavigationItems.map((item) => item.href);
 
 const authPrefixes = ["/login", "/signup"];
 
@@ -93,5 +82,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|api/cron/|api/integrations/apple-health/).*)",
+  ],
 };

@@ -15,6 +15,7 @@ export type JournalPageData = {
 
 export type JournalActionState = {
   error?: string;
+  fieldErrors?: Record<string, string>;
 };
 
 export type JournalFormValues = {

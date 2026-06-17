@@ -4,7 +4,7 @@ import { NutritionLogService } from "@fitness-app/application";
 import { SupabaseNutritionLogRepository } from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { getErrorMessage } from "@/lib/server/get-error-message";
+import { parseActionError } from "@/lib/server/parse-action-error";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import { nutritionLogFormSchema } from "./form-schema";
 import type { NutritionActionState } from "./types";
@@ -51,9 +51,7 @@ export async function createNutritionLogAction(
     await nutritionService.create(buildNutritionPayload(user.id, formData));
     redirect("/nutrition");
   } catch (error) {
-    return {
-      error: getErrorMessage(error),
-    };
+    return parseActionError(error);
   }
 }
 
@@ -75,9 +73,7 @@ export async function updateNutritionLogAction(
     await nutritionService.update(payload);
     redirect("/nutrition");
   } catch (error) {
-    return {
-      error: getErrorMessage(error),
-    };
+    return parseActionError(error);
   }
 }
 
@@ -87,13 +83,15 @@ export async function deleteNutritionLogAction(formData: FormData) {
     redirect("/nutrition");
   }
 
+  let url = "/nutrition";
   try {
     const user = await requireCurrentUser();
     const nutritionService = await createNutritionService();
     await nutritionService.archive(user.id, id);
   } catch (error) {
-    console.error("deleteNutritionLogAction: archive failed", error);
+    url = `/nutrition?error=${encodeURIComponent(
+      error instanceof Error ? error.message : "Delete failed.",
+    )}`;
   }
-
-  redirect("/nutrition");
+  redirect(url);
 }

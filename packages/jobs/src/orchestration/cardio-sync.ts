@@ -97,7 +97,13 @@ export class CardioSyncOrchestrator {
 
   /**
    * Validate Peloton credentials and save the connection.
-   * Stores username encrypted as accessToken, password encrypted as refreshToken.
+   *
+   * NOTE — Peloton uses username/password, not OAuth. The DB schema's
+   * credential table only has `access_token` / `refresh_token` columns, so we
+   * overload them: `accessToken = username`, `refreshToken = password`. Both
+   * are encrypted at rest via `credentialStore.save`. The schema does NOT
+   * change here; `sourceCredentialKind` below is just to make the intent
+   * legible at the call site.
    */
   async connect(input: ConnectCardioProviderInput): Promise<IntegrationConnection> {
     if (isOAuthAdapter(this.adapter)) {
@@ -120,16 +126,19 @@ export class CardioSyncOrchestrator {
       status: "active",
     });
 
+    const sourceCredentialKind: "password" | "oauth" = "password";
+
     await this.credentialStore.save(
       {
         connectionId: connection.id,
         userId: input.userId,
         provider: input.provider,
+        // For sourceCredentialKind="password": accessToken=username, refreshToken=password.
         accessToken: input.username,
         refreshToken: input.password,
         accessTokenExpiresAt: null,
         refreshTokenExpiresAt: null,
-        tokenType: "credential",
+        tokenType: sourceCredentialKind === "password" ? "credential" : "bearer",
         scopes: ["workouts"],
       },
       this.encryptionKey,
@@ -272,6 +281,10 @@ export class CardioSyncOrchestrator {
           })),
         );
 
+        // Track occurredAt only for items that successfully imported, so a
+        // failing item doesn't get skipped forever by an advanced cursor.
+        const successOccurredAts: string[] = [];
+
         for (let i = 0; i < page.items.length; i++) {
           const item = page.items[i];
           const rawEvent = rawEvents[i];
@@ -306,6 +319,7 @@ export class CardioSyncOrchestrator {
             });
 
             processedItemCount += 1;
+            if (item.occurredAt) successOccurredAts.push(item.occurredAt);
           } catch (itemError) {
             const msg =
               itemError instanceof Error ? itemError.message : "Mapping failed";
@@ -314,22 +328,56 @@ export class CardioSyncOrchestrator {
           }
         }
 
+        // Compute the cursor we actually want to persist on the connection:
+        //  - If any items failed, keep the existing connection cursor.
+        //  - Else if we had successes, use MAX(occurredAt) across successes
+        //    (epoch seconds for adapters that use that — for now we hand the
+        //    page's nextCursor through when no failures occurred, which is
+        //    what the page already computed).
+        // We update `batchCursorToPersist` for the import batch row, and
+        // `connectionCursorToPersist` for the connection record.
+        let connectionCursorToPersist: string | null;
+        if (failedItemCount > 0) {
+          if (successOccurredAts.length === 0) {
+            // No successes — leave the cursor unchanged.
+            connectionCursorToPersist = connection.lastCursor ?? null;
+          } else {
+            const maxEpoch = successOccurredAts
+              .map((d) => Math.floor(new Date(d).getTime() / 1000))
+              .reduce((a, b) => (b > a ? b : a), 0);
+            connectionCursorToPersist =
+              maxEpoch > 0 ? String(maxEpoch) : connection.lastCursor ?? null;
+          }
+        } else {
+          connectionCursorToPersist = page.nextCursor ?? null;
+        }
+
         await this.importBatchStore.markProcessed(importBatch.id, {
-          nextCursor: page.nextCursor,
+          nextCursor: connectionCursorToPersist,
           rawItemCount,
           processedItemCount,
           failedItemCount,
           metadata: page.metadata,
         });
+
+        await this.connectionStore.recordSyncSuccess({
+          id: connection.id,
+          lastSyncedAt: new Date().toISOString(),
+          lastCursor: connectionCursorToPersist,
+          lastSuccessfulBatchId:
+            importBatchId ?? (connection.lastSuccessfulBatchId as EntityId),
+        });
       }
 
-      await this.connectionStore.recordSyncSuccess({
-        id: connection.id,
-        lastSyncedAt: new Date().toISOString(),
-        lastCursor: page?.nextCursor ?? null,
-        lastSuccessfulBatchId:
-          importBatchId ?? (connection.lastSuccessfulBatchId as EntityId),
-      });
+      if (rawItemCount === 0) {
+        await this.connectionStore.recordSyncSuccess({
+          id: connection.id,
+          lastSyncedAt: new Date().toISOString(),
+          lastCursor: page.nextCursor ?? null,
+          lastSuccessfulBatchId:
+            importBatchId ?? (connection.lastSuccessfulBatchId as EntityId),
+        });
+      }
 
       await this.syncJobRunStore.markSucceeded(syncRun.id, {
         rawItemCount,

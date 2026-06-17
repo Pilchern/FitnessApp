@@ -17,6 +17,7 @@ export type NutritionPageData = {
 
 export type NutritionActionState = {
   error?: string;
+  fieldErrors?: Record<string, string>;
 };
 
 export type NutritionFormValues = {

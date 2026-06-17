@@ -14,6 +14,11 @@ describe("sanitizeRedirectTo", () => {
     expect(sanitizeRedirectTo("https://example.com")).toBe("/dashboard");
     expect(sanitizeRedirectTo("//example.com")).toBe("/dashboard");
   });
+
+  it("rejects redirects longer than 512 characters", () => {
+    const longPath = `/dashboard?next=${"a".repeat(600)}`;
+    expect(sanitizeRedirectTo(longPath)).toBe("/dashboard");
+  });
 });
 
 describe("mapAuthErrorMessage", () => {

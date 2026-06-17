@@ -7,6 +7,7 @@ export type SettingsPageData = {
 
 export type SettingsActionState = {
   error?: string;
+  fieldErrors?: Record<string, string>;
 };
 
 export type SettingsFormValues = {

@@ -150,6 +150,9 @@ export function SettingsForm({ profile, userEmail, action }: SettingsFormProps) 
               value={values.displayName}
               onChange={(event) => set("displayName", event.target.value)}
             />
+            {state.fieldErrors?.displayName ? (
+              <p className="text-xs text-ember">{state.fieldErrors.displayName}</p>
+            ) : null}
           </label>
 
           <label className="grid gap-2 text-sm font-medium text-ink">
@@ -184,6 +187,9 @@ export function SettingsForm({ profile, userEmail, action }: SettingsFormProps) 
                 </option>
               ))}
             </select>
+            {state.fieldErrors?.timezone ? (
+              <p className="text-xs text-ember">{state.fieldErrors.timezone}</p>
+            ) : null}
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -284,6 +290,11 @@ export function SettingsForm({ profile, userEmail, action }: SettingsFormProps) 
               value={values.dailyProteinGramsTarget}
               onChange={(event) => set("dailyProteinGramsTarget", event.target.value)}
             />
+            {state.fieldErrors?.dailyProteinGramsTarget ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.dailyProteinGramsTarget}
+              </p>
+            ) : null}
           </label>
 
           <label className="grid gap-2 text-sm font-medium text-ink">
@@ -298,6 +309,11 @@ export function SettingsForm({ profile, userEmail, action }: SettingsFormProps) 
               value={values.dailyCaloriesTarget}
               onChange={(event) => set("dailyCaloriesTarget", event.target.value)}
             />
+            {state.fieldErrors?.dailyCaloriesTarget ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.dailyCaloriesTarget}
+              </p>
+            ) : null}
           </label>
 
           <label className="grid gap-2 text-sm font-medium text-ink">
@@ -312,6 +328,11 @@ export function SettingsForm({ profile, userEmail, action }: SettingsFormProps) 
               value={values.dailyFiberGramsTarget}
               onChange={(event) => set("dailyFiberGramsTarget", event.target.value)}
             />
+            {state.fieldErrors?.dailyFiberGramsTarget ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.dailyFiberGramsTarget}
+              </p>
+            ) : null}
           </label>
         </div>
       </section>

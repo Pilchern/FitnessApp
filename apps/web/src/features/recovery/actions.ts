@@ -97,13 +97,15 @@ export async function deleteRecoveryCheckinAction(formData: FormData) {
     redirect("/recovery");
   }
 
+  let url = "/recovery";
   try {
     const user = await requireCurrentUser();
     const recoveryService = await createRecoveryService();
     await recoveryService.archive(user.id, id);
   } catch (error) {
-    console.error("deleteRecoveryCheckinAction: archive failed", error);
+    url = `/recovery?error=${encodeURIComponent(
+      error instanceof Error ? error.message : "Delete failed.",
+    )}`;
   }
-
-  redirect("/recovery");
+  redirect(url);
 }

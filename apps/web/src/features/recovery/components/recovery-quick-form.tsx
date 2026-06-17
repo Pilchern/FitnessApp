@@ -30,6 +30,40 @@ function textAreaClassName() {
 const scoreOptions = Array.from({ length: 10 }, (_, index) => `${index + 1}`);
 const sleepQualityOptions = ["1", "2", "3", "4", "5"];
 
+type ScoreButtonRowProps = {
+  name: string;
+  value: string;
+  onChange: (next: string) => void;
+  ariaLabel: string;
+};
+
+function ScoreButtonRow({ name, value, onChange, ariaLabel }: ScoreButtonRowProps) {
+  return (
+    <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={ariaLabel}>
+      <input type="hidden" name={name} value={value} />
+      {scoreOptions.map((option) => {
+        const isSelected = value === option;
+        return (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={isSelected}
+            onClick={() => onChange(isSelected ? "" : option)}
+            className={`h-10 w-10 min-w-[2.5rem] rounded-full border text-sm font-semibold transition ${
+              isSelected
+                ? "border-pine bg-pine text-white ring-2 ring-pine/30"
+                : "border-ink/15 bg-white text-ink hover:border-pine/60 hover:text-pine"
+            }`}
+          >
+            {option}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function RecoveryQuickForm({
   mode,
   checkin,
@@ -143,7 +177,7 @@ export function RecoveryQuickForm({
           </label>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2 text-sm font-medium text-ink">
             Sleep quality
             <select
@@ -168,106 +202,68 @@ export function RecoveryQuickForm({
               <p className="text-xs text-ember">{state.fieldErrors.sleepQuality}</p>
             ) : null}
           </label>
+        </div>
 
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Readiness
-            <select
-              className={fieldClassName()}
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-ink">Readiness (1-10)</span>
+            <ScoreButtonRow
               name="readinessLevel"
               value={values.readinessLevel}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  readinessLevel: event.target.value,
-                }))
+              ariaLabel="Readiness 1 to 10"
+              onChange={(next) =>
+                setValues((current) => ({ ...current, readinessLevel: next }))
               }
-            >
-              <option value="">Select</option>
-              {scoreOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}/10
-                </option>
-              ))}
-            </select>
+            />
             {state.fieldErrors?.readinessLevel ? (
               <p className="text-xs text-ember">{state.fieldErrors.readinessLevel}</p>
             ) : null}
-          </label>
+          </div>
 
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Energy
-            <select
-              className={fieldClassName()}
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-ink">Energy (1-10)</span>
+            <ScoreButtonRow
               name="energyLevel"
               value={values.energyLevel}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  energyLevel: event.target.value,
-                }))
+              ariaLabel="Energy 1 to 10"
+              onChange={(next) =>
+                setValues((current) => ({ ...current, energyLevel: next }))
               }
-            >
-              <option value="">Select</option>
-              {scoreOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}/10
-                </option>
-              ))}
-            </select>
+            />
             {state.fieldErrors?.energyLevel ? (
               <p className="text-xs text-ember">{state.fieldErrors.energyLevel}</p>
             ) : null}
-          </label>
+          </div>
 
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Stress
-            <select
-              className={fieldClassName()}
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-ink">Stress (1-10)</span>
+            <ScoreButtonRow
               name="stressLevel"
               value={values.stressLevel}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  stressLevel: event.target.value,
-                }))
+              ariaLabel="Stress 1 to 10"
+              onChange={(next) =>
+                setValues((current) => ({ ...current, stressLevel: next }))
               }
-            >
-              <option value="">Select</option>
-              {scoreOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}/10
-                </option>
-              ))}
-            </select>
+            />
             {state.fieldErrors?.stressLevel ? (
               <p className="text-xs text-ember">{state.fieldErrors.stressLevel}</p>
             ) : null}
-          </label>
+          </div>
 
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Soreness
-            <select
-              className={fieldClassName()}
+          <div className="grid gap-2">
+            <span className="text-sm font-medium text-ink">Soreness (1-10)</span>
+            <ScoreButtonRow
               name="sorenessLevel"
               value={values.sorenessLevel}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  sorenessLevel: event.target.value,
-                }))
+              ariaLabel="Soreness 1 to 10"
+              onChange={(next) =>
+                setValues((current) => ({ ...current, sorenessLevel: next }))
               }
-            >
-              <option value="">Select</option>
-              {scoreOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}/10
-                </option>
-              ))}
-            </select>
+            />
             {state.fieldErrors?.sorenessLevel ? (
               <p className="text-xs text-ember">{state.fieldErrors.sorenessLevel}</p>
             ) : null}
-          </label>
+          </div>
         </div>
 
         <div>

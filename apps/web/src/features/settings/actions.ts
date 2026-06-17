@@ -4,7 +4,7 @@ import { UserProfileService } from "@fitness-app/application";
 import { SupabaseUserProfileRepository } from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { getErrorMessage } from "@/lib/server/get-error-message";
+import { parseActionError } from "@/lib/server/parse-action-error";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import { settingsFormSchema } from "./form-schema";
 import type { SettingsActionState } from "./types";
@@ -46,8 +46,6 @@ export async function updateSettingsAction(
     await profileService.update(buildProfilePayload(user.id, formData));
     redirect("/settings?saved=true");
   } catch (error) {
-    return {
-      error: getErrorMessage(error),
-    };
+    return parseActionError(error);
   }
 }
