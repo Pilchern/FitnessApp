@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-04-05 (sprint 3)
+**Last updated:** 2026-06-21 (sprint 5)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -25,12 +25,6 @@
 - **Fix:** Add a `limit` parameter to repository port interfaces; pass caller-controlled limits from server.ts files; default to 365 for chart views.
 - **Effort:** M (requires interface changes across application + infrastructure layers)
 
-### TD-011b: Timezone not validated server-side at signup
-- **Severity:** Low
-- **Problem:** Timezone sent from the browser as a plain string with no server-side validation that it's a valid IANA timezone identifier. A malformed value would be stored as-is.
-- **Fix:** Validate against `Intl.supportedValuesOf('timeZone')` or a Zod enum in the signup action.
-- **Effort:** S
-
 ---
 
 ## Resolved Debt
@@ -53,3 +47,4 @@
 | TD-012 | Nutrition module placeholder — full module built | 2026-04-05 |
 | TD-013 | No E2E test coverage — Playwright set up with 4 spec files | 2026-04-05 |
 | TD-015 | `integration_connection_credentials` RLS/policy gaps — fixed | 2026-04-05 |
+| TD-011b | Timezone not validated server-side at signup — `isValidTimezone()` added to `(auth)/actions.ts`, falls back to UTC | 2026-06-21 |

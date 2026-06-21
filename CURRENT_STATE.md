@@ -1,7 +1,7 @@
 # Current State — FitnessApp
 
-**Last updated:** 2026-06-17 (sprint 4)
-**Overall health:** Stable. TypeScript clean. All 49 tests pass. Lint clean. Live Supabase project connected. Strava integration live.
+**Last updated:** 2026-06-21 (sprint 5)
+**Overall health:** Stable. TypeScript clean. All 49 unit tests pass. Lint clean. 10 E2E spec files. Live Supabase project connected. Strava integration live.
 
 ---
 
@@ -13,7 +13,7 @@
 | Lint | CLEAN | No warnings |
 | Tests | PASSING | 49/49 (8 web, 34 application, 5 integrations, 2 jobs) |
 | Build | UNTESTED | Requires live Supabase connectivity to verify fully |
-| E2E | READY | Playwright configured, 4 spec files (auth, body, cardio, weekly-review) |
+| E2E | READY | Playwright configured, 10 spec files (auth, body, cardio, weekly-review, recovery, nutrition, journal, strength, insights, settings) |
 | Database | LIVE | Cloud Supabase project, credentials in .env.local |
 | Integrations | ACTIVE | Strava connected and syncing; Withings framework built (creds needed) |
 
@@ -47,7 +47,7 @@ supabase/                   12 SQL migrations, seed data, RLS policies
 | Nutrition | `/nutrition` | Complete | None |
 | Weekly Review | `/weekly-review` | Complete | None |
 | Journal | `/journal` | Complete | None |
-| Insights | `/insights` | Complete, rule-based | No AI hookup yet |
+| Insights | `/insights` | Complete, rule-based + AI | AI active when `ANTHROPIC_API_KEY` + `INSIGHT_AI_ENABLED=true` set |
 | Settings | `/settings` | Complete | None |
 | Integrations | `/integrations` | Complete | Withings OAuth creds not configured |
 
@@ -64,11 +64,9 @@ supabase/                   12 SQL migrations, seed data, RLS policies
 ### Medium
 1. **Withings integration unconfigured** — OAuth credentials not set. Withings card shows "Not connected" state. Needs `WITHINGS_CLIENT_ID`, `WITHINGS_CLIENT_SECRET`, `WITHINGS_REDIRECT_URI` in `.env.local`.
 2. **No background job queue** — The weekly Strava cron (`/api/cron/strava-sync`) relies on Vercel Cron. No execution infrastructure for non-Vercel environments.
-3. **Insights are rule-based only** — No AI hookup. Configured in `packages/application/src/modules/insights/`.
 
 ### Low
-4. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
-5. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale.
+3. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale.
 
 ---
 
@@ -81,10 +79,10 @@ See `TECH_DEBT.md` for full prioritized list.
 ## Active Priorities (Recommended Next Sprint)
 
 1. Configure Withings OAuth credentials (quick win — all code is in place)
-2. Wire AI into Insights module (high value feature)
-3. Write more E2E test coverage (navigation, integrations, weekly-review form submission)
-4. Add `CRON_SECRET` to Vercel dashboard for Strava weekly auto-sync
-5. Performance: verify `metrics.slice(0, 12)` sort order in body server
+2. Enable AI insights: set `ANTHROPIC_API_KEY` + `INSIGHT_AI_ENABLED=true` in Vercel/env (all code wired)
+3. Add `CRON_SECRET` to Vercel dashboard for Strava weekly auto-sync
+4. Add E2E coverage for integrations page and weekly-review form submission flow
+5. Evaluate background job queue (Inngest or Supabase Edge Functions + pg_cron)
 
 ---
 
@@ -101,6 +99,14 @@ See `TECH_DEBT.md` for full prioritized list.
 - **CI/CD:** None configured yet
 
 ---
+
+## What Was Done in This Session (2026-06-21, sprint 5)
+
+1. **E2E coverage expanded** — 6 new Playwright spec files added: `recovery.spec.ts`, `nutrition.spec.ts`, `journal.spec.ts`, `strength.spec.ts`, `insights.spec.ts`, `settings.spec.ts`. Total spec files: 10 (was 4). Every app route now has at least basic coverage (page load + unauthenticated redirect).
+2. **Insights AI status clarified** — AI insights were already fully wired in `services.ts` and `insight-orchestrator.ts` (done in sprint 4). `CURRENT_STATE.md` had stale "no AI hookup" note — corrected. AI activates automatically when `ANTHROPIC_API_KEY` + `INSIGHT_AI_ENABLED=true` are present.
+3. **TD-011b closed** — Timezone server-side validation was already implemented via `isValidTimezone()` in `(auth)/actions.ts` (uses `Intl.supportedValuesOf`, falls back to UTC). Marked resolved in `TECH_DEBT.md`.
+4. **`metrics.slice(0, 12)` verified** — Body metric repository uses `ascending: false`; slice(0,12) correctly returns the 12 most recent entries. No change needed.
+5. **Docs updated** — `CURRENT_STATE.md` and `TECH_DEBT.md` reflect actual sprint 5 state.
 
 ## What Was Done in This Session (2026-06-17, sprint 4)
 
