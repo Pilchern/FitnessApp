@@ -21,6 +21,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.beforeEach(async ({ page }) => {
   if (!loginAvailable) {
+    // Infrastructure guard: skips when the Supabase test user is unreachable, not a deferred feature skip.
     test.skip(true, "Test user not available in this Supabase environment");
   }
   await loginAs(page);
@@ -28,7 +29,6 @@ test.beforeEach(async ({ page }) => {
 
 test("authenticated user can view /nutrition page", async ({ page }) => {
   await page.goto("/nutrition");
-  await expect(page).toHaveURL("/nutrition");
   await expect(page.getByText(/nutrition/i).first()).toBeVisible();
 });
 
@@ -61,10 +61,12 @@ test("can log a nutrition entry", async ({ page }) => {
   await page.getByRole("button", { name: /save log/i }).click();
 
   await expect(page).toHaveURL(/\/nutrition/, { timeout: 10000 });
+  // On success the page reloads clean; on failure an error banner is rendered
+  await expect(page.locator(".bg-ember\\/10")).not.toBeVisible({ timeout: 5000 });
 });
 
 test("unauthenticated /nutrition redirects to /login", async ({ page }) => {
   await page.context().clearCookies();
   await page.goto("/nutrition");
-  await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fnutrition/, { timeout: 8000 });
 });

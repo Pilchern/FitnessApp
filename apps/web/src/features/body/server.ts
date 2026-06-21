@@ -23,6 +23,7 @@ export async function getBodyPageData(
   const user = await requireCurrentUser();
   const bodyMetricService = await createBodyMetricService();
   const metrics = await bodyMetricService.listByDateRange({ userId: user.id });
+  // listByDateRange returns metrics newest-first (measured_on DESC); slice(0,12) = 12 most recent
   const chartWindow = metrics.slice(0, 12);
   const editingMetric = editMetricId
     ? await bodyMetricService.getById(user.id, editMetricId)

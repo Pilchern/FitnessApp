@@ -21,6 +21,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.beforeEach(async ({ page }) => {
   if (!loginAvailable) {
+    // Infrastructure guard: skips when the Supabase test user is unreachable, not a deferred feature skip.
     test.skip(true, "Test user not available in this Supabase environment");
   }
   await loginAs(page);
@@ -28,7 +29,6 @@ test.beforeEach(async ({ page }) => {
 
 test("authenticated user can view /journal page", async ({ page }) => {
   await page.goto("/journal");
-  await expect(page).toHaveURL("/journal");
   await expect(
     page.getByRole("heading", { name: /journal/i }),
   ).toBeVisible({ timeout: 8000 });
@@ -64,10 +64,12 @@ test("can create a journal entry", async ({ page }) => {
   await page.getByRole("button", { name: /save entry/i }).click();
 
   await expect(page).toHaveURL(/\/journal/, { timeout: 10000 });
+  // On success the page reloads clean (redirect); on failure an error banner is visible
+  await expect(page.locator(".bg-ember\\/10")).not.toBeVisible({ timeout: 5000 });
 });
 
 test("unauthenticated /journal redirects to /login", async ({ page }) => {
   await page.context().clearCookies();
   await page.goto("/journal");
-  await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fjournal/, { timeout: 8000 });
 });

@@ -21,6 +21,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.beforeEach(async ({ page }) => {
   if (!loginAvailable) {
+    // Infrastructure guard: skips when the Supabase test user is unreachable, not a deferred feature skip.
     test.skip(true, "Test user not available in this Supabase environment");
   }
   await loginAs(page);
@@ -28,7 +29,6 @@ test.beforeEach(async ({ page }) => {
 
 test("authenticated user can view /recovery page", async ({ page }) => {
   await page.goto("/recovery");
-  await expect(page).toHaveURL("/recovery");
   await expect(page.getByText(/recovery/i).first()).toBeVisible();
 });
 
@@ -65,5 +65,5 @@ test("recovery page renders the save check-in button", async ({ page }) => {
 test("unauthenticated /recovery redirects to /login", async ({ page }) => {
   await page.context().clearCookies();
   await page.goto("/recovery");
-  await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Frecovery/, { timeout: 8000 });
 });

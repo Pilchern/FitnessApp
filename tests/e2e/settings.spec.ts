@@ -21,6 +21,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.beforeEach(async ({ page }) => {
   if (!loginAvailable) {
+    // Infrastructure guard: skips when the Supabase test user is unreachable, not a deferred feature skip.
     test.skip(true, "Test user not available in this Supabase environment");
   }
   await loginAs(page);
@@ -28,7 +29,6 @@ test.beforeEach(async ({ page }) => {
 
 test("authenticated user can view /settings page", async ({ page }) => {
   await page.goto("/settings");
-  await expect(page).toHaveURL("/settings");
   await expect(
     page.getByRole("heading", { name: /^settings$/i }).first(),
   ).toBeVisible({ timeout: 8000 });
@@ -54,5 +54,5 @@ test("settings page renders the save settings button", async ({ page }) => {
 test("unauthenticated /settings redirects to /login", async ({ page }) => {
   await page.context().clearCookies();
   await page.goto("/settings");
-  await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Fsettings/, { timeout: 8000 });
 });

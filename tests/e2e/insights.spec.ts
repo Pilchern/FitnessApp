@@ -21,6 +21,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.beforeEach(async ({ page }) => {
   if (!loginAvailable) {
+    // Infrastructure guard: skips when the Supabase test user is unreachable, not a deferred feature skip.
     test.skip(true, "Test user not available in this Supabase environment");
   }
   await loginAs(page);
@@ -28,7 +29,7 @@ test.beforeEach(async ({ page }) => {
 
 test("authenticated user can view /insights page", async ({ page }) => {
   await page.goto("/insights");
-  await expect(page).toHaveURL("/insights");
+  await expect(page.getByText(/^coaching$/i)).toBeVisible({ timeout: 15000 });
 });
 
 test("insights page shows the 'Insights' heading", async ({ page }) => {
@@ -45,14 +46,14 @@ test("insights page shows the 'Coaching' eyebrow label", async ({ page }) => {
 
 test("insights page renders either insight cards or the empty state", async ({ page }) => {
   await page.goto("/insights");
-  // Either dismiss buttons (present when insights exist) or the "All clear" empty state
-  const dismissButton = page.getByRole("button", { name: /dismiss/i }).first();
-  const emptyState = page.getByText(/all clear|no patterns/i);
-  await expect(dismissButton.or(emptyState)).toBeVisible({ timeout: 15000 });
+  // Either insight card wrappers (present when insights exist) or the empty state heading
+  const insightCard = page.locator(".group.relative").first();
+  const emptyStateHeading = page.getByRole("heading", { name: /no patterns to flag right now/i });
+  await expect(insightCard.or(emptyStateHeading)).toBeVisible({ timeout: 15000 });
 });
 
 test("unauthenticated /insights redirects to /login", async ({ page }) => {
   await page.context().clearCookies();
   await page.goto("/insights");
-  await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
+  await expect(page).toHaveURL(/\/login\?redirectTo=%2Finsights/, { timeout: 8000 });
 });
