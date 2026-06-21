@@ -147,6 +147,12 @@ export function buildWeeklyReviewSummary({
       .filter((value): value is number => value != null),
   );
 
+  const averageReadiness = average(
+    recoveryCheckins
+      .map((checkin) => checkin.readinessLevel)
+      .filter((value): value is number => value != null),
+  );
+
   // Count imported strength activities (WeightTraining, CrossFit, etc.) toward lifts
   const importedLifts = cardioSessions.filter(
     (session) =>
@@ -168,6 +174,7 @@ export function buildWeeklyReviewSummary({
       recoveryCheckins.length > 0
         ? recoveryCheckins.reduce((sum, checkin) => sum + checkin.alcoholCount, 0)
         : null,
+    averageReadiness,
   };
 }
 

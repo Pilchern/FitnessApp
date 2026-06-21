@@ -232,6 +232,7 @@ describe("weekly review aggregation", () => {
       vo2Completed: true,
       sleepAverageHours: 7.3,
       alcoholTotal: 1,
+      averageReadiness: 7,
     });
   });
 

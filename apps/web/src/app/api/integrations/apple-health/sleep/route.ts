@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAppleHealthSleepOrchestrator } from "@/lib/server/integrations";
 import { getServerEnv } from "@/lib/server/env";
+import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 /**
  * Apple Health sleep webhook.
@@ -96,6 +97,12 @@ export async function POST(request: NextRequest) {
 
   if (!safeEqualHex(expectedHex, providedHex)) {
     return NextResponse.json({ ok: false, error: "Invalid signature." }, { status: 401 });
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { data: { user: authUser }, error: userError } = await adminClient.auth.admin.getUserById(userId);
+  if (userError || !authUser) {
+    return NextResponse.json({ ok: false, error: "Unknown user." }, { status: 401 });
   }
 
   let body: unknown;

@@ -21,7 +21,7 @@ const generatedInsightSchema = z.object({
   severity: z.enum(["info", "warning", "positive"]),
 });
 
-const responseSchema = z.array(generatedInsightSchema).min(1).max(10);
+const responseSchema = z.array(generatedInsightSchema).max(10);
 
 function buildContext(input: InsightEngineInput & { recentJournalEntries?: string[] }): string {
   const lines: string[] = [];

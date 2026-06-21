@@ -163,7 +163,8 @@ export async function deleteStrengthSessionAction(formData: FormData) {
     const service = await createStrengthService();
     await service.archive(user.id, id);
   } catch (error) {
-    url = `/strength?error=${encodeURIComponent(error instanceof Error ? error.message : "Delete failed.")}`;
+    console.error("[deleteStrengthSessionAction]", error instanceof Error ? error.message : error);
+    url = `/strength?error=${encodeURIComponent("Unable to delete session. Please try again.")}`;
   }
   redirect(url);
 }

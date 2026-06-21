@@ -103,9 +103,8 @@ export async function deleteRecoveryCheckinAction(formData: FormData) {
     const recoveryService = await createRecoveryService();
     await recoveryService.archive(user.id, id);
   } catch (error) {
-    url = `/recovery?error=${encodeURIComponent(
-      error instanceof Error ? error.message : "Delete failed.",
-    )}`;
+    console.error("[deleteRecoveryCheckinAction]", error instanceof Error ? error.message : error);
+    url = `/recovery?error=${encodeURIComponent("Unable to delete check-in. Please try again.")}`;
   }
   redirect(url);
 }

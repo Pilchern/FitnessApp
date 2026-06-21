@@ -105,9 +105,8 @@ export async function deleteJournalEntryAction(formData: FormData) {
     const { journalService } = await createDependencies();
     await journalService.archive(user.id, id);
   } catch (error) {
-    url = `/journal?error=${encodeURIComponent(
-      error instanceof Error ? error.message : "Delete failed.",
-    )}`;
+    console.error("[deleteJournalEntryAction]", error instanceof Error ? error.message : error);
+    url = `/journal?error=${encodeURIComponent("Unable to delete entry. Please try again.")}`;
   }
   redirect(url);
 }

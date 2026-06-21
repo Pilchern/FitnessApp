@@ -11,6 +11,7 @@ export type WeeklyReviewSummary = {
   vo2Completed?: boolean | null;
   sleepAverageHours?: number | null;
   alcoholTotal?: number | null;
+  averageReadiness?: number | null;
 };
 
 export type WeeklyReviewScoreComponent = {
@@ -39,7 +40,8 @@ export type WeeklyReviewManualOverrides = Partial<
     | "zone2Minutes"
     | "vo2Completed"
     | "sleepAverageHours"
-    | "alcoholTotal",
+    | "alcoholTotal"
+    | "averageReadiness",
     boolean
   >
 >;

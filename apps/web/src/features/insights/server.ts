@@ -39,16 +39,28 @@ export async function getInsightsData() {
     }),
   );
 
-  const insights = await insightOrchestrator.generateAndPersist({
-    userId: user.id,
-    bodyMetrics: recentBody,
-    cardioSessions: recentCardio,
-    recoveryCheckins: recentRecovery,
-    weeklyReviews,
-    liftsCompletedByWeek: Object.fromEntries(liftPairs),
-    now: new Date(),
-    timezone,
-  });
+  const ONE_HOUR_MS = 60 * 60 * 1000;
+  const existingInsights = await insightOrchestrator.getActive(user.id);
+  const mostRecentUpdatedAt = existingInsights.reduce<string | null>(
+    (max, i) => (max == null || i.updatedAt > max ? i.updatedAt : max),
+    null,
+  );
+  const isFresh =
+    mostRecentUpdatedAt != null &&
+    Date.now() - new Date(mostRecentUpdatedAt).getTime() < ONE_HOUR_MS;
+
+  const insights = isFresh
+    ? existingInsights
+    : await insightOrchestrator.generateAndPersist({
+        userId: user.id,
+        bodyMetrics: recentBody,
+        cardioSessions: recentCardio,
+        recoveryCheckins: recentRecovery,
+        weeklyReviews,
+        liftsCompletedByWeek: Object.fromEntries(liftPairs),
+        now: new Date(),
+        timezone,
+      });
 
   return { insights, topInsights: insights.slice(0, 3) };
 }
