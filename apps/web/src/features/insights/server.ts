@@ -10,9 +10,25 @@ function sixMonthsAgoIsoDate() {
   return date.toISOString().slice(0, 10);
 }
 
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
+function isFreshInsights(updatedAt: string): boolean {
+  return Date.now() - new Date(updatedAt).getTime() < ONE_HOUR_MS;
+}
+
 export async function getInsightsData() {
   const user = await requireCurrentUser();
   const { insightOrchestrator, ...services } = await createCoreServices();
+
+  // Check freshness before issuing expensive data queries.
+  const existingInsights = await insightOrchestrator.getActive(user.id);
+  const mostRecentUpdatedAt = existingInsights.reduce<string | null>(
+    (max, i) => (max == null || i.updatedAt > max ? i.updatedAt : max),
+    null,
+  );
+  if (mostRecentUpdatedAt != null && isFreshInsights(mostRecentUpdatedAt)) {
+    return { insights: existingInsights, topInsights: existingInsights.slice(0, 3) };
+  }
 
   const startDate = sixMonthsAgoIsoDate();
   const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody] =
@@ -39,28 +55,16 @@ export async function getInsightsData() {
     }),
   );
 
-  const ONE_HOUR_MS = 60 * 60 * 1000;
-  const existingInsights = await insightOrchestrator.getActive(user.id);
-  const mostRecentUpdatedAt = existingInsights.reduce<string | null>(
-    (max, i) => (max == null || i.updatedAt > max ? i.updatedAt : max),
-    null,
-  );
-  const isFresh =
-    mostRecentUpdatedAt != null &&
-    Date.now() - new Date(mostRecentUpdatedAt).getTime() < ONE_HOUR_MS;
-
-  const insights = isFresh
-    ? existingInsights
-    : await insightOrchestrator.generateAndPersist({
-        userId: user.id,
-        bodyMetrics: recentBody,
-        cardioSessions: recentCardio,
-        recoveryCheckins: recentRecovery,
-        weeklyReviews,
-        liftsCompletedByWeek: Object.fromEntries(liftPairs),
-        now: new Date(),
-        timezone,
-      });
+  const insights = await insightOrchestrator.generateAndPersist({
+    userId: user.id,
+    bodyMetrics: recentBody,
+    cardioSessions: recentCardio,
+    recoveryCheckins: recentRecovery,
+    weeklyReviews,
+    liftsCompletedByWeek: Object.fromEntries(liftPairs),
+    now: new Date(),
+    timezone,
+  });
 
   return { insights, topInsights: insights.slice(0, 3) };
 }

@@ -68,15 +68,7 @@ export async function getWeeklyReviewPageData(
       ? buildNutritionAdherenceSummary(nutritionLogs)
       : null;
 
-  const readinessValues = recoveryCheckins
-    .map((checkin) => checkin.readinessLevel)
-    .filter((value): value is number => value != null);
-  const averageReadiness =
-    readinessValues.length > 0
-      ? Math.round(
-          (readinessValues.reduce((sum, value) => sum + value, 0) / readinessValues.length) * 10,
-        ) / 10
-      : null;
+  const averageReadiness = autoSummary.averageReadiness ?? null;
 
   const autoPopulated: WeeklyReviewAutoPopulated = {
     proteinHitDays: nutritionSummary ? nutritionSummary.proteinHitDays : null,

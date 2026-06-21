@@ -10,6 +10,7 @@ const weeklyReviewManualOverridesFormSchema = z.object({
   vo2Completed: z.boolean().optional(),
   sleepAverageHours: z.boolean().optional(),
   alcoholTotal: z.boolean().optional(),
+  averageReadiness: z.boolean().optional(),
 });
 
 export const weeklyReviewFormSchema = z.object({

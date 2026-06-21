@@ -115,7 +115,7 @@ export function computeGoalProgress(
     }
 
     const thisMinutes = rangeMinutes(cardioLast8Weeks, fourWeeksAgo, today);
-    const priorMinutes = rangeMinutes(cardioLast8Weeks, eightWeeksAgo, fourWeeksAgo);
+    const priorMinutes = rangeMinutes(cardioLast8Weeks, eightWeeksAgo, daysAgoStr(29));
     const thisPerWeek = thisMinutes / 4;
     const priorPerWeek = priorMinutes / 4;
     const delta = thisPerWeek - priorPerWeek;

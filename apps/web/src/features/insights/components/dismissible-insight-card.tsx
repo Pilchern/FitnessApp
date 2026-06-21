@@ -16,15 +16,15 @@ export function DismissibleInsightCard({ insight, onRemove }: Props) {
 
   function handleDismiss() {
     startDismiss(async () => {
-      await dismissInsightAction(insight.id);
-      onRemove(insight.id);
+      const result = await dismissInsightAction(insight.id);
+      if (!result.error) onRemove(insight.id);
     });
   }
 
   function handleArchive() {
     startArchive(async () => {
-      await archiveInsightAction(insight.id);
-      onRemove(insight.id);
+      const result = await archiveInsightAction(insight.id);
+      if (!result.error) onRemove(insight.id);
     });
   }
 
