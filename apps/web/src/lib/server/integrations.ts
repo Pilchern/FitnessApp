@@ -4,6 +4,7 @@ import { BodyMetricService, CardioSessionService, IntegrationStatusService } fro
 import {
   SupabaseBodyMetricRepository,
   SupabaseCardioSessionRepository,
+  SupabaseDailyActivityMetricRepository,
   SupabaseImportBatchRepository,
   SupabaseIntegrationConnectionRepository,
   SupabaseIntegrationCredentialRepository,
@@ -13,7 +14,12 @@ import {
   SupabaseSyncJobRunRepository,
 } from "@fitness-app/infrastructure";
 import { PelotonCardioAdapter, StravaCardioAdapter, WithingsBodyMetricsAdapter } from "@fitness-app/integrations";
-import { AppleHealthSleepSyncOrchestrator, BodyMetricSyncOrchestrator, CardioSyncOrchestrator } from "@fitness-app/jobs";
+import {
+  AppleHealthDailyMetricsSyncOrchestrator,
+  AppleHealthSleepSyncOrchestrator,
+  BodyMetricSyncOrchestrator,
+  CardioSyncOrchestrator,
+} from "@fitness-app/jobs";
 import { getServerEnv, hasAppleHealthWebhookEnv, hasPelotonServerEnv, hasStravaServerEnv, hasWithingsServerEnv } from "./env";
 import {
   createSupabaseAdminClient,
@@ -138,6 +144,24 @@ export function createAppleHealthSleepOrchestrator() {
 
   return new AppleHealthSleepSyncOrchestrator(
     new SupabaseRecoveryCheckinRepository(client),
+    new SupabaseIntegrationConnectionRepository(client),
+    new SupabaseSyncJobRunRepository(client),
+    new SupabaseImportBatchRepository(client),
+    new SupabaseRawImportEventRepository(client),
+  );
+}
+
+export function createAppleHealthDailyMetricsOrchestrator() {
+  if (!hasAppleHealthWebhookEnv()) {
+    throw new Error(
+      "Apple Health integration is not configured. Add APPLE_HEALTH_WEBHOOK_SECRET to your env.",
+    );
+  }
+
+  const client = createSupabaseAdminClient();
+
+  return new AppleHealthDailyMetricsSyncOrchestrator(
+    new SupabaseDailyActivityMetricRepository(client),
     new SupabaseIntegrationConnectionRepository(client),
     new SupabaseSyncJobRunRepository(client),
     new SupabaseImportBatchRepository(client),

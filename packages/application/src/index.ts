@@ -6,6 +6,7 @@ export * from "./modules/nutrition/nutrition-log-service";
 export * from "./modules/body-metrics/body-metric";
 export * from "./modules/body-metrics/body-metric-helpers";
 export * from "./modules/cardio/cardio-session";
+export * from "./modules/daily-activity/daily-activity-metric";
 export * from "./modules/integrations/integration-status";
 export * from "./modules/insights/insight-rules";
 export * from "./modules/insights/insight-repository";

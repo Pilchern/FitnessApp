@@ -1,6 +1,7 @@
 export * from "./repositories/body-metric-repository";
 export * from "./repositories/user-profile-repository";
 export * from "./repositories/cardio-session-repository";
+export * from "./repositories/daily-activity-metric-repository";
 export * from "./repositories/import-batch-repository";
 export * from "./repositories/integration-connection-repository";
 export * from "./repositories/integration-credential-repository";

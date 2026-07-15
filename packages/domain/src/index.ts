@@ -3,6 +3,7 @@ export * from "./shared/source";
 export * from "./modules/profiles/user-profile";
 export * from "./modules/body-metrics/body-metric";
 export * from "./modules/cardio/cardio-session";
+export * from "./modules/daily-activity/daily-activity-metric";
 export * from "./modules/integrations/import-batch";
 export * from "./modules/integrations/integration-connection";
 export * from "./modules/integrations/sync-job-run";
