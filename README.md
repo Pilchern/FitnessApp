@@ -74,13 +74,15 @@ pnpm format:write
 Implemented now:
 
 - auth and protected app shell
-- cardio, recovery, body, weekly review, journal, insights, and strength modules
+- cardio, recovery, body, weekly review, journal, insights, strength, nutrition, and settings modules
 - Supabase schema, seeds, and RLS
-- Withings body-metrics integration framework with sync observability
+- Four provider integrations with sync observability: Strava (live), Withings (OAuth, needs credentials), Peloton (needs a connected account), Apple Health (HMAC webhook, sleep only today, needs a configured secret)
+- Optional AI-generated insights via the Anthropic API (`AiInsightService`)
+- 4 basic Playwright e2e specs (auth, body, cardio, weekly review)
 
 Still intentionally incomplete:
 
-- nutrition module
-- richer settings flows
-- more provider adapters
-- browser-level e2e coverage
+- background job execution infrastructure (queue/retry/dead-letter — see TECH_DEBT.md TD-014)
+- Apple Health fields beyond sleep (steps, VO2 max, resting HR, exercise minutes, active energy)
+- AI-generated weekly review narrative (distinct from the existing AI insights)
+- broader browser-level e2e coverage (integration flows, strength, recovery, nutrition, journal, insights, settings)

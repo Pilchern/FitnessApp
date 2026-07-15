@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-04-05 (sprint 3)
+**Last updated:** 2026-07-15 (docs reality audit)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -10,9 +10,16 @@
 ### TD-014: No background job execution infrastructure
 - **Severity:** Medium
 - **Affected package:** `packages/jobs`
-- **Problem:** The jobs package has orchestration logic, but scheduled execution relies on Vercel Cron. No execution infrastructure for non-Vercel environments. No queue, retry logic, or dead-letter handling.
+- **Problem:** 4 cron routes now exist (`peloton-sync`, `strava-sync`, `weekly-review-auto-finalize`, `insights-generate`), each using bounded-concurrency `Promise.allSettled`-style per-user isolation, but scheduled execution still relies on Vercel Cron only. No queue, retry logic, or dead-letter handling anywhere — a failed sync for one user is logged and dropped, not retried.
 - **Fix:** Either: (a) use Supabase Edge Functions with pg_cron, or (b) use an external queue (Inngest, Trigger.dev). Decision needed before scaling.
 - **Effort:** XL (3–5 days depending on approach)
+
+### TD-017: `insights-generate` cron not scheduled
+- **Severity:** Low
+- **Affected file:** `vercel.json`, `apps/web/src/app/api/cron/insights-generate/route.ts`
+- **Problem:** The route is fully implemented (generates rule-based + optional AI insights for every profile) but is missing from `vercel.json`'s `crons` array, unlike the other 3 cron routes. It only runs if triggered manually or by an external scheduler.
+- **Fix:** Add an entry to `vercel.json`, or fold into whatever replaces TD-014's ad hoc Vercel Cron usage.
+- **Effort:** S
 
 ---
 
