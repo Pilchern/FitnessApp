@@ -28,6 +28,8 @@ export const weeklyReviewFormSchema = z.object({
   biggestMiss: optionalString,
   lesson: optionalString,
   nextWeekPriority: optionalString,
+  strategicDecision: optionalString,
+  riskForecast: optionalString,
   confidence: parseOptionalNumber(z.number().int().min(1).max(10), "Confidence"),
   manualOverrides: optionalString.transform((value, ctx) => {
     if (!value) {

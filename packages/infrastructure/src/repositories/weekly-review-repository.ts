@@ -1,5 +1,6 @@
 import type {
   WeeklyReview,
+  WeeklyReviewAiDraft,
   WeeklyReviewManualOverrides,
   WeeklyReviewScoreDetails,
   WeeklyReviewSummary,
@@ -63,6 +64,25 @@ const weeklyReviewManualOverridesRowSchema: z.ZodType<WeeklyReviewManualOverride
   alcoholTotal: z.boolean().optional(),
 });
 
+const weeklyReviewAiDraftRowSchema: z.ZodType<WeeklyReviewAiDraft> = z.object({
+  score: z.number().int(),
+  scoreRationale: z.string(),
+  whatWorked: z.string(),
+  whatNeedsAttention: z.string(),
+  strategicDecision: z.string(),
+  riskForecast: z.string(),
+  nextBestAction: z.string(),
+  model: z.string(),
+  generatedAt: z.string(),
+});
+
+const weeklyReviewAiDraftStatusRowSchema = z.enum([
+  "none",
+  "pending_review",
+  "accepted",
+  "dismissed",
+]);
+
 const weeklyReviewRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
@@ -79,6 +99,8 @@ const weeklyReviewRowSchema = z.object({
   strategic_decision: z.string().nullable(),
   risk_forecast: z.string().nullable(),
   manual_overrides: weeklyReviewManualOverridesRowSchema,
+  ai_draft: weeklyReviewAiDraftRowSchema.nullable(),
+  ai_draft_status: weeklyReviewAiDraftStatusRowSchema,
   completed_at: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -104,6 +126,8 @@ export function mapWeeklyReviewRow(row: WeeklyReviewRow): WeeklyReview {
     strategicDecision: row.strategic_decision,
     riskForecast: row.risk_forecast,
     manualOverrides: row.manual_overrides,
+    aiDraft: row.ai_draft,
+    aiDraftStatus: row.ai_draft_status,
     completedAt: row.completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -127,6 +151,8 @@ function toWeeklyReviewInsert(input: CreateWeeklyReviewInput) {
     strategic_decision: input.strategicDecision ?? null,
     risk_forecast: input.riskForecast ?? null,
     manual_overrides: input.manualOverrides ?? {},
+    ai_draft: input.aiDraft ?? null,
+    ai_draft_status: input.aiDraftStatus ?? "none",
     completed_at: input.completedAt ?? null,
   };
 }
@@ -146,6 +172,8 @@ function toWeeklyReviewUpdate(input: UpdateWeeklyReviewInput) {
     strategic_decision: input.strategicDecision,
     risk_forecast: input.riskForecast,
     manual_overrides: input.manualOverrides,
+    ai_draft: input.aiDraft,
+    ai_draft_status: input.aiDraftStatus,
     completed_at: input.completedAt,
   });
 }

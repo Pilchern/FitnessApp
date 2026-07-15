@@ -1,3 +1,4 @@
+import { mapAiDraftToManualFields } from "@fitness-app/application";
 import type { WeeklyReview, WeeklyReviewSummary } from "@fitness-app/domain";
 import type { WeeklyReviewFormValues } from "./types";
 
@@ -13,6 +14,15 @@ export function toWeeklyReviewFormValues(
 ): WeeklyReviewFormValues {
   const summary = review?.summary ?? autoSummary;
 
+  // When the user has just accepted the AI draft (ai_draft_status ===
+  // "accepted") and hasn't saved manual values yet, pre-fill the reflection
+  // fields from the draft. This is a form-state-only pre-fill — nothing is
+  // written to the database until the user submits the normal save action.
+  const aiPrefill =
+    review?.aiDraftStatus === "accepted" && review.aiDraft
+      ? mapAiDraftToManualFields(review.aiDraft)
+      : null;
+
   return {
     id: review?.id,
     weekStart,
@@ -25,10 +35,12 @@ export function toWeeklyReviewFormValues(
     vo2Completed: summary.vo2Completed ? "true" : "false",
     sleepAverageHours: numberToInput(summary.sleepAverageHours),
     alcoholTotal: numberToInput(summary.alcoholTotal),
-    bestWin: review?.bestWin ?? "",
-    biggestMiss: review?.biggestMiss ?? "",
+    bestWin: review?.bestWin ?? aiPrefill?.bestWin ?? "",
+    biggestMiss: review?.biggestMiss ?? aiPrefill?.biggestMiss ?? "",
     lesson: review?.lesson ?? "",
     nextWeekPriority: review?.nextWeekPriority ?? "",
+    strategicDecision: review?.strategicDecision ?? aiPrefill?.strategicDecision ?? "",
+    riskForecast: review?.riskForecast ?? aiPrefill?.riskForecast ?? "",
     confidence: numberToInput(review?.confidence),
     manualOverrides: review?.manualOverrides ?? {},
   };

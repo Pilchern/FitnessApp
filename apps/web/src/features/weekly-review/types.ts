@@ -44,6 +44,8 @@ export type WeeklyReviewFormValues = {
   biggestMiss: string;
   lesson: string;
   nextWeekPriority: string;
+  strategicDecision: string;
+  riskForecast: string;
   confidence: string;
   manualOverrides: Partial<Record<keyof WeeklyReviewSummary, boolean>>;
 };

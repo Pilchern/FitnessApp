@@ -8,6 +8,7 @@ import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
 import { formatWeeklyReviewDate, toWeeklyReviewFormValues } from "../helpers";
 import { saveWeeklyReviewAction } from "../actions";
+import { AiWeeklyReviewDraft } from "./ai-weekly-review-draft";
 import type {
   WeeklyReviewActionState,
   WeeklyReviewAutoPopulated,
@@ -260,8 +261,21 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
     }));
   };
 
+  const showAiDraft =
+    data.review?.aiDraftStatus === "pending_review" && data.review.aiDraft != null;
+
   return (
     <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
+      {showAiDraft && data.review?.aiDraft ? (
+        <div className="xl:col-span-2">
+          <AiWeeklyReviewDraft
+            draft={data.review.aiDraft}
+            reviewId={data.review.id}
+            weekStart={data.weekStart}
+          />
+        </div>
+      ) : null}
+
       <section className="space-y-6 rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -562,6 +576,42 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                     setValues((current) => ({
                       ...current,
                       nextWeekPriority: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-ink">
+                Strategic decision
+                <span className="text-xs font-normal text-ink/50">
+                  Leave blank to use the auto-computed recommendation shown on the right.
+                </span>
+                <textarea
+                  className={textAreaClassName()}
+                  name="strategicDecision"
+                  value={values.strategicDecision}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      strategicDecision: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-ink">
+                Risk forecast
+                <span className="text-xs font-normal text-ink/50">
+                  Leave blank to use the auto-computed forecast shown on the right.
+                </span>
+                <textarea
+                  className={textAreaClassName()}
+                  name="riskForecast"
+                  value={values.riskForecast}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      riskForecast: event.target.value,
                     }))
                   }
                 />

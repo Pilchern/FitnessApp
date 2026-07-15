@@ -2,6 +2,7 @@ import type {
   EntityId,
   UserId,
   WeeklyReview,
+  WeeklyReviewAiDraft,
   WeeklyReviewManualOverrides,
   WeeklyReviewScoreDetails,
   WeeklyReviewSummary,
@@ -60,6 +61,25 @@ const weeklyReviewManualOverridesSchema: z.ZodType<WeeklyReviewManualOverrides> 
   alcoholTotal: z.boolean().optional(),
 });
 
+export const weeklyReviewAiDraftSchema: z.ZodType<WeeklyReviewAiDraft> = z.object({
+  score: z.number().int().min(1).max(100),
+  scoreRationale: z.string(),
+  whatWorked: z.string(),
+  whatNeedsAttention: z.string(),
+  strategicDecision: z.string(),
+  riskForecast: z.string(),
+  nextBestAction: z.string(),
+  model: z.string(),
+  generatedAt: isoDateTimeSchema,
+});
+
+const weeklyReviewAiDraftStatusSchema = z.enum([
+  "none",
+  "pending_review",
+  "accepted",
+  "dismissed",
+]);
+
 const weeklyReviewFields = {
   weekStart: isoDateSchema,
   weekEnd: isoDateSchema,
@@ -74,6 +94,8 @@ const weeklyReviewFields = {
   strategicDecision: optionalTrimmedStringSchema,
   riskForecast: optionalTrimmedStringSchema,
   manualOverrides: weeklyReviewManualOverridesSchema.default({}),
+  aiDraft: weeklyReviewAiDraftSchema.nullable().optional(),
+  aiDraftStatus: weeklyReviewAiDraftStatusSchema.default("none"),
   completedAt: isoDateTimeSchema.nullable().optional(),
 } satisfies z.ZodRawShape;
 
@@ -131,6 +153,8 @@ export const updateWeeklyReviewSchema = withWeeklyReviewRules(
       strategicDecision: optionalTrimmedStringSchema,
       riskForecast: optionalTrimmedStringSchema,
       manualOverrides: weeklyReviewManualOverridesSchema.optional(),
+      aiDraft: weeklyReviewAiDraftSchema.nullable().optional(),
+      aiDraftStatus: weeklyReviewAiDraftStatusSchema.optional(),
       completedAt: isoDateTimeSchema.nullable().optional(),
     })
     .refine(
@@ -149,6 +173,8 @@ export const updateWeeklyReviewSchema = withWeeklyReviewRules(
         "strategicDecision",
         "riskForecast",
         "manualOverrides",
+        "aiDraft",
+        "aiDraftStatus",
         "completedAt",
       ]),
       {
@@ -200,5 +226,31 @@ export class WeeklyReviewService {
 
   async listRecent(userId: string, limit?: number) {
     return this.repository.listRecent(userId, limit);
+  }
+
+  /** Persists a freshly generated AI draft and marks it awaiting user review. */
+  async saveAiDraft(userId: string, id: string, aiDraft: WeeklyReviewAiDraft) {
+    return this.update({
+      userId,
+      id,
+      aiDraft,
+      aiDraftStatus: "pending_review",
+    });
+  }
+
+  /**
+   * Marks the AI draft as accepted. This does NOT copy the draft's content
+   * into the canonical bestWin/biggestMiss/strategicDecision/riskForecast
+   * columns — that only happens when the user submits the normal manual
+   * save action (see mapAiDraftToManualFields + the weekly-review UI, which
+   * pre-fills the edit form from the accepted draft).
+   */
+  async acceptAiDraft(userId: string, id: string) {
+    return this.update({ userId, id, aiDraftStatus: "accepted" });
+  }
+
+  /** Discards the AI draft; the manual flow proceeds with nothing pre-filled. */
+  async dismissAiDraft(userId: string, id: string) {
+    return this.update({ userId, id, aiDraftStatus: "dismissed" });
   }
 }

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import {
+  AiWeeklyReviewService,
   BodyMetricService,
   CardioSessionService,
   JournalEntryService,
@@ -11,7 +12,7 @@ import {
   getLastCompletedWeekStart,
   getWeekRangeFromStart,
 } from "@fitness-app/application";
-import type { WeeklyReviewSummary } from "@fitness-app/domain";
+import type { WeeklyReview, WeeklyReviewSummary } from "@fitness-app/domain";
 import {
   SupabaseBodyMetricRepository,
   SupabaseCardioSessionRepository,
@@ -120,7 +121,10 @@ One thing to focus on next week:`;
 async function draftReviewForUser(
   adminClient: ReturnType<typeof createSupabaseAdminClient>,
   profile: ProfileRow,
-): Promise<{ status: "drafted"; autoSummary: WeeklyReviewSummary; weekStart: string } | { status: "skipped" }> {
+): Promise<
+  | { status: "drafted"; review: WeeklyReview; autoSummary: WeeklyReviewSummary; weekStart: string }
+  | { status: "skipped"; review: WeeklyReview }
+> {
   const weekStartsOn = (profile.week_starts_on ?? 1) as 0 | 1;
   const prevWeekStartIso = getLastCompletedWeekStart(new Date(), weekStartsOn);
 
@@ -136,7 +140,7 @@ async function draftReviewForUser(
   });
 
   if (existing) {
-    return { status: "skipped" as const };
+    return { status: "skipped" as const, review: existing };
   }
 
   const dateRangeQuery = {
@@ -173,7 +177,7 @@ async function draftReviewForUser(
     liftsCompleted,
   });
 
-  await weeklyReviewService.create({
+  const review = await weeklyReviewService.create({
     userId: profile.user_id,
     weekStart: prevWeekStartIso,
     weekEnd: prevWeekEndIso,
@@ -188,10 +192,60 @@ async function draftReviewForUser(
     strategicDecision: null,
     riskForecast: null,
     manualOverrides: {},
+    aiDraft: null,
+    aiDraftStatus: "none",
     completedAt: null,
   });
 
-  return { status: "drafted" as const, autoSummary, weekStart: prevWeekStartIso };
+  return { status: "drafted" as const, review, autoSummary, weekStart: prevWeekStartIso };
+}
+
+/**
+ * Generates and persists an AI weekly review draft for a single user's
+ * review row, additive to the existing auto-finalize behavior above.
+ * Fails soft: any error (Anthropic API, malformed response, or the
+ * persistence write itself) is logged and the row is left with
+ * ai_draft_status = 'none' so a later cron run retries it — never a
+ * half-set draft.
+ *
+ * Only fires for rows in status "draft" with ai_draft_status "none" —
+ * reviews that already have a draft (pending_review/accepted/dismissed) or
+ * are already completed are left untouched.
+ */
+async function generateAiDraftForUser(
+  adminClient: ReturnType<typeof createSupabaseAdminClient>,
+  userId: string,
+  review: WeeklyReview,
+  aiService: AiWeeklyReviewService,
+): Promise<boolean> {
+  if (review.status !== "draft" || review.aiDraftStatus !== "none") {
+    return false;
+  }
+
+  try {
+    const draft = await aiService.generateDraft({
+      weekStart: review.weekStart,
+      weekEnd: review.weekEnd,
+      summary: review.summary,
+    });
+
+    if (!draft) {
+      return false;
+    }
+
+    const weeklyReviewService = new WeeklyReviewService(
+      new SupabaseWeeklyReviewRepository(adminClient),
+    );
+    await weeklyReviewService.saveAiDraft(userId, review.id, draft);
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error(
+      `[cron/weekly-review-auto-finalize] AI draft generation failed for user ${userId}:`,
+      message,
+    );
+    return false;
+  }
 }
 
 export async function GET(request: NextRequest) {
@@ -219,10 +273,24 @@ export async function GET(request: NextRequest) {
 
   const rows = (profiles ?? []) as ProfileRow[];
 
+  // Guard on ANTHROPIC_API_KEY exactly like insights-generate/route.ts —
+  // when it's not configured, aiService is null and generateAiDraftForUser
+  // is simply never called, so the rest of this cron's behavior (journal
+  // auto-draft, summary computation) works unchanged with zero AI config,
+  // per the app's manual-first philosophy.
+  const aiService = env.ANTHROPIC_API_KEY
+    ? new AiWeeklyReviewService({
+        apiKey: env.ANTHROPIC_API_KEY,
+        model: env.INSIGHT_AI_MODEL ?? "claude-haiku-4-5-20251001",
+        enabled: env.WEEKLY_REVIEW_AI_ENABLED,
+      })
+    : null;
+
   let drafted = 0;
   let skipped = 0;
   let errors = 0;
   let journalsDrafted = 0;
+  let aiDrafted = 0;
 
   const settled = await mapWithConcurrency(rows, CONCURRENCY, (row) =>
     draftReviewForUser(adminClient, row),
@@ -251,6 +319,18 @@ export async function GET(request: NextRequest) {
       } else {
         skipped++;
       }
+
+      if (aiService) {
+        const generated = await generateAiDraftForUser(
+          adminClient,
+          rows[i].user_id,
+          res.value.review,
+          aiService,
+        );
+        if (generated) {
+          aiDrafted++;
+        }
+      }
     } else {
       errors++;
       const message = res.reason instanceof Error ? res.reason.message : "Unknown error";
@@ -261,5 +341,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, drafted, skipped, errors, journalsDrafted });
+  return NextResponse.json({ ok: true, drafted, skipped, errors, journalsDrafted, aiDrafted });
 }
