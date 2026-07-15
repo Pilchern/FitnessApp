@@ -8,6 +8,8 @@ export type RecoveryCheckin = {
   restingHeartRate: number | null;
   hrv: number | null;
   sleepDurationMinutes: number | null;
+  bedtimeLocal: string | null;
+  wakeTimeLocal: string | null;
   sleepQuality: number | null;
   energyLevel: number | null;
   readinessLevel: number | null;
@@ -25,6 +27,7 @@ export type RecoveryCheckin = {
   sleepSpo2AvgPct: number | null;
   sleepHrvAvg: number | null;
   sleepAvgHeartRate: number | null;
+  coldPlungeCompleted: boolean | null;
   source: CanonicalRecordSource;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

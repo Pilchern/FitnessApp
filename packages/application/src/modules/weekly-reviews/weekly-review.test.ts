@@ -1,10 +1,19 @@
-import { describe, expect, it } from "vitest";
-import type { BodyMetric, CardioSession, RecoveryCheckin } from "@fitness-app/domain";
+import { describe, expect, it, vi } from "vitest";
+import type {
+  BodyMetric,
+  CardioSession,
+  RecoveryCheckin,
+  WeeklyReview,
+  WeeklyReviewAiDraft,
+} from "@fitness-app/domain";
 import {
   buildWeeklyReviewSummary,
   calculateWeeklyReviewScore,
   getLastCompletedWeekStart,
   getWeekRangeFromStart,
+  mapAiDraftToManualFields,
+  WeeklyReviewService,
+  type WeeklyReviewRepository,
 } from "../../index";
 
 const userId = "11111111-1111-4111-8111-111111111111";
@@ -20,6 +29,8 @@ describe("weekly review aggregation", () => {
         weightKg: null,
         waistIn: 34.6,
         waistCm: null,
+        waistHipIn: null,
+        waistGutIn: null,
         bodyFatPct: null,
         muscleMassLb: null,
         muscleMassKg: null,
@@ -49,6 +60,8 @@ describe("weekly review aggregation", () => {
         weightKg: null,
         waistIn: 34.3,
         waistCm: null,
+        waistHipIn: null,
+        waistGutIn: null,
         bodyFatPct: null,
         muscleMassLb: null,
         muscleMassKg: null,
@@ -168,6 +181,9 @@ describe("weekly review aggregation", () => {
         sleepSpo2AvgPct: null,
         sleepHrvAvg: null,
         sleepAvgHeartRate: null,
+        bedtimeLocal: null,
+        wakeTimeLocal: null,
+        coldPlungeCompleted: null,
         source: {
           sourceType: "manual",
           sourceProvider: null,
@@ -203,6 +219,9 @@ describe("weekly review aggregation", () => {
         sleepSpo2AvgPct: null,
         sleepHrvAvg: null,
         sleepAvgHeartRate: null,
+        bedtimeLocal: null,
+        wakeTimeLocal: null,
+        coldPlungeCompleted: null,
         source: {
           sourceType: "manual",
           sourceProvider: null,
@@ -283,5 +302,120 @@ describe("weekly review scoring", () => {
     expect(result.scoreDetails.band).toBe("fragile");
     expect(result.strategicDecision).toMatch(/Protect recovery/);
     expect(result.riskForecast).toMatch(/High risk/);
+  });
+});
+
+describe("AI weekly review draft mapping and lifecycle", () => {
+  const aiDraft: WeeklyReviewAiDraft = {
+    score: 82,
+    scoreRationale: "Strong week overall.",
+    whatWorked: "Consistent lifts and good sleep.",
+    whatNeedsAttention: "Zone 2 minutes were short of target.",
+    strategicDecision: "Add one extra Zone 2 session next week.",
+    riskForecast: "Low risk over the next 2-3 weeks.",
+    nextBestAction: "Schedule the missed ride for Monday.",
+    model: "claude-haiku-4-5-20251001",
+    generatedAt: "2026-03-23T12:00:00.000Z",
+  };
+
+  it("maps whatWorked/whatNeedsAttention onto bestWin/biggestMiss and passes strategicDecision/riskForecast through unchanged", () => {
+    expect(mapAiDraftToManualFields(aiDraft)).toEqual({
+      bestWin: "Consistent lifts and good sleep.",
+      biggestMiss: "Zone 2 minutes were short of target.",
+      strategicDecision: "Add one extra Zone 2 session next week.",
+      riskForecast: "Low risk over the next 2-3 weeks.",
+    });
+  });
+
+  function buildStoredReview(overrides: Partial<WeeklyReview> = {}): WeeklyReview {
+    return {
+      id: "22222222-2222-4222-8222-222222222222",
+      userId: "11111111-1111-4111-8111-111111111111",
+      weekStart: "2026-03-16",
+      weekEnd: "2026-03-22",
+      status: "draft",
+      summary: {},
+      bestWin: null,
+      biggestMiss: null,
+      lesson: null,
+      nextWeekPriority: null,
+      confidence: null,
+      scoreDetails: null,
+      strategicDecision: null,
+      riskForecast: null,
+      manualOverrides: {},
+      aiDraft: null,
+      aiDraftStatus: "none",
+      completedAt: null,
+      createdAt: "2026-03-16T00:00:00.000Z",
+      updatedAt: "2026-03-16T00:00:00.000Z",
+      deletedAt: null,
+      ...overrides,
+    };
+  }
+
+  function buildMockRepository(review: WeeklyReview) {
+    const update = vi.fn(
+      async (_input: Parameters<WeeklyReviewRepository["update"]>[0]) => review,
+    );
+    const repository: WeeklyReviewRepository = {
+      create: vi.fn(async () => review),
+      update,
+      findById: vi.fn(async () => review),
+      findByWeekStart: vi.fn(async () => review),
+      findLatest: vi.fn(async () => review),
+      listRecent: vi.fn(async () => [review]),
+    };
+    return { repository, update };
+  }
+
+  it("saveAiDraft persists the draft and sets status to pending_review", async () => {
+    const stored = buildStoredReview();
+    const { repository, update } = buildMockRepository(stored);
+    const service = new WeeklyReviewService(repository);
+
+    await service.saveAiDraft(stored.userId, stored.id, aiDraft);
+
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: stored.userId,
+        id: stored.id,
+        aiDraft,
+        aiDraftStatus: "pending_review",
+      }),
+    );
+  });
+
+  it("acceptAiDraft only sets aiDraftStatus to accepted (no bestWin/biggestMiss/strategicDecision/riskForecast in the update payload)", async () => {
+    const stored = buildStoredReview({ aiDraftStatus: "pending_review", aiDraft });
+    const { repository, update } = buildMockRepository(stored);
+    const service = new WeeklyReviewService(repository);
+
+    await service.acceptAiDraft(stored.userId, stored.id);
+
+    expect(update).toHaveBeenCalledWith({
+      userId: stored.userId,
+      id: stored.id,
+      aiDraftStatus: "accepted",
+    });
+    const submittedInput = update.mock.calls[0][0];
+    expect(submittedInput).not.toHaveProperty("bestWin");
+    expect(submittedInput).not.toHaveProperty("biggestMiss");
+    expect(submittedInput).not.toHaveProperty("strategicDecision");
+    expect(submittedInput).not.toHaveProperty("riskForecast");
+  });
+
+  it("dismissAiDraft sets aiDraftStatus to dismissed", async () => {
+    const stored = buildStoredReview({ aiDraftStatus: "pending_review", aiDraft });
+    const { repository, update } = buildMockRepository(stored);
+    const service = new WeeklyReviewService(repository);
+
+    await service.dismissAiDraft(stored.userId, stored.id);
+
+    expect(update).toHaveBeenCalledWith({
+      userId: stored.userId,
+      id: stored.id,
+      aiDraftStatus: "dismissed",
+    });
   });
 });

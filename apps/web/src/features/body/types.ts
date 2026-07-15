@@ -24,6 +24,8 @@ export type BodyFormValues = {
   measuredOn: string;
   weightLb: string;
   waistIn: string;
+  waistHipIn: string;
+  waistGutIn: string;
   bodyFatPct: string;
   muscleMassLb: string;
   sourceType: "manual";

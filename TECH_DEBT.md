@@ -1,18 +1,13 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-04-05 (sprint 3)
+**Last updated:** 2026-07-15 (docs reality audit)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
 
 ## Priority 1 — Active Debt
 
-### TD-014: No background job execution infrastructure
-- **Severity:** Medium
-- **Affected package:** `packages/jobs`
-- **Problem:** The jobs package has orchestration logic, but scheduled execution relies on Vercel Cron. No execution infrastructure for non-Vercel environments. No queue, retry logic, or dead-letter handling.
-- **Fix:** Either: (a) use Supabase Edge Functions with pg_cron, or (b) use an external queue (Inngest, Trigger.dev). Decision needed before scaling.
-- **Effort:** XL (3–5 days depending on approach)
+_(none currently — see Resolved Debt for TD-014 and TD-017)_
 
 ---
 
@@ -53,3 +48,5 @@
 | TD-012 | Nutrition module placeholder — full module built | 2026-04-05 |
 | TD-013 | No E2E test coverage — Playwright set up with 4 spec files | 2026-04-05 |
 | TD-015 | `integration_connection_credentials` RLS/policy gaps — fixed | 2026-04-05 |
+| TD-014 | No background job execution infrastructure — `sync_job_runs` wired up as a retry queue via Supabase pg_cron + pg_net (15-min sweep at `/api/cron/retry-failed-syncs`, exponential backoff, `dead_letter` status after 5 attempts); added `/api/cron/withings-sync` scheduled route | 2026-07-15 |
+| TD-017 | `insights-generate` cron not scheduled — added to `vercel.json` | 2026-07-15 |

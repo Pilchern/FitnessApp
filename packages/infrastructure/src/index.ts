@@ -1,6 +1,7 @@
 export * from "./repositories/body-metric-repository";
 export * from "./repositories/user-profile-repository";
 export * from "./repositories/cardio-session-repository";
+export * from "./repositories/daily-activity-metric-repository";
 export * from "./repositories/import-batch-repository";
 export * from "./repositories/integration-connection-repository";
 export * from "./repositories/integration-credential-repository";
@@ -12,6 +13,8 @@ export * from "./repositories/recovery-checkin-repository";
 export * from "./repositories/shared";
 export * from "./repositories/strength-session-repository";
 export * from "./repositories/strength-session-summary-repository";
+export * from "./repositories/supplement-repository";
+export * from "./repositories/supplement-log-repository";
 export * from "./repositories/sync-job-run-repository";
 export * from "./repositories/training-template-repository";
 export * from "./repositories/weekly-review-repository";

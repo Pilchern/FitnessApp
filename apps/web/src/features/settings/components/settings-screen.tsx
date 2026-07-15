@@ -1,12 +1,20 @@
-import { recomputeNutritionTargetsAction, updateSettingsAction } from "../actions";
+import {
+  createSupplementAction,
+  deactivateSupplementAction,
+  reactivateSupplementAction,
+  recomputeNutritionTargetsAction,
+  updateSettingsAction,
+} from "../actions";
 import { getSettingsPageData } from "../server";
 import { SettingsForm } from "./settings-form";
+import { SupplementsManager } from "./supplements-manager";
 
 type SettingsScreenProps = {
   saved?: boolean;
+  error?: string;
 };
 
-export async function SettingsScreen({ saved }: SettingsScreenProps) {
+export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
   const data = await getSettingsPageData();
 
   return (
@@ -32,12 +40,25 @@ export async function SettingsScreen({ saved }: SettingsScreenProps) {
         </div>
       ) : null}
 
+      {error ? (
+        <div className="rounded-2xl border border-ember/20 bg-ember/10 px-5 py-3 text-sm font-medium text-ember">
+          {error}
+        </div>
+      ) : null}
+
       {/* Form */}
       <SettingsForm
         profile={data.profile}
         userEmail={data.userEmail}
         action={updateSettingsAction}
         recomputeNutritionTargetsAction={recomputeNutritionTargetsAction}
+      />
+
+      <SupplementsManager
+        supplements={data.supplements}
+        createAction={createSupplementAction}
+        deactivateAction={deactivateSupplementAction}
+        reactivateAction={reactivateSupplementAction}
       />
     </div>
   );

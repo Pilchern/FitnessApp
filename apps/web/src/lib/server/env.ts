@@ -32,6 +32,15 @@ const serverEnvSchema = z.object({
     (v) => v === "true",
     z.boolean().default(false),
   ),
+  // Narrower flag than INSIGHT_AI_ENABLED on purpose: the AI weekly review
+  // draft is a distinct feature from the 2-week AI insights (different
+  // prompt, different persistence — see AiWeeklyReviewService), and it
+  // writes a user-reviewable draft rather than an auto-persisted insight.
+  // Keeping the toggle separate lets either be enabled independently.
+  WEEKLY_REVIEW_AI_ENABLED: z.preprocess(
+    (v) => v === "true",
+    z.boolean().default(false),
+  ),
 });
 
 let cachedServerEnv: z.infer<typeof serverEnvSchema> | null = null;
@@ -57,6 +66,7 @@ export function getServerEnv() {
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     INSIGHT_AI_MODEL: process.env.INSIGHT_AI_MODEL,
     INSIGHT_AI_ENABLED: process.env.INSIGHT_AI_ENABLED,
+    WEEKLY_REVIEW_AI_ENABLED: process.env.WEEKLY_REVIEW_AI_ENABLED,
   });
 
   return cachedServerEnv;

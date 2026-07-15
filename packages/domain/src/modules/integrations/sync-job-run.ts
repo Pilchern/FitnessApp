@@ -5,7 +5,8 @@ export type SyncJobRunStatus =
   | "running"
   | "succeeded"
   | "failed"
-  | "cancelled";
+  | "cancelled"
+  | "dead_letter";
 
 export type SyncJobRunTriggerType = "scheduled" | "manual" | "retry" | "system" | "webhook";
 

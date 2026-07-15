@@ -81,6 +81,17 @@ export function RecoveryCheckinList({
                   <span>{`Alcohol ${checkin.alcoholCount}`}</span>
                   <span>{`RHR ${formatRestingHeartRate(checkin.restingHeartRate)}`}</span>
                   {checkin.hrv != null ? <span>{`HRV ${checkin.hrv}`}</span> : null}
+                  {checkin.bedtimeLocal != null ? (
+                    <span>{`Bedtime ${checkin.bedtimeLocal}`}</span>
+                  ) : null}
+                  {checkin.wakeTimeLocal != null ? (
+                    <span>{`Wake ${checkin.wakeTimeLocal}`}</span>
+                  ) : null}
+                  {checkin.coldPlungeCompleted ? (
+                    <span className="inline-flex items-center gap-1 text-pine">
+                      Cold plunge ✓
+                    </span>
+                  ) : null}
                 </div>
 
                 {(checkin.deepSleepMinutes != null ||

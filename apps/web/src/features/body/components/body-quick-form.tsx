@@ -146,12 +146,54 @@ export function BodyQuickForm({
             onClick={() => setShowAdvanced((value) => !value)}
             className="text-sm font-semibold text-pine underline-offset-4 hover:underline"
           >
-            {showAdvanced ? "Hide optional fields" : "Add body fat, muscle, or notes"}
+            {showAdvanced
+              ? "Hide optional fields"
+              : "Add hip/gut waist, body fat, muscle, or notes"}
           </button>
         </div>
 
         {showAdvanced ? (
           <div className="grid gap-4 rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Waist at hip (in)
+              <input
+                className={fieldClassName()}
+                name="waistHipIn"
+                inputMode="decimal"
+                placeholder="38.5"
+                value={values.waistHipIn}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    waistHipIn: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.waistHipIn ? (
+                <p className="text-xs text-ember">{state.fieldErrors.waistHipIn}</p>
+              ) : null}
+            </label>
+
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Waist at gut (in)
+              <input
+                className={fieldClassName()}
+                name="waistGutIn"
+                inputMode="decimal"
+                placeholder="36.2"
+                value={values.waistGutIn}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    waistGutIn: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.waistGutIn ? (
+                <p className="text-xs text-ember">{state.fieldErrors.waistGutIn}</p>
+              ) : null}
+            </label>
+
             <label className="grid gap-2 text-sm font-medium text-ink">
               Body fat (%)
               <input

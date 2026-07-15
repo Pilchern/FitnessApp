@@ -84,6 +84,12 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
                   <span>{`Weight ${formatBodyValue(metric.weightLb, "lb")}`}</span>
                   <span>{`Waist ${formatBodyValue(metric.waistIn, "in")}`}</span>
+                  {metric.waistHipIn != null ? (
+                    <span>{`Waist (hip) ${formatBodyValue(metric.waistHipIn, "in")}`}</span>
+                  ) : null}
+                  {metric.waistGutIn != null ? (
+                    <span>{`Waist (gut) ${formatBodyValue(metric.waistGutIn, "in")}`}</span>
+                  ) : null}
                   <span>{`Body fat ${formatBodyValue(metric.bodyFatPct, "%")}`}</span>
                   <span>{`Muscle ${formatBodyValue(metric.muscleMassLb, "lb")}`}</span>
                   {metric.fatFreeMassLb != null ? (

@@ -3,6 +3,7 @@ import type {
   CardioSession,
   IsoDate,
   RecoveryCheckin,
+  WeeklyReviewAiDraft,
   WeeklyReviewScoreBand,
   WeeklyReviewScoreComponent,
   WeeklyReviewScoreDetails,
@@ -168,6 +169,36 @@ export function buildWeeklyReviewSummary({
       recoveryCheckins.length > 0
         ? recoveryCheckins.reduce((sum, checkin) => sum + checkin.alcoholCount, 0)
         : null,
+  };
+}
+
+export type WeeklyReviewAiDraftManualFields = {
+  bestWin: string;
+  biggestMiss: string;
+  strategicDecision: string;
+  riskForecast: string;
+};
+
+/**
+ * Maps an AI-generated weekly review draft onto the closest existing manual
+ * reflection fields, for use when the user clicks "Use this draft":
+ *   whatWorked          -> bestWin
+ *   whatNeedsAttention   -> biggestMiss
+ *   strategicDecision    -> strategicDecision
+ *   riskForecast         -> riskForecast
+ *
+ * This is a pure mapping only — it does not persist anything. The caller is
+ * responsible for feeding these values into the manual edit form so the
+ * user's existing save action is what actually commits them.
+ */
+export function mapAiDraftToManualFields(
+  aiDraft: WeeklyReviewAiDraft,
+): WeeklyReviewAiDraftManualFields {
+  return {
+    bestWin: aiDraft.whatWorked,
+    biggestMiss: aiDraft.whatNeedsAttention,
+    strategicDecision: aiDraft.strategicDecision,
+    riskForecast: aiDraft.riskForecast,
   };
 }
 

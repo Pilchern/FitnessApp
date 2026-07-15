@@ -27,6 +27,10 @@ function textAreaClassName() {
   return "min-h-24 rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20";
 }
 
+function checkboxClassName() {
+  return "h-4 w-4 rounded border-ink/20 text-pine focus:ring-pine";
+}
+
 const scoreOptions = Array.from({ length: 10 }, (_, index) => `${index + 1}`);
 const sleepQualityOptions = ["1", "2", "3", "4", "5"];
 
@@ -154,6 +158,44 @@ export function RecoveryQuickForm({
             />
             {state.fieldErrors?.sleepHours ? (
               <p className="text-xs text-ember">{state.fieldErrors.sleepHours}</p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Bedtime
+            <input
+              className={fieldClassName()}
+              name="bedtimeLocal"
+              type="time"
+              value={values.bedtimeLocal}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  bedtimeLocal: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.bedtimeLocal ? (
+              <p className="text-xs text-ember">{state.fieldErrors.bedtimeLocal}</p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Wake time
+            <input
+              className={fieldClassName()}
+              name="wakeTimeLocal"
+              type="time"
+              value={values.wakeTimeLocal}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  wakeTimeLocal: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.wakeTimeLocal ? (
+              <p className="text-xs text-ember">{state.fieldErrors.wakeTimeLocal}</p>
             ) : null}
           </label>
 
@@ -314,6 +356,22 @@ export function RecoveryQuickForm({
               {state.fieldErrors?.hrv ? (
                 <p className="text-xs text-ember">{state.fieldErrors.hrv}</p>
               ) : null}
+            </label>
+
+            <label className="flex items-center gap-3 text-sm font-medium text-ink cursor-pointer md:col-span-2">
+              <input
+                type="checkbox"
+                className={checkboxClassName()}
+                name="coldPlungeCompleted"
+                checked={values.coldPlungeCompleted}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    coldPlungeCompleted: event.target.checked,
+                  }))
+                }
+              />
+              Cold plunge completed
             </label>
 
             <label className="grid gap-2 text-sm font-medium text-ink md:col-span-2">

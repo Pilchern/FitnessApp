@@ -7,7 +7,7 @@
 
 ## What This App Is
 
-A personal health, fitness, recovery, and body-composition tracking app built for one primary user (performance-minded athlete). It is **manual-first** (you can log everything without any integrations) and **provider-optional** (Withings body metrics can be imported; more providers are planned).
+A personal health, fitness, recovery, and body-composition tracking app built for one primary user (performance-minded athlete). It is **manual-first** (you can log everything without any integrations) and **provider-optional** — four provider integrations exist in code: Strava (live), Withings (body metrics, code complete, needs credentials), Peloton (cardio, code complete, needs a connected account), and Apple Health (sleep via HMAC webhook today, code complete, needs a configured secret).
 
 The app is not a calorie counter or social fitness platform. It is a weekly coaching loop: log training, recovery, and body data → run a weekly review → get rule-based insights → adjust next week.
 
@@ -40,10 +40,10 @@ packages/
   domain/          → Pure domain types, zero dependencies
   application/     → Use cases, services, repository ports, DTOs
   infrastructure/  → Supabase repository implementations
-  integrations/    → Withings OAuth + payload normalization
-  jobs/            → Background sync orchestration
+  integrations/    → Strava, Withings, and Peloton adapters (OAuth/credential + payload normalization)
+  jobs/            → Background sync orchestration (cardio, body-metric, Apple Health sleep)
 supabase/
-  migrations/      → 11 SQL migration files
+  migrations/      → 20 SQL migration files
   seed/            → Local dev seed (dev@example.com / password1234)
 docs/              → Architecture and schema notes
 tests/             → E2E placeholders and shared fixtures
@@ -91,10 +91,12 @@ All packages except `web` are framework-free and portable.
 | Body | `/body` | Implemented — Weight/waist/body fat, trends |
 | Weekly Review | `/weekly-review` | Implemented — Scoring engine, reflection fields |
 | Journal | `/journal` | Implemented — Tags, search, weekly-review links |
-| Insights | `/insights` | Implemented — Rule-based engine, dismiss/archive |
+| Insights | `/insights` | Implemented — Rule-based engine, dismiss/archive, plus optional AI-generated insights via `AiInsightService` (Claude API) when enabled |
 | Settings | `/settings` | Implemented — Profile, timezone, units, goals |
-| Integrations | `/integrations` | Implemented — Withings OAuth, sync status |
+| Integrations | `/integrations` | Implemented — UI for all 4 providers: Strava (live), Withings (OAuth, needs creds), Peloton (needs connected account), Apple Health (needs webhook secret) |
 | Nutrition | `/nutrition` | Implemented — Daily log, macro tracking, CRUD |
+
+**Providers not present in a route table because they're webhook/cron-only:** Apple Health sleep ingestion (`POST /api/integrations/apple-health/sleep`), Peloton cardio sync (`/api/cron/peloton-sync`), weekly review auto-draft (`/api/cron/weekly-review-auto-finalize`), and insights generation (`/api/cron/insights-generate`, not yet scheduled in `vercel.json`).
 
 ---
 
@@ -104,7 +106,7 @@ All packages except `web` are framework-free and portable.
 `profiles`, `training_templates`, `cardio_sessions`, `strength_sessions`, `strength_exercise_sets`, `recovery_checkins`, `body_metrics`, `nutrition_logs`, `weekly_reviews`, `journal_entries`, `insights`
 
 **Integration audit tables:**
-`integration_connections`, `integration_credentials`, `import_batches`, `raw_import_events`, `sync_job_runs`
+`integration_connections`, `integration_connection_credentials`, `import_batches`, `raw_import_events`, `sync_job_runs`
 
 All tables have RLS enabled with user-scoped policies. Every row is scoped to `user_id = auth.uid()`.
 `integration_connection_credentials` uses the service-role key (bypasses RLS) for OAuth/sync operations; RLS policies are also present for authenticated client access.
@@ -120,10 +122,20 @@ SUPABASE_SERVICE_ROLE_KEY
 WITHINGS_CLIENT_ID            (optional, for Withings integration)
 WITHINGS_CLIENT_SECRET        (optional)
 WITHINGS_REDIRECT_URI
-INTEGRATION_ENCRYPTION_KEY    (base64-encoded 32-byte AES-256 key)
+STRAVA_CLIENT_ID              (optional, for Strava integration — currently set, live)
+STRAVA_CLIENT_SECRET          (optional)
+STRAVA_REDIRECT_URI
+INTEGRATION_ENCRYPTION_KEY    (base64-encoded 32-byte AES-256 key — required by Withings, Strava, and Peloton)
+CRON_SECRET                   (Bearer token all 4 cron routes require)
+APPLE_HEALTH_WEBHOOK_SECRET   (HMAC key for the Apple Health sleep webhook)
+ANTHROPIC_API_KEY             (optional — enables AiInsightService)
+INSIGHT_AI_MODEL              (optional, defaults to claude-haiku-4-5-20251001)
+INSIGHT_AI_ENABLED            (optional, "true" to activate AI insight generation)
 ```
 
-**Current state:** `.env.local` already populated with live Supabase project credentials. Withings credentials are empty (integration UI will show disconnected).
+Peloton needs no dedicated client ID/secret — it authenticates with a per-user Peloton username/password (encrypted at rest with `INTEGRATION_ENCRYPTION_KEY`), supplied through the connect flow, not an env var.
+
+**Current state:** `.env.local` already populated with live Supabase project credentials. Withings credentials are empty (integration UI will show disconnected). No Peloton account is connected yet. `APPLE_HEALTH_WEBHOOK_SECRET` is unset.
 
 ---
 
@@ -175,24 +187,33 @@ All tables enforce ownership via `auth.uid() = user_id`. Server actions call `re
 
 ## Known Technical Debt (Priority Order)
 
-See `TECH_DEBT.md` for the full register. Active items as of 2026-04-05:
+See `TECH_DEBT.md` for the full register. Active items as of 2026-07-15:
 
-1. **Hardcoded timezone** in profile-bootstrap (`"America/Chicago"`) — should be configurable at signup
-2. **Unbounded list queries** — no LIMIT clause on `listByDateRange`; will grow with data
-3. **No background job execution infrastructure** — `packages/jobs` is structured but has no cron/queue trigger
+1. **No background job execution infrastructure** — 4 cron routes exist (`peloton-sync`, `strava-sync`, `weekly-review-auto-finalize`, `insights-generate`) but there is no queue, retry, or dead-letter handling anywhere in `packages/jobs`; failures are per-user isolated and silently logged (TD-014)
+2. **`insights-generate` cron unscheduled** — route works but isn't in `vercel.json` (TD-017)
+3. **Withings and Peloton unconfigured** — code-complete, waiting on credentials/connection
+4. **Apple Health webhook is sleep-only** — steps, VO2 max, resting HR (outside sleep), exercise minutes, and active energy are not yet accepted
+5. **`listByDateRange` capped at 500 rows** — acceptable for current scale (TD-016)
 
 ---
 
 ## What Still Needs Building
 
-**Next sprint priorities:**
-1. Configurable timezone at signup (TD-011)
-2. Pagination / LIMIT on list queries for long-term data scaling
-3. Background job execution infrastructure (cron/queue for Withings sync)
+**Next sprint priorities (see task-level plan for full detail):**
+1. Configure Withings OAuth end to end
+2. Decide Peloton-direct vs. Peloton→Strava-relay, then connect Peloton
+3. Extend Apple Health webhook beyond sleep
+4. Schema: waist_hip_in/waist_gut_in, bedtime/wake time, cold plunge, supplement adherence
+5. Background job infrastructure with real retry/dead-letter handling (TD-014)
+6. AI-powered weekly review narrative (score/why/what-worked/what-needs-attention/strategic-decision/risk-forecast/next-action), built as an editable draft
+
+**Already built, previously undocumented:**
+- Peloton adapter, connect route, weekly cron, and UI card
+- Apple Health sleep webhook + orchestrator
+- AI-generated insights via `AiInsightService` (Claude API) — feeds the Insights module, not a weekly-review narrative
+- Weekly review auto-draft cron (creates a draft with computed summary + blank journal reflection; no AI narrative)
 
 **Longer-horizon work:**
-- Second provider adapter (Apple Health, Garmin, or Oura)
-- AI-powered insights (model hookup, prompt templates)
 - Mobile-responsive audit and polish pass
 - Export/data-portability
 
@@ -201,7 +222,7 @@ See `TECH_DEBT.md` for the full register. Active items as of 2026-04-05:
 ## Testing Notes
 
 - **Framework:** Vitest 2 (all packages), Playwright (E2E)
-- **Current coverage:** 49 unit/integration tests across application, integrations, jobs, and web layers
+- **Current coverage:** 86 unit/integration tests across application, integrations, jobs, and web layers
 - **Test seed user:** `dev@example.com` / `password1234` (local Supabase only)
 - **E2E:** `tests/e2e/` — auth, navigation, body, and cardio specs; configured in `apps/web/playwright.config.ts`
 - **Run unit tests:** `pnpm test` from root
@@ -229,5 +250,6 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 
 | Date | Work Done |
 |---|---|
+| 2026-07-15 | Docs reality audit: found Peloton adapter/cron/UI, Apple Health sleep webhook, AI-hooked Insights, and 2 more undocumented cron routes. Rewrote CURRENT_STATE.md, FitnessAppContext.md, docs/known-issues.md, docs/next-release-roadmap.md to match actual code. Corrected stale test count (49 → 86) and table name (`integration_credentials` → `integration_connection_credentials`). |
 | 2026-04-05 | Full check-in: survey, run, test, audit. Fixed lint error + README bug. Created FitnessAppContext.md, AGENTS.md, CURRENT_STATE.md, TECH_DEBT.md, TESTING.md |
 | 2026-04-05 | Sprint: nutrition module (full stack), field-level form errors (body/recovery/cardio), React cache() on auth+profile+supabase client, shared createCoreServices() factory, shared form-utils, parseActionError utility, delete action error handling, Playwright E2E setup (4 spec files), security fix (RLS policies + userId filter on credential repo), 49 tests passing |

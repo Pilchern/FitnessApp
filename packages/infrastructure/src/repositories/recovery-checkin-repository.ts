@@ -22,6 +22,8 @@ const recoveryCheckinRowSchema = z.object({
   resting_heart_rate: z.number().int().nullable(),
   hrv: z.number().nullable(),
   sleep_duration_minutes: z.number().int().nullable(),
+  bedtime_local: z.string().nullable(),
+  wake_time_local: z.string().nullable(),
   sleep_quality: z.number().int().nullable(),
   energy_level: z.number().int().nullable(),
   readiness_level: z.number().int().nullable(),
@@ -39,6 +41,7 @@ const recoveryCheckinRowSchema = z.object({
   sleep_spo2_avg_pct: z.number().nullable(),
   sleep_hrv_avg: z.number().nullable(),
   sleep_avg_heart_rate: z.number().int().nullable(),
+  cold_plunge_completed: z.boolean().nullable(),
   source_type: z.enum(["manual", "imported", "mixed"]),
   source_provider: z.string().nullable(),
   source_external_id: z.string().nullable(),
@@ -51,6 +54,14 @@ const recoveryCheckinRowSchema = z.object({
 
 type RecoveryCheckinRow = z.infer<typeof recoveryCheckinRowSchema>;
 
+// Postgres `time` columns round-trip through supabase-js as "HH:MM:SS"
+// strings. Normalize to "HH:MM" so the domain type has one canonical shape
+// regardless of whether the value just came back from an insert/update
+// (which echoes what we sent) or a fresh select.
+function normalizeLocalTime(value: string | null): string | null {
+  return value == null ? null : value.slice(0, 5);
+}
+
 export function mapRecoveryCheckinRow(row: RecoveryCheckinRow): RecoveryCheckin {
   return {
     id: row.id,
@@ -59,6 +70,8 @@ export function mapRecoveryCheckinRow(row: RecoveryCheckinRow): RecoveryCheckin 
     restingHeartRate: row.resting_heart_rate,
     hrv: row.hrv,
     sleepDurationMinutes: row.sleep_duration_minutes,
+    bedtimeLocal: normalizeLocalTime(row.bedtime_local),
+    wakeTimeLocal: normalizeLocalTime(row.wake_time_local),
     sleepQuality: row.sleep_quality,
     energyLevel: row.energy_level,
     readinessLevel: row.readiness_level,
@@ -76,6 +89,7 @@ export function mapRecoveryCheckinRow(row: RecoveryCheckinRow): RecoveryCheckin 
     sleepSpo2AvgPct: row.sleep_spo2_avg_pct,
     sleepHrvAvg: row.sleep_hrv_avg,
     sleepAvgHeartRate: row.sleep_avg_heart_rate,
+    coldPlungeCompleted: row.cold_plunge_completed,
     source: mapCanonicalSourceFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -90,6 +104,8 @@ function toRecoveryCheckinInsert(input: CreateRecoveryCheckinInput) {
     resting_heart_rate: input.restingHeartRate ?? null,
     hrv: input.hrv ?? null,
     sleep_duration_minutes: input.sleepDurationMinutes ?? null,
+    bedtime_local: input.bedtimeLocal ?? null,
+    wake_time_local: input.wakeTimeLocal ?? null,
     sleep_quality: input.sleepQuality ?? null,
     energy_level: input.energyLevel ?? null,
     readiness_level: input.readinessLevel ?? null,
@@ -107,6 +123,7 @@ function toRecoveryCheckinInsert(input: CreateRecoveryCheckinInput) {
     sleep_spo2_avg_pct: input.sleepSpo2AvgPct ?? null,
     sleep_hrv_avg: input.sleepHrvAvg ?? null,
     sleep_avg_heart_rate: input.sleepAvgHeartRate ?? null,
+    cold_plunge_completed: input.coldPlungeCompleted ?? null,
     ...toSourceColumns(input.source),
   };
 }
@@ -120,6 +137,8 @@ function toRecoveryCheckinUpdate(input: UpdateRecoveryCheckinInput) {
     resting_heart_rate: input.restingHeartRate,
     hrv: input.hrv,
     sleep_duration_minutes: input.sleepDurationMinutes,
+    bedtime_local: input.bedtimeLocal,
+    wake_time_local: input.wakeTimeLocal,
     sleep_quality: input.sleepQuality,
     energy_level: input.energyLevel,
     readiness_level: input.readinessLevel,
@@ -137,6 +156,7 @@ function toRecoveryCheckinUpdate(input: UpdateRecoveryCheckinInput) {
     sleep_spo2_avg_pct: input.sleepSpo2AvgPct,
     sleep_hrv_avg: input.sleepHrvAvg,
     sleep_avg_heart_rate: input.sleepAvgHeartRate,
+    cold_plunge_completed: input.coldPlungeCompleted,
     ...sourceColumns,
   });
 }

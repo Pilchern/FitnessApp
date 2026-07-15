@@ -6,6 +6,7 @@ export * from "./modules/nutrition/nutrition-log-service";
 export * from "./modules/body-metrics/body-metric";
 export * from "./modules/body-metrics/body-metric-helpers";
 export * from "./modules/cardio/cardio-session";
+export * from "./modules/daily-activity/daily-activity-metric";
 export * from "./modules/integrations/integration-status";
 export * from "./modules/insights/insight-rules";
 export * from "./modules/insights/insight-repository";
@@ -20,7 +21,12 @@ export {
   StrengthSessionSummaryService,
   type StrengthSessionSummaryRepository,
 } from "./modules/strength/strength-session-summary";
+export * from "./modules/supplements/supplement-schemas";
+export * from "./modules/supplements/supplement-repository";
+export * from "./modules/supplements/supplement-log-repository";
+export * from "./modules/supplements/supplement-helpers";
 export * from "./modules/training/training-template";
+export * from "./modules/weekly-reviews/ai-weekly-review-service";
 export * from "./modules/weekly-reviews/weekly-review";
 export * from "./modules/weekly-reviews/weekly-review-helpers";
 export * from "./modules/profiles/nutrition-target";

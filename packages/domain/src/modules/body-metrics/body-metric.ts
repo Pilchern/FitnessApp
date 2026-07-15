@@ -9,6 +9,8 @@ export type BodyMetric = {
   weightKg: number | null;
   waistIn: number | null;
   waistCm: number | null;
+  waistHipIn: number | null;
+  waistGutIn: number | null;
   bodyFatPct: number | null;
   muscleMassLb: number | null;
   muscleMassKg: number | null;

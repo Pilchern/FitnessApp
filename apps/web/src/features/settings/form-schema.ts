@@ -41,3 +41,13 @@ export const settingsFormSchema = z.object({
 });
 
 export type SettingsFormInput = z.infer<typeof settingsFormSchema>;
+
+export const supplementFormSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, "Supplement name is required")
+    .max(100, "Supplement name must be 100 characters or fewer"),
+});
+
+export type SupplementFormInput = z.infer<typeof supplementFormSchema>;

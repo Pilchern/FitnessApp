@@ -60,6 +60,8 @@ export function formatSyncRunStatus(status: SyncJobRun["status"]) {
       return "Failed";
     case "cancelled":
       return "Cancelled";
+    case "dead_letter":
+      return "Failed permanently";
     default:
       return status;
   }

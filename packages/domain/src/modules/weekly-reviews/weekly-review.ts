@@ -44,6 +44,24 @@ export type WeeklyReviewManualOverrides = Partial<
   >
 >;
 
+export type WeeklyReviewAiDraftStatus =
+  | "none"
+  | "pending_review"
+  | "accepted"
+  | "dismissed";
+
+export type WeeklyReviewAiDraft = {
+  score: number;
+  scoreRationale: string;
+  whatWorked: string;
+  whatNeedsAttention: string;
+  strategicDecision: string;
+  riskForecast: string;
+  nextBestAction: string;
+  model: string;
+  generatedAt: IsoDateTime;
+};
+
 export type WeeklyReview = {
   id: EntityId;
   userId: UserId;
@@ -60,6 +78,8 @@ export type WeeklyReview = {
   strategicDecision: string | null;
   riskForecast: string | null;
   manualOverrides: WeeklyReviewManualOverrides;
+  aiDraft: WeeklyReviewAiDraft | null;
+  aiDraftStatus: WeeklyReviewAiDraftStatus;
   completedAt: IsoDateTime | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

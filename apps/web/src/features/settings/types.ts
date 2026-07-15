@@ -1,11 +1,17 @@
-import type { UserProfile } from "@fitness-app/domain";
+import type { Supplement, UserProfile } from "@fitness-app/domain";
 
 export type SettingsPageData = {
   profile: UserProfile;
   userEmail: string;
+  supplements: Supplement[];
 };
 
 export type SettingsActionState = {
+  error?: string;
+  fieldErrors?: Record<string, string>;
+};
+
+export type SupplementActionState = {
   error?: string;
   fieldErrors?: Record<string, string>;
 };

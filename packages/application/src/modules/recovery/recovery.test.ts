@@ -36,6 +36,54 @@ describe("recovery validation", () => {
       }),
     ).toThrow();
   });
+
+  it("accepts HH:MM bedtime/wake time and a cold plunge flag", () => {
+    const parsed = createRecoveryCheckinSchema.parse({
+      userId,
+      checkinDate: "2026-03-31",
+      alcoholCount: 0,
+      bedtimeLocal: "22:45",
+      wakeTimeLocal: "06:30",
+      coldPlungeCompleted: true,
+    });
+
+    expect(parsed.bedtimeLocal).toBe("22:45");
+    expect(parsed.wakeTimeLocal).toBe("06:30");
+    expect(parsed.coldPlungeCompleted).toBe(true);
+  });
+
+  it("accepts HH:MM:SS bedtime/wake time (the shape Postgres `time` round-trips as)", () => {
+    const parsed = createRecoveryCheckinSchema.parse({
+      userId,
+      checkinDate: "2026-03-31",
+      alcoholCount: 0,
+      bedtimeLocal: "22:45:00",
+      wakeTimeLocal: "06:30:15",
+    });
+
+    expect(parsed.bedtimeLocal).toBe("22:45:00");
+    expect(parsed.wakeTimeLocal).toBe("06:30:15");
+  });
+
+  it("rejects malformed bedtime/wake time strings", () => {
+    expect(() =>
+      createRecoveryCheckinSchema.parse({
+        userId,
+        checkinDate: "2026-03-31",
+        alcoholCount: 0,
+        bedtimeLocal: "10:45pm",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createRecoveryCheckinSchema.parse({
+        userId,
+        checkinDate: "2026-03-31",
+        alcoholCount: 0,
+        wakeTimeLocal: "25:00",
+      }),
+    ).toThrow();
+  });
 });
 
 describe("recovery helpers", () => {
@@ -64,6 +112,9 @@ describe("recovery helpers", () => {
       sleepSpo2AvgPct: null,
       sleepHrvAvg: null,
       sleepAvgHeartRate: null,
+      bedtimeLocal: null,
+      wakeTimeLocal: null,
+      coldPlungeCompleted: null,
       source: {
         sourceType: "manual",
         sourceProvider: null,
@@ -99,6 +150,9 @@ describe("recovery helpers", () => {
       sleepSpo2AvgPct: null,
       sleepHrvAvg: null,
       sleepAvgHeartRate: null,
+      bedtimeLocal: null,
+      wakeTimeLocal: null,
+      coldPlungeCompleted: null,
       source: {
         sourceType: "manual",
         sourceProvider: null,
