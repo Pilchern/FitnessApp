@@ -7,19 +7,7 @@
 
 ## Priority 1 — Active Debt
 
-### TD-014: No background job execution infrastructure
-- **Severity:** Medium
-- **Affected package:** `packages/jobs`
-- **Problem:** 4 cron routes now exist (`peloton-sync`, `strava-sync`, `weekly-review-auto-finalize`, `insights-generate`), each using bounded-concurrency `Promise.allSettled`-style per-user isolation, but scheduled execution still relies on Vercel Cron only. No queue, retry logic, or dead-letter handling anywhere — a failed sync for one user is logged and dropped, not retried.
-- **Fix:** Either: (a) use Supabase Edge Functions with pg_cron, or (b) use an external queue (Inngest, Trigger.dev). Decision needed before scaling.
-- **Effort:** XL (3–5 days depending on approach)
-
-### TD-017: `insights-generate` cron not scheduled
-- **Severity:** Low
-- **Affected file:** `vercel.json`, `apps/web/src/app/api/cron/insights-generate/route.ts`
-- **Problem:** The route is fully implemented (generates rule-based + optional AI insights for every profile) but is missing from `vercel.json`'s `crons` array, unlike the other 3 cron routes. It only runs if triggered manually or by an external scheduler.
-- **Fix:** Add an entry to `vercel.json`, or fold into whatever replaces TD-014's ad hoc Vercel Cron usage.
-- **Effort:** S
+_(none currently — see Resolved Debt for TD-014 and TD-017)_
 
 ---
 
@@ -60,3 +48,5 @@
 | TD-012 | Nutrition module placeholder — full module built | 2026-04-05 |
 | TD-013 | No E2E test coverage — Playwright set up with 4 spec files | 2026-04-05 |
 | TD-015 | `integration_connection_credentials` RLS/policy gaps — fixed | 2026-04-05 |
+| TD-014 | No background job execution infrastructure — `sync_job_runs` wired up as a retry queue via Supabase pg_cron + pg_net (15-min sweep at `/api/cron/retry-failed-syncs`, exponential backoff, `dead_letter` status after 5 attempts); added `/api/cron/withings-sync` scheduled route | 2026-07-15 |
+| TD-017 | `insights-generate` cron not scheduled — added to `vercel.json` | 2026-07-15 |

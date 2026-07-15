@@ -11,7 +11,7 @@ const syncJobRunRowSchema = z.object({
   user_id: z.string().uuid().nullable(),
   integration_connection_id: z.string().uuid().nullable(),
   job_type: z.string(),
-  status: z.enum(["queued", "running", "succeeded", "failed", "cancelled"]),
+  status: z.enum(["queued", "running", "succeeded", "failed", "cancelled", "dead_letter"]),
   trigger_type: z.enum(["scheduled", "manual", "retry", "system", "webhook"]),
   dedupe_key: z.string().nullable(),
   attempt_count: z.number().int(),

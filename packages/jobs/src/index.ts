@@ -2,3 +2,4 @@ export * from "./orchestration/apple-health-daily-metrics-sync";
 export * from "./orchestration/apple-health-sleep-sync";
 export * from "./orchestration/body-metric-sync";
 export * from "./orchestration/cardio-sync";
+export * from "./orchestration/retry-sweep";
