@@ -20,6 +20,8 @@ export function toRecoveryFormValues(
     return {
       checkinDate: todayIsoDate(),
       sleepHours: "",
+      bedtimeLocal: "",
+      wakeTimeLocal: "",
       sleepQuality: "",
       readinessLevel: "",
       energyLevel: "",
@@ -28,6 +30,7 @@ export function toRecoveryFormValues(
       alcoholCount: "0",
       restingHeartRate: "",
       hrv: "",
+      coldPlungeCompleted: false,
       notes: "",
     };
   }
@@ -39,6 +42,8 @@ export function toRecoveryFormValues(
       checkin.sleepDurationMinutes != null
         ? `${Math.round((checkin.sleepDurationMinutes / 60) * 10) / 10}`
         : "",
+    bedtimeLocal: checkin.bedtimeLocal ?? "",
+    wakeTimeLocal: checkin.wakeTimeLocal ?? "",
     sleepQuality: numberToInput(checkin.sleepQuality),
     readinessLevel: numberToInput(checkin.readinessLevel),
     energyLevel: numberToInput(checkin.energyLevel),
@@ -47,6 +52,7 @@ export function toRecoveryFormValues(
     alcoholCount: `${checkin.alcoholCount}`,
     restingHeartRate: numberToInput(checkin.restingHeartRate),
     hrv: numberToInput(checkin.hrv),
+    coldPlungeCompleted: checkin.coldPlungeCompleted ?? false,
     notes: checkin.notes ?? "",
   };
 }

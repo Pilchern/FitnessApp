@@ -1,5 +1,6 @@
 import {
   createRecoveryCheckinAction,
+  logSupplementsAction,
   updateRecoveryCheckinAction,
 } from "../actions";
 import { getRecoveryPageData } from "../server";
@@ -7,6 +8,7 @@ import { RecoveryCheckinList } from "./recovery-checkin-list";
 import { RecoveryQuickForm } from "./recovery-quick-form";
 import { RecoverySummaryCards } from "./recovery-summary-cards";
 import { RecoveryTrendSection } from "./recovery-trend-section";
+import { SupplementChecklist } from "./supplement-checklist";
 
 type RecoveryScreenProps = {
   editCheckinId?: string;
@@ -40,6 +42,13 @@ export async function RecoveryScreen({ editCheckinId }: RecoveryScreenProps) {
             : createRecoveryCheckinAction
         }
         formError={data.formError}
+      />
+
+      <SupplementChecklist
+        supplements={data.activeSupplements}
+        takenSupplementIds={data.supplementsTakenToday}
+        logDate={data.todayIsoDate}
+        action={logSupplementsAction}
       />
 
       <RecoveryTrendSection

@@ -2,7 +2,7 @@ import type {
   RecoverySummary,
   SparseTrendPoint,
 } from "@fitness-app/application";
-import type { RecoveryCheckin } from "@fitness-app/domain";
+import type { RecoveryCheckin, Supplement } from "@fitness-app/domain";
 
 export type RecoveryPageData = {
   checkins: RecoveryCheckin[];
@@ -12,6 +12,9 @@ export type RecoveryPageData = {
   hrvTrend: SparseTrendPoint[];
   editingCheckin: RecoveryCheckin | null;
   formError?: string;
+  activeSupplements: Supplement[];
+  supplementsTakenToday: string[];
+  todayIsoDate: string;
 };
 
 export type RecoveryActionState = {
@@ -19,10 +22,16 @@ export type RecoveryActionState = {
   fieldErrors?: Record<string, string>;
 };
 
+export type SupplementChecklistActionState = {
+  error?: string;
+};
+
 export type RecoveryFormValues = {
   id?: string;
   checkinDate: string;
   sleepHours: string;
+  bedtimeLocal: string;
+  wakeTimeLocal: string;
   sleepQuality: string;
   readinessLevel: string;
   energyLevel: string;
@@ -31,5 +40,6 @@ export type RecoveryFormValues = {
   alcoholCount: string;
   restingHeartRate: string;
   hrv: string;
+  coldPlungeCompleted: boolean;
   notes: string;
 };

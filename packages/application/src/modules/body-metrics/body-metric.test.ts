@@ -31,6 +31,37 @@ describe("body metric validation", () => {
       }),
     ).toThrow();
   });
+
+  it("accepts the hip and gut waist measurement points", () => {
+    const parsed = createBodyMetricSchema.parse({
+      userId,
+      measuredOn: "2026-03-31",
+      waistIn: 34.1,
+      waistHipIn: 38.5,
+      waistGutIn: 36.2,
+    });
+
+    expect(parsed.waistHipIn).toBe(38.5);
+    expect(parsed.waistGutIn).toBe(36.2);
+  });
+
+  it("rejects non-positive hip/gut waist measurements", () => {
+    expect(() =>
+      createBodyMetricSchema.parse({
+        userId,
+        measuredOn: "2026-03-31",
+        waistHipIn: 0,
+      }),
+    ).toThrow();
+
+    expect(() =>
+      createBodyMetricSchema.parse({
+        userId,
+        measuredOn: "2026-03-31",
+        waistGutIn: -2,
+      }),
+    ).toThrow();
+  });
 });
 
 describe("body metric helpers", () => {
@@ -43,6 +74,8 @@ describe("body metric helpers", () => {
       weightKg: null,
       waistIn: 35,
       waistCm: null,
+      waistHipIn: null,
+      waistGutIn: null,
       bodyFatPct: null,
       muscleMassLb: null,
       muscleMassKg: null,
@@ -72,6 +105,8 @@ describe("body metric helpers", () => {
       weightKg: null,
       waistIn: 34.3,
       waistCm: null,
+      waistHipIn: null,
+      waistGutIn: null,
       bodyFatPct: 23.5,
       muscleMassLb: 144.3,
       muscleMassKg: null,
@@ -101,6 +136,8 @@ describe("body metric helpers", () => {
       weightKg: null,
       waistIn: null,
       waistCm: null,
+      waistHipIn: null,
+      waistGutIn: null,
       bodyFatPct: null,
       muscleMassLb: null,
       muscleMassKg: null,

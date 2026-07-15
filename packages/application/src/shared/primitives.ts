@@ -25,6 +25,19 @@ export const optionalTrimmedStringSchema = z
 
 export const nullableNumberSchema = z.number().finite().nullable().optional();
 
+// Local wall-clock time (no date/timezone component), matching how a
+// Postgres `time` column round-trips through supabase-js. Accepts "HH:MM"
+// (the shape the web form submits) and "HH:MM:SS" (the shape returned when
+// reading a `time` column back from the database).
+export const localTimeSchema = z
+  .string()
+  .regex(
+    /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/,
+    "Expected a 24-hour clock time in HH:MM format",
+  );
+
+export const optionalLocalTimeSchema = localTimeSchema.nullable().optional();
+
 export const manualRecordSourceSchema = z.object({
   sourceType: z.literal("manual"),
   sourceProvider: z.null().default(null),

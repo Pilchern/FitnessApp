@@ -1,19 +1,24 @@
 "use server";
 
-import { RecoveryCheckinService } from "@fitness-app/application";
-import { SupabaseRecoveryCheckinRepository } from "@fitness-app/infrastructure";
+import { RecoveryCheckinService, SupplementLogService } from "@fitness-app/application";
+import {
+  SupabaseRecoveryCheckinRepository,
+  SupabaseSupplementLogRepository,
+} from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import { recoveryCheckinFormSchema } from "./form-schema";
-import type { RecoveryActionState } from "./types";
+import type { RecoveryActionState, SupplementChecklistActionState } from "./types";
 
 function buildRecoveryPayload(userId: string, formData: FormData) {
   const parsed = recoveryCheckinFormSchema.parse({
     id: formData.get("id"),
     checkinDate: formData.get("checkinDate"),
     sleepHours: formData.get("sleepHours"),
+    bedtimeLocal: formData.get("bedtimeLocal"),
+    wakeTimeLocal: formData.get("wakeTimeLocal"),
     sleepQuality: formData.get("sleepQuality"),
     readinessLevel: formData.get("readinessLevel"),
     energyLevel: formData.get("energyLevel"),
@@ -22,6 +27,7 @@ function buildRecoveryPayload(userId: string, formData: FormData) {
     alcoholCount: formData.get("alcoholCount"),
     restingHeartRate: formData.get("restingHeartRate"),
     hrv: formData.get("hrv"),
+    coldPlungeCompleted: formData.get("coldPlungeCompleted"),
     notes: formData.get("notes"),
   });
 
@@ -31,6 +37,8 @@ function buildRecoveryPayload(userId: string, formData: FormData) {
     checkinDate: parsed.checkinDate,
     sleepDurationMinutes:
       parsed.sleepHours != null ? Math.round(parsed.sleepHours * 60) : null,
+    bedtimeLocal: parsed.bedtimeLocal,
+    wakeTimeLocal: parsed.wakeTimeLocal,
     sleepQuality: parsed.sleepQuality,
     readinessLevel: parsed.readinessLevel,
     energyLevel: parsed.energyLevel,
@@ -39,6 +47,7 @@ function buildRecoveryPayload(userId: string, formData: FormData) {
     alcoholCount: parsed.alcoholCount,
     restingHeartRate: parsed.restingHeartRate,
     hrv: parsed.hrv,
+    coldPlungeCompleted: parsed.coldPlungeCompleted,
     notes: parsed.notes || null,
     source: {
       sourceType: "manual" as const,
@@ -108,4 +117,49 @@ export async function deleteRecoveryCheckinAction(formData: FormData) {
     )}`;
   }
   redirect(url);
+}
+
+async function createSupplementLogService() {
+  const client = await createSupabaseRequestClient();
+  return new SupplementLogService(new SupabaseSupplementLogRepository(client));
+}
+
+/**
+ * Saves today's supplement checklist. `supplementIds` carries every active
+ * supplement id (rendered as repeated hidden inputs) so we know which boxes
+ * were left unchecked — logAdherence upserts taken=true/false for each one
+ * rather than only writing rows for the checked boxes.
+ */
+export async function logSupplementsAction(
+  _previousState: SupplementChecklistActionState,
+  formData: FormData,
+): Promise<SupplementChecklistActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const logDate = formData.get("logDate");
+    const supplementIds = formData.getAll("supplementIds");
+
+    if (typeof logDate !== "string" || !logDate) {
+      return { error: "Missing log date." };
+    }
+
+    const supplementLogService = await createSupplementLogService();
+
+    await Promise.all(
+      supplementIds
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+        .map((supplementId) =>
+          supplementLogService.logAdherence({
+            userId: user.id,
+            supplementId,
+            logDate,
+            taken: formData.get(`supplement_${supplementId}`) === "on",
+          }),
+        ),
+    );
+
+    redirect("/recovery");
+  } catch (error) {
+    return parseActionError(error);
+  }
 }

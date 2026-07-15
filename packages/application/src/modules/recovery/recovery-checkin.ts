@@ -6,6 +6,7 @@ import {
   defaultManualSource,
   ensureAtLeastOneDefined,
   isoDateSchema,
+  optionalLocalTimeSchema,
   optionalTrimmedStringSchema,
   uuidSchema,
 } from "../../shared/primitives";
@@ -15,6 +16,8 @@ const recoveryCheckinBaseSchema = z.object({
   restingHeartRate: z.number().int().min(0).nullable().optional(),
   hrv: z.number().nonnegative().nullable().optional(),
   sleepDurationMinutes: z.number().int().min(0).nullable().optional(),
+  bedtimeLocal: optionalLocalTimeSchema,
+  wakeTimeLocal: optionalLocalTimeSchema,
   sleepQuality: z.number().int().min(1).max(5).nullable().optional(),
   energyLevel: z.number().int().min(1).max(10).nullable().optional(),
   readinessLevel: z.number().int().min(1).max(10).nullable().optional(),
@@ -32,6 +35,7 @@ const recoveryCheckinBaseSchema = z.object({
   sleepSpo2AvgPct: z.number().nullable().optional(),
   sleepHrvAvg: z.number().nullable().optional(),
   sleepAvgHeartRate: z.number().nullable().optional(),
+  coldPlungeCompleted: z.boolean().nullable().optional(),
   source: canonicalRecordSourceSchema.default(defaultManualSource),
 });
 
@@ -52,6 +56,8 @@ export const updateRecoveryCheckinSchema = recoveryCheckinBaseSchema
         "restingHeartRate",
         "hrv",
         "sleepDurationMinutes",
+        "bedtimeLocal",
+        "wakeTimeLocal",
         "sleepQuality",
         "energyLevel",
         "readinessLevel",
@@ -59,6 +65,7 @@ export const updateRecoveryCheckinSchema = recoveryCheckinBaseSchema
         "sorenessLevel",
         "alcoholCount",
         "notes",
+        "coldPlungeCompleted",
         "source",
       ]),
     {

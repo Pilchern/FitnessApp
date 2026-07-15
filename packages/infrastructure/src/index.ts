@@ -13,6 +13,8 @@ export * from "./repositories/recovery-checkin-repository";
 export * from "./repositories/shared";
 export * from "./repositories/strength-session-repository";
 export * from "./repositories/strength-session-summary-repository";
+export * from "./repositories/supplement-repository";
+export * from "./repositories/supplement-log-repository";
 export * from "./repositories/sync-job-run-repository";
 export * from "./repositories/training-template-repository";
 export * from "./repositories/weekly-review-repository";
