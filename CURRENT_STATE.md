@@ -1,7 +1,7 @@
 # Current State — FitnessApp
 
 **Last updated:** 2026-07-15 (docs reality audit)
-**Overall health:** Stable. TypeScript clean. All 86 tests pass. Lint clean. Live Supabase project connected. Strava integration live; Peloton, Withings, and Apple Health integrations are code-complete but need credentials/verification.
+**Overall health:** Stable. TypeScript clean. 146 tests pass. Lint clean. Live Supabase project connected. Withings and Apple Health are live and verified. Strava is currently broken (app deactivated on Strava's side — user action required). Peloton's unofficial API auth endpoint is confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not currently viable; **Peloton → Strava relay (via Peloton's own "auto-export to Strava" setting) is now the recommended cardio path**, pending Strava reactivation.
 
 ---
 
@@ -15,7 +15,7 @@
 | Build | UNTESTED | Requires live Supabase connectivity to verify fully |
 | E2E | READY | Playwright configured, 4 spec files (auth, body, cardio, weekly-review) |
 | Database | LIVE | Cloud Supabase project, credentials in .env.local |
-| Integrations | PARTIAL | Strava connected and syncing; Withings, Peloton, Apple Health are code-complete but not configured/connected |
+| Integrations | PARTIAL | Withings and Apple Health live and verified. Strava currently broken (app deactivated, user must reactivate at strava.com/settings/api). Peloton direct sync confirmed blocked by Peloton's own API as of 2026-07-16 — use Peloton's native Strava auto-export instead once Strava is reactivated. |
 
 ---
 
@@ -61,10 +61,10 @@ Prior versions of this doc said only Strava and Withings existed. That was wrong
 |---|---|---|---|---|
 | Strava | OAuth 2.0 | `packages/integrations/src/providers/strava/` | `/api/cron/strava-sync` (weekly, in `vercel.json`) | Yes — live |
 | Withings | OAuth 2.0 | `packages/integrations/src/providers/withings/` | Manual sync via UI; no dedicated cron | No — `WITHINGS_CLIENT_ID/SECRET/REDIRECT_URI` unset |
-| Peloton | Username/password against Peloton's unofficial API (no public API exists) | `packages/integrations/src/providers/peloton/peloton-adapter.ts` | `/api/cron/peloton-sync` (weekly, in `vercel.json`) | No — per-user credentials never connected; `hasPelotonServerEnv()` only checks `INTEGRATION_ENCRYPTION_KEY` is set (true today), so the UI card renders but no connection exists |
+| Peloton | Username/password against Peloton's unofficial API (no public API exists) | `packages/integrations/src/providers/peloton/peloton-adapter.ts` | `/api/cron/peloton-sync` (weekly, in `vercel.json`) | **Blocked at the source.** Confirmed 2026-07-16: `POST https://api.onepeloton.com/auth/login` returns `403 Access forbidden. Endpoint no longer accepting requests.` for any credentials — Peloton has deliberately restricted third-party auth to this endpoint. Not a code bug; not fixable without reverse-engineering around a deliberate access restriction, which this project won't do. The adapter/cron/UI remain in place in case Peloton's policy changes, but the recommended path is Peloton's own "auto-export to Strava" setting instead. |
 | Apple Health | HMAC-signed webhook (sleep only today) | `apps/web/src/app/api/integrations/apple-health/sleep/route.ts` + `packages/jobs/src/orchestration/apple-health-sleep-sync.ts` | Push-based (bridge app posts on a schedule), no cron | No — `APPLE_HEALTH_WEBHOOK_SECRET` unset |
 
-The Peloton adapter maps `avgOutput` (watts, derived from `total_output`), `cadenceMin`/`cadenceMax`, and `resistanceMin`/`resistanceMax`. The Strava adapter only maps `avgOutput` and `cadenceMin` (from `average_watts`/`average_cadence`) — `cadenceMax`, `resistanceMin`, and `resistanceMax` are always `null` via Strava, because Strava's activity model has no equivalent fields. Direct Peloton sync is strictly higher-fidelity for cycling metrics than a Peloton→Strava→FitnessApp path.
+The Peloton adapter maps `avgOutput` (watts, derived from `total_output`), `cadenceMin`/`cadenceMax`, and `resistanceMin`/`resistanceMax`. The Strava adapter only maps `avgOutput` and `cadenceMin` (from `average_watts`/`average_cadence`) — `cadenceMax`, `resistanceMin`, and `resistanceMax` are always `null` via Strava, because Strava's activity model has no equivalent fields. Direct Peloton sync would be strictly higher-fidelity for cycling metrics than a Peloton→Strava→FitnessApp path — **but this is now moot**: Peloton's unofficial API auth endpoint is confirmed blocked (see the Peloton row above), so the only remaining automated path is the Strava relay, accepting the fidelity loss. A full-fidelity alternative — importing Peloton's own CSV workout-history export — was considered and rejected for now (would require building a new CSV import path; not started) in favor of the zero-code Strava relay. Revisit if the fidelity loss becomes a real pain point.
 
 ### Scheduled jobs (`vercel.json`)
 
@@ -93,16 +93,23 @@ None of the four cron routes have retry logic, a queue, or a dead-letter path �
 - None
 
 ### Medium
-1. **Withings integration unconfigured** — OAuth credentials not set. Needs `WITHINGS_CLIENT_ID`, `WITHINGS_CLIENT_SECRET`, `WITHINGS_REDIRECT_URI` in `.env.local` and Vercel prod.
-2. **Peloton integration unconfigured** — no user has connected a Peloton account yet (per-user username/password, encrypted at rest). Code and weekly cron are complete.
-3. **Apple Health webhook unconfigured** — `APPLE_HEALTH_WEBHOOK_SECRET` unset; sleep-only today (steps/VO2 max/resting HR/exercise minutes/active energy not yet accepted).
-4. **`insights-generate` cron not scheduled** — route exists and works, but is missing from `vercel.json`. AI/rule-based insights only regenerate on manual trigger.
-5. **No background job queue** — no retry, backoff, or dead-letter handling anywhere in `packages/jobs`. All four cron routes are Vercel-Cron-only, best-effort, per-user error isolation.
-6. **No AI-generated weekly review narrative** — Insights module has an optional Claude API hookup (`AiInsightService`), but it produces generic insights, not the weekly-review-specific format (score, why, what worked, what needs attention, strategic decision, risk forecast, next best action).
+1. **Strava broken** — app deactivated on Strava's side (`403: Application Status Inactive`), confirmed via a failed `sync_job_runs` row on 2026-07-16. User must reactivate at strava.com/settings/api. This blocks the recommended Peloton→Strava relay path too.
+2. **Peloton direct sync blocked by Peloton** — `POST https://api.onepeloton.com/auth/login` returns `403` for any credentials as of 2026-07-16. Not fixable without reverse-engineering around a deliberate access restriction. Recommended path is now Peloton's own "auto-export to Strava" setting, once Strava is reactivated.
+3. **`insights-generate` cron not scheduled** — route exists and works, but is missing from `vercel.json`. AI/rule-based insights only regenerate on manual trigger. (TD-017)
 
 ### Low
-7. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
-8. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale.
+4. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
+5. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale.
+
+### Resolved this session
+- Withings OAuth connected and verified — real sync landed 266 rows in `body_metrics` with `source_provider = 'withings'`.
+- Apple Health extended beyond sleep (steps, VO2 max, resting HR, exercise minutes, active energy) — new `/api/integrations/apple-health/daily-metrics` endpoint.
+- Apple Health webhook now supports a static bearer-token auth mode alongside HMAC, since no-code bridge apps (Health Auto Export) can't compute per-request signatures — automation is now actually achievable.
+- Critical: RLS was disabled on 15 production tables — fixed.
+- Schema additions shipped end-to-end: waist hip/gut, bedtime/wake time, cold plunge, supplement adherence.
+- Background job retry/dead-letter infrastructure shipped via Supabase pg_cron + pg_net (TD-014).
+- AI-generated weekly review draft shipped (score/why/what-worked/what-needs-attention/strategic-decision/risk-forecast/next-action), editable, never auto-committed.
+- Peloton connect card (was computed server-side but never rendered) — fixed.
 
 ---
 
@@ -116,13 +123,14 @@ See `TECH_DEBT.md` for full prioritized list.
 
 - **Database:** Supabase cloud project (credentials in `apps/web/.env.local`)
 - **Auth:** Supabase Auth (email/password), sessions via HTTP-only cookies
-- **Strava integration:** Fully live — OAuth connect, sync, weekly cron
-- **Withings integration:** Code complete, OAuth credentials not configured
-- **Peloton integration:** Code complete (adapter, connect route, weekly cron, UI card) — no connected account yet
-- **Apple Health integration:** Code complete for sleep only (HMAC webhook + orchestrator) — webhook secret not configured; steps/VO2 max/RHR/exercise minutes/active energy not yet supported
-- **AI insights:** `AiInsightService` (packages/application/src/modules/insights/ai-insight-service.ts) calls the Anthropic Messages API directly when `ANTHROPIC_API_KEY` is set and `INSIGHT_AI_ENABLED=true`; feeds the existing rule-based Insights module, not a separate weekly-review narrative
+- **Strava integration:** Code live, but currently broken — app deactivated on Strava's side, user must reactivate
+- **Withings integration:** Live and verified — real sync confirmed landing data
+- **Peloton integration:** Code complete (adapter, connect route, weekly cron, UI card) but the unofficial API auth endpoint is confirmed blocked by Peloton — use Peloton's native Strava auto-export instead
+- **Apple Health integration:** Live for sleep and daily activity (steps/VO2 max/RHR/exercise minutes/active energy); two auth modes (static bearer for no-code bridge apps, HMAC for scripted clients)
+- **AI insights:** `AiInsightService` (packages/application/src/modules/insights/ai-insight-service.ts) calls the Anthropic Messages API directly when `ANTHROPIC_API_KEY` is set and `INSIGHT_AI_ENABLED=true`; feeds the rule-based Insights module
+- **AI weekly review:** `AiWeeklyReviewService` generates a Claude-authored draft (score/why/what-worked/what-needs-attention/strategic-decision/risk-forecast/next-action) stored separately from the canonical review fields until explicitly accepted — never auto-committed
 - **Encryption key:** `INTEGRATION_ENCRYPTION_KEY` set (base64-encoded 32-byte AES-256 key) — required by Withings, Strava, and Peloton
-- **Cron:** 3 of 4 cron routes scheduled weekly (Monday 8am UTC) via `vercel.json`; `insights-generate` is unscheduled (needs `CRON_SECRET` in Vercel env either way)
+- **Cron + retry:** 5 cron routes scheduled via `vercel.json`/pg_cron (peloton-sync, strava-sync, withings-sync, weekly-review-auto-finalize, retry-failed-syncs every 15min); `sync_job_runs` now used as a real retry queue with exponential backoff and a `dead_letter` terminal status after 5 attempts (TD-014, resolved)
 - **Local Supabase:** Can be run locally with `supabase start && supabase db reset`
 - **Seed user (local only):** `dev@example.com` / `password1234`
 - **CI/CD:** None configured yet
@@ -131,9 +139,9 @@ See `TECH_DEBT.md` for full prioritized list.
 
 ## Active Priorities (Recommended Next Sprint)
 
-1. Configure Withings OAuth credentials (quick win — all code is in place)
-2. Decide Peloton vs. Strava-relay as the cardio sync path, then connect Peloton
-3. Extend Apple Health webhook beyond sleep (steps, VO2 max, resting HR, exercise minutes, active energy)
+1. User: reactivate Strava app at strava.com/settings/api
+2. User: enable Peloton's native "auto-export to Strava" setting once Strava is reactivated, then connect Strava
+3. Revisit CSV import from Peloton's own workout-history export if the Strava-relay fidelity loss (no cadence-max/resistance) becomes a real pain point (not started — would be new code)
 4. Schema additions: waist_hip_in/waist_gut_in, bedtime/wake time, cold plunge, supplement adherence
 5. Background job infrastructure with real retry/dead-letter handling (TD-014)
 6. AI-powered weekly review narrative, built as an editable draft
