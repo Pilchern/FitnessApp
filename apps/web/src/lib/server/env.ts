@@ -25,7 +25,6 @@ const serverEnvSchema = z.object({
   STRAVA_REDIRECT_URI: optionalEnvUrlSchema,
   INTEGRATION_ENCRYPTION_KEY: optionalEnvStringSchema,
   CRON_SECRET: optionalEnvStringSchema,
-  APPLE_HEALTH_WEBHOOK_SECRET: optionalEnvStringSchema,
   ANTHROPIC_API_KEY: optionalEnvStringSchema,
   INSIGHT_AI_MODEL: optionalEnvStringSchema,
   INSIGHT_AI_ENABLED: z.preprocess(
@@ -62,7 +61,6 @@ export function getServerEnv() {
     STRAVA_REDIRECT_URI: process.env.STRAVA_REDIRECT_URI,
     INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
-    APPLE_HEALTH_WEBHOOK_SECRET: process.env.APPLE_HEALTH_WEBHOOK_SECRET,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     INSIGHT_AI_MODEL: process.env.INSIGHT_AI_MODEL,
     INSIGHT_AI_ENABLED: process.env.INSIGHT_AI_ENABLED,
@@ -98,7 +96,15 @@ export function hasStravaServerEnv() {
   );
 }
 
-export function hasAppleHealthWebhookEnv() {
+/**
+ * Apple Health no longer uses a single shared app-wide webhook secret (see
+ * verify-request.ts for the vulnerability that fixed). Auth now checks a
+ * per-user token stored encrypted in `integration_connection_credentials`,
+ * so the only *global* environment requirement left is the encryption key
+ * needed to read/write those per-user tokens at all — the same key every
+ * other integration's credentials already depend on.
+ */
+export function hasAppleHealthServerEnv() {
   const env = getServerEnv();
-  return Boolean(env.APPLE_HEALTH_WEBHOOK_SECRET);
+  return Boolean(env.INTEGRATION_ENCRYPTION_KEY);
 }

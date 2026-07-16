@@ -125,9 +125,8 @@ WITHINGS_REDIRECT_URI
 STRAVA_CLIENT_ID              (optional, for Strava integration — currently set, live)
 STRAVA_CLIENT_SECRET          (optional)
 STRAVA_REDIRECT_URI
-INTEGRATION_ENCRYPTION_KEY    (base64-encoded 32-byte AES-256 key — required by Withings, Strava, and Peloton)
+INTEGRATION_ENCRYPTION_KEY    (base64-encoded 32-byte AES-256 key — required by Withings, Strava, Peloton, and Apple Health)
 CRON_SECRET                   (Bearer token all 4 cron routes require)
-APPLE_HEALTH_WEBHOOK_SECRET   (HMAC key for the Apple Health sleep webhook)
 ANTHROPIC_API_KEY             (optional — enables AiInsightService)
 INSIGHT_AI_MODEL              (optional, defaults to claude-haiku-4-5-20251001)
 INSIGHT_AI_ENABLED            (optional, "true" to activate AI insight generation)
@@ -135,7 +134,9 @@ INSIGHT_AI_ENABLED            (optional, "true" to activate AI insight generatio
 
 Peloton needs no dedicated client ID/secret — it authenticates with a per-user Peloton username/password (encrypted at rest with `INTEGRATION_ENCRYPTION_KEY`), supplied through the connect flow, not an env var.
 
-**Current state:** `.env.local` already populated with live Supabase project credentials. Withings credentials are empty (integration UI will show disconnected). No Peloton account is connected yet. `APPLE_HEALTH_WEBHOOK_SECRET` is unset.
+Apple Health also needs no dedicated env var beyond `INTEGRATION_ENCRYPTION_KEY` (as of 2026-07-16): each user generates their own webhook token from `/integrations`, stored encrypted in `integration_connection_credentials`, replacing the old app-wide `APPLE_HEALTH_WEBHOOK_SECRET` — see docs/integrations/apple-health-bridge-setup.md for why (that shared secret plus a client-supplied `X-User-Id` let any signed-up user write into any other user's data).
+
+**Current state:** `.env.local` already populated with live Supabase project credentials. Withings credentials are empty (integration UI will show disconnected). No Peloton account is connected yet. Apple Health requires `INTEGRATION_ENCRYPTION_KEY` plus a per-user generated webhook token.
 
 ---
 

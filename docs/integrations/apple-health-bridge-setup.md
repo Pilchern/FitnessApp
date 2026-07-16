@@ -1,16 +1,56 @@
 # Apple Health bridge setup (Health Auto Export or similar)
 
-The app ingests Apple Health data via two HMAC-signed webhooks. There is no
-Apple Health API integration in the app itself — a phone-side "bridge" app
-(e.g. [Health Auto Export](https://www.healthyapps.dev/)) reads HealthKit
-data and POSTs it to these endpoints on a schedule or automation you
-configure on the device. This doc specifies exactly what that bridge app
-needs to send.
+The app ingests Apple Health data via two webhooks. There is no Apple Health
+API integration in the app itself — a phone-side "bridge" app (e.g. [Health
+Auto Export](https://www.healthyapps.dev/)) reads HealthKit data and POSTs
+it to these endpoints on a schedule or automation you configure on the
+device. This doc specifies exactly what that bridge app needs to send.
 
-Both endpoints share the same signing scheme, are excluded from the app's
+Both endpoints share the same auth scheme, are excluded from the app's
 session-auth middleware (see `apps/web/src/middleware.ts` matcher), and are
-gated server-side by the `APPLE_HEALTH_WEBHOOK_SECRET` environment variable —
-if that variable isn't set, both return `503`.
+gated server-side by `INTEGRATION_ENCRYPTION_KEY` being configured — if that
+variable isn't set, both return `503`.
+
+## Auth model: a token scoped to YOUR account, not a shared app secret
+
+**This changed from an earlier version of this doc.** The webhook used to be
+gated by a single `APPLE_HEALTH_WEBHOOK_SECRET` environment variable shared
+by every user of the app. That was a real vulnerability: since `X-User-Id`
+on the request is fully client-supplied and used verbatim as the write
+target, anyone who knew that one shared secret — including any other person
+who simply signed up for the app, since signup is open — could write into
+*any* user's sleep/activity data just by sending a request with someone
+else's user id and the shared secret. There was no check that the secret
+"belonged" to the user id on the request.
+
+The fix: each user now generates their own webhook token from the
+**Integrations** page (`/integrations` → Apple Health card → "Generate
+webhook token"). That token is stored server-side, encrypted at rest with
+`INTEGRATION_ENCRYPTION_KEY` (the same key used for Withings/Strava/Peloton
+credentials), in `integration_connection_credentials`. Both auth modes below
+are now checked against *your* token specifically — the server looks up the
+token for whichever `X-User-Id` is on the incoming request and compares
+against that, not a single global value. Knowing someone's user id is no
+longer enough on its own; you'd also need their personal token.
+
+**If you configured a bridge app before this change**, its `Authorization`
+header still has the old shared secret in it, and it will start getting
+`401 Unauthorized` responses. This is a one-time breaking change (deliberate
+— see "Why a clean break" below): go to `/integrations`, click "Generate
+webhook token" under the Apple Health card, and update your Shortcut's
+`Authorization` header with the new value. Everything else (webhook URL,
+`X-User-Id`, payload shape) is unchanged.
+
+### Why a clean break instead of a grace period
+
+This is pre-launch, single-primary-user software (see `CURRENT_STATE.md` /
+`FitnessAppContext.md`) — Apple Health is "live and verified" for exactly
+one real user today, not a base of bridge apps already deployed across many
+people. A grace period that accepted both the old shared secret and new
+per-user tokens would mean re-introducing the exact vulnerability this
+change closes, just temporarily. Given the actual blast radius (one person,
+one Shortcut, one header value to update), a clean break is the safer and
+simpler trade — see the migration step above.
 
 ## Endpoints
 
@@ -23,7 +63,7 @@ Use `https://<your-deployed-domain>/api/integrations/apple-health/sleep` and
 `https://<your-deployed-domain>/api/integrations/apple-health/daily-metrics`
 — substitute your actual deployed domain (e.g. your Vercel production URL).
 Do not point the bridge app at a preview deployment; preview URLs change and
-preview environments may not have `APPLE_HEALTH_WEBHOOK_SECRET` configured.
+preview environments may not have `INTEGRATION_ENCRYPTION_KEY` configured.
 
 ## Why two separate endpoints instead of one
 
@@ -38,35 +78,49 @@ different lifecycles, and keeps `recovery_checkins` (subjective + sleep data)
 cleanly separated from `daily_activity_metrics` (whole-body daily activity
 data) at the domain-model level.
 
+## Getting your webhook token
+
+1. Sign in and go to `/integrations`.
+2. Find the Apple Health card and click **Generate webhook token**.
+3. Copy the token shown — it is only displayed once. It's not stored in
+   plaintext anywhere, so if you lose it, click "Regenerate webhook token"
+   to issue a new one (this invalidates the old one — update your bridge
+   app's header afterward).
+4. Your `X-User-Id` (also shown on that page) does not change when you
+   regenerate the token.
+
 ## Auth: two modes, pick based on what your bridge app can actually do
 
 Both routes accept either mode (`apps/web/src/app/api/integrations/apple-health/verify-request.ts`
-implements both). **Health Auto Export and essentially every no-code
-export/webhook app can only send static custom headers — they cannot compute
-a per-request signature over the outgoing body at send time.** If you're
-using one of those, use mode 1. Mode 2 exists for a scripted/custom client
-that can compute an HMAC itself.
+implements both), checked against your personal token from the step above.
+**Health Auto Export and essentially every no-code export/webhook app can
+only send static custom headers — they cannot compute a per-request
+signature over the outgoing body at send time.** If you're using one of
+those, use mode 1. Mode 2 exists for a scripted/custom client that can
+compute an HMAC itself.
 
 ### Mode 1 — static bearer token (recommended for Health Auto Export)
 
 | Header | Value |
 |---|---|
-| `Authorization` | `Bearer <APPLE_HEALTH_WEBHOOK_SECRET>` |
-| `X-User-Id` | The app's canonical user id (uuid) this payload belongs to. |
+| `Authorization` | `Bearer <your generated webhook token>` |
+| `X-User-Id` | The app's canonical user id (uuid) this payload belongs to — must be YOUR user id; the token above is only valid for it. |
 | `Content-Type` | `application/json` |
 
 In Health Auto Export: **Automations → REST API export → Headers**, add a
-custom header named `Authorization` with value `Bearer <your secret>`, and a
+custom header named `Authorization` with value `Bearer <your token>`, and a
 second custom header `X-User-Id` with your user id. No signature computation
 required — this is the only header config the app needs, and it's static
 across every send.
 
 This trades per-request replay protection for something a phone automation
-app can actually do. It's still gated behind a long random secret sent only
-over HTTPS, which is the same trust model most personal webhook integrations
-use — reasonable for a single-user personal app. If a copy of the secret
-ever leaks, rotate `APPLE_HEALTH_WEBHOOK_SECRET` (this invalidates mode 2's
-signatures too, and requires updating the bridge app's header).
+app can actually do. It's still gated behind a long random per-user token
+sent only over HTTPS, checked against the specific user id on the request —
+reasonable for a personal app where the only person who can generate a
+token for your account is you, authenticated. If a copy of your token ever
+leaks, regenerate it from `/integrations` (this invalidates mode 2's
+signatures too for your account, and requires updating the bridge app's
+header).
 
 ### Mode 2 — HMAC (for scripted/custom clients only)
 
@@ -84,7 +138,7 @@ signatures too, and requires updating the bridge app's header).
    `.`, then the exact raw JSON body bytes as sent (not a re-serialized or
    reformatted version — whitespace/key order matters because the signature
    is computed over the raw bytes on both sides).
-2. Compute `HMAC-SHA256(secret = APPLE_HEALTH_WEBHOOK_SECRET, message = <string above>)`,
+2. Compute `HMAC-SHA256(secret = <your generated webhook token>, message = <string above>)`,
    hex-encoded.
 3. Send it as `X-Signature: sha256=<hex-digest>` (the `sha256=` prefix is
    optional on the wire — the server strips it if present — but including it
@@ -96,9 +150,9 @@ signatures too, and requires updating the bridge app's header).
 If both an `Authorization` header and HMAC headers are present, the server
 checks `Authorization` and ignores the HMAC headers — don't send both.
 
-The shared secret is `APPLE_HEALTH_WEBHOOK_SECRET`, configured as a server
-environment variable — never ship it inside the bridge app's public config;
-enter it directly into the bridge app's custom-header field on the device.
+The secret for both modes is your personal webhook token from
+`/integrations` — never ship it inside the bridge app's public config; enter
+it directly into the bridge app's custom-header field on the device.
 
 ## Payload shapes
 
@@ -187,10 +241,37 @@ upsert-by-date semantics as the sleep endpoint.
   preferred; the endpoint's upsert-by-date behavior makes either cadence
   safe to mix.
 
+## Storage and implementation notes
+
+- Per-user tokens live in `integration_connection_credentials` (the same
+  table Withings/Strava/Peloton use for OAuth token pairs), keyed by
+  `(integration_connection_id)` with a `(user_id, provider)` index. For
+  Apple Health, `access_token_encrypted` holds the encrypted webhook token,
+  `token_type` is `"webhook_bearer"`, and `refresh_token_encrypted` is
+  unused (`null`). This table was already RLS-protected and already
+  encrypted at rest with `INTEGRATION_ENCRYPTION_KEY`, so reusing it avoided
+  standing up a new table for a single opaque value — see
+  `packages/infrastructure/src/repositories/integration-credential-repository.ts`
+  (`getByUserAndProvider`) and `apps/web/src/lib/server/integrations.ts`
+  (`generateAppleHealthWebhookToken`, `createAppleHealthWebhookSecretLookup`).
+- Generating a token auto-creates the `apple_health` row in
+  `integration_connections` if one doesn't exist yet for that user (same
+  auto-creation behavior the sync orchestrators already had on first
+  webhook call).
+- `verify-request.ts`'s `verifyAppleHealthRequest` takes an injected
+  `lookupSecret: (userId: string) => Promise<string | null>` function
+  instead of a raw secret string, specifically so it stays unit-testable
+  without a real Supabase connection (see
+  `apps/web/src/app/api/integrations/apple-health/verify-request.test.ts`,
+  which mocks the lookup with an in-memory map).
+
 ## Verifying configuration
 
-`hasAppleHealthWebhookEnv()` (`apps/web/src/lib/server/env.ts`) gates both
-orchestrators — set `APPLE_HEALTH_WEBHOOK_SECRET` in your deployment
-environment before pointing a bridge app at either endpoint. A request sent
-before the secret is configured gets `503 { ok: false, error: "Apple Health
-webhook is not configured." }`.
+`hasAppleHealthServerEnv()` (`apps/web/src/lib/server/env.ts`) checks that
+`INTEGRATION_ENCRYPTION_KEY` is set — that's the only environment-level
+requirement left; per-user webhook tokens are generated from the UI, not
+configured via environment variable. A request sent before
+`INTEGRATION_ENCRYPTION_KEY` is configured gets `503 { ok: false, error:
+"Apple Health webhook is not configured." }`. A request sent with a valid
+`X-User-Id` that hasn't generated a token yet (or the wrong token) gets
+`401`.

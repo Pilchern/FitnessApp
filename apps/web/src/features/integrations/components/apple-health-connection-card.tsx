@@ -1,16 +1,79 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import type { IntegrationConnection } from "@fitness-app/domain";
 import { SummaryStatCard } from "@/components/shared/summary-stat-card";
+import { generateAppleHealthWebhookTokenAction } from "../actions";
 import { formatIntegrationDateTime } from "../helpers";
+import type { AppleHealthWebhookTokenActionState } from "../types";
 
 type AppleHealthConnectionCardProps = {
   configured: boolean;
   connection: IntegrationConnection | null;
+  hasWebhookToken: boolean;
   userId: string;
   appUrl: string;
 };
+
+const initialTokenState: AppleHealthWebhookTokenActionState = {};
+
+function GenerateWebhookTokenForm({ hasWebhookToken }: { hasWebhookToken: boolean }) {
+  const [state, formAction, isPending] = useActionState(
+    generateAppleHealthWebhookTokenAction,
+    initialTokenState,
+  );
+
+  return (
+    <div className="min-w-0 flex-1 space-y-2">
+      <p>
+        <strong>Your webhook token</strong> — add this as the{" "}
+        <code className="rounded bg-ink/5 px-1 font-mono text-xs">
+          Authorization: Bearer &lt;token&gt;
+        </code>{" "}
+        header. This token is unique to your account — it&apos;s checked
+        against your <code className="rounded bg-ink/5 px-1 font-mono text-xs">X-User-Id</code>{" "}
+        above, so someone else knowing your user id isn&apos;t enough to write into
+        your data.
+      </p>
+
+      {state.token ? (
+        <div className="space-y-2">
+          <CodeLine value={state.token} />
+          <p className="text-xs font-semibold text-ember">
+            Copy this now — it won&apos;t be shown again. Paste it into your
+            Shortcut&apos;s Authorization header right away.
+          </p>
+        </div>
+      ) : null}
+
+      {state.error ? (
+        <p className="text-xs font-semibold text-ember">{state.error}</p>
+      ) : null}
+
+      <form action={formAction}>
+        <button
+          type="submit"
+          disabled={isPending}
+          className="inline-flex h-8 items-center justify-center rounded-full border border-ink/15 px-3 text-xs font-semibold text-ink transition hover:border-pine hover:text-pine disabled:opacity-60"
+        >
+          {isPending
+            ? "Generating..."
+            : hasWebhookToken || state.token
+              ? "Regenerate webhook token"
+              : "Generate webhook token"}
+        </button>
+      </form>
+
+      {hasWebhookToken && !state.token ? (
+        <p className="text-xs text-ink/60">
+          A token has already been generated for your account. Regenerating
+          replaces it — you&apos;ll need to update your Shortcut with the new
+          value.
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 function CodeLine({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -41,6 +104,7 @@ function CodeLine({ value }: { value: string }) {
 export function AppleHealthConnectionCard({
   configured,
   connection,
+  hasWebhookToken,
   userId,
   appUrl,
 }: AppleHealthConnectionCardProps) {
@@ -65,7 +129,7 @@ export function AppleHealthConnectionCard({
 
         {!configured ? (
           <div className="rounded-[1.25rem] border border-amber-300/40 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-700">
-            Add <code className="font-mono text-xs">APPLE_HEALTH_WEBHOOK_SECRET</code> to your
+            Add <code className="font-mono text-xs">INTEGRATION_ENCRYPTION_KEY</code> to your
             environment to enable this integration.
           </div>
         ) : lastSyncedAt ? (
@@ -139,19 +203,7 @@ export function AppleHealthConnectionCard({
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pine/10 text-xs font-bold text-pine">
                   3
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p>
-                    <strong>Authorization header</strong> — add a{" "}
-                    <code className="rounded bg-ink/5 px-1 font-mono text-xs">
-                      Authorization: Bearer &lt;your-secret&gt;
-                    </code>{" "}
-                    header using the value of{" "}
-                    <code className="rounded bg-ink/5 px-1 font-mono text-xs">
-                      APPLE_HEALTH_WEBHOOK_SECRET
-                    </code>{" "}
-                    from your environment.
-                  </p>
-                </div>
+                <GenerateWebhookTokenForm hasWebhookToken={hasWebhookToken} />
               </li>
 
               <li className="flex gap-3">
@@ -201,9 +253,11 @@ export function AppleHealthConnectionCard({
         <div className="mt-4 rounded-[1.25rem] border border-ink/10 bg-sand/60 px-4 py-3 text-sm leading-6 text-ink/75">
           Once configured, you&apos;ll see your webhook URL and setup
           instructions here. Add{" "}
-          <code className="font-mono text-xs">APPLE_HEALTH_WEBHOOK_SECRET</code>{" "}
-          with any strong secret string to your{" "}
-          <code className="font-mono text-xs">.env.local</code> to get started.
+          <code className="font-mono text-xs">INTEGRATION_ENCRYPTION_KEY</code>{" "}
+          (a base64-encoded 32-byte key) to your{" "}
+          <code className="font-mono text-xs">.env.local</code> to get started
+          — it&apos;s used to encrypt the per-user webhook token you&apos;ll
+          generate here.
         </div>
       )}
     </section>

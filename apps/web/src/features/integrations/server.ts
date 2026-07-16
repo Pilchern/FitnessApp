@@ -6,8 +6,9 @@ import {
   createIntegrationStatusService,
   getStravaIntegrationConfig,
   getWithingsIntegrationConfig,
+  hasAppleHealthWebhookToken,
 } from "@/lib/server/integrations";
-import { hasPelotonServerEnv, hasAppleHealthWebhookEnv } from "@/lib/server/env";
+import { hasPelotonServerEnv, hasAppleHealthServerEnv } from "@/lib/server/env";
 import { buildFlashMessage } from "./helpers";
 import type { IntegrationsPageData } from "./types";
 
@@ -24,9 +25,10 @@ export async function getIntegrationsPageData(input?: {
 }): Promise<IntegrationsPageData> {
   const user = await requireCurrentUser();
   const service = await createIntegrationStatusService();
-  const [snapshot, appUrl] = await Promise.all([
+  const [snapshot, appUrl, appleHealthHasWebhookToken] = await Promise.all([
     service.getSnapshot({ userId: user.id, limit: 8 }),
     getAppUrl(),
+    hasAppleHealthWebhookToken(user.id),
   ]);
 
   return {
@@ -39,9 +41,10 @@ export async function getIntegrationsPageData(input?: {
     stravaConfigured: Boolean(getStravaIntegrationConfig()),
     stravaConnection:
       snapshot.connections.find((c) => c.provider === "strava") ?? null,
-    appleHealthConfigured: hasAppleHealthWebhookEnv(),
+    appleHealthConfigured: hasAppleHealthServerEnv(),
     appleHealthConnection:
       snapshot.connections.find((c) => c.provider === "apple_health") ?? null,
+    appleHealthHasWebhookToken,
     userId: user.id,
     appUrl,
     snapshot,

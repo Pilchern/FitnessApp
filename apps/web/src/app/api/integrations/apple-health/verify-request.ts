@@ -7,6 +7,19 @@ export type AppleHealthAuthResult =
   | { ok: true; userId: string }
   | { ok: false; status: number; error: string };
 
+/**
+ * Resolves the webhook secret configured for a given app user id, or `null`
+ * if that user hasn't generated one (or doesn't exist). Kept as an injected
+ * function rather than a hard Supabase dependency so this module stays unit
+ * testable without a real database — see verify-request.test.ts, which
+ * passes a plain in-memory mock. The real implementation
+ * (`createAppleHealthWebhookSecretLookup` in
+ * `apps/web/src/lib/server/integrations.ts`) reads the per-connection token
+ * from `integration_connection_credentials`, decrypting it with
+ * `INTEGRATION_ENCRYPTION_KEY`.
+ */
+export type AppleHealthSecretLookup = (userId: string) => Promise<string | null>;
+
 function safeEqualHex(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   try {
@@ -30,22 +43,45 @@ function safeEqualUtf8(a: string, b: string): boolean {
  * still use the stricter per-request HMAC scheme:
  *
  * 1. Static bearer (recommended for bridge apps): `Authorization: Bearer
- *    <APPLE_HEALTH_WEBHOOK_SECRET>` + `X-User-Id`. No per-request signing —
- *    most export apps only support fixed custom headers, not computing a
+ *    <per-user webhook token>` + `X-User-Id`. No per-request signing — most
+ *    export apps only support fixed custom headers, not computing a
  *    signature over the outgoing body at send time.
  * 2. HMAC (for scripted/custom clients): `X-User-Id` + `X-Timestamp` +
  *    `X-Signature: sha256=<hex>` where the signature is
  *    HMAC-SHA256(secret, `${userId}.${timestamp}.${rawBody}`), plus a 300s
  *    replay window. Strictly stronger than (1) if your client can compute it.
+ *
+ * Both modes are checked against a secret scoped to the specific `X-User-Id`
+ * presented on the request (resolved via `lookupSecret`), NOT a single
+ * app-wide shared secret. This is the fix for a real vulnerability: since
+ * `X-User-Id` is fully client-supplied and used verbatim as the write
+ * target, a single shared secret would let anyone who knew it (e.g. any
+ * second signed-up user, since signup is open) write into an arbitrary
+ * other user's sleep/activity data just by guessing or knowing their user
+ * id. Requiring the secret that was specifically issued for that user id
+ * closes that gap: knowing the secret is no longer sufficient on its own,
+ * you must know the secret *issued to the user you're claiming to be*.
  */
-export function verifyAppleHealthRequest(
+export async function verifyAppleHealthRequest(
   request: NextRequest,
   rawBody: string,
-  secret: string,
-): AppleHealthAuthResult {
+  lookupSecret: AppleHealthSecretLookup,
+): Promise<AppleHealthAuthResult> {
   const userId = request.headers.get("X-User-Id");
   if (!userId) {
     return { ok: false, status: 401, error: "Missing X-User-Id header." };
+  }
+
+  const secret = await lookupSecret(userId);
+  if (!secret) {
+    // Deliberately the same generic message regardless of whether the user
+    // id is unknown or just hasn't generated a webhook token yet — avoids
+    // leaking which user ids exist to an unauthenticated caller.
+    return {
+      ok: false,
+      status: 401,
+      error: "No Apple Health webhook token configured for this user.",
+    };
   }
 
   const authHeader = request.headers.get("Authorization");
