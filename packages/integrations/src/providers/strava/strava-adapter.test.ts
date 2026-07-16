@@ -59,3 +59,39 @@ describe("StravaCardioAdapter.fetchCardioSessions", () => {
     expect(page.nextCursor).toBe("999");
   });
 });
+
+describe("StravaCardioAdapter.mapRawCardioItem", () => {
+  it("never populates cadenceMax, resistanceMin, or resistanceMax — Strava has no equivalent fields (Peloton fidelity gap)", () => {
+    const mapped = adapter.mapRawCardioItem(
+      {
+        providerEventType: "strava_activity",
+        providerExternalId: "1",
+        occurredAt: "2026-03-01T12:00:00Z",
+        payload: {
+          id: 1,
+          name: "Morning Ride",
+          sport_type: "Ride",
+          start_date: "2026-03-01T12:00:00Z",
+          elapsed_time: 1800,
+          distance: 16093,
+          average_cadence: 82,
+          average_watts: 166.7,
+        },
+      },
+      { importBatchId: "batch-1" as never, rawImportEventId: "raw-1" as never },
+    );
+
+    expect(mapped).not.toBeNull();
+    // Strava only reports a single average cadence value and no resistance
+    // metric at all, unlike Peloton (which provides cadenceMin/cadenceMax
+    // from avg/max_cadence and resistanceMin/resistanceMax from
+    // avg/max_resistance). This is the exact fidelity gap the
+    // Peloton-vs-Strava decision hinged on — pin it down explicitly.
+    expect(mapped?.cadenceMax).toBeNull();
+    expect(mapped?.resistanceMin).toBeNull();
+    expect(mapped?.resistanceMax).toBeNull();
+    // cadenceMin and avgOutput ARE available from Strava, for contrast.
+    expect(mapped?.cadenceMin).toBe(82);
+    expect(mapped?.avgOutput).toBe(166.7);
+  });
+});
