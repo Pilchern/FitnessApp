@@ -38,7 +38,37 @@ different lifecycles, and keeps `recovery_checkins` (subjective + sleep data)
 cleanly separated from `daily_activity_metrics` (whole-body daily activity
 data) at the domain-model level.
 
-## Required headers (both endpoints)
+## Auth: two modes, pick based on what your bridge app can actually do
+
+Both routes accept either mode (`apps/web/src/app/api/integrations/apple-health/verify-request.ts`
+implements both). **Health Auto Export and essentially every no-code
+export/webhook app can only send static custom headers — they cannot compute
+a per-request signature over the outgoing body at send time.** If you're
+using one of those, use mode 1. Mode 2 exists for a scripted/custom client
+that can compute an HMAC itself.
+
+### Mode 1 — static bearer token (recommended for Health Auto Export)
+
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer <APPLE_HEALTH_WEBHOOK_SECRET>` |
+| `X-User-Id` | The app's canonical user id (uuid) this payload belongs to. |
+| `Content-Type` | `application/json` |
+
+In Health Auto Export: **Automations → REST API export → Headers**, add a
+custom header named `Authorization` with value `Bearer <your secret>`, and a
+second custom header `X-User-Id` with your user id. No signature computation
+required — this is the only header config the app needs, and it's static
+across every send.
+
+This trades per-request replay protection for something a phone automation
+app can actually do. It's still gated behind a long random secret sent only
+over HTTPS, which is the same trust model most personal webhook integrations
+use — reasonable for a single-user personal app. If a copy of the secret
+ever leaks, rotate `APPLE_HEALTH_WEBHOOK_SECRET` (this invalidates mode 2's
+signatures too, and requires updating the bridge app's header).
+
+### Mode 2 — HMAC (for scripted/custom clients only)
 
 | Header | Value |
 |---|---|
@@ -47,11 +77,7 @@ data) at the domain-model level.
 | `X-Signature` | `sha256=<hex>` — see "Signature algorithm" below. |
 | `Content-Type` | `application/json` |
 
-### Signature algorithm
-
-Both routes verify the signature identically
-(`apps/web/src/app/api/integrations/apple-health/sleep/route.ts` and
-`.../daily-metrics/route.ts`):
+#### Signature algorithm
 
 1. Build the string to sign: `${userId}.${timestamp}.${rawRequestBodyString}`
    — the literal `X-User-Id` value, a `.`, the literal `X-Timestamp` value, a
@@ -67,10 +93,12 @@ Both routes verify the signature identically
    (`crypto.timingSafeEqual`); mismatched-length or malformed hex fails
    closed with `401`.
 
+If both an `Authorization` header and HMAC headers are present, the server
+checks `Authorization` and ignores the HMAC headers — don't send both.
+
 The shared secret is `APPLE_HEALTH_WEBHOOK_SECRET`, configured as a server
 environment variable — never ship it inside the bridge app's public config;
-enter it directly into the bridge app's "custom header"/"signature secret"
-field on the device.
+enter it directly into the bridge app's custom-header field on the device.
 
 ## Payload shapes
 

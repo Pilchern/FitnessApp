@@ -1,8 +1,8 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { createAppleHealthDailyMetricsOrchestrator } from "@/lib/server/integrations";
 import { getServerEnv } from "@/lib/server/env";
+import { verifyAppleHealthRequest } from "../verify-request";
 
 /**
  * Apple Health daily activity metrics webhook.
@@ -13,20 +13,16 @@ import { getServerEnv } from "@/lib/server/env";
  * overnight sleep-stage and in-sleep vitals data and typically sent once per
  * morning. This endpoint is expected to be sent more frequently (e.g. every
  * few hours or once nightly) since daytime activity accrues throughout the
- * day. Same signing scheme, headers, and orchestration shape as the sleep
- * webhook — see that file for the full security rationale.
+ * day. Same auth scheme, headers, and orchestration shape as the sleep
+ * webhook — see verify-request.ts for the full security rationale.
  *
- * Headers (required):
- *   X-User-Id     : the canonical user id this payload belongs to.
- *   X-Timestamp   : unix-epoch seconds, replay window = 300s.
- *   X-Signature   : "sha256=<hex>" — HMAC-SHA256 over `${userId}.${timestamp}.${rawBody}`
- *                   using APPLE_HEALTH_WEBHOOK_SECRET. Constant-time compared.
+ * Auth (either one — see verify-request.ts):
+ *   Authorization: Bearer <APPLE_HEALTH_WEBHOOK_SECRET>  + X-User-Id
+ *   X-User-Id + X-Timestamp + X-Signature (HMAC, stricter, for scripted clients)
  *
  * Body: a single JSON object or array of objects matching the daily metrics
  * payload schema. `exercise_minutes` is MINUTES — values >1440 are rejected.
  */
-
-const REPLAY_WINDOW_SECONDS = 300;
 
 const appleHealthDailyMetricsPayloadSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -42,15 +38,6 @@ const appleHealthDailyMetricsBodySchema = z.union([
   appleHealthDailyMetricsPayloadSchema.transform((item) => [item]),
 ]);
 
-function safeEqualHex(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  try {
-    return timingSafeEqual(Buffer.from(a, "hex"), Buffer.from(b, "hex"));
-  } catch {
-    return false;
-  }
-}
-
 export async function POST(request: NextRequest) {
   const env = getServerEnv();
   const webhookSecret = env.APPLE_HEALTH_WEBHOOK_SECRET;
@@ -62,40 +49,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const userId = request.headers.get("X-User-Id");
-  const timestampHeader = request.headers.get("X-Timestamp");
-  const signatureHeader = request.headers.get("X-Signature");
-
-  if (!userId || !timestampHeader || !signatureHeader) {
-    return NextResponse.json(
-      { ok: false, error: "Missing signature headers." },
-      { status: 401 },
-    );
-  }
-
-  const timestamp = Number.parseInt(timestampHeader, 10);
-  if (!Number.isFinite(timestamp)) {
-    return NextResponse.json({ ok: false, error: "Invalid timestamp." }, { status: 401 });
-  }
-
-  const nowSeconds = Math.floor(Date.now() / 1000);
-  if (Math.abs(nowSeconds - timestamp) > REPLAY_WINDOW_SECONDS) {
-    return NextResponse.json({ ok: false, error: "Timestamp outside replay window." }, { status: 401 });
-  }
-
   const rawBody = await request.text();
 
-  const expectedHex = createHmac("sha256", webhookSecret)
-    .update(`${userId}.${timestamp}.${rawBody}`)
-    .digest("hex");
-
-  const providedHex = signatureHeader.startsWith("sha256=")
-    ? signatureHeader.slice(7)
-    : signatureHeader;
-
-  if (!safeEqualHex(expectedHex, providedHex)) {
-    return NextResponse.json({ ok: false, error: "Invalid signature." }, { status: 401 });
+  const auth = verifyAppleHealthRequest(request, rawBody, webhookSecret);
+  if (!auth.ok) {
+    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
   }
+  const userId = auth.userId;
 
   let body: unknown;
   try {
