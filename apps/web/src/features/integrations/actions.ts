@@ -45,6 +45,38 @@ export async function syncWithingsAction(formData: FormData) {
   redirect(url);
 }
 
+export async function connectPelotonAction(formData: FormData) {
+  const username = String(formData.get("username") ?? "").trim();
+  const password = String(formData.get("password") ?? "").trim();
+
+  if (!username || !password) {
+    redirect(errorRedirectUrl("Peloton username and password are required."));
+  }
+
+  let url = "/integrations?status=peloton_connected";
+  try {
+    const user = await requireCurrentUser();
+    const orchestrator = createPelotonSyncOrchestrator();
+    await orchestrator.connect({
+      userId: user.id,
+      provider: "peloton",
+      username,
+      password,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Peloton connection failed.";
+    const isAuthError =
+      message.includes("401") ||
+      message.toLowerCase().includes("unauthorized") ||
+      message.toLowerCase().includes("invalid") ||
+      message.toLowerCase().includes("credentials");
+    url = errorRedirectUrl(
+      isAuthError ? "Incorrect Peloton username or password." : message,
+    );
+  }
+  redirect(url);
+}
+
 export async function syncPelotonAction(formData: FormData) {
   let url = "/integrations?status=peloton_sync_complete";
   try {
