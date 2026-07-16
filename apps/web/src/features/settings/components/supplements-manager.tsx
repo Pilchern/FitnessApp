@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { Supplement } from "@fitness-app/domain";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { ActionSubmitButton } from "@/components/shared/action-submit-button";
 import type { SupplementActionState } from "../types";
 
 type SupplementsManagerProps = {
@@ -95,12 +96,11 @@ export function SupplementsManager({
               <span className="text-sm font-medium text-ink">{supplement.name}</span>
               <form action={deactivateAction}>
                 <input type="hidden" name="id" value={supplement.id} />
-                <button
-                  type="submit"
-                  className="inline-flex h-9 items-center justify-center rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink transition hover:border-ember hover:text-ember"
-                >
-                  Deactivate
-                </button>
+                <ActionSubmitButton
+                  idleLabel="Deactivate"
+                  pendingLabel="Deactivating..."
+                  tone="secondary"
+                />
               </form>
             </div>
           ))}
@@ -127,12 +127,11 @@ export function SupplementsManager({
                 </span>
                 <form action={reactivateAction}>
                   <input type="hidden" name="id" value={supplement.id} />
-                  <button
-                    type="submit"
-                    className="inline-flex h-9 items-center justify-center rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
-                  >
-                    Reactivate
-                  </button>
+                  <ActionSubmitButton
+                    idleLabel="Reactivate"
+                    pendingLabel="Reactivating..."
+                    tone="secondary"
+                  />
                 </form>
               </div>
             ))}

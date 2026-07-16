@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import type { WeeklyReviewAiDraft } from "@fitness-app/domain";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { ActionSubmitButton } from "@/components/shared/action-submit-button";
 import {
   dismissAiWeeklyReviewDraftAction,
   useAiWeeklyReviewDraftAction,
@@ -106,12 +107,11 @@ export function AiWeeklyReviewDraft({ draft, reviewId, weekStart }: AiWeeklyRevi
         <form action={dismissAction}>
           <input type="hidden" name="id" value={reviewId} />
           <input type="hidden" name="weekStart" value={weekStart} />
-          <button
-            type="submit"
-            className="inline-flex h-11 items-center justify-center rounded-full border border-ink/15 px-5 text-sm font-semibold text-ink transition hover:border-ember hover:text-ember"
-          >
-            Dismiss
-          </button>
+          <ActionSubmitButton
+            idleLabel="Dismiss"
+            pendingLabel="Dismissing..."
+            tone="secondary"
+          />
         </form>
       </div>
     </section>
