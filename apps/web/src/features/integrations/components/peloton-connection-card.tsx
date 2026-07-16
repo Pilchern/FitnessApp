@@ -47,7 +47,8 @@ export function PelotonConnectionCard({
           <div className="rounded-[1.25rem] border border-amber-300/40 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-700">
             Peloton is not configured in this environment.
           </div>
-        ) : isConnected ? (
+        ) : null}
+        {isConnected ? (
           <div className="flex flex-wrap gap-3">
             <form action={syncPelotonAction}>
               <ActionSubmitButton
@@ -74,6 +75,19 @@ export function PelotonConnectionCard({
           </div>
         ) : null}
       </div>
+
+      {configured && !isConnected ? (
+        <div className="mt-5 rounded-[1.25rem] border border-amber-300/40 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-700">
+          Peloton is currently blocking third-party sign-ins to this endpoint
+          (confirmed 2026-07-16) — connecting below will likely fail with a
+          403 regardless of your credentials. Peloton has a native
+          &quot;auto-export to Strava&quot; setting in its own Settings →
+          Connected Apps that syncs your rides through Strava instead
+          (reduced cadence/resistance detail, but working). Trying to connect
+          here won&apos;t hurt anything if you want to check whether Peloton
+          has re-opened access.
+        </div>
+      ) : null}
 
       {configured && !isConnected ? (
         <form

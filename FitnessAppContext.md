@@ -7,7 +7,7 @@
 
 ## What This App Is
 
-A personal health, fitness, recovery, and body-composition tracking app built for one primary user (performance-minded athlete). It is **manual-first** (you can log everything without any integrations) and **provider-optional** — four provider integrations exist in code: Strava (live), Withings (body metrics, code complete, needs credentials), Peloton (cardio, code complete, needs a connected account), and Apple Health (sleep via HMAC webhook today, code complete, needs a configured secret).
+A personal health, fitness, recovery, and body-composition tracking app built for one primary user (performance-minded athlete). It is **manual-first** (you can log everything without any integrations) and **provider-optional** — four provider integrations exist in code: Strava (code live, currently broken — app deactivated, user must reactivate), Withings (body metrics, live and verified), Peloton (cardio, code complete, but the unofficial API is confirmed blocked by Peloton — use Peloton's native Strava auto-export instead), and Apple Health (sleep + daily activity, live, static-bearer or HMAC auth).
 
 The app is not a calorie counter or social fitness platform. It is a weekly coaching loop: log training, recovery, and body data → run a weekly review → get rule-based insights → adjust next week.
 
@@ -201,7 +201,7 @@ See `TECH_DEBT.md` for the full register. Active items as of 2026-07-15:
 
 **Next sprint priorities (see task-level plan for full detail):**
 1. Configure Withings OAuth end to end
-2. Decide Peloton-direct vs. Peloton→Strava-relay, then connect Peloton
+2. Reactivate Strava, enable Peloton's native Strava auto-export (Peloton-direct is confirmed blocked by Peloton's own API as of 2026-07-16 — not fixable in-app)
 3. Extend Apple Health webhook beyond sleep
 4. Schema: waist_hip_in/waist_gut_in, bedtime/wake time, cold plunge, supplement adherence
 5. Background job infrastructure with real retry/dead-letter handling (TD-014)
