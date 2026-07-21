@@ -1,16 +1,8 @@
 import "server-only";
 
-import {
-  buildStrengthProgressionSummaries,
-  StrengthSessionService,
-  TrainingTemplateService,
-} from "@fitness-app/application";
-import {
-  SupabaseStrengthSessionRepository,
-  SupabaseTrainingTemplateRepository,
-} from "@fitness-app/infrastructure";
+import { buildStrengthProgressionSummaries } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import type { StrengthDetailData, StrengthPageData } from "./types";
 
 function twoYearsAgoIsoDate() {
@@ -19,23 +11,11 @@ function twoYearsAgoIsoDate() {
   return date.toISOString().slice(0, 10);
 }
 
-async function createDependencies() {
-  const client = await createSupabaseRequestClient();
-  return {
-    strengthService: new StrengthSessionService(
-      new SupabaseStrengthSessionRepository(client),
-    ),
-    trainingTemplateService: new TrainingTemplateService(
-      new SupabaseTrainingTemplateRepository(client),
-    ),
-  };
-}
-
 export async function getStrengthPageData(
   editSessionId?: string,
 ): Promise<StrengthPageData> {
   const user = await requireCurrentUser();
-  const { strengthService, trainingTemplateService } = await createDependencies();
+  const { strengthService, trainingTemplateService } = await createCoreServices();
 
   const [sessions, strengthTemplates, editingSession] = await Promise.all([
     strengthService.listByDateRange({
@@ -72,7 +52,7 @@ export async function getStrengthDetailData(
   sessionId: string,
 ): Promise<StrengthDetailData> {
   const user = await requireCurrentUser();
-  const { strengthService } = await createDependencies();
+  const { strengthService } = await createCoreServices();
   const [session, sessions] = await Promise.all([
     strengthService.getById(user.id, sessionId),
     strengthService.listByDateRange({

@@ -1,11 +1,9 @@
 "use server";
 
-import { BodyMetricService } from "@fitness-app/application";
-import { SupabaseBodyMetricRepository } from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import { bodyMetricFormSchema } from "./form-schema";
 import type { BodyActionState } from "./types";
 
@@ -44,18 +42,13 @@ function buildBodyMetricPayload(userId: string, formData: FormData) {
   };
 }
 
-async function createBodyMetricService() {
-  const client = await createSupabaseRequestClient();
-  return new BodyMetricService(new SupabaseBodyMetricRepository(client));
-}
-
 export async function createBodyMetricAction(
   _previousState: BodyActionState,
   formData: FormData,
 ): Promise<BodyActionState> {
   try {
     const user = await requireCurrentUser();
-    const bodyMetricService = await createBodyMetricService();
+    const { bodyMetricService } = await createCoreServices();
     await bodyMetricService.create(buildBodyMetricPayload(user.id, formData));
     redirect("/body");
   } catch (error) {
@@ -69,7 +62,7 @@ export async function updateBodyMetricAction(
 ): Promise<BodyActionState> {
   try {
     const user = await requireCurrentUser();
-    const bodyMetricService = await createBodyMetricService();
+    const { bodyMetricService } = await createCoreServices();
     const payload = buildBodyMetricPayload(user.id, formData);
 
     if (!payload.id) {
@@ -94,7 +87,7 @@ export async function deleteBodyMetricAction(formData: FormData) {
   let url = "/body?deleted=1";
   try {
     const user = await requireCurrentUser();
-    const bodyMetricService = await createBodyMetricService();
+    const { bodyMetricService } = await createCoreServices();
     await bodyMetricService.archive(user.id, id);
   } catch (error) {
     url = `/body?error=${encodeURIComponent(error instanceof Error ? error.message : "Delete failed.")}`;

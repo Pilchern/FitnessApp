@@ -5,33 +5,10 @@ import {
   buildRecoveryRestingHeartRateTrend,
   buildRecoverySleepTrend,
   buildRecoverySummary,
-  RecoveryCheckinService,
-  SupplementLogService,
-  SupplementService,
 } from "@fitness-app/application";
-import {
-  SupabaseRecoveryCheckinRepository,
-  SupabaseSupplementLogRepository,
-  SupabaseSupplementRepository,
-} from "@fitness-app/infrastructure";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import type { RecoveryPageData } from "./types";
-
-async function createRecoveryService() {
-  const client = await createSupabaseRequestClient();
-  return new RecoveryCheckinService(new SupabaseRecoveryCheckinRepository(client));
-}
-
-async function createSupplementService() {
-  const client = await createSupabaseRequestClient();
-  return new SupplementService(new SupabaseSupplementRepository(client));
-}
-
-async function createSupplementLogService() {
-  const client = await createSupabaseRequestClient();
-  return new SupplementLogService(new SupabaseSupplementLogRepository(client));
-}
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -41,7 +18,8 @@ export async function getRecoveryPageData(
   editCheckinId?: string,
 ): Promise<RecoveryPageData> {
   const user = await requireCurrentUser();
-  const recoveryService = await createRecoveryService();
+  const { recoveryService, supplementService, supplementLogService } =
+    await createCoreServices();
   const checkins = await recoveryService.listByDateRange({ userId: user.id });
   const summaryWindow = checkins.slice(0, 7);
   const chartWindow = checkins.slice(0, 30);
@@ -49,8 +27,6 @@ export async function getRecoveryPageData(
     ? await recoveryService.getById(user.id, editCheckinId)
     : null;
 
-  const supplementService = await createSupplementService();
-  const supplementLogService = await createSupplementLogService();
   const today = todayIsoDate();
   const [activeSupplements, todaysLogs] = await Promise.all([
     supplementService.listActive({ userId: user.id }),

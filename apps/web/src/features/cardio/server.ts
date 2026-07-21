@@ -3,37 +3,18 @@ import "server-only";
 import {
   buildCardioAdherenceSummary,
   buildCardioWeeklyTotals,
-  CardioSessionService,
-  TrainingTemplateService,
   getCurrentWeekRange,
 } from "@fitness-app/application";
-import {
-  SupabaseCardioSessionRepository,
-  SupabaseTrainingTemplateRepository,
-} from "@fitness-app/infrastructure";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import { requireCurrentUser } from "@/lib/server/auth";
+import { createCoreServices } from "@/lib/server/services";
 import { buildCardioTemplatePresets } from "./helpers";
 import type { CardioPageData } from "./types";
-
-async function createDependencies() {
-  const client = await createSupabaseRequestClient();
-
-  return {
-    cardioService: new CardioSessionService(
-      new SupabaseCardioSessionRepository(client),
-    ),
-    trainingTemplateService: new TrainingTemplateService(
-      new SupabaseTrainingTemplateRepository(client),
-    ),
-  };
-}
 
 export async function getCardioPageData(
   editSessionId?: string,
 ): Promise<CardioPageData> {
   const user = await requireCurrentUser();
-  const { cardioService, trainingTemplateService } = await createDependencies();
+  const { cardioService, trainingTemplateService } = await createCoreServices();
   const weekRange = getCurrentWeekRange();
 
   const [templates, sessions, editingSession] = await Promise.all([

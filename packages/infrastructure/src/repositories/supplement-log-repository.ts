@@ -85,7 +85,7 @@ export class SupabaseSupplementLogRepository implements SupplementLogRepository 
       .eq("user_id", query.userId)
       .is("deleted_at", null)
       .order("log_date", { ascending: false })
-      .limit(2000);
+      .limit(500);
 
     if (query.startDate) {
       request = request.gte("log_date", query.startDate);

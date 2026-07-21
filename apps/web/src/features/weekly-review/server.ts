@@ -6,12 +6,9 @@ import {
   calculateWeeklyReviewScore,
   getLastCompletedWeekStart,
   getWeekRangeFromStart,
-  WeeklyReviewService,
 } from "@fitness-app/application";
-import { SupabaseWeeklyReviewRepository } from "@fitness-app/infrastructure";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { createCoreServices } from "@/lib/server/services";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import type { WeeklyReviewAutoPopulated, WeeklyReviewPageData } from "./types";
 
 export async function getWeeklyReviewPageData(
@@ -105,7 +102,6 @@ export async function getWeeklyReviewPageData(
 
 export async function getLatestWeeklyReview() {
   const user = await requireCurrentUser();
-  const client = await createSupabaseRequestClient();
-  const service = new WeeklyReviewService(new SupabaseWeeklyReviewRepository(client));
-  return service.getLatest(user.id);
+  const { weeklyReviewService } = await createCoreServices();
+  return weeklyReviewService.getLatest(user.id);
 }

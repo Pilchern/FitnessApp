@@ -1,11 +1,9 @@
 "use server";
 
-import { NutritionLogService } from "@fitness-app/application";
-import { SupabaseNutritionLogRepository } from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import { nutritionLogFormSchema } from "./form-schema";
 import type { NutritionActionState } from "./types";
 
@@ -36,18 +34,13 @@ function buildNutritionPayload(userId: string, formData: FormData) {
   };
 }
 
-async function createNutritionService() {
-  const client = await createSupabaseRequestClient();
-  return new NutritionLogService(new SupabaseNutritionLogRepository(client));
-}
-
 export async function createNutritionLogAction(
   _previousState: NutritionActionState,
   formData: FormData,
 ): Promise<NutritionActionState> {
   try {
     const user = await requireCurrentUser();
-    const nutritionService = await createNutritionService();
+    const { nutritionService } = await createCoreServices();
     await nutritionService.create(buildNutritionPayload(user.id, formData));
     redirect("/nutrition");
   } catch (error) {
@@ -61,7 +54,7 @@ export async function updateNutritionLogAction(
 ): Promise<NutritionActionState> {
   try {
     const user = await requireCurrentUser();
-    const nutritionService = await createNutritionService();
+    const { nutritionService } = await createCoreServices();
     const payload = buildNutritionPayload(user.id, formData);
 
     if (!payload.id) {
@@ -86,7 +79,7 @@ export async function deleteNutritionLogAction(formData: FormData) {
   let url = "/nutrition";
   try {
     const user = await requireCurrentUser();
-    const nutritionService = await createNutritionService();
+    const { nutritionService } = await createCoreServices();
     await nutritionService.archive(user.id, id);
   } catch (error) {
     url = `/nutrition?error=${encodeURIComponent(

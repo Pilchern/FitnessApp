@@ -2,7 +2,7 @@ import "server-only";
 
 import { getWeekRangeFromStart } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createCoreServices } from "@/lib/server/services";
+import { createCoreServices, getCachedUserProfile } from "@/lib/server/services";
 
 function sixMonthsAgoIsoDate() {
   const date = new Date();
@@ -17,7 +17,7 @@ export async function getInsightsData() {
   const startDate = sixMonthsAgoIsoDate();
   const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody] =
     await Promise.all([
-      services.profileService.getByUserId(user.id),
+      getCachedUserProfile(user.id),
       services.weeklyReviewService.listRecent(user.id, 8),
       services.cardioService.listByDateRange({ userId: user.id, startDate }),
       services.recoveryService.listByDateRange({ userId: user.id, startDate }),

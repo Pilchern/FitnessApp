@@ -1,25 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  AiInsightService,
-  BodyMetricService,
-  buildInsights,
-  CardioSessionService,
-  InsightOrchestrator,
-  RecoveryCheckinService,
-  StrengthSessionSummaryService,
-  WeeklyReviewService,
-  getWeekRangeFromStart,
-} from "@fitness-app/application";
-import {
-  SupabaseBodyMetricRepository,
-  SupabaseCardioSessionRepository,
-  SupabaseInsightRepository,
-  SupabaseRecoveryCheckinRepository,
-  SupabaseStrengthSessionSummaryRepository,
-  SupabaseWeeklyReviewRepository,
-} from "@fitness-app/infrastructure";
+import { getWeekRangeFromStart } from "@fitness-app/application";
 import { getServerEnv } from "@/lib/server/env";
+import { createCoreServices } from "@/lib/server/services";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 const CONCURRENCY = 3;
@@ -89,43 +72,29 @@ export async function GET(request: NextRequest) {
 
   const rows = (profiles ?? []) as ProfileRow[];
 
-  const aiService = env.ANTHROPIC_API_KEY
-    ? new AiInsightService({
-        apiKey: env.ANTHROPIC_API_KEY,
-        model: env.INSIGHT_AI_MODEL ?? "claude-haiku-4-5-20251001",
-        enabled: env.INSIGHT_AI_ENABLED,
-      })
-    : null;
-
-  const insightRepo = new SupabaseInsightRepository(adminClient);
-  const orchestrator = new InsightOrchestrator(insightRepo, aiService, buildInsights);
+  // Composed once against the admin client and reused across every profile
+  // below — these services are stateless wrappers over repositories, so
+  // there's no correctness reason to reconstruct them per user like the
+  // pre-composition-root version of this route did.
+  const { weeklyReviewService, cardioService, recoveryService, bodyMetricService, strengthSummaryService, insightOrchestrator } =
+    await createCoreServices(adminClient);
 
   const settled = await mapWithConcurrency(rows, CONCURRENCY, async (profile) => {
     const startDate = sixMonthsAgoIsoDate();
     const timezone = profile.timezone ?? "UTC";
 
     const [weeklyReviews, recentCardio, recentRecovery, recentBody] = await Promise.all([
-      new WeeklyReviewService(
-        new SupabaseWeeklyReviewRepository(adminClient),
-      ).listRecent(profile.user_id, 8),
-      new CardioSessionService(
-        new SupabaseCardioSessionRepository(adminClient),
-      ).listByDateRange({ userId: profile.user_id, startDate }),
-      new RecoveryCheckinService(
-        new SupabaseRecoveryCheckinRepository(adminClient),
-      ).listByDateRange({ userId: profile.user_id, startDate }),
-      new BodyMetricService(
-        new SupabaseBodyMetricRepository(adminClient),
-      ).listByDateRange({ userId: profile.user_id, startDate }),
+      weeklyReviewService.listRecent(profile.user_id, 8),
+      cardioService.listByDateRange({ userId: profile.user_id, startDate }),
+      recoveryService.listByDateRange({ userId: profile.user_id, startDate }),
+      bodyMetricService.listByDateRange({ userId: profile.user_id, startDate }),
     ]);
 
     const weekStarts = new Set(weeklyReviews.map((r) => r.weekStart));
     const liftPairs = await Promise.all(
       [...weekStarts].map(async (weekStart) => {
         const { weekEnd } = getWeekRangeFromStart(weekStart);
-        const count = await new StrengthSessionSummaryService(
-          new SupabaseStrengthSessionSummaryRepository(adminClient),
-        ).countCompletedByDateRange({
+        const count = await strengthSummaryService.countCompletedByDateRange({
           userId: profile.user_id,
           startDate: weekStart,
           endDate: weekEnd,
@@ -134,7 +103,7 @@ export async function GET(request: NextRequest) {
       }),
     );
 
-    await orchestrator.generateAndPersist({
+    await insightOrchestrator.generateAndPersist({
       userId: profile.user_id,
       bodyMetrics: recentBody,
       cardioSessions: recentCardio,
