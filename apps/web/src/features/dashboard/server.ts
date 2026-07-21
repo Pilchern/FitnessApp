@@ -7,16 +7,9 @@ import {
   computeJournalStreak,
   getCurrentWeekRangeForUser,
   getRecoveryCoachingSuggestion,
-  JournalEntryService,
-  StrengthSessionService,
 } from "@fitness-app/application";
-import {
-  SupabaseJournalEntryRepository,
-  SupabaseStrengthSessionRepository,
-} from "@fitness-app/infrastructure";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createCoreServices } from "@/lib/server/services";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices, getCachedUserProfile } from "@/lib/server/services";
 import { getInsightsData } from "@/features/insights/server";
 import type { DashboardData, GoalProgress, TodayNutrition, NutritionTargetsSnapshot } from "./types";
 
@@ -171,28 +164,22 @@ function computeGoalProgress(
 export async function getDashboardData(): Promise<DashboardData> {
   const user = await requireCurrentUser();
   const {
-    profileService,
     bodyMetricService,
     cardioService,
     recoveryService,
+    strengthService,
     strengthSummaryService,
     weeklyReviewService,
     nutritionService,
+    journalService,
   } = await createCoreServices();
 
-  const client = await createSupabaseRequestClient();
-  const journalService = new JournalEntryService(new SupabaseJournalEntryRepository(client));
-
-  const profile = await profileService.getByUserId(user.id);
+  const profile = await getCachedUserProfile(user.id);
   const weekStartsOn = profile?.weekStartsOn ?? 1;
   const timezone = profile?.timezone || "UTC";
   const { weekStart, weekEnd } = getCurrentWeekRangeForUser(timezone, weekStartsOn);
 
   const today = formatIsoDate(new Date());
-
-  const strengthService = new StrengthSessionService(
-    new SupabaseStrengthSessionRepository(client),
-  );
 
   const [
     cardioThisWeekResult,

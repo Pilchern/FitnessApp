@@ -1,31 +1,12 @@
 "use server";
 
-import {
-  detectPersonalRecords,
-  StrengthSessionService,
-  TrainingTemplateService,
-} from "@fitness-app/application";
-import {
-  SupabaseInsightRepository,
-  SupabaseStrengthSessionRepository,
-  SupabaseTrainingTemplateRepository,
-} from "@fitness-app/infrastructure";
+import { detectPersonalRecords } from "@fitness-app/application";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import { strengthSessionFormSchema, templateExercisesSchema } from "./form-schema";
 import type { StrengthActionState } from "./types";
-
-async function createStrengthService() {
-  const client = await createSupabaseRequestClient();
-  return new StrengthSessionService(new SupabaseStrengthSessionRepository(client));
-}
-
-async function createTemplateService() {
-  const client = await createSupabaseRequestClient();
-  return new TrainingTemplateService(new SupabaseTrainingTemplateRepository(client));
-}
 
 function buildStrengthPayload(userId: string, formData: FormData) {
   const parsed = strengthSessionFormSchema.parse({
@@ -75,8 +56,7 @@ export async function createStrengthSessionAction(
 ): Promise<StrengthActionState> {
   try {
     const user = await requireCurrentUser();
-    const client = await createSupabaseRequestClient();
-    const service = new StrengthSessionService(new SupabaseStrengthSessionRepository(client));
+    const { strengthService: service, insightRepository } = await createCoreServices();
     const payload = buildStrengthPayload(user.id, formData);
     const session = await service.create(payload);
 
@@ -100,8 +80,7 @@ export async function createStrengthSessionAction(
     });
 
     if (allPrs.length > 0) {
-      const insightRepo = new SupabaseInsightRepository(client);
-      await insightRepo.upsertMany(
+      await insightRepository.upsertMany(
         allPrs.map((pr) => ({
           userId: user.id,
           insightType: `personal_record_${pr.prType}_${pr.exerciseName.toLowerCase().replace(/\s+/g, "_")}`,
@@ -135,7 +114,7 @@ export async function updateStrengthSessionAction(
 ): Promise<StrengthActionState> {
   try {
     const user = await requireCurrentUser();
-    const service = await createStrengthService();
+    const { strengthService: service } = await createCoreServices();
     const payload = buildStrengthPayload(user.id, formData);
 
     if (!payload.id) {
@@ -160,7 +139,7 @@ export async function deleteStrengthSessionAction(formData: FormData) {
   let url = "/strength";
   try {
     const user = await requireCurrentUser();
-    const service = await createStrengthService();
+    const { strengthService: service } = await createCoreServices();
     await service.archive(user.id, id);
   } catch (error) {
     url = `/strength?error=${encodeURIComponent(error instanceof Error ? error.message : "Delete failed.")}`;
@@ -174,7 +153,7 @@ export async function createStrengthTemplateAction(
 ): Promise<StrengthActionState> {
   try {
     const user = await requireCurrentUser();
-    const service = await createTemplateService();
+    const { trainingTemplateService: service } = await createCoreServices();
 
     const name = formData.get("name");
     const exercisesPayload = formData.get("exercisesPayload");
@@ -221,7 +200,7 @@ export async function archiveStrengthTemplateAction(formData: FormData) {
   let url = "/strength";
   try {
     const user = await requireCurrentUser();
-    const service = await createTemplateService();
+    const { trainingTemplateService: service } = await createCoreServices();
     await service.archiveTemplate(user.id, id);
   } catch (error) {
     url = `/strength?error=${encodeURIComponent(error instanceof Error ? error.message : "Archive failed.")}`;

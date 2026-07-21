@@ -1,11 +1,9 @@
 "use server";
 
-import { CardioSessionService } from "@fitness-app/application";
-import { SupabaseCardioSessionRepository } from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
+import { createCoreServices } from "@/lib/server/services";
 import { cardioSessionFormSchema } from "./form-schema";
 import type { CardioActionState } from "./types";
 
@@ -64,18 +62,13 @@ function buildCardioPayload(
   };
 }
 
-async function createCardioService() {
-  const client = await createSupabaseRequestClient();
-  return new CardioSessionService(new SupabaseCardioSessionRepository(client));
-}
-
 export async function createCardioSessionAction(
   _previousState: CardioActionState,
   formData: FormData,
 ): Promise<CardioActionState> {
   try {
     const user = await requireCurrentUser();
-    const cardioService = await createCardioService();
+    const { cardioService } = await createCoreServices();
     const payload = buildCardioPayload(user.id, formData);
     await cardioService.create(payload);
     redirect("/cardio");
@@ -90,7 +83,7 @@ export async function updateCardioSessionAction(
 ): Promise<CardioActionState> {
   try {
     const user = await requireCurrentUser();
-    const cardioService = await createCardioService();
+    const { cardioService } = await createCoreServices();
     const payload = buildCardioPayload(user.id, formData);
     if (!payload.id) {
       return {
@@ -114,7 +107,7 @@ export async function deleteCardioSessionAction(formData: FormData) {
   let url = "/cardio?deleted=1";
   try {
     const user = await requireCurrentUser();
-    const cardioService = await createCardioService();
+    const { cardioService } = await createCoreServices();
     await cardioService.archive(user.id, id);
   } catch (error) {
     url = `/cardio?error=${encodeURIComponent(error instanceof Error ? error.message : "Delete failed.")}`;

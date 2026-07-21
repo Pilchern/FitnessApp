@@ -1,24 +1,8 @@
 import "server-only";
 
-import { CardioSessionService, JournalEntryService, WeeklyReviewService } from "@fitness-app/application";
-import {
-  SupabaseCardioSessionRepository,
-  SupabaseJournalEntryRepository,
-  SupabaseWeeklyReviewRepository,
-} from "@fitness-app/infrastructure";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import type { JournalPageData } from "./types";
-
-async function createDependencies() {
-  const client = await createSupabaseRequestClient();
-
-  return {
-    journalService: new JournalEntryService(new SupabaseJournalEntryRepository(client)),
-    cardioService: new CardioSessionService(new SupabaseCardioSessionRepository(client)),
-    weeklyReviewService: new WeeklyReviewService(new SupabaseWeeklyReviewRepository(client)),
-  };
-}
 
 export async function getJournalPageData({
   editEntryId,
@@ -34,7 +18,7 @@ export async function getJournalPageData({
   endDate?: string;
 }): Promise<JournalPageData> {
   const user = await requireCurrentUser();
-  const { journalService, cardioService } = await createDependencies();
+  const { journalService, cardioService } = await createCoreServices();
 
   const [entries, cardioSessions, editingEntry] = await Promise.all([
     journalService.listEntries({

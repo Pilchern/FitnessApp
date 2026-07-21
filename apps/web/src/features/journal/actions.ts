@@ -1,24 +1,12 @@
 "use server";
 
-import { inferJournalTags, JournalEntryService, WeeklyReviewService } from "@fitness-app/application";
-import {
-  SupabaseJournalEntryRepository,
-  SupabaseWeeklyReviewRepository,
-} from "@fitness-app/infrastructure";
+import { inferJournalTags } from "@fitness-app/application";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import { journalEntryFormSchema } from "./form-schema";
 import type { JournalActionState } from "./types";
-
-async function createDependencies() {
-  const client = await createSupabaseRequestClient();
-  return {
-    journalService: new JournalEntryService(new SupabaseJournalEntryRepository(client)),
-    weeklyReviewService: new WeeklyReviewService(new SupabaseWeeklyReviewRepository(client)),
-  };
-}
 
 async function buildJournalPayload(userId: string, formData: FormData) {
   const parsed = journalEntryFormSchema.parse({
@@ -32,7 +20,7 @@ async function buildJournalPayload(userId: string, formData: FormData) {
     relatedStrengthSessionId: formData.get("relatedStrengthSessionId"),
   });
 
-  const { weeklyReviewService } = await createDependencies();
+  const { weeklyReviewService } = await createCoreServices();
   const relatedReview = parsed.relatedWeekStart
     ? await weeklyReviewService.getByWeekStart({
         userId,
@@ -62,7 +50,7 @@ export async function createJournalEntryAction(
 ): Promise<JournalActionState> {
   try {
     const user = await requireCurrentUser();
-    const { journalService } = await createDependencies();
+    const { journalService } = await createCoreServices();
     const payload = await buildJournalPayload(user.id, formData);
     await journalService.create(payload);
     redirect("/journal");
@@ -77,7 +65,7 @@ export async function updateJournalEntryAction(
 ): Promise<JournalActionState> {
   try {
     const user = await requireCurrentUser();
-    const { journalService } = await createDependencies();
+    const { journalService } = await createCoreServices();
     const payload = await buildJournalPayload(user.id, formData);
 
     if (!payload.id) {
@@ -102,7 +90,7 @@ export async function deleteJournalEntryAction(formData: FormData) {
   let url = "/journal";
   try {
     const user = await requireCurrentUser();
-    const { journalService } = await createDependencies();
+    const { journalService } = await createCoreServices();
     await journalService.archive(user.id, id);
   } catch (error) {
     url = `/journal?error=${encodeURIComponent(

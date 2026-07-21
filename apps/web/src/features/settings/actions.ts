@@ -1,27 +1,12 @@
 "use server";
 
-import {
-  NutritionTargetService,
-  SupplementService,
-  UserProfileService,
-} from "@fitness-app/application";
-import {
-  SupabaseBodyMetricRepository,
-  SupabaseSupplementRepository,
-  SupabaseUserProfileRepository,
-} from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import { settingsFormSchema, supplementFormSchema } from "./form-schema";
 import type { NutritionTargets } from "@fitness-app/application";
 import type { SettingsActionState, SupplementActionState } from "./types";
-
-async function createProfileService() {
-  const client = await createSupabaseRequestClient();
-  return new UserProfileService(new SupabaseUserProfileRepository(client));
-}
 
 function buildProfilePayload(userId: string, formData: FormData) {
   const parsed = settingsFormSchema.parse({
@@ -51,7 +36,7 @@ export async function updateSettingsAction(
 ): Promise<SettingsActionState> {
   try {
     const user = await requireCurrentUser();
-    const profileService = await createProfileService();
+    const { profileService } = await createCoreServices();
     await profileService.update(buildProfilePayload(user.id, formData));
     redirect("/settings?saved=true");
   } catch (error) {
@@ -65,14 +50,8 @@ export async function recomputeNutritionTargetsAction(): Promise<{
 }> {
   try {
     const user = await requireCurrentUser();
-    const client = await createSupabaseRequestClient();
-    const profileRepository = new SupabaseUserProfileRepository(client);
-    const service = new NutritionTargetService(
-      profileRepository,
-      new SupabaseBodyMetricRepository(client),
-    );
-    const targets = await service.computeNutritionTargets(user.id);
-    const profileService = new UserProfileService(profileRepository);
+    const { nutritionTargetService, profileService } = await createCoreServices();
+    const targets = await nutritionTargetService.computeNutritionTargets(user.id);
     const profile = await profileService.getByUserId(user.id);
     if (!profile) {
       return { error: "Profile not found" };
@@ -99,11 +78,6 @@ export async function recomputeNutritionTargetsAction(): Promise<{
   }
 }
 
-async function createSupplementService() {
-  const client = await createSupabaseRequestClient();
-  return new SupplementService(new SupabaseSupplementRepository(client));
-}
-
 export async function createSupplementAction(
   _previousState: SupplementActionState,
   formData: FormData,
@@ -111,7 +85,7 @@ export async function createSupplementAction(
   try {
     const user = await requireCurrentUser();
     const parsed = supplementFormSchema.parse({ name: formData.get("name") });
-    const supplementService = await createSupplementService();
+    const { supplementService } = await createCoreServices();
     await supplementService.create({ userId: user.id, name: parsed.name });
     redirect("/settings?saved=true");
   } catch (error) {
@@ -128,7 +102,7 @@ export async function deactivateSupplementAction(formData: FormData) {
   let url = "/settings?saved=true";
   try {
     const user = await requireCurrentUser();
-    const supplementService = await createSupplementService();
+    const { supplementService } = await createCoreServices();
     await supplementService.archive(user.id, id);
   } catch (error) {
     url = `/settings?error=${encodeURIComponent(
@@ -147,7 +121,7 @@ export async function reactivateSupplementAction(formData: FormData) {
   let url = "/settings?saved=true";
   try {
     const user = await requireCurrentUser();
-    const supplementService = await createSupplementService();
+    const { supplementService } = await createCoreServices();
     await supplementService.update({ id, userId: user.id, isActive: true });
   } catch (error) {
     url = `/settings?error=${encodeURIComponent(

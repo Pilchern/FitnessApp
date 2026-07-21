@@ -1,14 +1,9 @@
 "use server";
 
-import { RecoveryCheckinService, SupplementLogService } from "@fitness-app/application";
-import {
-  SupabaseRecoveryCheckinRepository,
-  SupabaseSupplementLogRepository,
-} from "@fitness-app/infrastructure";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import { recoveryCheckinFormSchema } from "./form-schema";
 import type { RecoveryActionState, SupplementChecklistActionState } from "./types";
 
@@ -59,18 +54,13 @@ function buildRecoveryPayload(userId: string, formData: FormData) {
   };
 }
 
-async function createRecoveryService() {
-  const client = await createSupabaseRequestClient();
-  return new RecoveryCheckinService(new SupabaseRecoveryCheckinRepository(client));
-}
-
 export async function createRecoveryCheckinAction(
   _previousState: RecoveryActionState,
   formData: FormData,
 ): Promise<RecoveryActionState> {
   try {
     const user = await requireCurrentUser();
-    const recoveryService = await createRecoveryService();
+    const { recoveryService } = await createCoreServices();
     await recoveryService.create(buildRecoveryPayload(user.id, formData));
     redirect("/recovery");
   } catch (error) {
@@ -84,7 +74,7 @@ export async function updateRecoveryCheckinAction(
 ): Promise<RecoveryActionState> {
   try {
     const user = await requireCurrentUser();
-    const recoveryService = await createRecoveryService();
+    const { recoveryService } = await createCoreServices();
     const payload = buildRecoveryPayload(user.id, formData);
 
     if (!payload.id) {
@@ -109,7 +99,7 @@ export async function deleteRecoveryCheckinAction(formData: FormData) {
   let url = "/recovery";
   try {
     const user = await requireCurrentUser();
-    const recoveryService = await createRecoveryService();
+    const { recoveryService } = await createCoreServices();
     await recoveryService.archive(user.id, id);
   } catch (error) {
     url = `/recovery?error=${encodeURIComponent(
@@ -117,11 +107,6 @@ export async function deleteRecoveryCheckinAction(formData: FormData) {
     )}`;
   }
   redirect(url);
-}
-
-async function createSupplementLogService() {
-  const client = await createSupabaseRequestClient();
-  return new SupplementLogService(new SupabaseSupplementLogRepository(client));
 }
 
 /**
@@ -143,7 +128,7 @@ export async function logSupplementsAction(
       return { error: "Missing log date." };
     }
 
-    const supplementLogService = await createSupplementLogService();
+    const { supplementLogService } = await createCoreServices();
 
     await Promise.all(
       supplementIds

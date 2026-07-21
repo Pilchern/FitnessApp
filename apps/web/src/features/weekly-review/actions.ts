@@ -1,21 +1,12 @@
 "use server";
 
-import {
-  calculateWeeklyReviewScore,
-  WeeklyReviewService,
-} from "@fitness-app/application";
-import { SupabaseWeeklyReviewRepository } from "@fitness-app/infrastructure";
+import { calculateWeeklyReviewScore } from "@fitness-app/application";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import { weeklyReviewFormSchema } from "./form-schema";
 import type { WeeklyReviewActionState } from "./types";
-
-async function createWeeklyReviewService() {
-  const client = await createSupabaseRequestClient();
-  return new WeeklyReviewService(new SupabaseWeeklyReviewRepository(client));
-}
 
 function buildWeeklyReviewPayload(userId: string, formData: FormData) {
   const parsed = weeklyReviewFormSchema.parse({
@@ -86,7 +77,7 @@ export async function saveWeeklyReviewAction(
 ): Promise<WeeklyReviewActionState> {
   try {
     const user = await requireCurrentUser();
-    const service = await createWeeklyReviewService();
+    const { weeklyReviewService: service } = await createCoreServices();
     const payload = buildWeeklyReviewPayload(user.id, formData);
 
     if (payload.id) {
@@ -122,7 +113,7 @@ export async function useAiWeeklyReviewDraftAction(
 ): Promise<WeeklyReviewActionState> {
   try {
     const user = await requireCurrentUser();
-    const service = await createWeeklyReviewService();
+    const { weeklyReviewService: service } = await createCoreServices();
     const id = requiredFormString(formData, "id");
     const weekStart = requiredFormString(formData, "weekStart");
 
@@ -144,7 +135,7 @@ export async function dismissAiWeeklyReviewDraftAction(
 ): Promise<WeeklyReviewActionState> {
   try {
     const user = await requireCurrentUser();
-    const service = await createWeeklyReviewService();
+    const { weeklyReviewService: service } = await createCoreServices();
     const id = requiredFormString(formData, "id");
     const weekStart = requiredFormString(formData, "weekStart");
 

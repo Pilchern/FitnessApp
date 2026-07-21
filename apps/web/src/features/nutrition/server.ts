@@ -1,35 +1,15 @@
 import "server-only";
 
-import {
-  buildNutritionAdherenceSummary,
-  NutritionLogService,
-  UserProfileService,
-} from "@fitness-app/application";
-import {
-  SupabaseNutritionLogRepository,
-  SupabaseUserProfileRepository,
-} from "@fitness-app/infrastructure";
+import { buildNutritionAdherenceSummary } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { createCoreServices } from "@/lib/server/services";
 import type { NutritionPageData } from "./types";
-
-async function createServices() {
-  const client = await createSupabaseRequestClient();
-  return {
-    nutritionService: new NutritionLogService(
-      new SupabaseNutritionLogRepository(client),
-    ),
-    profileService: new UserProfileService(
-      new SupabaseUserProfileRepository(client),
-    ),
-  };
-}
 
 export async function getNutritionPageData(
   editLogId?: string,
 ): Promise<NutritionPageData> {
   const user = await requireCurrentUser();
-  const { nutritionService, profileService } = await createServices();
+  const { nutritionService, profileService } = await createCoreServices();
 
   const [logs, profile] = await Promise.all([
     nutritionService.listByDateRange({ userId: user.id }),
