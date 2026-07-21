@@ -37,9 +37,10 @@ longer enough on its own; you'd also need their personal token.
 header still has the old shared secret in it, and it will start getting
 `401 Unauthorized` responses. This is a one-time breaking change (deliberate
 — see "Why a clean break" below): go to `/integrations`, click "Generate
-webhook token" under the Apple Health card, and update your Shortcut's
-`Authorization` header with the new value. Everything else (webhook URL,
-`X-User-Id`, payload shape) is unchanged.
+webhook token" under the Apple Health card, and update the `Authorization`
+header in whichever bridge app you're using (Health Auto Export's
+Automations config, or a custom Shortcut) with the new value. Everything
+else (webhook URL, `X-User-Id`, payload shape) is unchanged.
 
 ### Why a clean break instead of a grace period
 
@@ -49,7 +50,7 @@ one real user today, not a base of bridge apps already deployed across many
 people. A grace period that accepted both the old shared secret and new
 per-user tokens would mean re-introducing the exact vulnerability this
 change closes, just temporarily. Given the actual blast radius (one person,
-one Shortcut, one header value to update), a clean break is the safer and
+one bridge app, one header value to update), a clean break is the safer and
 simpler trade — see the migration step above.
 
 ## Endpoints
