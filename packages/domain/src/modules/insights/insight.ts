@@ -14,7 +14,11 @@ export type InsightType =
   | "sleep_below_target"
   | "alcohol_elevated"
   | "weight_trending_up"
-  | "strong_week";
+  | "strong_week"
+  | "muscle_group_neglected"
+  | "push_pull_imbalance"
+  | "deload_suggested"
+  | "cardio_target_consistently_exceeded";
 
 export type Insight = {
   id: EntityId;

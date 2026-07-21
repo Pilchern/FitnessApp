@@ -1,4 +1,9 @@
-import type { PersistedInsight, RecoveryCoachingSuggestion, SparseTrendPoint } from "@fitness-app/application";
+import type {
+  MuscleGroupVolumeSummary,
+  PersistedInsight,
+  RecoveryCoachingSuggestion,
+  SparseTrendPoint,
+} from "@fitness-app/application";
 import type { RecoveryCheckin, WeeklyReview } from "@fitness-app/domain";
 
 export type TrainingWeekData = {
@@ -47,4 +52,5 @@ export type DashboardData = {
   goalProgress: GoalProgress[];
   todayNutrition: TodayNutrition | null;
   nutritionTargets: NutritionTargetsSnapshot;
+  muscleGroupVolume: MuscleGroupVolumeSummary;
 };

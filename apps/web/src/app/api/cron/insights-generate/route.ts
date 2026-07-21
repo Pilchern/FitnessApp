@@ -76,18 +76,19 @@ export async function GET(request: NextRequest) {
   // below — these services are stateless wrappers over repositories, so
   // there's no correctness reason to reconstruct them per user like the
   // pre-composition-root version of this route did.
-  const { weeklyReviewService, cardioService, recoveryService, bodyMetricService, strengthSummaryService, insightOrchestrator } =
+  const { weeklyReviewService, cardioService, recoveryService, bodyMetricService, strengthService, strengthSummaryService, insightOrchestrator } =
     await createCoreServices(adminClient);
 
   const settled = await mapWithConcurrency(rows, CONCURRENCY, async (profile) => {
     const startDate = sixMonthsAgoIsoDate();
     const timezone = profile.timezone ?? "UTC";
 
-    const [weeklyReviews, recentCardio, recentRecovery, recentBody] = await Promise.all([
+    const [weeklyReviews, recentCardio, recentRecovery, recentBody, recentStrength] = await Promise.all([
       weeklyReviewService.listRecent(profile.user_id, 8),
       cardioService.listByDateRange({ userId: profile.user_id, startDate }),
       recoveryService.listByDateRange({ userId: profile.user_id, startDate }),
       bodyMetricService.listByDateRange({ userId: profile.user_id, startDate }),
+      strengthService.listByDateRange({ userId: profile.user_id, startDate }),
     ]);
 
     const weekStarts = new Set(weeklyReviews.map((r) => r.weekStart));
@@ -109,6 +110,7 @@ export async function GET(request: NextRequest) {
       cardioSessions: recentCardio,
       recoveryCheckins: recentRecovery,
       weeklyReviews,
+      strengthSessions: recentStrength,
       liftsCompletedByWeek: Object.fromEntries(liftPairs),
       now: new Date(),
       timezone,

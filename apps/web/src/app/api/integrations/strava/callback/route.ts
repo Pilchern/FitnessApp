@@ -86,11 +86,13 @@ export async function GET(request: NextRequest) {
 
     return redirectWithMessage(request, "status=strava_connected");
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Strava connection failed.";
+    // Full detail (which can include upstream HTTP response bodies) stays
+    // server-side only — the redirect URL is browser-visible and can end up
+    // in history/referrer headers, so it must never carry raw error text.
+    console.error("[strava/callback] OAuth exchange or sync failed:", error);
     return redirectWithMessage(
       request,
-      `error=${encodeURIComponent(message)}`,
+      "error=Strava%20connection%20failed.%20Please%20try%20again.",
     );
   }
 }

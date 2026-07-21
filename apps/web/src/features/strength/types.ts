@@ -1,4 +1,5 @@
 import type {
+  MuscleGroupVolumeSummary,
   StrengthProgressionSummary,
 } from "@fitness-app/application";
 import type { StrengthSession, TrainingTemplate } from "@fitness-app/domain";
@@ -11,6 +12,7 @@ export type StrengthPageData = {
   knownExercises: string[];
   lastSession: StrengthSession | null;
   strengthTemplates: TrainingTemplate[];
+  muscleGroupVolume: MuscleGroupVolumeSummary;
 };
 
 export type StrengthDetailData = {
@@ -28,6 +30,7 @@ export type StrengthSetFormValue = {
   reps: string;
   weight: string;
   rir: string;
+  isWarmup: boolean;
   notes: string;
 };
 

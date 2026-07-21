@@ -4,20 +4,34 @@ import type {
   Insight,
   IsoDate,
   RecoveryCheckin,
+  StrengthSession,
   WeeklyReview,
 } from "@fitness-app/domain";
 import { buildWeeklyReviewSummary, getLastCompletedWeekStart, getWeekRangeFromStart } from "../weekly-reviews/weekly-review-helpers";
 import { getZonedDate } from "../../shared/timezone";
+import { computeMuscleGroupVolume } from "../strength/muscle-group-volume";
 
 export type InsightEngineInput = {
   bodyMetrics: BodyMetric[];
   cardioSessions: CardioSession[];
   recoveryCheckins: RecoveryCheckin[];
   weeklyReviews: WeeklyReview[];
+  strengthSessions: StrengthSession[];
   liftsCompletedByWeek: Record<IsoDate, number>;
   now?: Date;
   timezone?: string;
 };
+
+const MAJOR_MUSCLE_GROUP_LABELS: Record<string, string> = {
+  chest: "chest",
+  back: "back",
+  shoulders: "shoulders",
+  quads: "quads",
+  hamstrings: "hamstrings",
+  glutes: "glutes",
+};
+
+const MAJOR_MUSCLE_GROUPS = Object.keys(MAJOR_MUSCLE_GROUP_LABELS);
 
 function toIsoDate(date: Date) {
   const year = date.getFullYear();
@@ -520,6 +534,178 @@ function evaluateStrongWeek(input: InsightEngineInput) {
   );
 }
 
+function evaluateMuscleGroupNeglected(input: InsightEngineInput) {
+  const now = input.now ?? new Date();
+  const rangeEnd = toIsoDate(now);
+  const rangeStart = toIsoDate(addDays(now, -6));
+
+  const summary = computeMuscleGroupVolume(input.strengthSessions, {
+    startDate: rangeStart,
+    endDate: rangeEnd,
+  });
+
+  const majorGroups = summary.byMuscleGroup.filter((g) => MAJOR_MUSCLE_GROUPS.includes(g.muscleGroup));
+  const trainedMajor = majorGroups.filter((g) => g.workingSetCount > 0);
+  const neglectedMajor = majorGroups.filter((g) => g.workingSetCount === 0);
+
+  // Only worth flagging once there's been meaningful training this week —
+  // otherwise "neglected" just means "haven't gotten to it yet".
+  const totalMajorSets = majorGroups.reduce((sum, g) => sum + g.workingSetCount, 0);
+  if (trainedMajor.length === 0 || neglectedMajor.length === 0 || totalMajorSets < 6) {
+    return null;
+  }
+
+  const chest = majorGroups.find((g) => g.muscleGroup === "chest");
+  const back = majorGroups.find((g) => g.muscleGroup === "back");
+
+  let title: string;
+  let explanation: string;
+
+  if (chest && back && chest.workingSetCount >= 2 && back.workingSetCount === 0) {
+    title = "Chest trained, back skipped this week";
+    explanation = `${chest.workingSetCount} chest working sets logged this week, but 0 for back. Pressing and pulling volume should generally track together.`;
+  } else if (chest && back && back.workingSetCount >= 2 && chest.workingSetCount === 0) {
+    title = "Back trained, chest skipped this week";
+    explanation = `${back.workingSetCount} back working sets logged this week, but 0 for chest.`;
+  } else {
+    const names = neglectedMajor.map((g) => MAJOR_MUSCLE_GROUP_LABELS[g.muscleGroup]).join(", ");
+    title = `${neglectedMajor.length === 1 ? "A muscle group" : "Muscle groups"} sitting untouched this week`;
+    explanation = `${trainedMajor.length} major muscle group${trainedMajor.length === 1 ? "" : "s"} trained this week, but not: ${names}.`;
+  }
+
+  return makeInsight(
+    rangeEnd,
+    "muscle_group_neglected",
+    "caution",
+    title,
+    explanation,
+    "Add one exercise for the untrained group to your next session, or dedicate a session to it before the week ends.",
+    {
+      rangeStart,
+      rangeEnd,
+      byMuscleGroup: majorGroups,
+    },
+  );
+}
+
+function evaluatePushPullImbalance(input: InsightEngineInput) {
+  const now = input.now ?? new Date();
+  const rangeEnd = toIsoDate(now);
+  const rangeStart = toIsoDate(addDays(now, -13));
+
+  const summary = computeMuscleGroupVolume(input.strengthSessions, {
+    startDate: rangeStart,
+    endDate: rangeEnd,
+  });
+
+  const push = summary.byMovementPattern.find((p) => p.movementPattern === "push");
+  const pull = summary.byMovementPattern.find((p) => p.movementPattern === "pull");
+  const ratio = summary.pushPullVolumeRatio;
+
+  // Require a meaningful combined sample so the ratio isn't noise from one or two sets.
+  const combinedVolume = (push?.totalVolume ?? 0) + (pull?.totalVolume ?? 0);
+  if (ratio == null || combinedVolume < 2000) {
+    return null;
+  }
+
+  if (ratio < 1.4 && ratio > 0.71) {
+    return null;
+  }
+
+  const pushHeavy = ratio >= 1.4;
+  const higher = pushHeavy ? "Pressing" : "Pulling";
+  const lower = pushHeavy ? "pulling" : "pressing";
+  const displayRatio = pushHeavy ? ratio : Math.round((1 / ratio) * 100) / 100;
+
+  return makeInsight(
+    rangeEnd,
+    "push_pull_imbalance",
+    "caution",
+    `${higher} volume is outpacing ${lower}`,
+    `Over the last 14 days, ${higher.toLowerCase()} volume has been ${displayRatio}x ${lower} volume (push: ${push?.totalVolume ?? 0} lb, pull: ${pull?.totalVolume ?? 0} lb).`,
+    `Add an extra ${lower} exercise or set to your next couple of sessions to bring the ratio back toward even.`,
+    {
+      rangeStart,
+      rangeEnd,
+      pushVolume: push?.totalVolume ?? 0,
+      pullVolume: pull?.totalVolume ?? 0,
+      ratio,
+    },
+  );
+}
+
+function evaluateDeloadSuggested(input: InsightEngineInput) {
+  const reviews = getCompletedWeeklyReviews(input.weeklyReviews);
+  const last3 = reviews.slice(0, 3);
+
+  if (last3.length < 3 || last3.some((review) => (review.summary.liftsCompleted ?? 0) < 3)) {
+    return null;
+  }
+
+  const sortedRecovery = [...input.recoveryCheckins].sort((left, right) =>
+    right.checkinDate.localeCompare(left.checkinDate),
+  );
+  const recent = sortedRecovery.slice(0, 3);
+  const previous = sortedRecovery.slice(3, 6);
+
+  if (recent.length < 2 || previous.length < 2) {
+    return null;
+  }
+
+  const recentReadiness = compareAverages(recent.map((checkin) => checkin.readinessLevel));
+  const previousReadiness = compareAverages(previous.map((checkin) => checkin.readinessLevel));
+
+  const readinessDown =
+    recentReadiness != null &&
+    previousReadiness != null &&
+    previousReadiness - recentReadiness >= 1;
+
+  if (!readinessDown) {
+    return null;
+  }
+
+  return makeInsight(
+    last3[0].weekStart,
+    "deload_suggested",
+    "caution",
+    "You may benefit from a lighter training week",
+    `3 consecutive weeks of consistent strength training (3+ lifts each) while readiness has dropped from ${previousReadiness} to ${recentReadiness}.`,
+    "Consider a lighter week: drop a set or two per exercise, or swap one lift session for light Zone 2 cardio, then reassess readiness.",
+    {
+      weekStarts: last3.map((r) => r.weekStart),
+      recentReadiness,
+      previousReadiness,
+    },
+  );
+}
+
+function evaluateCardioTargetConsistentlyExceeded(input: InsightEngineInput) {
+  const reviews = getCompletedWeeklyReviews(input.weeklyReviews);
+  const last3 = reviews.slice(0, 3);
+
+  if (last3.length < 3) {
+    return null;
+  }
+
+  const allExceeded = last3.every((review) => (review.summary.ridesCompleted ?? 0) >= 4);
+  if (!allExceeded) {
+    return null;
+  }
+
+  return makeInsight(
+    last3[0].weekStart,
+    "cardio_target_consistently_exceeded",
+    "positive",
+    "Consistently exceeding your cardio target",
+    `4+ cardio sessions completed in each of the last 3 weeks, above the 3-session weekly target.`,
+    "This is sustainable as long as recovery and strength sessions aren't slipping — keep an eye on both.",
+    {
+      weekStarts: last3.map((r) => r.weekStart),
+      ridesByWeek: last3.map((r) => r.summary.ridesCompleted ?? 0),
+    },
+  );
+}
+
 const severityRank: Record<Insight["severity"], number> = {
   warning: 4,
   caution: 3,
@@ -541,6 +727,10 @@ export function buildInsights(input: InsightEngineInput): Insight[] {
     evaluateAlcoholElevated(input),
     evaluateWeightTrendingUp(input),
     evaluateStrongWeek(input),
+    evaluateMuscleGroupNeglected(input),
+    evaluatePushPullImbalance(input),
+    evaluateDeloadSuggested(input),
+    evaluateCardioTargetConsistentlyExceeded(input),
   ].filter((insight): insight is Insight => insight != null);
 
   return insights.sort((left, right) => {

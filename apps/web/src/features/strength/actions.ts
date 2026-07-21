@@ -45,6 +45,7 @@ function buildStrengthPayload(userId: string, formData: FormData) {
       reps: set.reps,
       weight: set.weight,
       rir: set.rir,
+      isWarmup: set.isWarmup,
       notes: set.notes || null,
     })),
   };
@@ -72,10 +73,12 @@ export async function createStrengthSessionAction(
     });
 
     const allPrs = exerciseNames.flatMap((exerciseName) => {
-      const newSets = session.sets.filter((s) => s.exerciseName === exerciseName);
+      const newSets = session.sets.filter(
+        (s) => s.exerciseName === exerciseName && !s.isWarmup,
+      );
       const historicalSets = historical
         .filter((s) => s.id !== session.id)
-        .flatMap((s) => s.sets.filter((set) => set.exerciseName === exerciseName));
+        .flatMap((s) => s.sets.filter((set) => set.exerciseName === exerciseName && !set.isWarmup));
       return detectPersonalRecords(exerciseName, newSets, historicalSets);
     });
 

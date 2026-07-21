@@ -1,4 +1,5 @@
 import { getStrengthPageData } from "../server";
+import { MuscleGroupBalanceCard } from "./muscle-group-balance-card";
 import { StrengthProgressionSummarySection } from "./strength-progression-summary";
 import { StrengthSessionList } from "./strength-session-list";
 import { StrengthPageClient } from "./strength-page-client";
@@ -31,6 +32,8 @@ export async function StrengthScreen({ editSessionId }: StrengthScreenProps) {
         lastSession={data.lastSession}
         strengthTemplates={data.strengthTemplates}
       />
+
+      <MuscleGroupBalanceCard summary={data.muscleGroupVolume} />
 
       <StrengthProgressionSummarySection summaries={data.progressionSummaries} />
 

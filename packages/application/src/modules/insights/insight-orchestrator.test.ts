@@ -12,6 +12,7 @@ const baseEngineInput: InsightEngineInput = {
   cardioSessions: [],
   recoveryCheckins: [],
   weeklyReviews: [],
+  strengthSessions: [],
   liftsCompletedByWeek: {},
 };
 
