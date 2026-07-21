@@ -17,6 +17,8 @@ export * from "./modules/recovery/recovery-checkin";
 export * from "./modules/recovery/recovery-helpers";
 export * from "./modules/strength/strength-progression";
 export * from "./modules/strength/strength-session";
+export * from "./modules/strength/exercise-catalog-data";
+export * from "./modules/strength/muscle-group-volume";
 export {
   StrengthSessionSummaryService,
   type StrengthSessionSummaryRepository,

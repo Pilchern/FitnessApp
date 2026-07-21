@@ -1,6 +1,6 @@
 import "server-only";
 
-import { buildStrengthProgressionSummaries } from "@fitness-app/application";
+import { buildStrengthProgressionSummaries, computeMuscleGroupVolume } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { createCoreServices } from "@/lib/server/services";
 import type { StrengthDetailData, StrengthPageData } from "./types";
@@ -8,6 +8,16 @@ import type { StrengthDetailData, StrengthPageData } from "./types";
 function twoYearsAgoIsoDate() {
   const date = new Date();
   date.setFullYear(date.getFullYear() - 2);
+  return date.toISOString().slice(0, 10);
+}
+
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function daysAgoIsoDate(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
   return date.toISOString().slice(0, 10);
 }
 
@@ -34,6 +44,11 @@ export async function getStrengthPageData(
     ),
   ].sort((a, b) => a.localeCompare(b));
 
+  const muscleGroupVolume = computeMuscleGroupVolume(sessions, {
+    startDate: daysAgoIsoDate(7),
+    endDate: todayIsoDate(),
+  });
+
   return {
     sessions,
     progressionSummaries: buildStrengthProgressionSummaries(sessions),
@@ -45,6 +60,7 @@ export async function getStrengthPageData(
     knownExercises,
     lastSession: sessions[0] ?? null,
     strengthTemplates,
+    muscleGroupVolume,
   };
 }
 

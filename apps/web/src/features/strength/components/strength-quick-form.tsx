@@ -80,6 +80,7 @@ export function StrengthQuickForm({
             reps: ex.targetReps != null ? String(ex.targetReps) : "",
             weight: ex.targetWeight != null ? String(ex.targetWeight) : "",
             rir: ex.targetRir != null ? String(ex.targetRir) : "",
+            isWarmup: false,
             notes: "",
           })),
         ),
@@ -135,6 +136,7 @@ export function StrengthQuickForm({
                           reps: set.reps != null ? `${set.reps}` : "",
                           weight: set.weight != null ? `${set.weight}` : "",
                           rir: set.rir != null ? `${set.rir}` : "",
+                          isWarmup: false,
                           notes: set.notes ?? "",
                         }))
                       : [createEmptyStrengthSet()],
@@ -301,7 +303,7 @@ export function StrengthQuickForm({
             {values.sets.map((set, index) => (
               <div
                 key={`${index}-${set.setNumber}`}
-                className="grid gap-3 rounded-[1.5rem] border border-ink/10 bg-sand/45 p-4 md:grid-cols-[1.5fr_0.7fr_0.8fr_0.8fr_0.8fr_auto]"
+                className="grid gap-3 rounded-[1.5rem] border border-ink/10 bg-sand/45 p-4 md:grid-cols-[1.5fr_0.7fr_0.8fr_0.8fr_0.8fr_auto_auto]"
               >
                 <input
                   className={fieldClassName()}
@@ -373,6 +375,23 @@ export function StrengthQuickForm({
                     }))
                   }
                 />
+                <label className="flex h-11 items-center gap-2 whitespace-nowrap text-xs font-medium text-ink/70">
+                  <input
+                    type="checkbox"
+                    checked={set.isWarmup}
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        sets: setField(current.sets, index, {
+                          isWarmup: event.target.checked,
+                        }),
+                      }))
+                    }
+                    className="h-4 w-4 rounded border-ink/20 text-pine focus:ring-pine/40"
+                  />
+                  Warm-up
+                </label>
+
                 <button
                   type="button"
                   onClick={() =>
@@ -390,7 +409,7 @@ export function StrengthQuickForm({
                 </button>
 
                 <textarea
-                  className={`${textAreaClassName()} md:col-span-6`}
+                  className={`${textAreaClassName()} md:col-span-7`}
                   placeholder="Optional set note"
                   value={set.notes}
                   onChange={(event) =>

@@ -15,19 +15,19 @@ The app is not a calorie counter or social fitness platform. It is a weekly coac
 
 ## Technology Stack
 
-| Layer | Technology |
-|---|---|
-| Monorepo manager | pnpm 10 workspaces |
-| Language | TypeScript 5.7 (strict) |
-| Frontend framework | Next.js 15 (App Router, React 19) |
-| Styling | Tailwind CSS 3.4 |
-| Database | Supabase / PostgreSQL |
-| Auth | Supabase Auth (email/password) |
-| ORM / DB client | Supabase JS SDK |
-| Validation | Zod 3 |
-| Testing | Vitest 2 |
-| Lint | ESLint (next/core-web-vitals + prettier) |
-| Format | Prettier 3 |
+| Layer              | Technology                               |
+| ------------------ | ---------------------------------------- |
+| Monorepo manager   | pnpm 10 workspaces                       |
+| Language           | TypeScript 5.7 (strict)                  |
+| Frontend framework | Next.js 15 (App Router, React 19)        |
+| Styling            | Tailwind CSS 3.4                         |
+| Database           | Supabase / PostgreSQL                    |
+| Auth               | Supabase Auth (email/password)           |
+| ORM / DB client    | Supabase JS SDK                          |
+| Validation         | Zod 3                                    |
+| Testing            | Vitest 2                                 |
+| Lint               | ESLint (next/core-web-vitals + prettier) |
+| Format             | Prettier 3                               |
 
 ---
 
@@ -66,37 +66,37 @@ All packages except `web` are framework-free and portable.
 
 ## Key Files to Know
 
-| File | Purpose |
-|---|---|
-| `apps/web/src/middleware.ts` | Route protection, auth redirects |
-| `apps/web/src/app/(auth)/actions.ts` | Login, signup, logout server actions |
-| `apps/web/src/app/(protected)/layout.tsx` | Protected shell with nav and profile bootstrap |
-| `apps/web/src/lib/server/profile-bootstrap.ts` | Creates default profile on first login |
-| `apps/web/src/lib/auth.ts` | `sanitizeRedirectTo`, `mapAuthErrorMessage` |
-| `apps/web/src/lib/navigation.ts` | All route definitions + module metadata |
-| `packages/application/src/index.ts` | All exported services, schemas, helpers |
-| `packages/infrastructure/src/index.ts` | All exported repositories |
-| `supabase/migrations/` | Ground truth for DB schema |
+| File                                           | Purpose                                        |
+| ---------------------------------------------- | ---------------------------------------------- |
+| `apps/web/src/middleware.ts`                   | Route protection, auth redirects               |
+| `apps/web/src/app/(auth)/actions.ts`           | Login, signup, logout server actions           |
+| `apps/web/src/app/(protected)/layout.tsx`      | Protected shell with nav and profile bootstrap |
+| `apps/web/src/lib/server/profile-bootstrap.ts` | Creates default profile on first login         |
+| `apps/web/src/lib/auth.ts`                     | `sanitizeRedirectTo`, `mapAuthErrorMessage`    |
+| `apps/web/src/lib/navigation.ts`               | All route definitions + module metadata        |
+| `packages/application/src/index.ts`            | All exported services, schemas, helpers        |
+| `packages/infrastructure/src/index.ts`         | All exported repositories                      |
+| `supabase/migrations/`                         | Ground truth for DB schema                     |
 
 ---
 
 ## Feature Module Status
 
-| Module | Route | Status |
-|---|---|---|
-| Dashboard | `/dashboard` | Implemented — 6 parallel queries, basic cards |
-| Cardio | `/cardio` | Implemented — Zone2/VO2/recovery/other, full CRUD |
-| Strength | `/strength` | Implemented — Sessions + sets, RPE/RIR tracking |
-| Recovery | `/recovery` | Implemented — RHR, HRV, sleep, readiness |
-| Body | `/body` | Implemented — Weight/waist/body fat, trends |
-| Weekly Review | `/weekly-review` | Implemented — Scoring engine, reflection fields |
-| Journal | `/journal` | Implemented — Tags, search, weekly-review links |
-| Insights | `/insights` | Implemented — Rule-based engine, dismiss/archive, plus optional AI-generated insights via `AiInsightService` (Claude API) when enabled |
-| Settings | `/settings` | Implemented — Profile, timezone, units, goals |
-| Integrations | `/integrations` | Implemented — UI for all 4 providers: Strava (live), Withings (OAuth, needs creds), Peloton (needs connected account), Apple Health (needs webhook secret) |
-| Nutrition | `/nutrition` | Implemented — Daily log, macro tracking, CRUD |
+| Module        | Route            | Status                                                                                                                                                     |
+| ------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dashboard     | `/dashboard`     | Implemented — 6 parallel queries, basic cards                                                                                                              |
+| Cardio        | `/cardio`        | Implemented — Zone2/VO2/recovery/other, full CRUD                                                                                                          |
+| Strength      | `/strength`      | Implemented — Sessions + sets, RIR tracking, warm-up marking, muscle-group/movement-pattern volume balance (2026-07-21)                                    |
+| Recovery      | `/recovery`      | Implemented — RHR, HRV, sleep, readiness                                                                                                                   |
+| Body          | `/body`          | Implemented — Weight/waist/body fat, trends                                                                                                                |
+| Weekly Review | `/weekly-review` | Implemented — Scoring engine, reflection fields                                                                                                            |
+| Journal       | `/journal`       | Implemented — Tags, search, weekly-review links                                                                                                            |
+| Insights      | `/insights`      | Implemented — Rule-based engine, dismiss/archive, plus optional AI-generated insights via `AiInsightService` (Claude API) when enabled                     |
+| Settings      | `/settings`      | Implemented — Profile, timezone, units, goals                                                                                                              |
+| Integrations  | `/integrations`  | Implemented — UI for all 4 providers: Strava (live), Withings (OAuth, needs creds), Peloton (needs connected account), Apple Health (needs webhook secret) |
+| Nutrition     | `/nutrition`     | Implemented — Daily log, macro tracking, CRUD                                                                                                              |
 
-**Providers not present in a route table because they're webhook/cron-only:** Apple Health sleep ingestion (`POST /api/integrations/apple-health/sleep`), Peloton cardio sync (`/api/cron/peloton-sync`), weekly review auto-draft (`/api/cron/weekly-review-auto-finalize`), and insights generation (`/api/cron/insights-generate`, not yet scheduled in `vercel.json`).
+**Providers not present in a route table because they're webhook/cron-only:** Apple Health sleep + daily-metrics ingestion (`POST /api/integrations/apple-health/sleep`, `/daily-metrics`), Peloton cardio sync (`/api/cron/peloton-sync`), weekly review auto-draft (`/api/cron/weekly-review-auto-finalize`), and insights generation (`/api/cron/insights-generate`, scheduled in `vercel.json`).
 
 ---
 
@@ -158,7 +158,9 @@ pnpm format:write     # Prettier fix
 ## Key Architectural Patterns
 
 ### 1. Service + Repository Pattern
+
 Every feature uses: `FeatureService(new SupabaseFeatureRepository(client))`
+
 - Service lives in `packages/application`
 - Repository interface (port) in `packages/application`
 - Repository implementation in `packages/infrastructure`
@@ -166,64 +168,77 @@ Every feature uses: `FeatureService(new SupabaseFeatureRepository(client))`
 - Shared factory: `apps/web/src/lib/server/services.ts` → `createCoreServices()` wires 7 services at once
 
 ### 2. Server Actions Pattern
+
 All mutations flow through `"use server"` actions in `features/*/actions.ts`:
+
 1. `requireCurrentUser()` — auth check
 2. Zod validation via form schema
 3. Service call
 4. `redirect(path)` on success, `return parseActionError(error)` on failure (returns `{ error?, fieldErrors? }`)
 
 ### 3. Form Schema Pattern
+
 Zod schemas in `features/*/form-schema.ts` handle FormData parsing (all strings from FormData → typed values). They use shared `parseOptionalNumber()` and `optionalString()` from `apps/web/src/lib/form-utils.ts`.
 
 ### 4. Field-Level Form Errors
+
 Action state types include `fieldErrors?: Record<string, string>`. `parseActionError()` in `lib/server/parse-action-error.ts` extracts per-field Zod errors. Form components render `state.fieldErrors?.fieldName` below each input.
 
 ### 5. RLS as the Security Layer
+
 All tables enforce ownership via `auth.uid() = user_id`. Server actions call `requireCurrentUser()` additionally for defense-in-depth. Service-role key is used only for admin/sync operations (bypasses RLS).
 
 ### 6. React `cache()` for Per-Request Deduplication
+
 `createSupabaseRequestClient`, `getCurrentUser`, and `ensureProfileForUser` are wrapped with React `cache()`. Layout + page components sharing a render tree only hit Supabase once per function call type, not once per component.
 
 ---
 
 ## Known Technical Debt (Priority Order)
 
-See `TECH_DEBT.md` for the full register. Active items as of 2026-07-15:
+See `TECH_DEBT.md` for the full register. Active items as of 2026-07-21:
 
-1. **No background job execution infrastructure** — 4 cron routes exist (`peloton-sync`, `strava-sync`, `weekly-review-auto-finalize`, `insights-generate`) but there is no queue, retry, or dead-letter handling anywhere in `packages/jobs`; failures are per-user isolated and silently logged (TD-014)
-2. **`insights-generate` cron unscheduled** — route works but isn't in `vercel.json` (TD-017)
+1. **No application-level login rate limiting** — relies entirely on Supabase Auth's own (unconfigurable from here) protections (TD-018)
+2. **No cross-provider duplicate detection** — same real-world workout/weigh-in landing via two connected providers isn't deduplicated (TD-019)
 3. **Withings and Peloton unconfigured** — code-complete, waiting on credentials/connection
-4. **Apple Health webhook is sleep-only** — steps, VO2 max, resting HR (outside sleep), exercise minutes, and active energy are not yet accepted
-5. **`listByDateRange` capped at 500 rows** — acceptable for current scale (TD-016)
+4. **`listByDateRange` capped at 500 rows** — acceptable for current scale (TD-016)
+5. **`duration_seconds`/`distance_meters` still dead columns** on strength sets — `is_warmup` had the same problem and was fixed 2026-07-21 (TD-020)
+6. **No user-editable exercise catalog/aliases** — the new muscle-group catalog is static and in-code (TD-021)
+7. **No account deletion/export flow** (TD-022)
 
 ---
 
 ## What Still Needs Building
 
 **Next sprint priorities (see task-level plan for full detail):**
+
 1. Configure Withings OAuth end to end
 2. Reactivate Strava, enable Peloton's native Strava auto-export (Peloton-direct is confirmed blocked by Peloton's own API as of 2026-07-16 — not fixable in-app)
-3. Extend Apple Health webhook beyond sleep
-4. Schema: waist_hip_in/waist_gut_in, bedtime/wake time, cold plunge, supplement adherence
-5. Background job infrastructure with real retry/dead-letter handling (TD-014)
-6. AI-powered weekly review narrative (score/why/what-worked/what-needs-attention/strategic-decision/risk-forecast/next-action), built as an editable draft
+3. Wire `duration_seconds`/`distance_meters` to the strength UI for timed/distance movements (TD-020)
+4. DB-backed login rate limiting (TD-018) and cross-provider duplicate detection (TD-019)
+5. Goal/training-plan entities with real numeric targets and a scheduled-workout concept — today `profiles` only has 3 boolean goal flags, no target weight/date, no weekly split assigned to specific days
+6. Account deletion/data export flow (TD-022)
 
 **Already built, previously undocumented:**
+
 - Peloton adapter, connect route, weekly cron, and UI card
-- Apple Health sleep webhook + orchestrator
+- Apple Health sleep + daily-metrics webhooks + orchestrators
 - AI-generated insights via `AiInsightService` (Claude API) — feeds the Insights module, not a weekly-review narrative
 - Weekly review auto-draft cron (creates a draft with computed summary + blank journal reflection; no AI narrative)
+- Muscle-group/movement-pattern exercise catalog and volume aggregation (2026-07-21) — `packages/application/src/modules/strength/exercise-catalog-data.ts` and `muscle-group-volume.ts`
 
 **Longer-horizon work:**
+
 - Mobile-responsive audit and polish pass
 - Export/data-portability
+- Superset/circuit grouping, unilateral (per-side) tracking, rest timer, lbs/kg unit toggle, and a "previous performance for this exercise" inline hint while logging — none of these exist in the strength module yet
 
 ---
 
 ## Testing Notes
 
 - **Framework:** Vitest 2 (all packages), Playwright (E2E)
-- **Current coverage:** 86 unit/integration tests across application, integrations, jobs, and web layers
+- **Current coverage:** 197 unit/integration tests across application, integrations, jobs, and web layers
 - **Test seed user:** `dev@example.com` / `password1234` (local Supabase only)
 - **E2E:** `tests/e2e/` — auth, navigation, body, and cardio specs; configured in `apps/web/playwright.config.ts`
 - **Run unit tests:** `pnpm test` from root
@@ -234,6 +249,7 @@ See `TECH_DEBT.md` for the full register. Active items as of 2026-07-15:
 ## Agents Available
 
 See `AGENTS.md` for full agent system prompts. Agents defined:
+
 1. Architecture Agent
 2. Frontend UX Agent
 3. QA and Testing Agent
@@ -249,8 +265,9 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 
 ## Session History
 
-| Date | Work Done |
-|---|---|
-| 2026-07-15 | Docs reality audit: found Peloton adapter/cron/UI, Apple Health sleep webhook, AI-hooked Insights, and 2 more undocumented cron routes. Rewrote CURRENT_STATE.md, FitnessAppContext.md, docs/known-issues.md, docs/next-release-roadmap.md to match actual code. Corrected stale test count (49 → 86) and table name (`integration_credentials` → `integration_connection_credentials`). |
-| 2026-04-05 | Full check-in: survey, run, test, audit. Fixed lint error + README bug. Created FitnessAppContext.md, AGENTS.md, CURRENT_STATE.md, TECH_DEBT.md, TESTING.md |
-| 2026-04-05 | Sprint: nutrition module (full stack), field-level form errors (body/recovery/cardio), React cache() on auth+profile+supabase client, shared createCoreServices() factory, shared form-utils, parseActionError utility, delete action error handling, Playwright E2E setup (4 spec files), security fix (RLS policies + userId filter on credential repo), 49 tests passing |
+| Date       | Work Done                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-21 | Muscle-group/movement-pattern exercise catalog + volume aggregation (biggest gap vs. product goal — "am I neglecting a muscle group"), wired into `/strength` and dashboard. `is_warmup` wired end-to-end (was a dead DB column). 4 new coaching-insight rules (muscle-group neglect, push/pull imbalance, deload suggestion, cardio-target-exceeded). OAuth callback + Apple Health webhook error-message sanitization. Corrected doc drift (`vercel.json` cron list, TD-011b already-fixed status). 15 new tests (197 total, up from 177). `pnpm build` verified clean. |
+| 2026-07-15 | Docs reality audit: found Peloton adapter/cron/UI, Apple Health sleep webhook, AI-hooked Insights, and 2 more undocumented cron routes. Rewrote CURRENT_STATE.md, FitnessAppContext.md, docs/known-issues.md, docs/next-release-roadmap.md to match actual code. Corrected stale test count (49 → 86) and table name (`integration_credentials` → `integration_connection_credentials`).                                                                                                                                                                                  |
+| 2026-04-05 | Full check-in: survey, run, test, audit. Fixed lint error + README bug. Created FitnessAppContext.md, AGENTS.md, CURRENT_STATE.md, TECH_DEBT.md, TESTING.md                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 2026-04-05 | Sprint: nutrition module (full stack), field-level form errors (body/recovery/cardio), React cache() on auth+profile+supabase client, shared createCoreServices() factory, shared form-utils, parseActionError utility, delete action error handling, Playwright E2E setup (4 spec files), security fix (RLS policies + userId filter on credential repo), 49 tests passing                                                                                                                                                                                               |

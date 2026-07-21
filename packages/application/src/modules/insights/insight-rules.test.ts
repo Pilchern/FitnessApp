@@ -3,6 +3,8 @@ import type {
   BodyMetric,
   CardioSession,
   RecoveryCheckin,
+  StrengthExerciseSet,
+  StrengthSession,
   WeeklyReview,
 } from "@fitness-app/domain";
 import { buildInsights, getTopInsights } from "../../index";
@@ -16,6 +18,50 @@ function manualSource() {
     sourceExternalId: null,
     importBatchId: null,
     rawImportEventId: null,
+  };
+}
+
+function makeStrengthSet(
+  overrides: Partial<StrengthExerciseSet> & Pick<StrengthExerciseSet, "exerciseName">,
+): StrengthExerciseSet {
+  return {
+    id: `set-${Math.random()}`,
+    userId,
+    strengthSessionId: "session-1",
+    exerciseOrder: 0,
+    setNumber: 1,
+    reps: 8,
+    weight: 100,
+    rir: 2,
+    isWarmup: false,
+    notes: null,
+    createdAt: "2026-04-01T00:00:00.000Z",
+    updatedAt: "2026-04-01T00:00:00.000Z",
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
+function makeStrengthSession(
+  sessionDate: string,
+  sets: StrengthExerciseSet[],
+): StrengthSession {
+  return {
+    id: `session-${sessionDate}`,
+    userId,
+    trainingTemplateId: null,
+    sessionDate,
+    sessionName: null,
+    notes: null,
+    durationMinutes: 45,
+    readinessPre: null,
+    energyPost: null,
+    completedAsPlanned: true,
+    source: manualSource(),
+    createdAt: `${sessionDate}T12:00:00.000Z`,
+    updatedAt: `${sessionDate}T12:00:00.000Z`,
+    deletedAt: null,
+    sets,
   };
 }
 
@@ -398,6 +444,7 @@ describe("insight rules", () => {
       cardioSessions,
       recoveryCheckins,
       weeklyReviews,
+      strengthSessions: [],
       liftsCompletedByWeek: {
         "2026-03-16": 3,
         "2026-03-23": 3,
@@ -492,6 +539,7 @@ describe("insight rules", () => {
       cardioSessions: [],
       recoveryCheckins: [],
       weeklyReviews: [],
+      strengthSessions: [],
       liftsCompletedByWeek: {},
       ...overrides,
     };
@@ -809,6 +857,224 @@ describe("insight rules", () => {
     it("does not fire when no review data exists", () => {
       const insights = buildInsights(emptyInput({ now: TEST_NOW }));
       expect(insights.find((i) => i.insightType === "strong_week")).toBeUndefined();
+    });
+  });
+
+  // ── Rule: muscle_group_neglected ────────────────────────────────────────
+
+  describe("muscle_group_neglected", () => {
+    it("fires when chest is trained but back is skipped with meaningful weekly volume", () => {
+      const insights = buildInsights(emptyInput({
+        strengthSessions: [
+          makeStrengthSession("2026-04-01", [
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 2 }),
+          ]),
+          makeStrengthSession("2026-04-03", [
+            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 2 }),
+            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 3 }),
+            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 4 }),
+          ]),
+        ],
+        now: TEST_NOW,
+      }));
+      const insight = insights.find((i) => i.insightType === "muscle_group_neglected");
+      expect(insight).toBeDefined();
+      expect(insight?.title).toMatch(/back skipped/i);
+    });
+
+    it("does not fire when there isn't enough weekly training volume to judge", () => {
+      const insights = buildInsights(emptyInput({
+        strengthSessions: [
+          makeStrengthSession("2026-04-01", [
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 2 }),
+          ]),
+        ],
+        now: TEST_NOW,
+      }));
+      expect(insights.find((i) => i.insightType === "muscle_group_neglected")).toBeUndefined();
+    });
+
+    it("does not fire when every major muscle group has been trained", () => {
+      const insights = buildInsights(emptyInput({
+        strengthSessions: [
+          makeStrengthSession("2026-04-01", [
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 2 }),
+            makeStrengthSet({ exerciseName: "Barbell Row", setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Barbell Row", setNumber: 2 }),
+            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 2 }),
+            makeStrengthSet({ exerciseName: "Overhead Press", setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Romanian Deadlift", setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Hip Thrust", setNumber: 1 }),
+          ]),
+        ],
+        now: TEST_NOW,
+      }));
+      expect(insights.find((i) => i.insightType === "muscle_group_neglected")).toBeUndefined();
+    });
+  });
+
+  // ── Rule: push_pull_imbalance ────────────────────────────────────────────
+
+  describe("push_pull_imbalance", () => {
+    it("fires when press volume heavily outpaces pull volume over 14 days", () => {
+      const insights = buildInsights(emptyInput({
+        strengthSessions: [
+          makeStrengthSession("2026-04-01", [
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", weight: 150, reps: 10, setNumber: 1 }),
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", weight: 150, reps: 10, setNumber: 2 }),
+          ]),
+          makeStrengthSession("2026-04-02", [
+            makeStrengthSet({ exerciseName: "Barbell Row", weight: 50, reps: 10, setNumber: 1 }),
+          ]),
+        ],
+        now: TEST_NOW,
+      }));
+      const insight = insights.find((i) => i.insightType === "push_pull_imbalance");
+      expect(insight).toBeDefined();
+      expect(insight?.title).toMatch(/pressing/i);
+    });
+
+    it("does not fire when combined volume is too small to be meaningful", () => {
+      const insights = buildInsights(emptyInput({
+        strengthSessions: [
+          makeStrengthSession("2026-04-01", [
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", weight: 50, reps: 5, setNumber: 1 }),
+          ]),
+        ],
+        now: TEST_NOW,
+      }));
+      expect(insights.find((i) => i.insightType === "push_pull_imbalance")).toBeUndefined();
+    });
+
+    it("does not fire when push and pull volume are roughly balanced", () => {
+      const insights = buildInsights(emptyInput({
+        strengthSessions: [
+          makeStrengthSession("2026-04-01", [
+            makeStrengthSet({ exerciseName: "Barbell Bench Press", weight: 150, reps: 10, setNumber: 1 }),
+          ]),
+          makeStrengthSession("2026-04-02", [
+            makeStrengthSet({ exerciseName: "Barbell Row", weight: 145, reps: 10, setNumber: 1 }),
+          ]),
+        ],
+        now: TEST_NOW,
+      }));
+      expect(insights.find((i) => i.insightType === "push_pull_imbalance")).toBeUndefined();
+    });
+  });
+
+  // ── Rule: deload_suggested ───────────────────────────────────────────────
+
+  describe("deload_suggested", () => {
+    function makeRecoveryCheckin(checkinDate: string, readinessLevel: number): RecoveryCheckin {
+      return {
+        id: `recovery-${checkinDate}`,
+        userId,
+        checkinDate,
+        restingHeartRate: null,
+        hrv: null,
+        sleepDurationMinutes: null,
+        sleepQuality: null,
+        energyLevel: null,
+        readinessLevel,
+        stressLevel: null,
+        sorenessLevel: null,
+        alcoholCount: 0,
+        notes: null,
+        timeInBedMinutes: null,
+        sleepEfficiencyPct: null,
+        deepSleepMinutes: null,
+        remSleepMinutes: null,
+        coreSleepMinutes: null,
+        awakeMinutes: null,
+        sleepRespiratoryRate: null,
+        sleepSpo2AvgPct: null,
+        sleepHrvAvg: null,
+        sleepAvgHeartRate: null,
+        bedtimeLocal: null,
+        wakeTimeLocal: null,
+        coldPlungeCompleted: null,
+        source: manualSource(),
+        createdAt: `${checkinDate}T08:00:00.000Z`,
+        updatedAt: `${checkinDate}T08:00:00.000Z`,
+        deletedAt: null,
+      };
+    }
+
+    it("fires after 3 consistent training weeks combined with a readiness decline", () => {
+      const insights = buildInsights(emptyInput({
+        weeklyReviews: [
+          makeWeeklyReview("2026-03-30", { liftsCompleted: 3 }),
+          makeWeeklyReview("2026-03-23", { liftsCompleted: 3 }),
+          makeWeeklyReview("2026-03-16", { liftsCompleted: 4 }),
+        ],
+        recoveryCheckins: [
+          makeRecoveryCheckin("2026-04-04", 4),
+          makeRecoveryCheckin("2026-04-03", 4),
+          makeRecoveryCheckin("2026-04-02", 5),
+          makeRecoveryCheckin("2026-03-28", 8),
+          makeRecoveryCheckin("2026-03-27", 7),
+          makeRecoveryCheckin("2026-03-26", 8),
+        ],
+        now: TEST_NOW,
+      }));
+      expect(insights.find((i) => i.insightType === "deload_suggested")).toBeDefined();
+    });
+
+    it("does not fire without 3 consecutive high-volume training weeks", () => {
+      const insights = buildInsights(emptyInput({
+        weeklyReviews: [
+          makeWeeklyReview("2026-03-30", { liftsCompleted: 1 }),
+          makeWeeklyReview("2026-03-23", { liftsCompleted: 3 }),
+          makeWeeklyReview("2026-03-16", { liftsCompleted: 4 }),
+        ],
+        recoveryCheckins: [
+          makeRecoveryCheckin("2026-04-04", 4),
+          makeRecoveryCheckin("2026-04-03", 4),
+          makeRecoveryCheckin("2026-04-02", 5),
+          makeRecoveryCheckin("2026-03-28", 8),
+          makeRecoveryCheckin("2026-03-27", 7),
+          makeRecoveryCheckin("2026-03-26", 8),
+        ],
+        now: TEST_NOW,
+      }));
+      expect(insights.find((i) => i.insightType === "deload_suggested")).toBeUndefined();
+    });
+  });
+
+  // ── Rule: cardio_target_consistently_exceeded ───────────────────────────
+
+  describe("cardio_target_consistently_exceeded", () => {
+    it("fires (positive) after 3 straight weeks of exceeding the cardio target", () => {
+      const insights = buildInsights(emptyInput({
+        weeklyReviews: [
+          makeWeeklyReview("2026-03-30", { ridesCompleted: 4 }),
+          makeWeeklyReview("2026-03-23", { ridesCompleted: 5 }),
+          makeWeeklyReview("2026-03-16", { ridesCompleted: 4 }),
+        ],
+        now: TEST_NOW,
+      }));
+      const insight = insights.find((i) => i.insightType === "cardio_target_consistently_exceeded");
+      expect(insight).toBeDefined();
+      expect(insight?.severity).toBe("positive");
+    });
+
+    it("does not fire when any of the last 3 weeks only hits the target instead of exceeding it", () => {
+      const insights = buildInsights(emptyInput({
+        weeklyReviews: [
+          makeWeeklyReview("2026-03-30", { ridesCompleted: 3 }),
+          makeWeeklyReview("2026-03-23", { ridesCompleted: 5 }),
+          makeWeeklyReview("2026-03-16", { ridesCompleted: 4 }),
+        ],
+        now: TEST_NOW,
+      }));
+      expect(
+        insights.find((i) => i.insightType === "cardio_target_consistently_exceeded"),
+      ).toBeUndefined();
     });
   });
 });

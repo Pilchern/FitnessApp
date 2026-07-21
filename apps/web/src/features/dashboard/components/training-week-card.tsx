@@ -1,8 +1,23 @@
 import Link from "next/link";
+import type { MuscleGroupVolumeSummary } from "@fitness-app/application";
 import type { TrainingWeekData } from "../types";
 
 type TrainingWeekCardProps = {
   data: TrainingWeekData;
+  muscleGroupVolume: MuscleGroupVolumeSummary;
+};
+
+const MUSCLE_GROUP_LABELS: Record<string, string> = {
+  chest: "Chest",
+  back: "Back",
+  shoulders: "Shoulders",
+  biceps: "Biceps",
+  triceps: "Triceps",
+  quads: "Quads",
+  hamstrings: "Hamstrings",
+  glutes: "Glutes",
+  calves: "Calves",
+  core: "Core",
 };
 
 function formatWeekRange(weekStart: string, weekEnd: string) {
@@ -30,8 +45,10 @@ function Stat({ label, value, sub, href }: StatProps) {
   );
 }
 
-export function TrainingWeekCard({ data }: TrainingWeekCardProps) {
+export function TrainingWeekCard({ data, muscleGroupVolume }: TrainingWeekCardProps) {
   const { weekStart, weekEnd, liftsCompleted, ridesCompleted, zone2Minutes, totalMinutes } = data;
+  const trainedAnything = muscleGroupVolume.byMuscleGroup.some((g) => g.workingSetCount > 0);
+  const neglected = muscleGroupVolume.neglectedMuscleGroups;
 
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
@@ -71,6 +88,19 @@ export function TrainingWeekCard({ data }: TrainingWeekCardProps) {
           href="/cardio"
         />
       </div>
+
+      {trainedAnything && neglected.length > 0 ? (
+        <Link
+          href="/strength"
+          className="mt-4 flex items-center justify-between gap-3 rounded-[1.25rem] border border-ember/20 bg-ember/5 px-4 py-3 text-sm text-ink/80 transition hover:border-ember/40"
+        >
+          <span>
+            <span className="font-semibold text-ember">Not trained this week: </span>
+            {neglected.map((group) => MUSCLE_GROUP_LABELS[group] ?? group).join(", ")}
+          </span>
+          <span className="shrink-0 text-xs font-semibold text-ember">View breakdown →</span>
+        </Link>
+      ) : null}
     </section>
   );
 }

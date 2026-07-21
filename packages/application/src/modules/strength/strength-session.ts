@@ -23,6 +23,7 @@ const strengthExerciseSetSchema = z.object({
   reps: z.number().int().min(0).nullable().optional(),
   weight: z.number().min(0).nullable().optional(),
   rir: z.number().min(0).max(6).nullable().optional(),
+  isWarmup: z.boolean().default(false),
   notes: optionalTrimmedStringSchema,
 });
 

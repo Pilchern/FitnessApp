@@ -136,13 +136,15 @@ function groupSetsByExerciseAndDate(sessions: StrengthSession[]) {
   const groups = new Map<string, Map<string, StrengthExerciseSet[]>>();
 
   sessions.forEach((session) => {
-    session.sets.forEach((set) => {
-      const exerciseGroups = groups.get(set.exerciseName) ?? new Map<string, StrengthExerciseSet[]>();
-      const sets = exerciseGroups.get(session.sessionDate) ?? [];
-      sets.push(set);
-      exerciseGroups.set(session.sessionDate, sets);
-      groups.set(set.exerciseName, exerciseGroups);
-    });
+    session.sets
+      .filter((set) => !set.isWarmup)
+      .forEach((set) => {
+        const exerciseGroups = groups.get(set.exerciseName) ?? new Map<string, StrengthExerciseSet[]>();
+        const sets = exerciseGroups.get(session.sessionDate) ?? [];
+        sets.push(set);
+        exerciseGroups.set(session.sessionDate, sets);
+        groups.set(set.exerciseName, exerciseGroups);
+      });
   });
 
   return groups;

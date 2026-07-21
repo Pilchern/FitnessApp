@@ -12,6 +12,7 @@ export * from "./modules/journal/journal-entry";
 export * from "./modules/nutrition/nutrition-log";
 export * from "./modules/recovery/recovery-checkin";
 export * from "./modules/strength/strength-session";
+export * from "./modules/strength/exercise-catalog";
 export * from "./modules/supplements/supplement";
 export * from "./modules/training/training-template";
 export * from "./modules/weekly-reviews/weekly-review";

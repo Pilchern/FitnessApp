@@ -87,8 +87,7 @@ export async function POST(request: NextRequest) {
       processed: result.processedItemCount,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Sync failed.";
-
-    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+    console.error("[apple-health/daily-metrics] Sync failed:", error);
+    return NextResponse.json({ ok: false, error: "sync_failed" }, { status: 500 });
   }
 }

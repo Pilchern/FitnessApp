@@ -39,7 +39,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <TrainingWeekCard data={data.trainingWeek} />
+      <TrainingWeekCard data={data.trainingWeek} muscleGroupVolume={data.muscleGroupVolume} />
 
       <div className="grid gap-4 lg:gap-6 lg:grid-cols-2">
         <RecoverySnapshotCard latestRecovery={data.latestRecovery} />

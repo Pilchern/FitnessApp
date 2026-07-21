@@ -5,6 +5,7 @@ import {
   buildBodyWeightTrend,
   buildCardioWeeklyTotals,
   computeJournalStreak,
+  computeMuscleGroupVolume,
   getCurrentWeekRangeForUser,
   getRecoveryCoachingSuggestion,
 } from "@fitness-app/application";
@@ -274,6 +275,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   const latestRecovery = sortedRecovery[0] ?? null;
   const latestReview = recentReviews[0] ?? null;
   const coachingSuggestion = getRecoveryCoachingSuggestion(sortedRecovery.slice(0, 7));
+  const muscleGroupVolume = computeMuscleGroupVolume(strengthSessions, {
+    startDate: daysAgoIsoDate(7),
+    endDate: today,
+  });
 
   return {
     trainingWeek: {
@@ -302,5 +307,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     goalProgress: computeGoalProgress(profile, recentBody, strengthSessions, cardioLast8Weeks),
     todayNutrition,
     nutritionTargets,
+    muscleGroupVolume,
   };
 }

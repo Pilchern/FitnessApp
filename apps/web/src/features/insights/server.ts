@@ -15,13 +15,14 @@ export async function getInsightsData() {
   const { insightOrchestrator, ...services } = await createCoreServices();
 
   const startDate = sixMonthsAgoIsoDate();
-  const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody] =
+  const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody, recentStrength] =
     await Promise.all([
       getCachedUserProfile(user.id),
       services.weeklyReviewService.listRecent(user.id, 8),
       services.cardioService.listByDateRange({ userId: user.id, startDate }),
       services.recoveryService.listByDateRange({ userId: user.id, startDate }),
       services.bodyMetricService.listByDateRange({ userId: user.id, startDate }),
+      services.strengthService.listByDateRange({ userId: user.id, startDate }),
     ]);
 
   const timezone = profile?.timezone || "UTC";
@@ -45,6 +46,7 @@ export async function getInsightsData() {
     cardioSessions: recentCardio,
     recoveryCheckins: recentRecovery,
     weeklyReviews,
+    strengthSessions: recentStrength,
     liftsCompletedByWeek: Object.fromEntries(liftPairs),
     now: new Date(),
     timezone,

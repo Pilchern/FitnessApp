@@ -10,6 +10,7 @@ export function createEmptyStrengthSet(
     reps: partial?.reps ?? "",
     weight: partial?.weight ?? "",
     rir: partial?.rir ?? "",
+    isWarmup: partial?.isWarmup ?? false,
     notes: partial?.notes ?? "",
   };
 }
@@ -59,6 +60,7 @@ export function toStrengthFormValues(
             reps: numberToInput(set.reps),
             weight: numberToInput(set.weight),
             rir: numberToInput(set.rir),
+            isWarmup: set.isWarmup,
             notes: set.notes ?? "",
           }))
         : [createEmptyStrengthSet()],
