@@ -88,6 +88,49 @@ export class SupabaseIntegrationCredentialRepository {
     };
   }
 
+  /**
+   * Looks up a credential by (user_id, provider) rather than connection id.
+   * Used by the Apple Health webhook auth path: an incoming webhook request
+   * only carries the client-supplied `X-User-Id` header, not a connection
+   * id, so verification has to resolve "does THIS user have a credential
+   * for THIS provider" directly. Relies on the existing
+   * `integration_connection_credentials_user_provider_idx` index.
+   */
+  async getByUserAndProvider(
+    userId: string,
+    provider: "withings" | "peloton" | "strava" | "apple_health",
+    encryptionKey: string,
+  ) {
+    const response = await this.client
+      .from("integration_connection_credentials")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("provider", provider)
+      .maybeSingle();
+
+    throwOnError(response.error, "Fetch integration credential by user and provider");
+
+    if (!response.data) {
+      return null;
+    }
+
+    const row = integrationCredentialRowSchema.parse(response.data);
+
+    return {
+      connectionId: row.integration_connection_id,
+      userId: row.user_id,
+      provider: row.provider,
+      accessToken: decryptSecret(row.access_token_encrypted, encryptionKey),
+      refreshToken: row.refresh_token_encrypted
+        ? decryptSecret(row.refresh_token_encrypted, encryptionKey)
+        : null,
+      accessTokenExpiresAt: row.access_token_expires_at,
+      refreshTokenExpiresAt: row.refresh_token_expires_at,
+      tokenType: row.token_type,
+      scopes: row.scope,
+    };
+  }
+
   async deleteByConnectionId(connectionId: string, userId: string) {
     const response = await this.client
       .from("integration_connection_credentials")
