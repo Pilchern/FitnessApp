@@ -1,7 +1,7 @@
 # Current State — FitnessApp
 
 **Last updated:** 2026-07-21 (muscle-group tracking + coaching-rule audit)
-**Overall health:** Stable. TypeScript clean. 197 tests pass. Lint clean. Production build succeeds. Withings and Apple Health are live and verified. Strava is currently broken (app deactivated on Strava's side — user action required). Peloton's unofficial API auth endpoint is confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not currently viable; **Peloton → Strava relay (via Peloton's own "auto-export to Strava" setting) is now the recommended cardio path**, pending Strava reactivation.
+**Overall health:** Stable. TypeScript clean. 198 tests pass. Lint clean. Production build succeeds. Withings and Apple Health are live and verified. Strava is currently broken (app deactivated on Strava's side — user action required). Peloton's unofficial API auth endpoint is confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not currently viable; **Peloton → Strava relay (via Peloton's own "auto-export to Strava" setting) is now the recommended cardio path**, pending Strava reactivation.
 
 This session's audit found the app's integration/data-integrity layer (auth, OAuth token encryption, RLS, per-provider dedup, webhook signature verification) in solid shape, but the product's stated #1 goal — knowing whether you're neglecting a muscle group — had zero supporting code anywhere. That was the highest-value gap and is now closed end-to-end: an exercise catalog with muscle-group/movement-pattern tagging, a volume aggregation service, a "not trained this week" dashboard callout, a muscle-group balance card on `/strength`, and 4 new coaching-insight rules (muscle-group neglect, push/pull imbalance, deload suggestion, consistently-exceeding-cardio-target). See "What Was Done in This Session (2026-07-21)" below.
 
@@ -13,7 +13,7 @@ This session's audit found the app's integration/data-integrity layer (auth, OAu
 | ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeScript   | CLEAN   | Zero errors across all 6 packages                                                                                                                                                                                                                                                                  |
 | Lint         | CLEAN   | No warnings                                                                                                                                                                                                                                                                                        |
-| Tests        | PASSING | 197/197 (30 web, 125 application, 14 integrations, 28 jobs)                                                                                                                                                                                                                                        |
+| Tests        | PASSING | 198/198 (30 web, 126 application, 14 integrations, 28 jobs)                                                                                                                                                                                                                                        |
 | Build        | PASSING | `pnpm build` succeeds without a live `.env.local` — all data-dependent routes are dynamic, so no Supabase connectivity is needed at build time                                                                                                                                                     |
 | E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review)                                                                                                                                                                                                  |
 | Database     | LIVE    | Cloud Supabase project, credentials in .env.local                                                                                                                                                                                                                                                  |
@@ -43,7 +43,7 @@ supabase/                   20 SQL migrations, seed data, RLS policies
 | ------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Dashboard     | `/dashboard`                  | Complete                                                                                                                                       | None                                                                                                                                                                                                                                                                                             |
 | Cardio        | `/cardio`                     | Complete                                                                                                                                       | None                                                                                                                                                                                                                                                                                             |
-| Strength      | `/strength`, `/strength/[id]` | Complete, plus muscle-group/movement-pattern volume tracking (2026-07-21) and warm-up set marking                                              | Timed/distance-based sets (`duration_seconds`/`distance_meters`) and a `failure` flag still aren't wired to the UI (TD-020) — no rest timer, superset grouping, or per-user exercise aliasing UI (TD-021)                                                                                        |
+| Strength      | `/strength`, `/strength/[id]` | Complete, plus muscle-group/movement-pattern volume tracking, warm-up marking, and timed/distance set logging (2026-07-21)                     | A `failure` flag still isn't wired to the UI — no rest timer, superset grouping, or per-user exercise aliasing UI (TD-021)                                                                                                                                                                       |
 | Recovery      | `/recovery`                   | Complete                                                                                                                                       | None                                                                                                                                                                                                                                                                                             |
 | Body          | `/body`                       | Complete                                                                                                                                       | None                                                                                                                                                                                                                                                                                             |
 | Nutrition     | `/nutrition`                  | Complete                                                                                                                                       | None                                                                                                                                                                                                                                                                                             |
@@ -112,7 +112,7 @@ None of the four cron routes have retry logic, a queue, or a dead-letter path �
 
 4. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
 5. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale. (TD-016)
-6. **`duration_seconds`/`distance_meters` still dead columns** on strength sets (TD-020); **no user-editable exercise catalog/aliases** (TD-021); **no account deletion/export flow** (TD-022).
+6. **No user-editable exercise catalog/aliases** (TD-021); **no account deletion/export flow** (TD-022).
 
 ### Resolved this session (2026-07-21)
 
@@ -164,11 +164,10 @@ See `TECH_DEBT.md` for full prioritized list.
 
 1. User: reactivate Strava app at strava.com/settings/api
 2. User: enable Peloton's native "auto-export to Strava" setting once Strava is reactivated, then connect Strava
-3. Wire `duration_seconds`/`distance_meters` to the strength UI for timed/distance movements (TD-020)
-4. DB-backed login rate limiting (TD-018)
-5. Cross-provider duplicate detection + source-priority rules for cardio/body metrics (TD-019)
-6. Goal/training-plan entities with real targets and a 3-day split template that accounts for the user's shoulder/lower-back limitations (currently only 3 boolean profile flags exist — no numeric targets, no scheduled-workout concept)
-7. Account deletion/data export flow (TD-022)
+3. DB-backed login rate limiting (TD-018)
+4. Cross-provider duplicate detection + source-priority rules for cardio/body metrics (TD-019)
+5. Goal/training-plan entities with real targets and a 3-day split template that accounts for the user's shoulder/lower-back limitations (currently only 3 boolean profile flags exist — no numeric targets, no scheduled-workout concept)
+6. Account deletion/data export flow (TD-022)
 
 ---
 
@@ -182,6 +181,8 @@ Full audit against the product's stated goals (dashboard clarity, coach intellig
 4. OAuth callback and Apple Health webhook error-message sanitization.
 5. Doc-drift correction (`vercel.json` cron list, TD-011b already-fixed status).
 6. 15 new tests (197 total, up from 177); `pnpm build` verified clean.
+
+**Follow-up (same day):** `duration_seconds`/`distance_meters` wired end-to-end on strength sets (TD-020) — same dead-column pattern as `is_warmup`. Timed sets (planks) and distance-based movements (farmer carries) can now be logged via two compact optional inputs next to the set-notes field. 1 new test (198 total).
 
 ---
 

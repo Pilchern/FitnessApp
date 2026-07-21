@@ -31,6 +31,8 @@ export type StrengthSetFormValue = {
   weight: string;
   rir: string;
   isWarmup: boolean;
+  durationSeconds: string;
+  distanceMeters: string;
   notes: string;
 };
 

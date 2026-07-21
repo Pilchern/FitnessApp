@@ -46,6 +46,8 @@ function buildStrengthPayload(userId: string, formData: FormData) {
       weight: set.weight,
       rir: set.rir,
       isWarmup: set.isWarmup,
+      durationSeconds: set.durationSeconds,
+      distanceMeters: set.distanceMeters,
       notes: set.notes || null,
     })),
   };

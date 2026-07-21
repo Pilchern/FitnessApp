@@ -24,6 +24,8 @@ const strengthExerciseSetSchema = z.object({
   weight: z.number().min(0).nullable().optional(),
   rir: z.number().min(0).max(6).nullable().optional(),
   isWarmup: z.boolean().default(false),
+  durationSeconds: z.number().int().min(0).nullable().optional(),
+  distanceMeters: z.number().min(0).nullable().optional(),
   notes: optionalTrimmedStringSchema,
 });
 

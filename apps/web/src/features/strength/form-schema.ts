@@ -18,6 +18,8 @@ const parsedStrengthSetSchema = z.object({
   weight: parseOptionalNumber(z.number().min(0), "Weight"),
   rir: parseOptionalNumber(z.number().min(0).max(6), "RIR"),
   isWarmup: z.boolean().optional().default(false),
+  durationSeconds: parseOptionalNumber(z.number().int().min(0), "Duration"),
+  distanceMeters: parseOptionalNumber(z.number().min(0), "Distance"),
   notes: optionalString,
 });
 
