@@ -34,6 +34,8 @@ function makeStrengthSet(
     weight: 100,
     rir: 2,
     isWarmup: false,
+    durationSeconds: null,
+    distanceMeters: null,
     notes: null,
     createdAt: "2026-04-01T00:00:00.000Z",
     updatedAt: "2026-04-01T00:00:00.000Z",

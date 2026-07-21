@@ -35,14 +35,6 @@
 - **Fix:** Add a `limit` parameter to repository port interfaces; pass caller-controlled limits from server.ts files; default to 365 for chart views.
 - **Effort:** M (requires interface changes across application + infrastructure layers)
 
-### TD-020: `duration_seconds` / `distance_meters` still dead columns on strength sets
-
-- **Severity:** Low
-- **Affected files:** `packages/domain/src/modules/strength/strength-session.ts`, `packages/infrastructure/src/repositories/strength-session-repository.ts`, strength form/UI
-- **Problem:** These columns exist in `strength_exercise_sets` (for timed sets like planks and distance-based movements like carries) but aren't wired to the domain type, repository mapper, or UI. `is_warmup` had the same problem and was fixed this session (see Resolved Debt) — this is the same shape of fix for the two remaining dead columns.
-- **Fix:** Same pattern as the `is_warmup` fix: domain field → repo mapper → form schema → quick-form UI (likely a "timed/distance set" toggle that swaps the reps+weight inputs for duration/distance inputs).
-- **Effort:** M
-
 ### TD-021: No user-editable exercise catalog or per-user aliases
 
 - **Severity:** Low
@@ -88,3 +80,4 @@
 | TD-024  | `is_warmup` was a dead DB column (existed in schema, never reached domain/UI) — wired end-to-end; warm-up sets are now excluded from working volume, PR detection, and progression trends                                                                                                                             | 2026-07-21 |
 | TD-025  | Coaching insight engine was missing several high-value rules from the product spec (muscle-group neglect, push/pull imbalance, deload suggestion, consistently-exceeding-cardio-target) — 4 new rules added with tests                                                                                                | 2026-07-21 |
 | TD-026  | OAuth callback routes (Strava, Withings) and Apple Health webhook routes returned raw `error.message` to the client/redirect URL on failure — now sanitized to generic messages with full detail logged server-side only                                                                                              | 2026-07-21 |
+| TD-020  | `duration_seconds`/`distance_meters` were dead columns on strength sets — wired end-to-end (domain, repo mapper, form schema, quick-form UI) so timed sets (planks) and distance-based movements (carries) can be logged; same fix pattern as `is_warmup` (TD-024)                                                    | 2026-07-21 |

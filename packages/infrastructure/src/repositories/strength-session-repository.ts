@@ -46,6 +46,8 @@ const strengthSetRowSchema = z.object({
   weight: z.number().nullable(),
   rir: z.number().nullable(),
   is_warmup: z.boolean(),
+  duration_seconds: z.number().int().nullable(),
+  distance_meters: z.number().nullable(),
   notes: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -67,6 +69,8 @@ function mapStrengthSetRow(row: StrengthSetRow): StrengthExerciseSet {
     weight: row.weight,
     rir: row.rir,
     isWarmup: row.is_warmup,
+    durationSeconds: row.duration_seconds,
+    distanceMeters: row.distance_meters,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -135,6 +139,8 @@ function toStrengthSetInsert(userId: string, strengthSessionId: string, input: a
     weight: input.weight ?? null,
     rir: input.rir ?? null,
     is_warmup: input.isWarmup ?? false,
+    duration_seconds: input.durationSeconds ?? null,
+    distance_meters: input.distanceMeters ?? null,
     notes: input.notes ?? null,
   };
 }

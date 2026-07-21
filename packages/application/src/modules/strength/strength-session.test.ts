@@ -42,6 +42,8 @@ class FakeStrengthSessionRepository implements StrengthSessionRepository {
         weight: set.weight ?? null,
         rir: set.rir ?? null,
         isWarmup: set.isWarmup ?? false,
+        durationSeconds: set.durationSeconds ?? null,
+        distanceMeters: set.distanceMeters ?? null,
         notes: set.notes ?? null,
         createdAt: "2026-04-01T00:00:00.000Z",
         updatedAt: "2026-04-01T00:00:00.000Z",
@@ -102,6 +104,34 @@ describe("strength validation", () => {
 
     expect(parsed.sets).toHaveLength(1);
     expect(parsed.completedAsPlanned).toBe(true);
+  });
+
+  it("accepts a timed/distance set with no reps or weight", () => {
+    const parsed = createStrengthSessionSchema.parse({
+      userId,
+      sessionDate: "2026-04-01",
+      sessionName: "Core",
+      completedAsPlanned: true,
+      sets: [
+        {
+          exerciseName: "Plank",
+          exerciseOrder: 0,
+          setNumber: 1,
+          durationSeconds: 60,
+        },
+        {
+          exerciseName: "Farmer Carry",
+          exerciseOrder: 1,
+          setNumber: 1,
+          weight: 50,
+          distanceMeters: 20,
+        },
+      ],
+    });
+
+    expect(parsed.sets[0].durationSeconds).toBe(60);
+    expect(parsed.sets[0].reps).toBeUndefined();
+    expect(parsed.sets[1].distanceMeters).toBe(20);
   });
 });
 
@@ -166,6 +196,8 @@ describe("strength progression helpers", () => {
           weight: 185,
           rir: 2,
           isWarmup: false,
+          durationSeconds: null,
+          distanceMeters: null,
           notes: null,
           createdAt: "2026-03-17T00:00:00.000Z",
           updatedAt: "2026-03-17T00:00:00.000Z",
@@ -206,6 +238,8 @@ describe("strength progression helpers", () => {
           weight: 185,
           rir: 2,
           isWarmup: false,
+          durationSeconds: null,
+          distanceMeters: null,
           notes: null,
           createdAt: "2026-03-24T00:00:00.000Z",
           updatedAt: "2026-03-24T00:00:00.000Z",
@@ -246,6 +280,8 @@ describe("strength progression helpers", () => {
           weight: 185,
           rir: 1,
           isWarmup: false,
+          durationSeconds: null,
+          distanceMeters: null,
           notes: null,
           createdAt: "2026-03-31T00:00:00.000Z",
           updatedAt: "2026-03-31T00:00:00.000Z",

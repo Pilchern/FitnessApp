@@ -12,6 +12,8 @@ export type StrengthExerciseSet = {
   weight: number | null;
   rir: number | null;
   isWarmup: boolean;
+  durationSeconds: number | null;
+  distanceMeters: number | null;
   notes: string | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

@@ -81,6 +81,8 @@ export function StrengthQuickForm({
             weight: ex.targetWeight != null ? String(ex.targetWeight) : "",
             rir: ex.targetRir != null ? String(ex.targetRir) : "",
             isWarmup: false,
+            durationSeconds: "",
+            distanceMeters: "",
             notes: "",
           })),
         ),
@@ -137,6 +139,10 @@ export function StrengthQuickForm({
                           weight: set.weight != null ? `${set.weight}` : "",
                           rir: set.rir != null ? `${set.rir}` : "",
                           isWarmup: false,
+                          durationSeconds:
+                            set.durationSeconds != null ? `${set.durationSeconds}` : "",
+                          distanceMeters:
+                            set.distanceMeters != null ? `${set.distanceMeters}` : "",
                           notes: set.notes ?? "",
                         }))
                       : [createEmptyStrengthSet()],
@@ -408,19 +414,49 @@ export function StrengthQuickForm({
                   Remove
                 </button>
 
-                <textarea
-                  className={`${textAreaClassName()} md:col-span-7`}
-                  placeholder="Optional set note"
-                  value={set.notes}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      sets: setField(current.sets, index, {
-                        notes: event.target.value,
-                      }),
-                    }))
-                  }
-                />
+                <div className="flex flex-col gap-3 md:col-span-7 md:flex-row">
+                  <input
+                    className={`${fieldClassName()} md:w-40`}
+                    inputMode="numeric"
+                    placeholder="Duration (sec)"
+                    value={set.durationSeconds}
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        sets: setField(current.sets, index, {
+                          durationSeconds: event.target.value,
+                        }),
+                      }))
+                    }
+                  />
+                  <input
+                    className={`${fieldClassName()} md:w-40`}
+                    inputMode="decimal"
+                    placeholder="Distance (m)"
+                    value={set.distanceMeters}
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        sets: setField(current.sets, index, {
+                          distanceMeters: event.target.value,
+                        }),
+                      }))
+                    }
+                  />
+                  <textarea
+                    className={`${textAreaClassName()} flex-1`}
+                    placeholder="Optional set note"
+                    value={set.notes}
+                    onChange={(event) =>
+                      setValues((current) => ({
+                        ...current,
+                        sets: setField(current.sets, index, {
+                          notes: event.target.value,
+                        }),
+                      }))
+                    }
+                  />
+                </div>
               </div>
             ))}
           </div>
