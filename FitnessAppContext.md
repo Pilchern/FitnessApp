@@ -205,7 +205,7 @@ See `TECH_DEBT.md` for the full register. Active items as of 2026-07-22:
 2. **Withings and Peloton unconfigured** — code-complete, waiting on credentials/connection
 3. **`listByDateRange` capped at 500 rows** — acceptable for current scale (TD-016)
 
-Resolved 2026-07-22: account deletion + full data-export flow (TD-022, "Danger zone" section on `/settings`), and user-editable exercise catalog overrides (TD-021 — per-user muscle-group/movement-pattern/category classification checked before the built-in catalog, with a "Classify your exercises" UI on `/strength`).
+Resolved 2026-07-22: account deletion + full data-export flow (TD-022, "Danger zone" section on `/settings`), user-editable exercise catalog overrides (TD-021 — per-user muscle-group/movement-pattern/category classification checked before the built-in catalog, with a "Classify your exercises" UI on `/strength`), numeric goal targets + training-plan day-of-week scheduling (TD-027 — target weight/date on the profile, `scheduledDayOfWeek` on `TrainingTemplate` with a "Today's plan" callout on `/strength`), and a fix for a completely broken strength-template-creation flow found along the way (TD-028 — web/application field-name mismatch meant every template creation silently failed validation).
 
 Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window lockout) and `duration_seconds`/`distance_meters` dead columns (TD-020) — see TECH_DEBT.md Resolved Debt.
 
@@ -218,8 +218,8 @@ Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window 
 1. Configure Withings OAuth end to end
 2. Reactivate Strava, enable Peloton's native Strava auto-export (Peloton-direct is confirmed blocked by Peloton's own API as of 2026-07-16 — not fixable in-app)
 3. Cross-provider duplicate detection + source-priority rules (TD-019) — forward-looking; no live trigger path until Apple Health syncs weight/cardio
-4. Goal/training-plan entities with real numeric targets and a scheduled-workout concept — today `profiles` only has 3 boolean goal flags, no target weight/date, no weekly split assigned to specific days
-5. Apply migrations `20260721190000_create_auth_rate_limit_attempts.sql` and `20260722170000_create_exercise_muscle_group_overrides.sql` to the live Supabase project (neither has run — no live DB credentials in this container)
+4. Apply migrations `20260721190000_create_auth_rate_limit_attempts.sql`, `20260722170000_create_exercise_muscle_group_overrides.sql`, and `20260722180000_add_target_weight_and_template_schedule.sql` to the live Supabase project (none have run — no live DB credentials in this container)
+5. Once the migration above lands, actually set a target weight/date and pin the real M/W/F strength templates with a scheduled day — the underlying capability (TD-027) is built, but the numbers/templates themselves are personal data that has to come from the user
 
 **Already built, previously undocumented:**
 
@@ -229,6 +229,7 @@ Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window 
 - Weekly review auto-draft cron (creates a draft with computed summary + blank journal reflection; no AI narrative)
 - Muscle-group/movement-pattern exercise catalog and volume aggregation (2026-07-21) — `packages/application/src/modules/strength/exercise-catalog-data.ts` and `muscle-group-volume.ts`
 - User-editable exercise catalog overrides (2026-07-22) — `packages/application/src/modules/strength/exercise-override.ts`, checked before the built-in catalog in `resolveExercise()`
+- Numeric goal targets + training-plan day-of-week scheduling (2026-07-22) — `targetWeightLb`/`targetDate` on the profile, `scheduledDayOfWeek` on `TrainingTemplate`, "Today's plan" callout on `/strength`
 
 **Longer-horizon work:**
 
@@ -241,7 +242,7 @@ Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window 
 ## Testing Notes
 
 - **Framework:** Vitest 2 (all packages), Playwright (E2E)
-- **Current coverage:** 217 unit/integration tests across application, integrations, jobs, and web layers
+- **Current coverage:** 228 unit/integration tests across application, integrations, jobs, and web layers
 - **Test seed user:** `dev@example.com` / `password1234` (local Supabase only)
 - **E2E:** `tests/e2e/` — auth, navigation, body, and cardio specs; configured in `apps/web/playwright.config.ts`
 - **Run unit tests:** `pnpm test` from root
@@ -270,6 +271,7 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 
 | Date       | Work Done                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-22 | Closed TD-027: numeric goal targets (`targetWeightLb`/`targetDate` on the profile, editable under Settings, dashboard fat-loss card shows real progress-to-target/pace when set) + training-plan day-of-week scheduling (`TrainingTemplate.scheduledDayOfWeek`, "Today's plan" callout on `/strength`). Also fixed TD-028: strength-template creation was completely broken — the web-layer validation schema expected `name/sets/reps/rpe/notes` but the create-template form always sent `exerciseName/exerciseOrder/targetSets/targetReps/targetWeight/targetRir/notes`, so every submission failed; fixed by validating against the correct shared `strengthTemplateExerciseSchema`. New migration `20260722180000` not yet applied to the live project. 11 new tests (228 total, up from 217). |
 | 2026-07-22 | Closed TD-021: user-editable exercise catalog overrides. New `exercise_muscle_group_overrides` table (migration not yet applied to the live project) + `ExerciseOverrideService` (classify/archive/listActive); `resolveExercise()` checks per-user overrides before the built-in catalog; `computeMuscleGroupVolume()` accepts overrides and returns `unclassifiedExerciseNames`; new "Classify your exercises" UI on `/strength`. Re-scoped TD-019 from "active Medium-severity risk" to "forward-looking hardening" after confirming Apple Health doesn't yet sync body weight/cardio (no live duplicate-import path exists today). 7 new tests (217 total, up from 210). |
 | 2026-07-22 | Closed TD-022: full data-export route (`GET /api/account/export`, RLS-scoped, explicitly excludes integration credentials/raw payloads) and account deletion ("Danger zone" on `/settings`, requires typing "DELETE", cascades via `admin.auth.admin.deleteUser()`). Wired the previously-unused `DailyActivityMetricService` into `createCoreServices()`. 5 new tests (210 total, up from 205). |
 | 2026-07-21 | Muscle-group/movement-pattern exercise catalog + volume aggregation (biggest gap vs. product goal — "am I neglecting a muscle group"), wired into `/strength` and dashboard. `is_warmup` wired end-to-end (was a dead DB column). 4 new coaching-insight rules (muscle-group neglect, push/pull imbalance, deload suggestion, cardio-target-exceeded). OAuth callback + Apple Health webhook error-message sanitization. Corrected doc drift (`vercel.json` cron list, TD-011b already-fixed status). 15 new tests (197 total, up from 177). `pnpm build` verified clean. Same-day follow-ups: `duration_seconds`/`distance_meters` wired end-to-end for timed/distance strength sets (TD-020); DB-backed login/signup rate limiting added (TD-018, new `auth_rate_limit_attempts` migration — not yet applied to the live project). 205 tests total. |

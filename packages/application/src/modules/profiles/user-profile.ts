@@ -1,6 +1,6 @@
 import type { UserProfile, UserId } from "@fitness-app/domain";
 import { z } from "zod";
-import { uuidSchema } from "../../shared/primitives";
+import { isoDateSchema, uuidSchema } from "../../shared/primitives";
 
 export const updateUserProfileSchema = z.object({
   userId: uuidSchema,
@@ -14,6 +14,8 @@ export const updateUserProfileSchema = z.object({
   dailyProteinGramsTarget: z.number().int().positive().nullable().optional(),
   dailyCaloriesTarget: z.number().int().positive().nullable().optional(),
   dailyFiberGramsTarget: z.number().int().positive().nullable().optional(),
+  targetWeightLb: z.number().positive().nullable().optional(),
+  targetDate: isoDateSchema.nullable().optional(),
 });
 
 export type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;

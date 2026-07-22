@@ -19,6 +19,7 @@ export type StrengthPageData = {
   muscleGroupVolume: MuscleGroupVolumeSummary;
   exerciseOverrides: ExerciseMuscleGroupOverride[];
   unclassifiedExerciseNames: string[];
+  todaysScheduledTemplate: TrainingTemplate | null;
 };
 
 export type StrengthDetailData = {

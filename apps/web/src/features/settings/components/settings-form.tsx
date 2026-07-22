@@ -288,6 +288,46 @@ export function SettingsForm({ profile, userEmail, action, recomputeNutritionTar
             onChange={(next) => set("goalImproveVo2", next)}
           />
         </div>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Target weight (lb)
+            <input
+              className={fieldClassName()}
+              name="targetWeightLb"
+              type="number"
+              min={1}
+              step={0.1}
+              placeholder="e.g. 180"
+              value={values.targetWeightLb}
+              onChange={(event) => set("targetWeightLb", event.target.value)}
+            />
+            {state.fieldErrors?.targetWeightLb ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.targetWeightLb}
+              </p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Target date
+            <input
+              className={fieldClassName()}
+              name="targetDate"
+              type="date"
+              value={values.targetDate}
+              onChange={(event) => set("targetDate", event.target.value)}
+            />
+            {state.fieldErrors?.targetDate ? (
+              <p className="text-xs text-ember">{state.fieldErrors.targetDate}</p>
+            ) : null}
+          </label>
+        </div>
+        <p className="mt-2 text-xs text-ink/50">
+          Optional. When set, your dashboard&apos;s fat-loss goal card shows
+          progress toward this specific number instead of just a trend
+          direction.
+        </p>
       </section>
 
       {/* ── Nutrition Goals ── */}

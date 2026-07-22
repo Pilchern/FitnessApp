@@ -8,11 +8,11 @@
 
 | Package                 | Test Files | Tests   | Status          |
 | ----------------------- | ---------- | ------- | --------------- |
-| `packages/application`  | 16         | 133     | All passing     |
+| `packages/application`  | 17         | 139     | All passing     |
 | `packages/integrations` | 4          | 14      | All passing     |
 | `packages/jobs`         | 4          | 28      | All passing     |
-| `apps/web`              | 7          | 42      | All passing     |
-| **Total**               | **31**     | **217** | **All passing** |
+| `apps/web`              | 7          | 47      | All passing     |
+| **Total**               | **32**     | **228** | **All passing** |
 
 ---
 
@@ -47,6 +47,7 @@ packages/application/src/modules/
   strength/exercise-catalog-data.test.ts → Exercise name resolution + per-user override precedence
   strength/muscle-group-volume.test.ts → Muscle-group/movement-pattern volume aggregation
   strength/exercise-override.test.ts → ExerciseOverrideService classify/re-classify/archive
+  training/training-template.test.ts → Template schedule validation + create-form payload regression test
   weekly-reviews/weekly-review.test.ts → Weekly review scoring engine
   insights/insight-rules.test.ts → Rule-based insight generation
   validation.test.ts             → Shared validation utilities

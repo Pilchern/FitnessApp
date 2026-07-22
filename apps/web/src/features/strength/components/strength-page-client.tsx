@@ -12,6 +12,7 @@ import {
 import type { StrengthActionState } from "../types";
 import { StrengthQuickForm } from "./strength-quick-form";
 import { StrengthTemplateSection } from "./strength-template-section";
+import { TodaysPlanCallout } from "./todays-plan-callout";
 
 type StrengthPageClientProps = {
   mode: "create" | "edit";
@@ -20,6 +21,7 @@ type StrengthPageClientProps = {
   knownExercises: string[];
   lastSession: StrengthSession | null;
   strengthTemplates: TrainingTemplate[];
+  todaysScheduledTemplate: TrainingTemplate | null;
 };
 
 export function StrengthPageClient({
@@ -29,6 +31,7 @@ export function StrengthPageClient({
   knownExercises,
   lastSession,
   strengthTemplates,
+  todaysScheduledTemplate,
 }: StrengthPageClientProps) {
   const [loadedTemplate, setLoadedTemplate] =
     useState<StrengthTrainingTemplateDefinition | null>(null);
@@ -47,6 +50,13 @@ export function StrengthPageClient({
 
   return (
     <>
+      {todaysScheduledTemplate ? (
+        <TodaysPlanCallout
+          template={todaysScheduledTemplate}
+          onLoad={handleLoadTemplate}
+        />
+      ) : null}
+
       <StrengthTemplateSection
         templates={strengthTemplates}
         onLoad={handleLoadTemplate}

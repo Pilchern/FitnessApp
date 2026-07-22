@@ -4,6 +4,7 @@ import type {
 } from "@fitness-app/domain";
 import type {
   CreateStrengthTemplateInput,
+  SetTemplateScheduleInput,
   TrainingTemplateRepository,
 } from "@fitness-app/application";
 import {
@@ -13,6 +14,18 @@ import {
 import { z } from "zod";
 import { type AppSupabaseClient, requireSingleResult, throwOnError } from "./shared";
 
+const dayOfWeekRowSchema = z
+  .union([
+    z.literal(0),
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
+    z.literal(6),
+  ])
+  .nullable();
+
 const trainingTemplateRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
@@ -20,6 +33,7 @@ const trainingTemplateRowSchema = z.object({
   template_type: z.enum(["strength", "cardio"]),
   is_archived: z.boolean(),
   definition: z.record(z.unknown()),
+  scheduled_day_of_week: dayOfWeekRowSchema,
   created_at: z.string(),
   updated_at: z.string(),
   deleted_at: z.string().nullable(),
@@ -52,6 +66,7 @@ export function mapTrainingTemplateRow(row: TrainingTemplateRow): TrainingTempla
     templateType: row.template_type,
     isArchived: row.is_archived,
     definition: parseDefinition(row.template_type, row.definition),
+    scheduledDayOfWeek: row.scheduled_day_of_week,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
@@ -108,6 +123,7 @@ export class SupabaseTrainingTemplateRepository
         template_type: "strength",
         is_archived: false,
         definition: input.definition,
+        scheduled_day_of_week: input.scheduledDayOfWeek ?? null,
       })
       .select("*")
       .single();
@@ -124,5 +140,18 @@ export class SupabaseTrainingTemplateRepository
       .eq("user_id", userId);
 
     throwOnError(response.error, "Archive training template");
+  }
+
+  async setTemplateSchedule(input: SetTemplateScheduleInput) {
+    const response = await this.client
+      .from("training_templates")
+      .update({ scheduled_day_of_week: input.scheduledDayOfWeek })
+      .eq("id", input.id)
+      .eq("user_id", input.userId)
+      .select("*")
+      .single();
+
+    const row = requireSingleResult(response, "Set training template schedule");
+    return mapTrainingTemplateRow(trainingTemplateRowSchema.parse(row));
   }
 }

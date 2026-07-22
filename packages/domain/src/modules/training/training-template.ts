@@ -29,6 +29,9 @@ export type StrengthTrainingTemplateDefinition = {
   notes: string | null;
 };
 
+/** 0 = Sunday .. 6 = Saturday, matching JS `Date#getDay()`. */
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
 export type TrainingTemplate = {
   id: EntityId;
   userId: UserId;
@@ -36,6 +39,8 @@ export type TrainingTemplate = {
   templateType: TrainingTemplateType;
   isArchived: boolean;
   definition: CardioTrainingTemplateDefinition | StrengthTrainingTemplateDefinition | Record<string, unknown>;
+  /** Optional day this template is scheduled for (e.g. pin a strength template to Mon/Wed/Fri), so `/strength` can surface "today's plan" without the user re-picking it each session. */
+  scheduledDayOfWeek: DayOfWeek | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
   deletedAt: IsoDateTime | null;

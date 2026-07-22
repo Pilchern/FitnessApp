@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import { createStrengthTemplateAction } from "../actions";
+import { DAY_OF_WEEK_OPTIONS } from "../day-of-week";
 import type { StrengthActionState } from "../types";
 
 type TemplateExerciseRow = {
@@ -117,17 +118,35 @@ export function StrengthTemplateForm({ knownExercises = [] }: StrengthTemplateFo
           </datalist>
         ) : null}
 
-        <label className="grid gap-2 text-sm font-medium text-ink">
-          Template name
-          <input
-            className={fieldClassName()}
-            name="name"
-            placeholder="Upper A, Pull Day, Leg Day…"
-            value={templateName}
-            onChange={(e) => setTemplateName(e.target.value)}
-            required
-          />
-        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Template name
+            <input
+              className={fieldClassName()}
+              name="name"
+              placeholder="Upper A, Pull Day, Leg Day…"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+              required
+            />
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Scheduled day (optional)
+            <select
+              className={fieldClassName()}
+              name="scheduledDayOfWeek"
+              defaultValue=""
+            >
+              <option value="">No fixed day</option>
+              {DAY_OF_WEEK_OPTIONS.map((day) => (
+                <option key={day.value} value={day.value}>
+                  {day.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-4">

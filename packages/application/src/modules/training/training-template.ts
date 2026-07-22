@@ -35,13 +35,32 @@ export const strengthTrainingTemplateDefinitionSchema = z.object({
 
 export type StrengthTrainingTemplateDefinition = z.infer<typeof strengthTrainingTemplateDefinitionSchema>;
 
+export const dayOfWeekSchema = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+]);
+
 export const createStrengthTemplateSchema = z.object({
   userId: uuidSchema,
   name: z.string().trim().min(1).max(100),
   definition: strengthTrainingTemplateDefinitionSchema,
+  scheduledDayOfWeek: dayOfWeekSchema.nullable().optional(),
 });
 
 export type CreateStrengthTemplateInput = z.infer<typeof createStrengthTemplateSchema>;
+
+export const setTemplateScheduleSchema = z.object({
+  userId: uuidSchema,
+  id: uuidSchema,
+  scheduledDayOfWeek: dayOfWeekSchema.nullable(),
+});
+
+export type SetTemplateScheduleInput = z.infer<typeof setTemplateScheduleSchema>;
 
 export const listActiveCardioTemplatesQuerySchema = z.object({
   userId: uuidSchema,
@@ -64,6 +83,7 @@ export interface TrainingTemplateRepository {
   listActiveStrengthTemplates(userId: UserId): Promise<TrainingTemplate[]>;
   createStrengthTemplate(input: CreateStrengthTemplateInput): Promise<TrainingTemplate>;
   archiveTemplate(userId: UserId, id: string): Promise<void>;
+  setTemplateSchedule(input: SetTemplateScheduleInput): Promise<TrainingTemplate>;
 }
 
 export class TrainingTemplateService {
@@ -86,5 +106,10 @@ export class TrainingTemplateService {
 
   async archiveTemplate(userId: UserId, id: string) {
     return this.repository.archiveTemplate(userId, id);
+  }
+
+  async setTemplateSchedule(input: unknown) {
+    const validated = setTemplateScheduleSchema.parse(input);
+    return this.repository.setTemplateSchedule(validated);
   }
 }

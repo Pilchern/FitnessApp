@@ -27,4 +27,6 @@ export type SettingsFormValues = {
   dailyProteinGramsTarget: string;
   dailyCaloriesTarget: string;
   dailyFiberGramsTarget: string;
+  targetWeightLb: string;
+  targetDate: string;
 };

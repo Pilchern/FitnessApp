@@ -4,10 +4,11 @@ import {
   buildOverridesLookup,
   buildStrengthProgressionSummaries,
   computeMuscleGroupVolume,
+  getZonedDate,
   resolveExercise,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createCoreServices } from "@/lib/server/services";
+import { createCoreServices, getCachedUserProfile } from "@/lib/server/services";
 import type { StrengthDetailData, StrengthPageData } from "./types";
 
 function twoYearsAgoIsoDate() {
@@ -33,7 +34,7 @@ export async function getStrengthPageData(
   const { strengthService, trainingTemplateService, exerciseOverrideService } =
     await createCoreServices();
 
-  const [sessions, strengthTemplates, editingSession, exerciseOverrides] =
+  const [sessions, strengthTemplates, editingSession, exerciseOverrides, profile] =
     await Promise.all([
       strengthService.listByDateRange({
         userId: user.id,
@@ -44,7 +45,12 @@ export async function getStrengthPageData(
         ? strengthService.getById(user.id, editSessionId)
         : Promise.resolve(null),
       exerciseOverrideService.listActive({ userId: user.id }),
+      getCachedUserProfile(user.id),
     ]);
+
+  const todayDayOfWeek = getZonedDate(profile?.timezone || "UTC").getUTCDay();
+  const todaysScheduledTemplate =
+    strengthTemplates.find((t) => t.scheduledDayOfWeek === todayDayOfWeek) ?? null;
 
   const knownExercises = [
     ...new Set(
@@ -76,6 +82,7 @@ export async function getStrengthPageData(
     muscleGroupVolume,
     exerciseOverrides,
     unclassifiedExerciseNames,
+    todaysScheduledTemplate,
   };
 }
 

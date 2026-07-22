@@ -2,7 +2,11 @@
 
 import type { TrainingTemplate } from "@fitness-app/domain";
 import { isStrengthTemplateDefinition } from "@fitness-app/domain";
-import { archiveStrengthTemplateAction } from "../actions";
+import {
+  archiveStrengthTemplateAction,
+  setTemplateScheduleAction,
+} from "../actions";
+import { DAY_OF_WEEK_OPTIONS } from "../day-of-week";
 
 type StrengthTemplateListProps = {
   templates: TrainingTemplate[];
@@ -51,7 +55,24 @@ export function StrengthTemplateList({
               ) : null}
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <form action={setTemplateScheduleAction}>
+                <input type="hidden" name="id" value={template.id} />
+                <select
+                  name="scheduledDayOfWeek"
+                  defaultValue={template.scheduledDayOfWeek ?? ""}
+                  onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                  className="h-10 rounded-full border border-ink/10 bg-white px-3 text-sm text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20"
+                >
+                  <option value="">No fixed day</option>
+                  {DAY_OF_WEEK_OPTIONS.map((day) => (
+                    <option key={day.value} value={day.value}>
+                      {day.label}
+                    </option>
+                  ))}
+                </select>
+              </form>
+
               <button
                 type="button"
                 onClick={() => onLoad(template)}
