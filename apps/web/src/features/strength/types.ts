@@ -2,7 +2,11 @@ import type {
   MuscleGroupVolumeSummary,
   StrengthProgressionSummary,
 } from "@fitness-app/application";
-import type { StrengthSession, TrainingTemplate } from "@fitness-app/domain";
+import type {
+  ExerciseMuscleGroupOverride,
+  StrengthSession,
+  TrainingTemplate,
+} from "@fitness-app/domain";
 
 export type StrengthPageData = {
   sessions: StrengthSession[];
@@ -13,6 +17,8 @@ export type StrengthPageData = {
   lastSession: StrengthSession | null;
   strengthTemplates: TrainingTemplate[];
   muscleGroupVolume: MuscleGroupVolumeSummary;
+  exerciseOverrides: ExerciseMuscleGroupOverride[];
+  unclassifiedExerciseNames: string[];
 };
 
 export type StrengthDetailData = {

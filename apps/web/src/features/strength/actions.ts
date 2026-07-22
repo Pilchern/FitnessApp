@@ -212,3 +212,42 @@ export async function archiveStrengthTemplateAction(formData: FormData) {
   }
   redirect(url);
 }
+
+export async function classifyExerciseAction(
+  _previousState: StrengthActionState,
+  formData: FormData,
+): Promise<StrengthActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const { exerciseOverrideService } = await createCoreServices();
+
+    await exerciseOverrideService.classify({
+      userId: user.id,
+      exerciseName: formData.get("exerciseName"),
+      muscleGroup: formData.get("muscleGroup"),
+      movementPattern: formData.get("movementPattern"),
+      category: formData.get("category"),
+    });
+
+    redirect("/strength");
+  } catch (error) {
+    return parseActionError(error);
+  }
+}
+
+export async function archiveExerciseOverrideAction(formData: FormData) {
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) {
+    redirect("/strength");
+  }
+
+  let url = "/strength";
+  try {
+    const user = await requireCurrentUser();
+    const { exerciseOverrideService } = await createCoreServices();
+    await exerciseOverrideService.archive(user.id, id);
+  } catch (error) {
+    url = `/strength?error=${encodeURIComponent(error instanceof Error ? error.message : "Archive failed.")}`;
+  }
+  redirect(url);
+}

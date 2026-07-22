@@ -1,4 +1,5 @@
 import type {
+  ExerciseCatalogEntry,
   MovementPattern,
   MuscleGroup,
   StrengthSession,
@@ -29,6 +30,8 @@ export type MuscleGroupVolumeSummary = {
   pushPullVolumeRatio: number | null;
   /** Working sets whose exercise name didn't resolve to a known catalog entry — surfaced for transparency, never silently dropped. */
   unclassifiedWorkingSetCount: number;
+  /** Distinct, sorted exercise names behind unclassifiedWorkingSetCount — lets the UI offer a quick-classify action. */
+  unclassifiedExerciseNames: string[];
 };
 
 const ALL_MUSCLE_GROUPS: MuscleGroup[] = [
@@ -61,6 +64,7 @@ function setVolume(set: {
 export function computeMuscleGroupVolume(
   sessions: StrengthSession[],
   range: { startDate: string; endDate: string },
+  overrides?: ReadonlyMap<string, ExerciseCatalogEntry>,
 ): MuscleGroupVolumeSummary {
   const inRange = sessions.filter(
     (session) =>
@@ -81,6 +85,7 @@ export function computeMuscleGroupVolume(
     { workingSetCount: number; totalVolume: number }
   >();
   let unclassifiedWorkingSetCount = 0;
+  const unclassifiedExerciseNames = new Set<string>();
 
   for (const session of inRange) {
     for (const set of session.sets) {
@@ -88,9 +93,10 @@ export function computeMuscleGroupVolume(
         continue;
       }
 
-      const catalogEntry = resolveExercise(set.exerciseName);
+      const catalogEntry = resolveExercise(set.exerciseName, overrides);
       if (!catalogEntry) {
         unclassifiedWorkingSetCount += 1;
+        unclassifiedExerciseNames.add(set.exerciseName);
         continue;
       }
 
@@ -167,5 +173,6 @@ export function computeMuscleGroupVolume(
     neglectedMuscleGroups,
     pushPullVolumeRatio,
     unclassifiedWorkingSetCount,
+    unclassifiedExerciseNames: Array.from(unclassifiedExerciseNames).sort(),
   };
 }

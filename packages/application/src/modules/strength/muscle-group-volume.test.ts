@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { StrengthExerciseSet, StrengthSession } from "@fitness-app/domain";
+import type {
+  ExerciseCatalogEntry,
+  StrengthExerciseSet,
+  StrengthSession,
+} from "@fitness-app/domain";
 import { computeMuscleGroupVolume } from "./muscle-group-volume";
 
 function makeSet(partial: Partial<StrengthExerciseSet>): StrengthExerciseSet {
@@ -140,5 +144,45 @@ describe("computeMuscleGroupVolume", () => {
     expect(summary.byMuscleGroup.every((g) => g.workingSetCount === 0)).toBe(
       true,
     );
+    expect(summary.unclassifiedExerciseNames).toEqual([
+      "Some Custom Cable Thing",
+    ]);
+  });
+
+  it("resolves an exercise via an override when the catalog doesn't recognize it", () => {
+    const session = makeSession({
+      sets: [
+        makeSet({
+          exerciseName: "Some Custom Cable Thing",
+          weight: 50,
+          reps: 12,
+        }),
+      ],
+    });
+
+    const overrides = new Map<string, ExerciseCatalogEntry>([
+      [
+        "some custom cable thing",
+        {
+          canonicalName: "Some Custom Cable Thing",
+          muscleGroup: "back",
+          movementPattern: "pull",
+          category: "isolation",
+          aliases: [],
+        },
+      ],
+    ]);
+
+    const summary = computeMuscleGroupVolume(
+      [session],
+      { startDate: "2026-07-01", endDate: "2026-07-21" },
+      overrides,
+    );
+
+    expect(summary.unclassifiedWorkingSetCount).toBe(0);
+    expect(summary.unclassifiedExerciseNames).toEqual([]);
+    const back = summary.byMuscleGroup.find((g) => g.muscleGroup === "back");
+    expect(back?.workingSetCount).toBe(1);
+    expect(back?.totalVolume).toBe(50 * 12);
   });
 });

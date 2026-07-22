@@ -4,6 +4,7 @@ import {
   buildBodyMetricSummary,
   buildBodyWeightTrend,
   buildCardioWeeklyTotals,
+  buildOverridesLookup,
   computeJournalStreak,
   computeMuscleGroupVolume,
   getCurrentWeekRangeForUser,
@@ -173,6 +174,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     weeklyReviewService,
     nutritionService,
     journalService,
+    exerciseOverrideService,
   } = await createCoreServices();
 
   const profile = await getCachedUserProfile(user.id);
@@ -193,6 +195,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     todayNutritionResult,
     strengthSessionsResult,
     cardioLast8WeeksResult,
+    exerciseOverridesResult,
   ] = await Promise.allSettled([
     cardioService.listByDateRange({ userId: user.id, startDate: weekStart, endDate: weekEnd }),
     strengthSummaryService.countCompletedByDateRange({
@@ -226,6 +229,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       userId: user.id,
       startDate: daysAgoIsoDate(56),
     }),
+    exerciseOverrideService.listActive({ userId: user.id }),
   ]);
 
   const cardioThisWeek = settledOrNull(cardioThisWeekResult) ?? [];
@@ -238,6 +242,8 @@ export async function getDashboardData(): Promise<DashboardData> {
   const nutritionLogs = settledOrNull(todayNutritionResult) ?? [];
   const strengthSessions = settledOrNull(strengthSessionsResult) ?? [];
   const cardioLast8Weeks = settledOrNull(cardioLast8WeeksResult) ?? [];
+  const exerciseOverrides = settledOrNull(exerciseOverridesResult) ?? [];
+  const exerciseOverridesLookup = buildOverridesLookup(exerciseOverrides);
   const journalStreak = computeJournalStreak(journalEntries, today);
   const topInsights = insightData?.topInsights ?? [];
 
@@ -275,10 +281,11 @@ export async function getDashboardData(): Promise<DashboardData> {
   const latestRecovery = sortedRecovery[0] ?? null;
   const latestReview = recentReviews[0] ?? null;
   const coachingSuggestion = getRecoveryCoachingSuggestion(sortedRecovery.slice(0, 7));
-  const muscleGroupVolume = computeMuscleGroupVolume(strengthSessions, {
-    startDate: daysAgoIsoDate(7),
-    endDate: today,
-  });
+  const muscleGroupVolume = computeMuscleGroupVolume(
+    strengthSessions,
+    { startDate: daysAgoIsoDate(7), endDate: today },
+    exerciseOverridesLookup,
+  );
 
   return {
     trainingWeek: {
