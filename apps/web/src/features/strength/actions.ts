@@ -1,12 +1,25 @@
 "use server";
 
-import { detectPersonalRecords } from "@fitness-app/application";
+import {
+  detectPersonalRecords,
+  strengthTemplateExerciseSchema,
+} from "@fitness-app/application";
+import { z } from "zod";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
-import { strengthSessionFormSchema, templateExercisesSchema } from "./form-schema";
+import { strengthSessionFormSchema } from "./form-schema";
 import type { StrengthActionState } from "./types";
+
+const templateExercisesSchema = z.array(strengthTemplateExerciseSchema).min(1).max(50);
+
+function parseScheduledDayOfWeek(formData: FormData): 0 | 1 | 2 | 3 | 4 | 5 | 6 | null {
+  const raw = formData.get("scheduledDayOfWeek");
+  if (typeof raw !== "string" || raw === "") return null;
+  const parsed = Number(raw);
+  return parsed >= 0 && parsed <= 6 ? (parsed as 0 | 1 | 2 | 3 | 4 | 5 | 6) : null;
+}
 
 function buildStrengthPayload(userId: string, formData: FormData) {
   const parsed = strengthSessionFormSchema.parse({
@@ -188,12 +201,34 @@ export async function createStrengthTemplateAction(
         exercises: exercisesResult.data,
         notes: null,
       },
+      scheduledDayOfWeek: parseScheduledDayOfWeek(formData),
     });
 
     redirect("/strength");
   } catch (error) {
     return parseActionError(error);
   }
+}
+
+export async function setTemplateScheduleAction(formData: FormData) {
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) {
+    redirect("/strength");
+  }
+
+  let url = "/strength";
+  try {
+    const user = await requireCurrentUser();
+    const { trainingTemplateService: service } = await createCoreServices();
+    await service.setTemplateSchedule({
+      userId: user.id,
+      id,
+      scheduledDayOfWeek: parseScheduledDayOfWeek(formData),
+    });
+  } catch (error) {
+    url = `/strength?error=${encodeURIComponent(error instanceof Error ? error.message : "Could not update schedule.")}`;
+  }
+  redirect(url);
 }
 
 export async function archiveStrengthTemplateAction(formData: FormData) {

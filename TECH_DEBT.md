@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-07-22 (user-editable exercise catalog overrides)
+**Last updated:** 2026-07-22 (numeric goal targets + training-plan scheduling)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -60,3 +60,5 @@
 | TD-020  | `duration_seconds`/`distance_meters` were dead columns on strength sets — wired end-to-end (domain, repo mapper, form schema, quick-form UI) so timed sets (planks) and distance-based movements (carries) can be logged; same fix pattern as `is_warmup` (TD-024)                                                             | 2026-07-21 |
 | TD-018  | No application-level login/signup rate limiting — added a DB-backed rolling-window lockout (`auth_rate_limit_attempts` table, 5 failures / 15 min, resets on success, fails open on a lookup error) wired into `loginAction`/`signupAction`; pure lockout logic unit-tested (7 tests) separately from the Supabase-wiring glue | 2026-07-21 |
 | TD-022  | No account deletion or full data-export flow — added a "Danger zone" section in Settings: `GET /api/account/export` (RLS-scoped JSON export of every user table, explicitly excluding integration credentials/tokens/raw provider payloads) and `deleteAccountAction` (requires typing "DELETE" to confirm, then `admin.auth.admin.deleteUser()` — cascades all user data via existing FKs)                        | 2026-07-22 |
+| TD-027  | No numeric goal targets or training-schedule concept — `profiles` only had 3 boolean goal flags (no target weight/date) and `TrainingTemplate` had no day-of-week assignment. Added `targetWeightLb`/`targetDate` to the profile (dashboard's fat-loss goal card now shows real progress-to-target and on-pace/behind-pace messaging when set, falling back to the existing trend-only heuristic otherwise) and an optional `scheduledDayOfWeek` on `TrainingTemplate` (pin a template to e.g. Mon/Wed/Fri; `/strength` now surfaces a "Today's plan" callout with a one-click load when today matches) | 2026-07-22 |
+| TD-028  | Strength template creation was completely broken — the web-layer validation schema (`templateExercisesSchema` in `apps/web/.../strength/form-schema.ts`) expected `name/sets/reps/rpe/notes` fields, but the actual create-template form (`buildExercisesPayload()`) always sent `exerciseName/exerciseOrder/targetSets/targetReps/targetWeight/targetRir/notes` — every submission failed validation with "Invalid exercise data." Fixed by deleting the mismatched web-layer schema and validating against the correct, already-canonical `strengthTemplateExerciseSchema` from `@fitness-app/application` instead (the same schema the service layer uses downstream) | 2026-07-22 |

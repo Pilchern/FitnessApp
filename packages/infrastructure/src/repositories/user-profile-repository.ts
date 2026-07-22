@@ -12,7 +12,7 @@ import {
 } from "./shared";
 
 const PROFILE_SELECT =
-  "id, user_id, display_name, timezone, units_system, week_starts_on, goal_fat_loss, goal_preserve_muscle, goal_improve_vo2, daily_protein_grams_target, daily_calories_target, daily_fiber_grams_target, created_at, updated_at";
+  "id, user_id, display_name, timezone, units_system, week_starts_on, goal_fat_loss, goal_preserve_muscle, goal_improve_vo2, daily_protein_grams_target, daily_calories_target, daily_fiber_grams_target, target_weight_lb, target_date, created_at, updated_at";
 
 const userProfileRowSchema = z.object({
   id: z.string().uuid(),
@@ -27,6 +27,8 @@ const userProfileRowSchema = z.object({
   daily_protein_grams_target: z.number().int().positive().nullable(),
   daily_calories_target: z.number().int().positive().nullable(),
   daily_fiber_grams_target: z.number().int().positive().nullable(),
+  target_weight_lb: z.number().positive().nullable(),
+  target_date: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
 });
@@ -47,6 +49,8 @@ function mapUserProfileRow(row: UserProfileRow): UserProfile {
     dailyProteinGramsTarget: row.daily_protein_grams_target,
     dailyCaloriesTarget: row.daily_calories_target,
     dailyFiberGramsTarget: row.daily_fiber_grams_target,
+    targetWeightLb: row.target_weight_lb,
+    targetDate: row.target_date,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -64,6 +68,8 @@ function toUserProfileUpdate(input: UpdateUserProfileInput) {
     daily_protein_grams_target: input.dailyProteinGramsTarget,
     daily_calories_target: input.dailyCaloriesTarget,
     daily_fiber_grams_target: input.dailyFiberGramsTarget,
+    target_weight_lb: input.targetWeightLb,
+    target_date: input.targetDate,
   });
 }
 

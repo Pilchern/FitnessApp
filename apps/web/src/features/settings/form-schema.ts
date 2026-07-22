@@ -19,6 +19,43 @@ function parseOptionalPositiveInt(fieldName: string) {
     });
 }
 
+function parseOptionalPositiveNumber(fieldName: string) {
+  return z
+    .string()
+    .trim()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) return null;
+      const parsed = Number(value);
+      if (!Number.isFinite(parsed) || parsed <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${fieldName} must be a positive number`,
+        });
+        return z.NEVER;
+      }
+      return parsed;
+    });
+}
+
+function parseOptionalIsoDate(fieldName: string) {
+  return z
+    .string()
+    .trim()
+    .optional()
+    .transform((value, ctx) => {
+      if (!value) return null;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${fieldName} must be a valid date`,
+        });
+        return z.NEVER;
+      }
+      return value;
+    });
+}
+
 export const settingsFormSchema = z.object({
   displayName: z
     .string()
@@ -38,6 +75,8 @@ export const settingsFormSchema = z.object({
   dailyProteinGramsTarget: parseOptionalPositiveInt("Daily protein target"),
   dailyCaloriesTarget: parseOptionalPositiveInt("Daily calories target"),
   dailyFiberGramsTarget: parseOptionalPositiveInt("Daily fiber target"),
+  targetWeightLb: parseOptionalPositiveNumber("Target weight"),
+  targetDate: parseOptionalIsoDate("Target date"),
 });
 
 export type SettingsFormInput = z.infer<typeof settingsFormSchema>;

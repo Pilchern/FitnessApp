@@ -16,6 +16,8 @@ export type UserProfile = {
   dailyProteinGramsTarget: number | null;
   dailyCaloriesTarget: number | null;
   dailyFiberGramsTarget: number | null;
+  targetWeightLb: number | null;
+  targetDate: string | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
 };

@@ -30,7 +30,13 @@ function settledOrNull<T>(result: PromiseSettledResult<T>): T | null {
 }
 
 function computeGoalProgress(
-  profile: { goalFatLoss: boolean; goalPreserveMuscle: boolean; goalImproveVo2: boolean } | null,
+  profile: {
+    goalFatLoss: boolean;
+    goalPreserveMuscle: boolean;
+    goalImproveVo2: boolean;
+    targetWeightLb: number | null;
+    targetDate: string | null;
+  } | null,
   recentBody: { measuredOn: string; weightLb: number | null }[],
   strengthSessions: { sessionDate: string; sets: { weight: number | null; reps: number | null }[] }[],
   cardioLast8Weeks: { sessionDate: string; sessionKind: string; zone2Minutes: number | null; durationMinutes: number | null }[],
@@ -65,12 +71,52 @@ function computeGoalProgress(
     } else {
       const delta = (latest.weightLb ?? 0) - (baseline.weightLb ?? 0);
       const absDelta = Math.abs(delta).toFixed(1);
-      progress.push({
-        label: "Fat loss",
-        description: "Trending body weight down over time",
-        trend: delta <= -0.5 ? "improving" : delta >= 1 ? "declining" : "maintaining",
-        trendDetail: `${delta < 0 ? "down" : "up"} ${absDelta}lb in 4 weeks`,
-      });
+      const trend =
+        delta <= -0.5 ? "improving" : delta >= 1 ? "declining" : "maintaining";
+
+      const targetWeightLb = profile.targetWeightLb;
+      if (targetWeightLb != null && latest.weightLb != null) {
+        const remaining = latest.weightLb - targetWeightLb;
+
+        if (remaining <= 0) {
+          progress.push({
+            label: "Fat loss",
+            description: `Target weight: ${targetWeightLb}lb`,
+            trend: "improving",
+            trendDetail: `At or below target (${latest.weightLb}lb)`,
+          });
+        } else {
+          let paceDetail = "";
+          if (profile.targetDate) {
+            const weeksRemaining =
+              (new Date(`${profile.targetDate}T12:00:00`).getTime() - now.getTime()) /
+              (7 * 24 * 60 * 60 * 1000);
+            if (weeksRemaining > 0) {
+              const requiredWeeklyRate = remaining / weeksRemaining;
+              const actualWeeklyRate = -delta / 4;
+              paceDetail =
+                actualWeeklyRate >= requiredWeeklyRate
+                  ? ` — on pace for ${profile.targetDate}`
+                  : ` — behind pace for ${profile.targetDate}`;
+            } else {
+              paceDetail = ` — target date (${profile.targetDate}) has passed`;
+            }
+          }
+          progress.push({
+            label: "Fat loss",
+            description: `Target weight: ${targetWeightLb}lb`,
+            trend,
+            trendDetail: `${remaining.toFixed(1)}lb to go${paceDetail}`,
+          });
+        }
+      } else {
+        progress.push({
+          label: "Fat loss",
+          description: "Trending body weight down over time",
+          trend,
+          trendDetail: `${delta < 0 ? "down" : "up"} ${absDelta}lb in 4 weeks`,
+        });
+      }
     }
   }
 

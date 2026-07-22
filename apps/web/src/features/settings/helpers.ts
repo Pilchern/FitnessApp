@@ -13,6 +13,8 @@ export function toSettingsFormValues(profile: UserProfile): SettingsFormValues {
     dailyProteinGramsTarget: profile.dailyProteinGramsTarget != null ? String(profile.dailyProteinGramsTarget) : "",
     dailyCaloriesTarget: profile.dailyCaloriesTarget != null ? String(profile.dailyCaloriesTarget) : "",
     dailyFiberGramsTarget: profile.dailyFiberGramsTarget != null ? String(profile.dailyFiberGramsTarget) : "",
+    targetWeightLb: profile.targetWeightLb != null ? String(profile.targetWeightLb) : "",
+    targetDate: profile.targetDate ?? "",
   };
 }
 
