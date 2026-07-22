@@ -1,7 +1,7 @@
 # Current State — FitnessApp
 
-**Last updated:** 2026-07-21 (muscle-group tracking + coaching-rule audit)
-**Overall health:** Stable. TypeScript clean. 205 tests pass. Lint clean. Production build succeeds. **New migration awaiting manual apply:** `20260721190000_create_auth_rate_limit_attempts.sql` has not been run against the live Supabase project (no `.env.local`/live DB credentials in this container) — run `supabase db push` (or apply via the dashboard) before login rate limiting takes effect in production; until then `checkLoginRateLimit`/`recordLoginAttempt` will log a Postgres "relation does not exist" error and fail open (logins still work, just unprotected). Withings and Apple Health are live and verified. Strava is currently broken (app deactivated on Strava's side — user action required). Peloton's unofficial API auth endpoint is confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not currently viable; **Peloton → Strava relay (via Peloton's own "auto-export to Strava" setting) is now the recommended cardio path**, pending Strava reactivation.
+**Last updated:** 2026-07-22 (account deletion + data export)
+**Overall health:** Stable. TypeScript clean. 210 tests pass. Lint clean. Production build succeeds. **New migration awaiting manual apply:** `20260721190000_create_auth_rate_limit_attempts.sql` has not been run against the live Supabase project (no `.env.local`/live DB credentials in this container) — run `supabase db push` (or apply via the dashboard) before login rate limiting takes effect in production; until then `checkLoginRateLimit`/`recordLoginAttempt` will log a Postgres "relation does not exist" error and fail open (logins still work, just unprotected). Withings and Apple Health are live and verified. Strava is currently broken (app deactivated on Strava's side — user action required). Peloton's unofficial API auth endpoint is confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not currently viable; **Peloton → Strava relay (via Peloton's own "auto-export to Strava" setting) is now the recommended cardio path**, pending Strava reactivation.
 
 This session's audit found the app's integration/data-integrity layer (auth, OAuth token encryption, RLS, per-provider dedup, webhook signature verification) in solid shape, but the product's stated #1 goal — knowing whether you're neglecting a muscle group — had zero supporting code anywhere. That was the highest-value gap and is now closed end-to-end: an exercise catalog with muscle-group/movement-pattern tagging, a volume aggregation service, a "not trained this week" dashboard callout, a muscle-group balance card on `/strength`, and 4 new coaching-insight rules (muscle-group neglect, push/pull imbalance, deload suggestion, consistently-exceeding-cardio-target). See "What Was Done in This Session (2026-07-21)" below.
 
@@ -13,7 +13,7 @@ This session's audit found the app's integration/data-integrity layer (auth, OAu
 | ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeScript   | CLEAN   | Zero errors across all 6 packages                                                                                                                                                                                                                                                                  |
 | Lint         | CLEAN   | No warnings                                                                                                                                                                                                                                                                                        |
-| Tests        | PASSING | 205/205 (37 web, 126 application, 14 integrations, 28 jobs)                                                                                                                                                                                                                                        |
+| Tests        | PASSING | 210/210 (42 web, 126 application, 14 integrations, 28 jobs)                                                                                                                                                                                                                                        |
 | Build        | PASSING | `pnpm build` succeeds without a live `.env.local` — all data-dependent routes are dynamic, so no Supabase connectivity is needed at build time                                                                                                                                                     |
 | E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review)                                                                                                                                                                                                  |
 | Database     | LIVE    | Cloud Supabase project, credentials in .env.local                                                                                                                                                                                                                                                  |
@@ -50,7 +50,7 @@ supabase/                   27 SQL migrations, seed data, RLS policies
 | Weekly Review | `/weekly-review`              | Complete — includes weekly auto-draft cron                                                                                                     | No AI-generated narrative yet (score/why/what-worked/etc.) — only a rule-based numeric summary is auto-filled                                                                                                                                                                                    |
 | Journal       | `/journal`                    | Complete — weekly cron also auto-drafts a reflection entry                                                                                     | None                                                                                                                                                                                                                                                                                             |
 | Insights      | `/insights`                   | Complete — rule-based engine **plus** optional AI-generated insights (Claude API) when `ANTHROPIC_API_KEY` + `INSIGHT_AI_ENABLED=true` are set | AI insights are a distinct feature from an AI _weekly review_; no weekly-review-format AI output exists yet                                                                                                                                                                                      |
-| Settings      | `/settings`                   | Complete                                                                                                                                       | None                                                                                                                                                                                                                                                                                             |
+| Settings      | `/settings`                   | Complete, plus a Danger Zone (data export + account deletion, 2026-07-22)                                                                      | None                                                                                                                                                                                                                                                                                             |
 | Integrations  | `/integrations`               | Complete UI for all 4 providers (Withings, Strava, Peloton, Apple Health)                                                                      | Withings and Peloton need credentials; Apple Health needs `INTEGRATION_ENCRYPTION_KEY` set, then each user generates their own webhook token from the Integrations page (2026-07-16: replaced the old shared `APPLE_HEALTH_WEBHOOK_SECRET` — see docs/integrations/apple-health-bridge-setup.md) |
 
 ---
@@ -106,13 +106,13 @@ None of the four cron routes have retry logic, a queue, or a dead-letter path �
 
 1. **Strava broken** — app deactivated on Strava's side (`403: Application Status Inactive`), confirmed via a failed `sync_job_runs` row on 2026-07-16. User must reactivate at strava.com/settings/api. This blocks the recommended Peloton→Strava relay path too.
 2. **Peloton direct sync blocked by Peloton** — `POST https://api.onepeloton.com/auth/login` returns `403` for any credentials as of 2026-07-16. Not fixable without reverse-engineering around a deliberate access restriction. Recommended path is now Peloton's own "auto-export to Strava" setting, once Strava is reactivated.
-3. **No application-level login rate limiting** (TD-018) and **no cross-provider duplicate detection** (TD-019) — see `TECH_DEBT.md` Priority 1.
+3. **No cross-provider duplicate detection** (TD-019) — see `TECH_DEBT.md` Priority 1.
 
 ### Low
 
 4. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
 5. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale. (TD-016)
-6. **No user-editable exercise catalog/aliases** (TD-021); **no account deletion/export flow** (TD-022).
+6. **No user-editable exercise catalog/aliases** (TD-021).
 
 ### Resolved this session (2026-07-21)
 
@@ -164,10 +164,10 @@ See `TECH_DEBT.md` for full prioritized list.
 
 1. User: reactivate Strava app at strava.com/settings/api
 2. User: enable Peloton's native "auto-export to Strava" setting once Strava is reactivated, then connect Strava
-3. DB-backed login rate limiting (TD-018)
+3. User: apply migration `20260721190000_create_auth_rate_limit_attempts.sql` to the live Supabase project (`supabase db push`)
 4. Cross-provider duplicate detection + source-priority rules for cardio/body metrics (TD-019)
 5. Goal/training-plan entities with real targets and a 3-day split template that accounts for the user's shoulder/lower-back limitations (currently only 3 boolean profile flags exist — no numeric targets, no scheduled-workout concept)
-6. Account deletion/data export flow (TD-022)
+6. User-editable exercise catalog/aliases (TD-021)
 
 ---
 
@@ -185,6 +185,17 @@ Full audit against the product's stated goals (dashboard clarity, coach intellig
 **Follow-up (same day):** `duration_seconds`/`distance_meters` wired end-to-end on strength sets (TD-020) — same dead-column pattern as `is_warmup`. Timed sets (planks) and distance-based movements (farmer carries) can now be logged via two compact optional inputs next to the set-notes field. 1 new test (198 total).
 
 **Follow-up 2 (same day):** DB-backed login/signup rate limiting (TD-018) — new `auth_rate_limit_attempts` table (migration `20260721190000`, not yet applied to the live project — see note above), a pure `evaluateLoginRateLimit()` lockout function (5 failures / 15-minute rolling window, resets on success) unit-tested independently of Supabase, and a thin server wrapper (`checkLoginRateLimit`/`recordLoginAttempt`) wired into both `loginAction` and `signupAction`. Fails open on a lookup error so a transient DB issue never locks out a legitimate user. 7 new tests (205 total).
+
+---
+
+## What Was Done in This Session (2026-07-22, account deletion + data export)
+
+Closed **TD-022**, the last open low-severity item from the prior session's audit:
+
+1. **Full data export** — `GET /api/account/export` returns every user-owned table (profile, body metrics, cardio sessions, recovery check-ins, strength sessions, weekly reviews, nutrition logs, journal entries, training templates, supplements + logs, daily activity metrics, active insights) as a downloadable JSON file, scoped by RLS via the request-scoped client. Deliberately excludes integration credentials/tokens, raw provider payloads, and sync-job bookkeeping — none of that is "your data" in the sense the export is for, and credentials must never leave the server.
+2. **Account deletion** — a new "Danger zone" section on `/settings` requires typing "DELETE" to confirm, then calls `admin.auth.admin.deleteUser()`; every user-owned row cascades via existing `on delete cascade` foreign keys, no per-table cleanup needed.
+3. **`DailyActivityMetricService` wired into `createCoreServices()`** — it existed in `packages/application`/`packages/infrastructure` but was never added to the composition root; needed for the export to include Apple Health daily-activity data.
+4. 5 new tests (Zod confirmation-phrase schema: accepts exact "DELETE", rejects wrong case/empty/missing/similar-but-wrong phrases) — 210 total, up from 205.
 
 ---
 

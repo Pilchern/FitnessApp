@@ -7,6 +7,7 @@ import {
   BodyMetricService,
   buildInsights,
   CardioSessionService,
+  DailyActivityMetricService,
   InsightOrchestrator,
   JournalEntryService,
   NutritionLogService,
@@ -25,6 +26,7 @@ import type { AppSupabaseClient } from "@fitness-app/infrastructure";
 import {
   SupabaseBodyMetricRepository,
   SupabaseCardioSessionRepository,
+  SupabaseDailyActivityMetricRepository,
   SupabaseInsightRepository,
   SupabaseJournalEntryRepository,
   SupabaseNutritionLogRepository,
@@ -129,6 +131,9 @@ export const createCoreServices = cache(async function createCoreServices(
   const supplementLogService = new SupplementLogService(
     new SupabaseSupplementLogRepository(resolvedClient),
   );
+  const dailyActivityService = new DailyActivityMetricService(
+    new SupabaseDailyActivityMetricRepository(resolvedClient),
+  );
 
   const weeklyReviewAutoFinalizeService = new WeeklyReviewAutoFinalizeService({
     weeklyReviewService,
@@ -154,6 +159,7 @@ export const createCoreServices = cache(async function createCoreServices(
     trainingTemplateService,
     supplementService,
     supplementLogService,
+    dailyActivityService,
     insightRepository,
     insightOrchestrator,
     aiWeeklyReviewService,

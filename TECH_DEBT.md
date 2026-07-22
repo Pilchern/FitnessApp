@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-07-21 (muscle-group tracking + coaching-rule audit)
+**Last updated:** 2026-07-22 (account deletion + data export)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -35,14 +35,6 @@
 - **Fix:** A small "exercise catalog" table + admin UI, or at minimum a per-user alias override table, once uncategorized volume becomes a recurring nuisance in practice.
 - **Effort:** M
 
-### TD-022: No account deletion or full data-export flow
-
-- **Severity:** Low (single-user app today, but this is health data)
-- **Affected files:** `apps/web/src/features/settings/`
-- **Problem:** No self-service "delete my account" or "export all my data" action exists anywhere in the app.
-- **Fix:** A settings action that either hard-deletes (cascades already exist via `on delete cascade` FKs) or exports all rows scoped to `auth.uid()` as JSON/CSV.
-- **Effort:** M
-
 ---
 
 ## Resolved Debt
@@ -74,3 +66,4 @@
 | TD-026  | OAuth callback routes (Strava, Withings) and Apple Health webhook routes returned raw `error.message` to the client/redirect URL on failure — now sanitized to generic messages with full detail logged server-side only                                                                                                       | 2026-07-21 |
 | TD-020  | `duration_seconds`/`distance_meters` were dead columns on strength sets — wired end-to-end (domain, repo mapper, form schema, quick-form UI) so timed sets (planks) and distance-based movements (carries) can be logged; same fix pattern as `is_warmup` (TD-024)                                                             | 2026-07-21 |
 | TD-018  | No application-level login/signup rate limiting — added a DB-backed rolling-window lockout (`auth_rate_limit_attempts` table, 5 failures / 15 min, resets on success, fails open on a lookup error) wired into `loginAction`/`signupAction`; pure lockout logic unit-tested (7 tests) separately from the Supabase-wiring glue | 2026-07-21 |
+| TD-022  | No account deletion or full data-export flow — added a "Danger zone" section in Settings: `GET /api/account/export` (RLS-scoped JSON export of every user table, explicitly excluding integration credentials/tokens/raw provider payloads) and `deleteAccountAction` (requires typing "DELETE" to confirm, then `admin.auth.admin.deleteUser()` — cascades all user data via existing FKs)                        | 2026-07-22 |
