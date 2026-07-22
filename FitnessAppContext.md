@@ -92,7 +92,7 @@ All packages except `web` are framework-free and portable.
 | Weekly Review | `/weekly-review` | Implemented — Scoring engine, reflection fields                                                                                                            |
 | Journal       | `/journal`       | Implemented — Tags, search, weekly-review links                                                                                                            |
 | Insights      | `/insights`      | Implemented — Rule-based engine, dismiss/archive, plus optional AI-generated insights via `AiInsightService` (Claude API) when enabled                     |
-| Settings      | `/settings`      | Implemented — Profile, timezone, units, goals                                                                                                              |
+| Settings      | `/settings`      | Implemented — Profile, timezone, units, goals, plus a Danger Zone (data export + account deletion, 2026-07-22)                                             |
 | Integrations  | `/integrations`  | Implemented — UI for all 4 providers: Strava (live), Withings (OAuth, needs creds), Peloton (needs connected account), Apple Health (needs webhook secret) |
 | Nutrition     | `/nutrition`     | Implemented — Daily log, macro tracking, CRUD                                                                                                              |
 
@@ -103,12 +103,15 @@ All packages except `web` are framework-free and portable.
 ## Database Tables (Quick Reference)
 
 **Core tracking tables:**
-`profiles`, `training_templates`, `cardio_sessions`, `strength_sessions`, `strength_exercise_sets`, `recovery_checkins`, `body_metrics`, `nutrition_logs`, `weekly_reviews`, `journal_entries`, `insights`
+`profiles`, `training_templates`, `cardio_sessions`, `strength_sessions`, `strength_exercise_sets`, `recovery_checkins`, `body_metrics`, `nutrition_logs`, `weekly_reviews`, `journal_entries`, `insights`, `daily_activity_metrics`, `supplements`, `supplement_logs`
 
 **Integration audit tables:**
 `integration_connections`, `integration_connection_credentials`, `import_batches`, `raw_import_events`, `sync_job_runs`
 
-All tables have RLS enabled with user-scoped policies. Every row is scoped to `user_id = auth.uid()`.
+**Security tables:**
+`auth_rate_limit_attempts` (login/signup rolling-window lockout, TD-018 — see 2026-07-21 session) — no `user_id`; identifier is the raw normalized email, since attempts against nonexistent accounts must be limited too
+
+All tables have RLS enabled with user-scoped policies. Every row is scoped to `user_id = auth.uid()` (except `auth_rate_limit_attempts`, which has no `user_id` and no policies — service-role only).
 `integration_connection_credentials` uses the service-role key (bypasses RLS) for OAuth/sync operations; RLS policies are also present for authenticated client access.
 
 ---
@@ -196,13 +199,14 @@ All tables enforce ownership via `auth.uid() = user_id`. Server actions call `re
 
 ## Known Technical Debt (Priority Order)
 
-See `TECH_DEBT.md` for the full register. Active items as of 2026-07-21:
+See `TECH_DEBT.md` for the full register. Active items as of 2026-07-22:
 
 1. **No cross-provider duplicate detection** — same real-world workout/weigh-in landing via two connected providers isn't deduplicated (TD-019)
 2. **Withings and Peloton unconfigured** — code-complete, waiting on credentials/connection
 3. **`listByDateRange` capped at 500 rows** — acceptable for current scale (TD-016)
 4. **No user-editable exercise catalog/aliases** — the new muscle-group catalog is static and in-code (TD-021)
-5. **No account deletion/export flow** (TD-022)
+
+Resolved 2026-07-22: account deletion + full data-export flow (TD-022, "Danger zone" section on `/settings`).
 
 Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window lockout) and `duration_seconds`/`distance_meters` dead columns (TD-020) — see TECH_DEBT.md Resolved Debt.
 
@@ -216,8 +220,8 @@ Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window 
 2. Reactivate Strava, enable Peloton's native Strava auto-export (Peloton-direct is confirmed blocked by Peloton's own API as of 2026-07-16 — not fixable in-app)
 3. Cross-provider duplicate detection + source-priority rules (TD-019)
 4. Goal/training-plan entities with real numeric targets and a scheduled-workout concept — today `profiles` only has 3 boolean goal flags, no target weight/date, no weekly split assigned to specific days
-5. Account deletion/data export flow (TD-022)
-6. Apply migration `20260721190000_create_auth_rate_limit_attempts.sql` to the live Supabase project (not yet run — no live DB credentials in this container)
+5. Apply migration `20260721190000_create_auth_rate_limit_attempts.sql` to the live Supabase project (not yet run — no live DB credentials in this container)
+6. User-editable exercise catalog/aliases (TD-021)
 
 **Already built, previously undocumented:**
 
@@ -238,7 +242,7 @@ Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window 
 ## Testing Notes
 
 - **Framework:** Vitest 2 (all packages), Playwright (E2E)
-- **Current coverage:** 205 unit/integration tests across application, integrations, jobs, and web layers
+- **Current coverage:** 210 unit/integration tests across application, integrations, jobs, and web layers
 - **Test seed user:** `dev@example.com` / `password1234` (local Supabase only)
 - **E2E:** `tests/e2e/` — auth, navigation, body, and cardio specs; configured in `apps/web/playwright.config.ts`
 - **Run unit tests:** `pnpm test` from root
@@ -267,6 +271,7 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 
 | Date       | Work Done                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-22 | Closed TD-022: full data-export route (`GET /api/account/export`, RLS-scoped, explicitly excludes integration credentials/raw payloads) and account deletion ("Danger zone" on `/settings`, requires typing "DELETE", cascades via `admin.auth.admin.deleteUser()`). Wired the previously-unused `DailyActivityMetricService` into `createCoreServices()`. 5 new tests (210 total, up from 205). |
 | 2026-07-21 | Muscle-group/movement-pattern exercise catalog + volume aggregation (biggest gap vs. product goal — "am I neglecting a muscle group"), wired into `/strength` and dashboard. `is_warmup` wired end-to-end (was a dead DB column). 4 new coaching-insight rules (muscle-group neglect, push/pull imbalance, deload suggestion, cardio-target-exceeded). OAuth callback + Apple Health webhook error-message sanitization. Corrected doc drift (`vercel.json` cron list, TD-011b already-fixed status). 15 new tests (197 total, up from 177). `pnpm build` verified clean. Same-day follow-ups: `duration_seconds`/`distance_meters` wired end-to-end for timed/distance strength sets (TD-020); DB-backed login/signup rate limiting added (TD-018, new `auth_rate_limit_attempts` migration — not yet applied to the live project). 205 tests total. |
 | 2026-07-15 | Docs reality audit: found Peloton adapter/cron/UI, Apple Health sleep webhook, AI-hooked Insights, and 2 more undocumented cron routes. Rewrote CURRENT_STATE.md, FitnessAppContext.md, docs/known-issues.md, docs/next-release-roadmap.md to match actual code. Corrected stale test count (49 → 86) and table name (`integration_credentials` → `integration_connection_credentials`).                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | 2026-04-05 | Full check-in: survey, run, test, audit. Fixed lint error + README bug. Created FitnessAppContext.md, AGENTS.md, CURRENT_STATE.md, TECH_DEBT.md, TESTING.md                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |

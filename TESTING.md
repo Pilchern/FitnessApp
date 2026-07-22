@@ -1,6 +1,6 @@
 # Testing Guide — FitnessApp
 
-**Last updated:** 2026-07-21
+**Last updated:** 2026-07-22
 
 ---
 
@@ -11,8 +11,8 @@
 | `packages/application`  | 15         | 126     | All passing     |
 | `packages/integrations` | 4          | 14      | All passing     |
 | `packages/jobs`         | 4          | 28      | All passing     |
-| `apps/web`              | 6          | 37      | All passing     |
-| **Total**               | **29**     | **205** | **All passing** |
+| `apps/web`              | 7          | 42      | All passing     |
+| **Total**               | **30**     | **210** | **All passing** |
 
 ---
 

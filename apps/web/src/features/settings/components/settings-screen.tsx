@@ -1,11 +1,13 @@
 import {
   createSupplementAction,
   deactivateSupplementAction,
+  deleteAccountAction,
   reactivateSupplementAction,
   recomputeNutritionTargetsAction,
   updateSettingsAction,
 } from "../actions";
 import { getSettingsPageData } from "../server";
+import { DangerZone } from "./danger-zone";
 import { SettingsForm } from "./settings-form";
 import { SupplementsManager } from "./supplements-manager";
 
@@ -60,6 +62,8 @@ export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
         deactivateAction={deactivateSupplementAction}
         reactivateAction={reactivateSupplementAction}
       />
+
+      <DangerZone deleteAccountAction={deleteAccountAction} />
     </div>
   );
 }

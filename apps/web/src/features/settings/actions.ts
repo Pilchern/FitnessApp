@@ -4,7 +4,15 @@ import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
-import { settingsFormSchema, supplementFormSchema } from "./form-schema";
+import {
+  createSupabaseAdminClient,
+  createSupabaseRequestClient,
+} from "@/lib/server/supabase";
+import {
+  deleteAccountFormSchema,
+  settingsFormSchema,
+  supplementFormSchema,
+} from "./form-schema";
 import type { NutritionTargets } from "@fitness-app/application";
 import type { SettingsActionState, SupplementActionState } from "./types";
 
@@ -129,4 +137,42 @@ export async function reactivateSupplementAction(formData: FormData) {
     )}`;
   }
   redirect(url);
+}
+
+/**
+ * Permanently deletes the account and all associated data. Requires the
+ * user to type "DELETE" as an explicit destructive-action confirmation
+ * (TD-022). Deleting the auth.users row cascades every user-owned table via
+ * existing `on delete cascade` foreign keys — no per-table cleanup needed.
+ */
+export async function deleteAccountAction(
+  _previousState: SettingsActionState,
+  formData: FormData,
+): Promise<SettingsActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const parsed = deleteAccountFormSchema.safeParse({
+      confirmation: formData.get("confirmation"),
+    });
+
+    if (!parsed.success) {
+      return { error: 'Type "DELETE" (all caps) to confirm account deletion.' };
+    }
+
+    const admin = createSupabaseAdminClient();
+    const { error } = await admin.auth.admin.deleteUser(user.id);
+
+    if (error) {
+      return { error: "Could not delete your account. Please try again." };
+    }
+
+    const supabase = await createSupabaseRequestClient();
+    await supabase.auth.signOut();
+  } catch (error) {
+    return parseActionError(error);
+  }
+
+  redirect(
+    "/login?message=Your%20account%20and%20all%20data%20have%20been%20deleted.",
+  );
 }
