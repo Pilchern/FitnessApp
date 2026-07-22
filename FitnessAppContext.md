@@ -43,7 +43,7 @@ packages/
   integrations/    → Strava, Withings, and Peloton adapters (OAuth/credential + payload normalization)
   jobs/            → Background sync orchestration (cardio, body-metric, Apple Health sleep)
 supabase/
-  migrations/      → 20 SQL migration files
+  migrations/      → 27 SQL migration files
   seed/            → Local dev seed (dev@example.com / password1234)
 docs/              → Architecture and schema notes
 tests/             → E2E placeholders and shared fixtures
@@ -198,13 +198,13 @@ All tables enforce ownership via `auth.uid() = user_id`. Server actions call `re
 
 See `TECH_DEBT.md` for the full register. Active items as of 2026-07-21:
 
-1. **No application-level login rate limiting** — relies entirely on Supabase Auth's own (unconfigurable from here) protections (TD-018)
-2. **No cross-provider duplicate detection** — same real-world workout/weigh-in landing via two connected providers isn't deduplicated (TD-019)
-3. **Withings and Peloton unconfigured** — code-complete, waiting on credentials/connection
-4. **`listByDateRange` capped at 500 rows** — acceptable for current scale (TD-016)
-5. **`duration_seconds`/`distance_meters` still dead columns** on strength sets — `is_warmup` had the same problem and was fixed 2026-07-21 (TD-020)
-6. **No user-editable exercise catalog/aliases** — the new muscle-group catalog is static and in-code (TD-021)
-7. **No account deletion/export flow** (TD-022)
+1. **No cross-provider duplicate detection** — same real-world workout/weigh-in landing via two connected providers isn't deduplicated (TD-019)
+2. **Withings and Peloton unconfigured** — code-complete, waiting on credentials/connection
+3. **`listByDateRange` capped at 500 rows** — acceptable for current scale (TD-016)
+4. **No user-editable exercise catalog/aliases** — the new muscle-group catalog is static and in-code (TD-021)
+5. **No account deletion/export flow** (TD-022)
+
+Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window lockout) and `duration_seconds`/`distance_meters` dead columns (TD-020) — see TECH_DEBT.md Resolved Debt.
 
 ---
 
@@ -214,10 +214,10 @@ See `TECH_DEBT.md` for the full register. Active items as of 2026-07-21:
 
 1. Configure Withings OAuth end to end
 2. Reactivate Strava, enable Peloton's native Strava auto-export (Peloton-direct is confirmed blocked by Peloton's own API as of 2026-07-16 — not fixable in-app)
-3. Wire `duration_seconds`/`distance_meters` to the strength UI for timed/distance movements (TD-020)
-4. DB-backed login rate limiting (TD-018) and cross-provider duplicate detection (TD-019)
-5. Goal/training-plan entities with real numeric targets and a scheduled-workout concept — today `profiles` only has 3 boolean goal flags, no target weight/date, no weekly split assigned to specific days
-6. Account deletion/data export flow (TD-022)
+3. Cross-provider duplicate detection + source-priority rules (TD-019)
+4. Goal/training-plan entities with real numeric targets and a scheduled-workout concept — today `profiles` only has 3 boolean goal flags, no target weight/date, no weekly split assigned to specific days
+5. Account deletion/data export flow (TD-022)
+6. Apply migration `20260721190000_create_auth_rate_limit_attempts.sql` to the live Supabase project (not yet run — no live DB credentials in this container)
 
 **Already built, previously undocumented:**
 
@@ -238,7 +238,7 @@ See `TECH_DEBT.md` for the full register. Active items as of 2026-07-21:
 ## Testing Notes
 
 - **Framework:** Vitest 2 (all packages), Playwright (E2E)
-- **Current coverage:** 197 unit/integration tests across application, integrations, jobs, and web layers
+- **Current coverage:** 205 unit/integration tests across application, integrations, jobs, and web layers
 - **Test seed user:** `dev@example.com` / `password1234` (local Supabase only)
 - **E2E:** `tests/e2e/` — auth, navigation, body, and cardio specs; configured in `apps/web/playwright.config.ts`
 - **Run unit tests:** `pnpm test` from root
@@ -265,9 +265,9 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 
 ## Session History
 
-| Date       | Work Done                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-07-21 | Muscle-group/movement-pattern exercise catalog + volume aggregation (biggest gap vs. product goal — "am I neglecting a muscle group"), wired into `/strength` and dashboard. `is_warmup` wired end-to-end (was a dead DB column). 4 new coaching-insight rules (muscle-group neglect, push/pull imbalance, deload suggestion, cardio-target-exceeded). OAuth callback + Apple Health webhook error-message sanitization. Corrected doc drift (`vercel.json` cron list, TD-011b already-fixed status). 15 new tests (197 total, up from 177). `pnpm build` verified clean. |
-| 2026-07-15 | Docs reality audit: found Peloton adapter/cron/UI, Apple Health sleep webhook, AI-hooked Insights, and 2 more undocumented cron routes. Rewrote CURRENT_STATE.md, FitnessAppContext.md, docs/known-issues.md, docs/next-release-roadmap.md to match actual code. Corrected stale test count (49 → 86) and table name (`integration_credentials` → `integration_connection_credentials`).                                                                                                                                                                                  |
-| 2026-04-05 | Full check-in: survey, run, test, audit. Fixed lint error + README bug. Created FitnessAppContext.md, AGENTS.md, CURRENT_STATE.md, TECH_DEBT.md, TESTING.md                                                                                                                                                                                                                                                                                                                                                                                                               |
-| 2026-04-05 | Sprint: nutrition module (full stack), field-level form errors (body/recovery/cardio), React cache() on auth+profile+supabase client, shared createCoreServices() factory, shared form-utils, parseActionError utility, delete action error handling, Playwright E2E setup (4 spec files), security fix (RLS policies + userId filter on credential repo), 49 tests passing                                                                                                                                                                                               |
+| Date       | Work Done                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-21 | Muscle-group/movement-pattern exercise catalog + volume aggregation (biggest gap vs. product goal — "am I neglecting a muscle group"), wired into `/strength` and dashboard. `is_warmup` wired end-to-end (was a dead DB column). 4 new coaching-insight rules (muscle-group neglect, push/pull imbalance, deload suggestion, cardio-target-exceeded). OAuth callback + Apple Health webhook error-message sanitization. Corrected doc drift (`vercel.json` cron list, TD-011b already-fixed status). 15 new tests (197 total, up from 177). `pnpm build` verified clean. Same-day follow-ups: `duration_seconds`/`distance_meters` wired end-to-end for timed/distance strength sets (TD-020); DB-backed login/signup rate limiting added (TD-018, new `auth_rate_limit_attempts` migration — not yet applied to the live project). 205 tests total. |
+| 2026-07-15 | Docs reality audit: found Peloton adapter/cron/UI, Apple Health sleep webhook, AI-hooked Insights, and 2 more undocumented cron routes. Rewrote CURRENT_STATE.md, FitnessAppContext.md, docs/known-issues.md, docs/next-release-roadmap.md to match actual code. Corrected stale test count (49 → 86) and table name (`integration_credentials` → `integration_connection_credentials`).                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| 2026-04-05 | Full check-in: survey, run, test, audit. Fixed lint error + README bug. Created FitnessAppContext.md, AGENTS.md, CURRENT_STATE.md, TECH_DEBT.md, TESTING.md                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 2026-04-05 | Sprint: nutrition module (full stack), field-level form errors (body/recovery/cardio), React cache() on auth+profile+supabase client, shared createCoreServices() factory, shared form-utils, parseActionError utility, delete action error handling, Playwright E2E setup (4 spec files), security fix (RLS policies + userId filter on credential repo), 49 tests passing                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |

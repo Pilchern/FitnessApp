@@ -1,18 +1,18 @@
 # Testing Guide — FitnessApp
 
-**Last updated:** 2026-04-05
+**Last updated:** 2026-07-21
 
 ---
 
 ## Current Test Status
 
-| Package | Test Files | Tests | Status |
-|---|---|---|---|
-| `packages/application` | 7 | 30 | All passing |
-| `packages/integrations` | 2 | 5 | All passing |
-| `packages/jobs` | 1 | 2 | All passing |
-| `apps/web` | 2 | 8 | All passing |
-| **Total** | **12** | **45** | **All passing** |
+| Package                 | Test Files | Tests   | Status          |
+| ----------------------- | ---------- | ------- | --------------- |
+| `packages/application`  | 15         | 126     | All passing     |
+| `packages/integrations` | 4          | 14      | All passing     |
+| `packages/jobs`         | 4          | 28      | All passing     |
+| `apps/web`              | 6          | 37      | All passing     |
+| **Total**               | **29**     | **205** | **All passing** |
 
 ---
 
@@ -68,7 +68,9 @@ tests/e2e/                       → EMPTY — placeholder directory
 ## Test Patterns
 
 ### 1. Pure Function Tests (Application Layer)
+
 Most tests call a pure function and assert the output:
+
 ```typescript
 import { buildCardioWeeklyTotals } from "../../index";
 
@@ -82,7 +84,9 @@ it("computes weekly totals", () => {
 ```
 
 ### 2. Zod Schema Tests
+
 For validation schemas, test both success and failure paths:
+
 ```typescript
 it("rejects RPE values above 10", () => {
   expect(() =>
@@ -97,7 +101,9 @@ it("applies default completion state", () => {
 ```
 
 ### 3. Repository Mocking (Services)
+
 When testing services, implement the repository port interface with test doubles:
+
 ```typescript
 const mockRepo: BodyMetricRepository = {
   findByUserId: vi.fn().mockResolvedValue([]),
@@ -108,7 +114,9 @@ const service = new BodyMetricService(mockRepo);
 ```
 
 ### 4. Fixture-Based Tests (Integrations)
+
 Provider payload tests use fixtures from `tests/fixtures/`:
+
 ```typescript
 import { withingsBodyMeasureFixture } from "../../../../tests/fixtures/withings";
 const result = adapter.normalizeBodyMeasure(withingsBodyMeasureFixture);
@@ -165,19 +173,23 @@ const result = adapter.normalizeBodyMeasure(withingsBodyMeasureFixture);
 ## How to Add New Tests
 
 ### Adding a unit test to an existing package
+
 1. Create `src/modules/<feature>/<feature>.test.ts`
 2. Import from the package index: `import { ... } from "../../index"`
 3. Use Vitest (`describe`, `it`, `expect`) — no imports from test frameworks
 4. Run: `cd packages/<name> && pnpm vitest`
 
 ### Adding E2E tests (when Playwright is set up)
+
 1. Write specs in `tests/e2e/<feature>.spec.ts`
 2. Use the local seed user: `dev@example.com` / `password1234`
 3. Tests should be independent — each test creates its own data
 4. Clean up test data after each test (or use isolated test user per suite)
 
 ### Regression tests for bugs
+
 When fixing a bug, always add a test that:
+
 1. Sets up the conditions that caused the bug
 2. Calls the function or simulates the action
 3. Asserts the correct (fixed) behavior
@@ -188,12 +200,14 @@ When fixing a bug, always add a test that:
 ## Setting Up Playwright (Future)
 
 When E2E tests are added, use:
+
 ```bash
 pnpm add -D @playwright/test --filter web
 npx playwright install chromium
 ```
 
 Configure in `apps/web/playwright.config.ts`:
+
 ```typescript
 export default {
   testDir: "../../tests/e2e",
@@ -207,6 +221,7 @@ export default {
 ## Quality Gates
 
 All of the following must pass before merging any change:
+
 ```bash
 pnpm lint       # Zero ESLint errors
 pnpm typecheck  # Zero TypeScript errors
