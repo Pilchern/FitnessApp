@@ -1,4 +1,5 @@
 import { getStrengthPageData } from "../server";
+import { ClassifyExerciseCard } from "./classify-exercise-card";
 import { MuscleGroupBalanceCard } from "./muscle-group-balance-card";
 import { StrengthProgressionSummarySection } from "./strength-progression-summary";
 import { StrengthSessionList } from "./strength-session-list";
@@ -34,6 +35,11 @@ export async function StrengthScreen({ editSessionId }: StrengthScreenProps) {
       />
 
       <MuscleGroupBalanceCard summary={data.muscleGroupVolume} />
+
+      <ClassifyExerciseCard
+        unclassifiedExerciseNames={data.unclassifiedExerciseNames}
+        overrides={data.exerciseOverrides}
+      />
 
       <StrengthProgressionSummarySection summaries={data.progressionSummaries} />
 

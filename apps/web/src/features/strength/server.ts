@@ -1,6 +1,11 @@
 import "server-only";
 
-import { buildStrengthProgressionSummaries, computeMuscleGroupVolume } from "@fitness-app/application";
+import {
+  buildOverridesLookup,
+  buildStrengthProgressionSummaries,
+  computeMuscleGroupVolume,
+  resolveExercise,
+} from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { createCoreServices } from "@/lib/server/services";
 import type { StrengthDetailData, StrengthPageData } from "./types";
@@ -25,18 +30,21 @@ export async function getStrengthPageData(
   editSessionId?: string,
 ): Promise<StrengthPageData> {
   const user = await requireCurrentUser();
-  const { strengthService, trainingTemplateService } = await createCoreServices();
+  const { strengthService, trainingTemplateService, exerciseOverrideService } =
+    await createCoreServices();
 
-  const [sessions, strengthTemplates, editingSession] = await Promise.all([
-    strengthService.listByDateRange({
-      userId: user.id,
-      startDate: twoYearsAgoIsoDate(),
-    }),
-    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
-    editSessionId
-      ? strengthService.getById(user.id, editSessionId)
-      : Promise.resolve(null),
-  ]);
+  const [sessions, strengthTemplates, editingSession, exerciseOverrides] =
+    await Promise.all([
+      strengthService.listByDateRange({
+        userId: user.id,
+        startDate: twoYearsAgoIsoDate(),
+      }),
+      trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
+      editSessionId
+        ? strengthService.getById(user.id, editSessionId)
+        : Promise.resolve(null),
+      exerciseOverrideService.listActive({ userId: user.id }),
+    ]);
 
   const knownExercises = [
     ...new Set(
@@ -44,10 +52,15 @@ export async function getStrengthPageData(
     ),
   ].sort((a, b) => a.localeCompare(b));
 
-  const muscleGroupVolume = computeMuscleGroupVolume(sessions, {
-    startDate: daysAgoIsoDate(7),
-    endDate: todayIsoDate(),
-  });
+  const overridesLookup = buildOverridesLookup(exerciseOverrides);
+  const muscleGroupVolume = computeMuscleGroupVolume(
+    sessions,
+    { startDate: daysAgoIsoDate(7), endDate: todayIsoDate() },
+    overridesLookup,
+  );
+  const unclassifiedExerciseNames = knownExercises.filter(
+    (name) => !resolveExercise(name, overridesLookup),
+  );
 
   return {
     sessions,
@@ -61,6 +74,8 @@ export async function getStrengthPageData(
     lastSession: sessions[0] ?? null,
     strengthTemplates,
     muscleGroupVolume,
+    exerciseOverrides,
+    unclassifiedExerciseNames,
   };
 }
 

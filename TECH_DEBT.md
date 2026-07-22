@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-07-22 (account deletion + data export)
+**Last updated:** 2026-07-22 (user-editable exercise catalog overrides)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -9,10 +9,10 @@
 
 ### TD-019: No cross-provider duplicate detection for cardio/body-metric data
 
-- **Severity:** Medium (real double-counting risk once 2+ providers are connected)
+- **Severity:** Low today, Medium once Apple Health syncs weight/cardio (currently forward-looking, not an active bug)
 - **Affected files:** `packages/jobs/src/orchestration/*-sync.ts`, cardio/body-metric repositories
-- **Problem:** Unique indexes prevent the _same_ provider from re-importing the _same_ external ID, but nothing detects the _same real-world event_ arriving from two different providers (e.g. a Peloton ride landing via both a direct sync and a Strava auto-export, or a Withings weigh-in also appearing via an Apple Health bridge). Today, connecting two overlapping sources can double-count volume, calories, or weight trend.
-- **Fix:** A conservative same-day + similar-duration/weight heuristic per data type, with an explicit source-priority order (e.g. Withings > Apple Health for weight; direct provider > Strava relay for cardio) and a way to inspect which record won.
+- **Problem:** Unique indexes prevent the _same_ provider from re-importing the _same_ external ID, but nothing detects the _same real-world event_ arriving from two different providers (e.g. a Peloton ride landing via both a direct sync and a Strava auto-export, or a Withings weigh-in also appearing via an Apple Health bridge). As of this writing, Apple Health only syncs sleep and daily activity metrics (steps/VO2/RHR/exercise-minutes/active-energy) — it does not yet sync body weight/composition or cardio workouts — so there is no live code path today where two providers actually double-import the same body-metric or cardio event. This becomes a real risk only once Apple Health (or a third provider) is extended to cover those data types.
+- **Fix:** A conservative same-day + similar-duration/weight heuristic per data type, with an explicit source-priority order (e.g. Withings > Apple Health for weight; direct provider > Strava relay for cardio) and a way to inspect which record won. Revisit when Apple Health sync is extended beyond sleep/daily-activity.
 - **Effort:** L
 
 ---
@@ -26,14 +26,6 @@
 - **Problem:** Safety cap of 500 rows was added to prevent unbounded queries. Power users with >500 entries in a date range will silently get a truncated result.
 - **Fix:** Add a `limit` parameter to repository port interfaces; pass caller-controlled limits from server.ts files; default to 365 for chart views.
 - **Effort:** M (requires interface changes across application + infrastructure layers)
-
-### TD-021: No user-editable exercise catalog or per-user aliases
-
-- **Severity:** Low
-- **Affected files:** `packages/application/src/modules/strength/exercise-catalog-data.ts`
-- **Problem:** The muscle-group/movement-pattern catalog added this session is a static, in-code list scoped to the user's home-gym equipment. It resolves common naming variants via aliases, but exercises outside the catalog (or unusual personal shorthand) resolve to `null` and are excluded from muscle-group/push-pull reporting (visibly, via `unclassifiedWorkingSetCount` — never silently dropped). There's no UI to add a custom exercise to the catalog or teach it a new alias.
-- **Fix:** A small "exercise catalog" table + admin UI, or at minimum a per-user alias override table, once uncategorized volume becomes a recurring nuisance in practice.
-- **Effort:** M
 
 ---
 
@@ -58,6 +50,7 @@
 | TD-013  | No E2E test coverage — Playwright set up with 4 spec files                                                                                                                                                                                                                                                                     | 2026-04-05 |
 | TD-015  | `integration_connection_credentials` RLS/policy gaps — fixed                                                                                                                                                                                                                                                                   | 2026-04-05 |
 | TD-014  | No background job execution infrastructure — `sync_job_runs` wired up as a retry queue via Supabase pg_cron + pg_net (15-min sweep at `/api/cron/retry-failed-syncs`, exponential backoff, `dead_letter` status after 5 attempts); added `/api/cron/withings-sync` scheduled route                                             | 2026-07-15 |
+| TD-021  | No user-editable exercise catalog or per-user aliases — added `exercise_muscle_group_overrides` table + `ExerciseOverrideService`; a per-user classification (muscle group/movement pattern/category) is checked before the built-in catalog in `resolveExercise()`, wired through dashboard/strength/insights/cron call sites, with a "Classify your exercises" UI on `/strength` for exercise names the catalog doesn't recognize | 2026-07-22 |
 | TD-017  | `insights-generate` cron not scheduled — added to `vercel.json`                                                                                                                                                                                                                                                                | 2026-07-15 |
 | TD-011b | Timezone not validated server-side at signup — was already fixed prior to this doc noticing (see `isValidTimezone()` in `apps/web/src/app/(auth)/actions.ts`, validated against `Intl.supportedValuesOf('timeZone')` with a UTC fallback) — doc drift only, no code change needed                                              | 2026-07-21 |
 | TD-023  | No muscle-group/push-pull volume tracking anywhere — added an in-code exercise catalog (muscle group + movement pattern + compound/isolation, with aliases), a `computeMuscleGroupVolume()` aggregation service, a "Muscle group balance" card on `/strength`, and a "not trained this week" callout on the dashboard          | 2026-07-21 |

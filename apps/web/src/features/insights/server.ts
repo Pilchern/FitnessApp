@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getWeekRangeFromStart } from "@fitness-app/application";
+import { buildOverridesLookup, getWeekRangeFromStart } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { createCoreServices, getCachedUserProfile } from "@/lib/server/services";
 
@@ -15,7 +15,7 @@ export async function getInsightsData() {
   const { insightOrchestrator, ...services } = await createCoreServices();
 
   const startDate = sixMonthsAgoIsoDate();
-  const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody, recentStrength] =
+  const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody, recentStrength, exerciseOverrides] =
     await Promise.all([
       getCachedUserProfile(user.id),
       services.weeklyReviewService.listRecent(user.id, 8),
@@ -23,7 +23,9 @@ export async function getInsightsData() {
       services.recoveryService.listByDateRange({ userId: user.id, startDate }),
       services.bodyMetricService.listByDateRange({ userId: user.id, startDate }),
       services.strengthService.listByDateRange({ userId: user.id, startDate }),
+      services.exerciseOverrideService.listActive({ userId: user.id }),
     ]);
+  const exerciseOverridesLookup = buildOverridesLookup(exerciseOverrides);
 
   const timezone = profile?.timezone || "UTC";
   const weekStarts = new Set<string>(weeklyReviews.map((review) => review.weekStart));
@@ -47,6 +49,7 @@ export async function getInsightsData() {
     recoveryCheckins: recentRecovery,
     weeklyReviews,
     strengthSessions: recentStrength,
+    exerciseOverrides: exerciseOverridesLookup,
     liftsCompletedByWeek: Object.fromEntries(liftPairs),
     now: new Date(),
     timezone,

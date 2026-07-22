@@ -8,11 +8,11 @@
 
 | Package                 | Test Files | Tests   | Status          |
 | ----------------------- | ---------- | ------- | --------------- |
-| `packages/application`  | 15         | 126     | All passing     |
+| `packages/application`  | 16         | 133     | All passing     |
 | `packages/integrations` | 4          | 14      | All passing     |
 | `packages/jobs`         | 4          | 28      | All passing     |
 | `apps/web`              | 7          | 42      | All passing     |
-| **Total**               | **30**     | **210** | **All passing** |
+| **Total**               | **31**     | **217** | **All passing** |
 
 ---
 
@@ -44,6 +44,9 @@ packages/application/src/modules/
   recovery/recovery.test.ts      → Recovery checkin validation + scoring
   body-metrics/body-metric.test.ts → Body metric validation + trend calculations
   strength/strength-session.test.ts → Strength session validation + set calculations
+  strength/exercise-catalog-data.test.ts → Exercise name resolution + per-user override precedence
+  strength/muscle-group-volume.test.ts → Muscle-group/movement-pattern volume aggregation
+  strength/exercise-override.test.ts → ExerciseOverrideService classify/re-classify/archive
   weekly-reviews/weekly-review.test.ts → Weekly review scoring engine
   insights/insight-rules.test.ts → Rule-based insight generation
   validation.test.ts             → Shared validation utilities

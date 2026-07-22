@@ -1,6 +1,7 @@
 import type {
   BodyMetric,
   CardioSession,
+  ExerciseCatalogEntry,
   Insight,
   IsoDate,
   RecoveryCheckin,
@@ -18,6 +19,8 @@ export type InsightEngineInput = {
   weeklyReviews: WeeklyReview[];
   strengthSessions: StrengthSession[];
   liftsCompletedByWeek: Record<IsoDate, number>;
+  /** Per-user exercise catalog overrides (TD-021), checked before the built-in catalog when classifying strength sets. */
+  exerciseOverrides?: ReadonlyMap<string, ExerciseCatalogEntry>;
   now?: Date;
   timezone?: string;
 };
@@ -539,10 +542,11 @@ function evaluateMuscleGroupNeglected(input: InsightEngineInput) {
   const rangeEnd = toIsoDate(now);
   const rangeStart = toIsoDate(addDays(now, -6));
 
-  const summary = computeMuscleGroupVolume(input.strengthSessions, {
-    startDate: rangeStart,
-    endDate: rangeEnd,
-  });
+  const summary = computeMuscleGroupVolume(
+    input.strengthSessions,
+    { startDate: rangeStart, endDate: rangeEnd },
+    input.exerciseOverrides,
+  );
 
   const majorGroups = summary.byMuscleGroup.filter((g) => MAJOR_MUSCLE_GROUPS.includes(g.muscleGroup));
   const trainedMajor = majorGroups.filter((g) => g.workingSetCount > 0);
@@ -593,10 +597,11 @@ function evaluatePushPullImbalance(input: InsightEngineInput) {
   const rangeEnd = toIsoDate(now);
   const rangeStart = toIsoDate(addDays(now, -13));
 
-  const summary = computeMuscleGroupVolume(input.strengthSessions, {
-    startDate: rangeStart,
-    endDate: rangeEnd,
-  });
+  const summary = computeMuscleGroupVolume(
+    input.strengthSessions,
+    { startDate: rangeStart, endDate: rangeEnd },
+    input.exerciseOverrides,
+  );
 
   const push = summary.byMovementPattern.find((p) => p.movementPattern === "push");
   const pull = summary.byMovementPattern.find((p) => p.movementPattern === "pull");

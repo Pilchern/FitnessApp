@@ -8,6 +8,7 @@ import {
   buildInsights,
   CardioSessionService,
   DailyActivityMetricService,
+  ExerciseOverrideService,
   InsightOrchestrator,
   JournalEntryService,
   NutritionLogService,
@@ -27,6 +28,7 @@ import {
   SupabaseBodyMetricRepository,
   SupabaseCardioSessionRepository,
   SupabaseDailyActivityMetricRepository,
+  SupabaseExerciseOverrideRepository,
   SupabaseInsightRepository,
   SupabaseJournalEntryRepository,
   SupabaseNutritionLogRepository,
@@ -134,6 +136,9 @@ export const createCoreServices = cache(async function createCoreServices(
   const dailyActivityService = new DailyActivityMetricService(
     new SupabaseDailyActivityMetricRepository(resolvedClient),
   );
+  const exerciseOverrideService = new ExerciseOverrideService(
+    new SupabaseExerciseOverrideRepository(resolvedClient),
+  );
 
   const weeklyReviewAutoFinalizeService = new WeeklyReviewAutoFinalizeService({
     weeklyReviewService,
@@ -160,6 +165,7 @@ export const createCoreServices = cache(async function createCoreServices(
     supplementService,
     supplementLogService,
     dailyActivityService,
+    exerciseOverrideService,
     insightRepository,
     insightOrchestrator,
     aiWeeklyReviewService,

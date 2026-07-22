@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveExercise } from "./exercise-catalog-data";
+import { buildOverridesLookup, resolveExercise } from "./exercise-catalog-data";
 
 describe("resolveExercise", () => {
   it("resolves canonical exercise names", () => {
@@ -31,5 +31,37 @@ describe("resolveExercise", () => {
 
   it("returns null for an exercise not in the catalog", () => {
     expect(resolveExercise("Some Made Up Machine Exercise")).toBeNull();
+  });
+
+  it("resolves via an override for a name the catalog doesn't recognize", () => {
+    const overrides = buildOverridesLookup([
+      {
+        normalizedName: "cable pull thing",
+        exerciseName: "Cable Pull Thing",
+        muscleGroup: "back",
+        movementPattern: "pull",
+        category: "isolation",
+      },
+    ]);
+
+    expect(resolveExercise("Some Made Up Machine Exercise", overrides)).toBeNull();
+    const entry = resolveExercise("Cable Pull Thing", overrides);
+    expect(entry?.muscleGroup).toBe("back");
+    expect(entry?.movementPattern).toBe("pull");
+  });
+
+  it("prefers an override over the built-in catalog entry for the same name", () => {
+    const overrides = buildOverridesLookup([
+      {
+        normalizedName: "barbell bench press",
+        exerciseName: "Barbell Bench Press",
+        muscleGroup: "shoulders",
+        movementPattern: "push",
+        category: "compound",
+      },
+    ]);
+
+    const entry = resolveExercise("Barbell Bench Press", overrides);
+    expect(entry?.muscleGroup).toBe("shoulders");
   });
 });

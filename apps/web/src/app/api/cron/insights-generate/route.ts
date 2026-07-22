@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { getWeekRangeFromStart } from "@fitness-app/application";
+import { buildOverridesLookup, getWeekRangeFromStart } from "@fitness-app/application";
 import { getServerEnv } from "@/lib/server/env";
 import { createCoreServices } from "@/lib/server/services";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
@@ -76,19 +76,20 @@ export async function GET(request: NextRequest) {
   // below — these services are stateless wrappers over repositories, so
   // there's no correctness reason to reconstruct them per user like the
   // pre-composition-root version of this route did.
-  const { weeklyReviewService, cardioService, recoveryService, bodyMetricService, strengthService, strengthSummaryService, insightOrchestrator } =
+  const { weeklyReviewService, cardioService, recoveryService, bodyMetricService, strengthService, strengthSummaryService, exerciseOverrideService, insightOrchestrator } =
     await createCoreServices(adminClient);
 
   const settled = await mapWithConcurrency(rows, CONCURRENCY, async (profile) => {
     const startDate = sixMonthsAgoIsoDate();
     const timezone = profile.timezone ?? "UTC";
 
-    const [weeklyReviews, recentCardio, recentRecovery, recentBody, recentStrength] = await Promise.all([
+    const [weeklyReviews, recentCardio, recentRecovery, recentBody, recentStrength, exerciseOverrides] = await Promise.all([
       weeklyReviewService.listRecent(profile.user_id, 8),
       cardioService.listByDateRange({ userId: profile.user_id, startDate }),
       recoveryService.listByDateRange({ userId: profile.user_id, startDate }),
       bodyMetricService.listByDateRange({ userId: profile.user_id, startDate }),
       strengthService.listByDateRange({ userId: profile.user_id, startDate }),
+      exerciseOverrideService.listActive({ userId: profile.user_id }),
     ]);
 
     const weekStarts = new Set(weeklyReviews.map((r) => r.weekStart));
@@ -111,6 +112,7 @@ export async function GET(request: NextRequest) {
       recoveryCheckins: recentRecovery,
       weeklyReviews,
       strengthSessions: recentStrength,
+      exerciseOverrides: buildOverridesLookup(exerciseOverrides),
       liftsCompletedByWeek: Object.fromEntries(liftPairs),
       now: new Date(),
       timezone,

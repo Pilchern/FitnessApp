@@ -1,12 +1,14 @@
-import type { ExerciseCatalogEntry } from "@fitness-app/domain";
+import type { ExerciseCatalogEntry, ExerciseMuscleGroupOverride } from "@fitness-app/domain";
 
 /**
  * Curated catalog scoped to the equipment this app is built around (squat
  * rack, barbell, adjustable dumbbells, flat/incline bench, pull-up bar,
  * bodyweight). Entries carry aliases so common shorthand ("DB Bench", "BB
  * Row", "OHP") resolves to the same canonical exercise instead of
- * fragmenting history — this is a lightweight, in-code alternative to a
- * full exercise-catalog CRUD system, appropriate for a single-user app.
+ * fragmenting history. Exercises outside this list can be classified
+ * per-user at runtime via exercise_muscle_group_overrides (see
+ * exercise-override.ts and resolveExercise()'s `overrides` parameter) rather
+ * than requiring a code change (TD-021).
  * Conventional barbell deadlift is intentionally still classified (kept for
  * historical/imported data) even though it's not part of the recommended
  * plan given the user's lower-back constraint.
@@ -430,13 +432,47 @@ for (const entry of EXERCISE_CATALOG) {
 /**
  * Resolves a free-text exercise name (as logged by the user) to its
  * canonical catalog entry, or `null` if the exercise isn't in the catalog
- * (e.g. a custom/uncommon movement). Matching is exact-after-normalization
- * only — no fuzzy matching — to keep resolution deterministic and testable.
+ * and has no user override (e.g. a custom/uncommon movement). Matching is
+ * exact-after-normalization only — no fuzzy matching — to keep resolution
+ * deterministic and testable.
+ *
+ * When `overrides` is provided (a per-user map built via
+ * buildOverridesLookup()), it's checked *before* the built-in catalog, so a
+ * user's own classification always wins over the shipped default for names
+ * they've explicitly classified.
  */
 export function resolveExercise(
   exerciseName: string,
+  overrides?: ReadonlyMap<string, ExerciseCatalogEntry>,
 ): ExerciseCatalogEntry | null {
-  return CATALOG_LOOKUP.get(normalizeExerciseName(exerciseName)) ?? null;
+  const normalized = normalizeExerciseName(exerciseName);
+  return overrides?.get(normalized) ?? CATALOG_LOOKUP.get(normalized) ?? null;
+}
+
+/**
+ * Builds the per-user override lookup map consumed by resolveExercise().
+ * Kept as a plain function (not baked into the service layer) so callers
+ * that already have a list of overrides in hand — e.g. from a single
+ * listActive() call shared across several computeMuscleGroupVolume() calls
+ * in one request — can build the map once and reuse it.
+ */
+export function buildOverridesLookup(
+  overrides: Pick<
+    ExerciseMuscleGroupOverride,
+    "normalizedName" | "exerciseName" | "muscleGroup" | "movementPattern" | "category"
+  >[],
+): Map<string, ExerciseCatalogEntry> {
+  const lookup = new Map<string, ExerciseCatalogEntry>();
+  for (const override of overrides) {
+    lookup.set(override.normalizedName, {
+      canonicalName: override.exerciseName,
+      muscleGroup: override.muscleGroup,
+      movementPattern: override.movementPattern,
+      category: override.category,
+      aliases: [],
+    });
+  }
+  return lookup;
 }
 
 export { normalizeExerciseName };
