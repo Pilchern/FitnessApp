@@ -5,6 +5,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { AuthActionState } from "@/lib/auth";
 import { mapAuthErrorMessage, sanitizeRedirectTo } from "@/lib/auth";
+import {
+  checkLoginRateLimit,
+  formatRetryAfter,
+  recordLoginAttempt,
+} from "@/lib/server/login-rate-limit";
 import { ensureProfileForUser } from "@/lib/server/profile-bootstrap";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 
@@ -81,11 +86,20 @@ export async function loginAction(
       redirectTo: formData.get("redirectTo"),
     });
 
+    const rateLimit = await checkLoginRateLimit(parsed.email, "login");
+    if (!rateLimit.allowed) {
+      return {
+        error: `Too many login attempts. Try again in ${formatRetryAfter(rateLimit.retryAfterSeconds)}.`,
+      };
+    }
+
     const supabase = await createSupabaseRequestClient();
     const { data, error } = await supabase.auth.signInWithPassword({
       email: parsed.email,
       password: parsed.password,
     });
+
+    await recordLoginAttempt(parsed.email, "login", !error);
 
     if (error) {
       return {
@@ -129,6 +143,13 @@ export async function signupAction(
       redirectTo: formData.get("redirectTo"),
     });
 
+    const rateLimit = await checkLoginRateLimit(parsed.email, "signup");
+    if (!rateLimit.allowed) {
+      return {
+        error: `Too many signup attempts. Try again in ${formatRetryAfter(rateLimit.retryAfterSeconds)}.`,
+      };
+    }
+
     const supabase = await createSupabaseRequestClient();
     const { data, error } = await supabase.auth.signUp({
       email: parsed.email,
@@ -139,6 +160,8 @@ export async function signupAction(
         },
       },
     });
+
+    await recordLoginAttempt(parsed.email, "signup", !error);
 
     if (error) {
       return {

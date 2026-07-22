@@ -1,7 +1,7 @@
 # Current State — FitnessApp
 
 **Last updated:** 2026-07-21 (muscle-group tracking + coaching-rule audit)
-**Overall health:** Stable. TypeScript clean. 198 tests pass. Lint clean. Production build succeeds. Withings and Apple Health are live and verified. Strava is currently broken (app deactivated on Strava's side — user action required). Peloton's unofficial API auth endpoint is confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not currently viable; **Peloton → Strava relay (via Peloton's own "auto-export to Strava" setting) is now the recommended cardio path**, pending Strava reactivation.
+**Overall health:** Stable. TypeScript clean. 205 tests pass. Lint clean. Production build succeeds. **New migration awaiting manual apply:** `20260721190000_create_auth_rate_limit_attempts.sql` has not been run against the live Supabase project (no `.env.local`/live DB credentials in this container) — run `supabase db push` (or apply via the dashboard) before login rate limiting takes effect in production; until then `checkLoginRateLimit`/`recordLoginAttempt` will log a Postgres "relation does not exist" error and fail open (logins still work, just unprotected). Withings and Apple Health are live and verified. Strava is currently broken (app deactivated on Strava's side — user action required). Peloton's unofficial API auth endpoint is confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not currently viable; **Peloton → Strava relay (via Peloton's own "auto-export to Strava" setting) is now the recommended cardio path**, pending Strava reactivation.
 
 This session's audit found the app's integration/data-integrity layer (auth, OAuth token encryption, RLS, per-provider dedup, webhook signature verification) in solid shape, but the product's stated #1 goal — knowing whether you're neglecting a muscle group — had zero supporting code anywhere. That was the highest-value gap and is now closed end-to-end: an exercise catalog with muscle-group/movement-pattern tagging, a volume aggregation service, a "not trained this week" dashboard callout, a muscle-group balance card on `/strength`, and 4 new coaching-insight rules (muscle-group neglect, push/pull imbalance, deload suggestion, consistently-exceeding-cardio-target). See "What Was Done in This Session (2026-07-21)" below.
 
@@ -13,7 +13,7 @@ This session's audit found the app's integration/data-integrity layer (auth, OAu
 | ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeScript   | CLEAN   | Zero errors across all 6 packages                                                                                                                                                                                                                                                                  |
 | Lint         | CLEAN   | No warnings                                                                                                                                                                                                                                                                                        |
-| Tests        | PASSING | 198/198 (30 web, 126 application, 14 integrations, 28 jobs)                                                                                                                                                                                                                                        |
+| Tests        | PASSING | 205/205 (37 web, 126 application, 14 integrations, 28 jobs)                                                                                                                                                                                                                                        |
 | Build        | PASSING | `pnpm build` succeeds without a live `.env.local` — all data-dependent routes are dynamic, so no Supabase connectivity is needed at build time                                                                                                                                                     |
 | E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review)                                                                                                                                                                                                  |
 | Database     | LIVE    | Cloud Supabase project, credentials in .env.local                                                                                                                                                                                                                                                  |
@@ -32,7 +32,7 @@ packages/application        Services, use cases, Zod validation, repo ports
 packages/infrastructure     Supabase repository implementations
 packages/integrations       Strava, Withings, and Peloton OAuth/credential adapters + payload normalization
 packages/jobs               Background sync orchestration (cardio, body-metric, Apple Health sleep)
-supabase/                   20 SQL migrations, seed data, RLS policies
+supabase/                   27 SQL migrations, seed data, RLS policies
 ```
 
 ---
@@ -183,6 +183,8 @@ Full audit against the product's stated goals (dashboard clarity, coach intellig
 6. 15 new tests (197 total, up from 177); `pnpm build` verified clean.
 
 **Follow-up (same day):** `duration_seconds`/`distance_meters` wired end-to-end on strength sets (TD-020) — same dead-column pattern as `is_warmup`. Timed sets (planks) and distance-based movements (farmer carries) can now be logged via two compact optional inputs next to the set-notes field. 1 new test (198 total).
+
+**Follow-up 2 (same day):** DB-backed login/signup rate limiting (TD-018) — new `auth_rate_limit_attempts` table (migration `20260721190000`, not yet applied to the live project — see note above), a pure `evaluateLoginRateLimit()` lockout function (5 failures / 15-minute rolling window, resets on success) unit-tested independently of Supabase, and a thin server wrapper (`checkLoginRateLimit`/`recordLoginAttempt`) wired into both `loginAction` and `signupAction`. Fails open on a lookup error so a transient DB issue never locks out a legitimate user. 7 new tests (205 total).
 
 ---
 
