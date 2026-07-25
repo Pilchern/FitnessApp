@@ -1,9 +1,9 @@
 # Apple Health bridge setup (Health Auto Export or similar)
 
-The app ingests Apple Health data via two webhooks. There is no Apple Health
-API integration in the app itself — a phone-side "bridge" app (e.g. [Health
-Auto Export](https://www.healthyapps.dev/)) reads HealthKit data and POSTs
-it to these endpoints on a schedule or automation you configure on the
+The app ingests Apple Health data via three webhooks. There is no Apple
+Health API integration in the app itself — a phone-side "bridge" app (e.g.
+[Health Auto Export](https://www.healthyapps.dev/)) reads HealthKit data and
+POSTs it to these endpoints on a schedule or automation you configure on the
 device. This doc specifies exactly what that bridge app needs to send.
 
 Both endpoints share the same auth scheme, are excluded from the app's
@@ -58,25 +58,30 @@ simpler trade — see the migration step above.
 |---|---|---|---|
 | Sleep (overnight sleep stages + in-sleep vitals) | `POST /api/integrations/apple-health/sleep` | `AppleHealthSleepSyncOrchestrator` | `recovery_checkins` |
 | Daily activity (steps, VO2 max, resting HR, exercise minutes, active energy) | `POST /api/integrations/apple-health/daily-metrics` | `AppleHealthDailyMetricsSyncOrchestrator` | `daily_activity_metrics` |
+| Workouts (individual completed exercise sessions — cycling, running, etc.) | `POST /api/integrations/apple-health/workouts` | `AppleHealthWorkoutSyncOrchestrator` | `cardio_sessions` |
 
-Use `https://<your-deployed-domain>/api/integrations/apple-health/sleep` and
-`https://<your-deployed-domain>/api/integrations/apple-health/daily-metrics`
+Use `https://<your-deployed-domain>/api/integrations/apple-health/sleep`,
+`https://<your-deployed-domain>/api/integrations/apple-health/daily-metrics`,
+and `https://<your-deployed-domain>/api/integrations/apple-health/workouts`
 — substitute your actual deployed domain (e.g. your Vercel production URL).
 Do not point the bridge app at a preview deployment; preview URLs change and
 preview environments may not have `INTEGRATION_ENCRYPTION_KEY` configured.
 
-## Why two separate endpoints instead of one
+## Why separate endpoints instead of one
 
 Sleep data (sleep stages, in-sleep resting HR/HRV/respiratory rate/SpO2) is a
 single overnight event that's only complete once the user wakes up, so it
 naturally lands in one payload sent once per morning. Daytime activity
 (steps, exercise minutes, active energy, VO2 max, general resting heart
 rate) accrues continuously throughout the day and is useful to sync more
-often. Keeping them as separate endpoints/payload schemas/orchestrators lets
-each be sent on its own cadence without one schema having to model two very
-different lifecycles, and keeps `recovery_checkins` (subjective + sleep data)
-cleanly separated from `daily_activity_metrics` (whole-body daily activity
-data) at the domain-model level.
+often. Workouts are discrete sessions (a ride, a run) rather than date-keyed
+daily aggregates — each one gets its own row in `cardio_sessions`, deduped by
+a stable per-workout identifier rather than by date. Keeping these as
+separate endpoints/payload schemas/orchestrators lets each be sent on its own
+cadence without one schema having to model three very different lifecycles,
+and keeps `recovery_checkins` (subjective + sleep data), `daily_activity_metrics`
+(whole-body daily totals), and `cardio_sessions` (individual sessions)
+cleanly separated at the domain-model level.
 
 ## Getting your webhook token
 
@@ -226,6 +231,46 @@ are left unchanged) rather than creating a duplicate.
 Writes to `daily_activity_metrics`, keyed by `(user_id, metric_date)` — same
 upsert-by-date semantics as the sleep endpoint.
 
+### `POST /api/integrations/apple-health/workouts`
+
+```json
+{
+  "workout_id": "3F2504E0-4F89-11D3-9A0C-0305E82C3301",
+  "workout_type": "Cycling",
+  "session_kind": "zone2",
+  "start": "2026-07-25T14:00:00Z",
+  "end": "2026-07-25T14:45:00Z",
+  "avg_heart_rate": 142,
+  "max_heart_rate": 168,
+  "distance_meters": 18000,
+  "source_name": "Peloton"
+}
+```
+
+| Field | Type | Units | Notes |
+|---|---|---|---|
+| `workout_id` | string | — | required; a stable identifier for this specific workout (HealthKit assigns every workout sample a UUID — use that). This is the dedup key: resending the same `workout_id` updates the existing session instead of creating a duplicate. |
+| `workout_type` | string | — | required; free text describing the activity (e.g. `"Cycling"`, `"Running"`) — stored as-is on the cardio session for display, not validated against a fixed list |
+| `session_kind` | string | — | optional, one of `zone2` \| `vo2` \| `recovery` \| `other`; defaults to `zone2` if omitted (right for steady-state cardio like a Peloton ride) — set explicitly if the workout is high-intensity/interval work (`vo2`) or an easy/recovery session (`recovery`) |
+| `start` | string | ISO 8601 datetime | required; workout start time |
+| `end` | string | ISO 8601 datetime | optional; workout end time — if provided and `duration_minutes` is omitted, duration is computed as `end - start` |
+| `duration_minutes` | number | minutes | optional, 0–1440; send this directly if your bridge app doesn't expose both `start` and `end` |
+| `avg_heart_rate` | number | bpm | optional, > 0 |
+| `max_heart_rate` | number | bpm | optional, > 0 |
+| `distance_meters` | number | meters | optional, >= 0 |
+| `source_name` | string | — | optional; which app originally wrote the workout to Apple Health (e.g. `"Peloton"`) — stored in the session notes for provenance, not used for matching/dedup |
+
+Writes to `cardio_sessions`, deduped by `(user_id, source_provider, source_external_id)`
+where `source_external_id` is `workout_id` — unlike the date-keyed sleep and
+daily-metrics endpoints, this is genuinely session-based, so multiple
+workouts on the same day each get their own row.
+
+This is how a Peloton ride reaches this app for free, without a Strava
+subscription: the Peloton app writes each completed ride to Apple Health
+automatically (a setting in the Peloton app itself), and your bridge app's
+"Workouts" export then forwards it here. This works for any activity type
+that ends up in Apple Health, not just Peloton.
+
 ## Recommended send frequency
 
 - **Sleep**: once daily, shortly after wake (e.g. an automation triggered at
@@ -240,6 +285,12 @@ upsert-by-date semantics as the sleep endpoint.
   once-nightly send is also acceptable if battery/automation simplicity is
   preferred; the endpoint's upsert-by-date behavior makes either cadence
   safe to mix.
+- **Workouts**: as soon as possible after each workout finishes (e.g. an
+  automation triggered on new HealthKit workout data), or at minimum once
+  nightly. Since dedup is per-`workout_id` rather than per-date, sending the
+  same workout multiple times (e.g. once right after and again in a nightly
+  catch-up sync) is always safe — it updates the same row rather than
+  creating a duplicate.
 
 ## Storage and implementation notes
 
