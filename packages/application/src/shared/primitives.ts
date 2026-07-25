@@ -75,11 +75,16 @@ export const canonicalRecordSourceSchema = z.discriminatedUnion("sourceType", [
 
 export const defaultManualSource = () => MANUAL_RECORD_SOURCE;
 
+/** Default row cap for listByDateRange queries when the caller doesn't specify one — preserves the pre-TD-016 behavior for existing callers. */
+export const DEFAULT_DATE_RANGE_QUERY_LIMIT = 500;
+
 export const dateRangeQuerySchema = z
   .object({
     userId: uuidSchema,
     startDate: isoDateSchema.optional(),
     endDate: isoDateSchema.optional(),
+    /** Caller-controlled row cap (TD-016) — lets a power user's "view all history" query ask for more than the 500-row default instead of silently truncating. */
+    limit: z.number().int().positive().max(2000).optional(),
   })
   .refine(
     (value) => !value.startDate || !value.endDate || value.startDate <= value.endDate,

@@ -5,6 +5,7 @@ import type {
   JournalEntryRepository,
   UpdateJournalEntryInput,
 } from "@fitness-app/application";
+import { DEFAULT_DATE_RANGE_QUERY_LIMIT } from "@fitness-app/application";
 import { z } from "zod";
 import {
   compactRecord,
@@ -145,7 +146,7 @@ export class SupabaseJournalEntryRepository implements JournalEntryRepository {
       .eq("user_id", query.userId)
       .is("deleted_at", null)
       .order("entry_date", { ascending: false })
-      .limit(500);
+      .limit(query.limit ?? DEFAULT_DATE_RANGE_QUERY_LIMIT);
 
     if (query.startDate) {
       request = request.gte("entry_date", query.startDate);
