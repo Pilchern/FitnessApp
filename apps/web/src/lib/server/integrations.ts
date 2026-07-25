@@ -18,6 +18,7 @@ import { PelotonCardioAdapter, StravaCardioAdapter, WithingsBodyMetricsAdapter }
 import {
   AppleHealthDailyMetricsSyncOrchestrator,
   AppleHealthSleepSyncOrchestrator,
+  AppleHealthWorkoutSyncOrchestrator,
   BodyMetricSyncOrchestrator,
   CardioSyncOrchestrator,
 } from "@fitness-app/jobs";
@@ -170,6 +171,24 @@ export function createAppleHealthDailyMetricsOrchestrator() {
   );
 }
 
+export function createAppleHealthWorkoutOrchestrator() {
+  if (!hasAppleHealthServerEnv()) {
+    throw new Error(
+      "Apple Health integration is not configured. Add INTEGRATION_ENCRYPTION_KEY to your env.",
+    );
+  }
+
+  const client = createSupabaseAdminClient();
+
+  return new AppleHealthWorkoutSyncOrchestrator(
+    new CardioSessionService(new SupabaseCardioSessionRepository(client)),
+    new SupabaseIntegrationConnectionRepository(client),
+    new SupabaseSyncJobRunRepository(client),
+    new SupabaseImportBatchRepository(client),
+    new SupabaseRawImportEventRepository(client),
+  );
+}
+
 /**
  * Builds the per-user secret lookup function `verifyAppleHealthRequest`
  * needs (see verify-request.ts). Resolves the webhook token for the
@@ -238,7 +257,7 @@ export async function generateAppleHealthWebhookToken(userId: string): Promise<s
       accountLabel: "Apple Health",
       providerUserId: null,
       scopes: [],
-      capabilities: ["sleep", "daily_metrics"],
+      capabilities: ["sleep", "daily_metrics", "workouts"],
       metadata: { autoCreated: true },
       status: "active",
     });

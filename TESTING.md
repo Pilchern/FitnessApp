@@ -1,6 +1,6 @@
 # Testing Guide — FitnessApp
 
-**Last updated:** 2026-07-22
+**Last updated:** 2026-07-25
 
 ---
 
@@ -10,9 +10,9 @@
 | ----------------------- | ---------- | ------- | --------------- |
 | `packages/application`  | 17         | 139     | All passing     |
 | `packages/integrations` | 4          | 14      | All passing     |
-| `packages/jobs`         | 4          | 28      | All passing     |
+| `packages/jobs`         | 5          | 32      | All passing     |
 | `apps/web`              | 7          | 47      | All passing     |
-| **Total**               | **32**     | **228** | **All passing** |
+| **Total**               | **33**     | **232** | **All passing** |
 
 ---
 
@@ -58,6 +58,7 @@ packages/integrations/src/
 
 packages/jobs/src/
   orchestration/body-metric-sync.test.ts → Sync orchestration logic
+  orchestration/apple-health-workout-sync.test.ts → Workout payload mapping + dedup-key wiring
 
 apps/web/src/
   lib/auth.test.ts               → sanitizeRedirectTo, mapAuthErrorMessage

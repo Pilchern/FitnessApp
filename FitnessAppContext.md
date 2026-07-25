@@ -199,11 +199,13 @@ All tables enforce ownership via `auth.uid() = user_id`. Server actions call `re
 
 ## Known Technical Debt (Priority Order)
 
-See `TECH_DEBT.md` for the full register. Active items as of 2026-07-22:
+See `TECH_DEBT.md` for the full register. Active items as of 2026-07-25:
 
-1. **No cross-provider duplicate detection** — same real-world workout/weigh-in landing via two connected providers isn't deduplicated (TD-019); now understood to be forward-looking hardening rather than an active bug, since Apple Health doesn't yet sync body weight or cardio workouts (only sleep + daily-activity metrics) — revisit once that sync surface expands
-2. **Withings and Peloton unconfigured** — code-complete, waiting on credentials/connection
+1. **No cross-provider duplicate detection** (TD-019) — re-escalated to a real (if not currently active) risk: Apple Health now syncs cardio workouts (see below), so reconnecting Strava or Peloton direct sync alongside active Apple Health workout sync could double-count a ride. Not live today only because Strava is paywalled and Peloton's API is blocked, leaving Apple Health as the sole active cardio path.
+2. **Withings and Peloton unconfigured** — code-complete, waiting on credentials/connection (Peloton direct sync is additionally blocked by Peloton's own API)
 3. **`listByDateRange` capped at 500 rows** — acceptable for current scale (TD-016)
+
+Resolved 2026-07-25: Apple Health workout sync (`POST /api/integrations/apple-health/workouts`) — a free, provider-agnostic path for Peloton rides (or anything else HealthKit captures) to reach `cardio_sessions`, now that Strava requires a paid subscription the user declined. All 3 previously-pending migrations were also applied directly to the live Supabase project this session via the Supabase MCP connector.
 
 Resolved 2026-07-22: account deletion + full data-export flow (TD-022, "Danger zone" section on `/settings`), user-editable exercise catalog overrides (TD-021 — per-user muscle-group/movement-pattern/category classification checked before the built-in catalog, with a "Classify your exercises" UI on `/strength`), numeric goal targets + training-plan day-of-week scheduling (TD-027 — target weight/date on the profile, `scheduledDayOfWeek` on `TrainingTemplate` with a "Today's plan" callout on `/strength`), and a fix for a completely broken strength-template-creation flow found along the way (TD-028 — web/application field-name mismatch meant every template creation silently failed validation).
 
@@ -216,10 +218,10 @@ Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window 
 **Next sprint priorities (see task-level plan for full detail):**
 
 1. Configure Withings OAuth end to end
-2. Reactivate Strava, enable Peloton's native Strava auto-export (Peloton-direct is confirmed blocked by Peloton's own API as of 2026-07-16 — not fixable in-app)
-3. Cross-provider duplicate detection + source-priority rules (TD-019) — forward-looking; no live trigger path until Apple Health syncs weight/cardio
-4. Apply migrations `20260721190000_create_auth_rate_limit_attempts.sql`, `20260722170000_create_exercise_muscle_group_overrides.sql`, and `20260722180000_add_target_weight_and_template_schedule.sql` to the live Supabase project (none have run — no live DB credentials in this container)
-5. Once the migration above lands, actually set a target weight/date and pin the real M/W/F strength templates with a scheduled day — the underlying capability (TD-027) is built, but the numbers/templates themselves are personal data that has to come from the user
+2. Cross-provider duplicate detection + source-priority rules (TD-019) — re-escalated; prioritize before ever reconnecting Strava/Peloton direct sync alongside Apple Health workout sync
+3. Set a target weight/date under Settings, and pin real M/W/F strength templates with a scheduled day — the underlying capability (TD-027) is built and its migration is live, but the numbers/templates themselves are personal data that has to come from the user
+4. Once the user resumes Peloton riding (currently paused for a meniscus injury), configure a bridge app (Health Auto Export or similar) to export "Workouts" data to `/api/integrations/apple-health/workouts` — see `docs/integrations/apple-health-bridge-setup.md`
+5. Decide whether to keep the Strava/Peloton-direct integration code paths at all now that neither is realistically usable (Strava paywalled, Peloton API blocked) — not urgent
 
 **Already built, previously undocumented:**
 
@@ -230,6 +232,7 @@ Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window 
 - Muscle-group/movement-pattern exercise catalog and volume aggregation (2026-07-21) — `packages/application/src/modules/strength/exercise-catalog-data.ts` and `muscle-group-volume.ts`
 - User-editable exercise catalog overrides (2026-07-22) — `packages/application/src/modules/strength/exercise-override.ts`, checked before the built-in catalog in `resolveExercise()`
 - Numeric goal targets + training-plan day-of-week scheduling (2026-07-22) — `targetWeightLb`/`targetDate` on the profile, `scheduledDayOfWeek` on `TrainingTemplate`, "Today's plan" callout on `/strength`
+- Apple Health workout sync (2026-07-25) — `POST /api/integrations/apple-health/workouts`, `AppleHealthWorkoutSyncOrchestrator`, maps individual HealthKit workouts into `cardio_sessions`
 
 **Longer-horizon work:**
 
@@ -242,7 +245,7 @@ Resolved same day: login/signup rate limiting (TD-018, DB-backed rolling-window 
 ## Testing Notes
 
 - **Framework:** Vitest 2 (all packages), Playwright (E2E)
-- **Current coverage:** 228 unit/integration tests across application, integrations, jobs, and web layers
+- **Current coverage:** 232 unit/integration tests across application, integrations, jobs, and web layers
 - **Test seed user:** `dev@example.com` / `password1234` (local Supabase only)
 - **E2E:** `tests/e2e/` — auth, navigation, body, and cardio specs; configured in `apps/web/playwright.config.ts`
 - **Run unit tests:** `pnpm test` from root
@@ -271,6 +274,7 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 
 | Date       | Work Done                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-25 | Strava changed its API to subscriber-only; user declined to pay and separately tore their meniscus (Peloton riding paused). Added a new Apple Health workout webhook (`POST /api/integrations/apple-health/workouts`, `AppleHealthWorkoutSyncOrchestrator`) mapping individual HealthKit workouts into `cardio_sessions` — a free, provider-agnostic path for Peloton (or anything else) to sync once riding resumes. Applied all 3 previously-pending migrations directly to the live Supabase project via the Supabase MCP connector. Re-escalated TD-019 (cross-provider dedup) since Apple Health now syncs cardio data too. 4 new tests (232 total, up from 228). |
 | 2026-07-22 | Closed TD-027: numeric goal targets (`targetWeightLb`/`targetDate` on the profile, editable under Settings, dashboard fat-loss card shows real progress-to-target/pace when set) + training-plan day-of-week scheduling (`TrainingTemplate.scheduledDayOfWeek`, "Today's plan" callout on `/strength`). Also fixed TD-028: strength-template creation was completely broken — the web-layer validation schema expected `name/sets/reps/rpe/notes` but the create-template form always sent `exerciseName/exerciseOrder/targetSets/targetReps/targetWeight/targetRir/notes`, so every submission failed; fixed by validating against the correct shared `strengthTemplateExerciseSchema`. New migration `20260722180000` not yet applied to the live project. 11 new tests (228 total, up from 217). |
 | 2026-07-22 | Closed TD-021: user-editable exercise catalog overrides. New `exercise_muscle_group_overrides` table (migration not yet applied to the live project) + `ExerciseOverrideService` (classify/archive/listActive); `resolveExercise()` checks per-user overrides before the built-in catalog; `computeMuscleGroupVolume()` accepts overrides and returns `unclassifiedExerciseNames`; new "Classify your exercises" UI on `/strength`. Re-scoped TD-019 from "active Medium-severity risk" to "forward-looking hardening" after confirming Apple Health doesn't yet sync body weight/cardio (no live duplicate-import path exists today). 7 new tests (217 total, up from 210). |
 | 2026-07-22 | Closed TD-022: full data-export route (`GET /api/account/export`, RLS-scoped, explicitly excludes integration credentials/raw payloads) and account deletion ("Danger zone" on `/settings`, requires typing "DELETE", cascades via `admin.auth.admin.deleteUser()`). Wired the previously-unused `DailyActivityMetricService` into `createCoreServices()`. 5 new tests (210 total, up from 205). |
