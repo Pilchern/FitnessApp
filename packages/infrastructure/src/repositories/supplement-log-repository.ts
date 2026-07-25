@@ -4,6 +4,7 @@ import type {
   SupplementLogDateRangeQuery,
   SupplementLogRepository,
 } from "@fitness-app/application";
+import { DEFAULT_DATE_RANGE_QUERY_LIMIT } from "@fitness-app/application";
 import { z } from "zod";
 import { type AppSupabaseClient, requireSingleResult, throwOnError } from "./shared";
 
@@ -85,7 +86,7 @@ export class SupabaseSupplementLogRepository implements SupplementLogRepository 
       .eq("user_id", query.userId)
       .is("deleted_at", null)
       .order("log_date", { ascending: false })
-      .limit(500);
+      .limit(query.limit ?? DEFAULT_DATE_RANGE_QUERY_LIMIT);
 
     if (query.startDate) {
       request = request.gte("log_date", query.startDate);

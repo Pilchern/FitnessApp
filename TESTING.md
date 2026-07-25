@@ -8,11 +8,11 @@
 
 | Package                 | Test Files | Tests   | Status          |
 | ----------------------- | ---------- | ------- | --------------- |
-| `packages/application`  | 17         | 139     | All passing     |
+| `packages/application`  | 17         | 143     | All passing     |
 | `packages/integrations` | 4          | 14      | All passing     |
 | `packages/jobs`         | 5          | 32      | All passing     |
 | `apps/web`              | 7          | 47      | All passing     |
-| **Total**               | **33**     | **232** | **All passing** |
+| **Total**               | **33**     | **236** | **All passing** |
 
 ---
 

@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  cardioSessionDateRangeQuerySchema,
   createBodyMetricSchema,
   createCardioSessionSchema,
   createRecoveryCheckinSchema,
   createWeeklyReviewSchema,
+  DEFAULT_DATE_RANGE_QUERY_LIMIT,
   updateJournalEntrySchema,
 } from "../index";
 
@@ -83,5 +85,34 @@ describe("application validation schemas", () => {
         userId,
       }),
     ).toThrow(/At least one field/);
+  });
+});
+
+describe("dateRangeQuerySchema limit (TD-016)", () => {
+  it("leaves limit undefined when the caller doesn't specify one", () => {
+    const parsed = cardioSessionDateRangeQuerySchema.parse({ userId });
+    expect(parsed.limit).toBeUndefined();
+    // Repositories fall back to this constant, not the schema itself.
+    expect(DEFAULT_DATE_RANGE_QUERY_LIMIT).toBe(500);
+  });
+
+  it("accepts a caller-supplied limit above the old hardcoded 500 cap", () => {
+    const parsed = cardioSessionDateRangeQuerySchema.parse({
+      userId,
+      limit: 1000,
+    });
+    expect(parsed.limit).toBe(1000);
+  });
+
+  it("rejects a non-positive limit", () => {
+    expect(() =>
+      cardioSessionDateRangeQuerySchema.parse({ userId, limit: 0 }),
+    ).toThrow();
+  });
+
+  it("rejects a limit above the hard ceiling", () => {
+    expect(() =>
+      cardioSessionDateRangeQuerySchema.parse({ userId, limit: 5000 }),
+    ).toThrow();
   });
 });

@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-07-22 (numeric goal targets + training-plan scheduling)
+**Last updated:** 2026-07-25 (listByDateRange caller-controlled limit)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -14,18 +14,6 @@
 - **Problem:** Unique indexes prevent the _same_ provider from re-importing the _same_ external ID, but nothing detects the _same real-world event_ arriving from two different providers. This had been downgraded to "forward-looking, no live trigger path" after confirming Apple Health only synced sleep and daily activity metrics — but as of the Apple Health workout webhook (`/api/integrations/apple-health/workouts`, 2026-07-25), Apple Health now syncs individual cardio sessions too. If Strava (or Peloton's direct sync) is ever reconnected while Apple Health workout sync is also configured, the same ride could land twice — once via Strava/Peloton's `source_provider`, once via `apple_health` — since dedup is per-provider (`(source_provider, source_external_id)`), not cross-provider. Not an active problem today only because Strava currently requires a paid subscription the user hasn't purchased and Peloton direct sync is blocked, so Apple Health is presently the only active cardio-import path — but this is one reconnection away from being live again.
 - **Fix:** A conservative same-day + similar-duration/weight heuristic per data type, with an explicit source-priority order (e.g. Withings > Apple Health for weight; direct provider > Strava relay > Apple Health for cardio) and a way to inspect which record won. Prioritize this before ever reconnecting Strava/Peloton alongside active Apple Health workout sync.
 - **Effort:** L
-
----
-
-## Priority 2 — Low Severity
-
-### TD-016: `listByDateRange` capped at 500 rows
-
-- **Severity:** Low (acceptable for current scale)
-- **Affected files:** All 6 infrastructure repository implementations
-- **Problem:** Safety cap of 500 rows was added to prevent unbounded queries. Power users with >500 entries in a date range will silently get a truncated result.
-- **Fix:** Add a `limit` parameter to repository port interfaces; pass caller-controlled limits from server.ts files; default to 365 for chart views.
-- **Effort:** M (requires interface changes across application + infrastructure layers)
 
 ---
 
@@ -62,3 +50,5 @@
 | TD-022  | No account deletion or full data-export flow — added a "Danger zone" section in Settings: `GET /api/account/export` (RLS-scoped JSON export of every user table, explicitly excluding integration credentials/tokens/raw provider payloads) and `deleteAccountAction` (requires typing "DELETE" to confirm, then `admin.auth.admin.deleteUser()` — cascades all user data via existing FKs)                        | 2026-07-22 |
 | TD-027  | No numeric goal targets or training-schedule concept — `profiles` only had 3 boolean goal flags (no target weight/date) and `TrainingTemplate` had no day-of-week assignment. Added `targetWeightLb`/`targetDate` to the profile (dashboard's fat-loss goal card now shows real progress-to-target and on-pace/behind-pace messaging when set, falling back to the existing trend-only heuristic otherwise) and an optional `scheduledDayOfWeek` on `TrainingTemplate` (pin a template to e.g. Mon/Wed/Fri; `/strength` now surfaces a "Today's plan" callout with a one-click load when today matches) | 2026-07-22 |
 | TD-028  | Strength template creation was completely broken — the web-layer validation schema (`templateExercisesSchema` in `apps/web/.../strength/form-schema.ts`) expected `name/sets/reps/rpe/notes` fields, but the actual create-template form (`buildExercisesPayload()`) always sent `exerciseName/exerciseOrder/targetSets/targetReps/targetWeight/targetRir/notes` — every submission failed validation with "Invalid exercise data." Fixed by deleting the mismatched web-layer schema and validating against the correct, already-canonical `strengthTemplateExerciseSchema` from `@fitness-app/application` instead (the same schema the service layer uses downstream) | 2026-07-22 |
+| TD-029  | No free cardio-sync path once Strava required a paid subscription — added `POST /api/integrations/apple-health/workouts` + `AppleHealthWorkoutSyncOrchestrator`, mapping individual HealthKit workouts (e.g. Peloton rides auto-written to Apple Health) into `cardio_sessions`, deduped via the existing `CardioSessionService.upsertImported()`                                                                                                                                                                                                                                                                                                                                                     | 2026-07-25 |
+| TD-016  | `listByDateRange` capped at a hardcoded 500 rows across all 7 infrastructure repositories with `listByDateRange` — added an optional `limit` field to the shared `dateRangeQuerySchema` (max 2000, falls back to the same 500 default via `DEFAULT_DATE_RANGE_QUERY_LIMIT` when omitted, so every existing caller is unaffected); a caller that actually needs more than 500 rows in a date range can now ask for it instead of silently getting truncated                                                                                                                                                                                                                                          | 2026-07-25 |

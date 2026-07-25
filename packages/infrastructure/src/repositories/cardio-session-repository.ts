@@ -7,6 +7,7 @@ import type {
   UpdateCardioSessionInput,
   CardioSessionDateRangeQuery,
 } from "@fitness-app/application";
+import { DEFAULT_DATE_RANGE_QUERY_LIMIT } from "@fitness-app/application";
 import { z } from "zod";
 import {
   compactRecord,
@@ -228,7 +229,7 @@ export class SupabaseCardioSessionRepository implements CardioSessionRepository 
       .eq("user_id", query.userId)
       .is("deleted_at", null)
       .order("session_date", { ascending: false })
-      .limit(500);
+      .limit(query.limit ?? DEFAULT_DATE_RANGE_QUERY_LIMIT);
 
     if (query.startDate) {
       request = request.gte("session_date", query.startDate);
