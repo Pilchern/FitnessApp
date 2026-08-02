@@ -60,6 +60,7 @@ export function StrengthTemplateList({
                 <input type="hidden" name="id" value={template.id} />
                 <select
                   name="scheduledDayOfWeek"
+                  aria-label={`Scheduled day of week for ${template.name}`}
                   defaultValue={template.scheduledDayOfWeek ?? ""}
                   onChange={(e) => e.currentTarget.form?.requestSubmit()}
                   className="h-10 rounded-full border border-ink/10 bg-white px-3 text-sm text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20"

@@ -14,6 +14,18 @@ export function getRecoveryCoachingSuggestion(
 
   const latest = recentCheckins[0];
 
+  // Checked ahead of readiness/HRV: severe soreness is an independent injury-risk
+  // signal (e.g. DOMS from yesterday's heavy session) that can coexist with a
+  // normal-looking readiness score, so it must not be masked by it.
+  if (latest.sorenessLevel != null && latest.sorenessLevel >= 8) {
+    return {
+      severity: "warning",
+      headline: "High soreness reported",
+      detail:
+        "Soreness this high raises injury risk from heavy loading today — favor mobility, light Zone 2, or full rest over pushing intensity or a new PR attempt.",
+    };
+  }
+
   if (latest.readinessLevel != null && latest.readinessLevel <= 3) {
     return {
       severity: "warning",
@@ -38,7 +50,8 @@ export function getRecoveryCoachingSuggestion(
       .filter((v): v is number => v != null);
 
     if (hrvValues.length >= 2) {
-      const avgHrv = hrvValues.reduce((sum, v) => sum + v, 0) / hrvValues.length;
+      const avgHrv =
+        hrvValues.reduce((sum, v) => sum + v, 0) / hrvValues.length;
       if (latest.hrv < avgHrv * 0.8) {
         return {
           severity: "info",
@@ -69,13 +82,16 @@ export function buildRecoverySummary(
 ): RecoverySummary {
   const average = (values: number[]) =>
     values.length > 0
-      ? Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) /
-        10
+      ? Math.round(
+          (values.reduce((sum, value) => sum + value, 0) / values.length) * 10,
+        ) / 10
       : null;
 
   const sleepHoursValues = checkins
     .map((checkin) =>
-      checkin.sleepDurationMinutes != null ? checkin.sleepDurationMinutes / 60 : null,
+      checkin.sleepDurationMinutes != null
+        ? checkin.sleepDurationMinutes / 60
+        : null,
     )
     .filter((value): value is number => value != null);
 
@@ -129,7 +145,9 @@ export function buildRecoverySleepTrend(checkins: RecoveryCheckin[]) {
   );
 }
 
-export function buildRecoveryRestingHeartRateTrend(checkins: RecoveryCheckin[]) {
+export function buildRecoveryRestingHeartRateTrend(
+  checkins: RecoveryCheckin[],
+) {
   return buildSparseTrendSeries(
     checkins,
     (checkin) => checkin.checkinDate,

@@ -4,9 +4,54 @@ import {
   buildRecoverySleepTrend,
   buildRecoverySummary,
   createRecoveryCheckinSchema,
+  getRecoveryCoachingSuggestion,
   updateRecoveryCheckinSchema,
 } from "../../index";
 import type { RecoveryCheckin } from "@fitness-app/domain";
+
+function makeCheckin(
+  overrides: Partial<RecoveryCheckin> = {},
+): RecoveryCheckin {
+  return {
+    id: "recovery-x",
+    userId,
+    checkinDate: "2026-03-24",
+    restingHeartRate: null,
+    hrv: null,
+    sleepDurationMinutes: null,
+    sleepQuality: null,
+    energyLevel: null,
+    readinessLevel: null,
+    stressLevel: null,
+    sorenessLevel: null,
+    alcoholCount: 0,
+    notes: null,
+    timeInBedMinutes: null,
+    sleepEfficiencyPct: null,
+    deepSleepMinutes: null,
+    remSleepMinutes: null,
+    coreSleepMinutes: null,
+    awakeMinutes: null,
+    sleepRespiratoryRate: null,
+    sleepSpo2AvgPct: null,
+    sleepHrvAvg: null,
+    sleepAvgHeartRate: null,
+    bedtimeLocal: null,
+    wakeTimeLocal: null,
+    coldPlungeCompleted: null,
+    source: {
+      sourceType: "manual",
+      sourceProvider: null,
+      sourceExternalId: null,
+      importBatchId: null,
+      rawImportEventId: null,
+    },
+    createdAt: "2026-03-24T00:00:00.000Z",
+    updatedAt: "2026-03-24T00:00:00.000Z",
+    deletedAt: null,
+    ...overrides,
+  };
+}
 
 const userId = "11111111-1111-4111-8111-111111111111";
 
@@ -186,5 +231,39 @@ describe("recovery helpers", () => {
     expect(buildRecoveryRestingHeartRateTrend(checkins)).toEqual([
       { date: "2026-03-24", value: 56 },
     ]);
+  });
+});
+
+describe("getRecoveryCoachingSuggestion", () => {
+  it("returns null when there are no check-ins", () => {
+    expect(getRecoveryCoachingSuggestion([])).toBeNull();
+  });
+
+  it("warns on severe soreness even when readiness looks fine", () => {
+    const suggestion = getRecoveryCoachingSuggestion([
+      makeCheckin({ readinessLevel: 8, sorenessLevel: 9 }),
+    ]);
+
+    expect(suggestion).not.toBeNull();
+    expect(suggestion?.severity).toBe("warning");
+    expect(suggestion?.headline).toMatch(/soreness/i);
+  });
+
+  it("warns on low readiness", () => {
+    const suggestion = getRecoveryCoachingSuggestion([
+      makeCheckin({ readinessLevel: 2, sorenessLevel: 3 }),
+    ]);
+
+    expect(suggestion).not.toBeNull();
+    expect(suggestion?.severity).toBe("warning");
+    expect(suggestion?.headline).toMatch(/readiness/i);
+  });
+
+  it("returns null for an unremarkable check-in", () => {
+    const suggestion = getRecoveryCoachingSuggestion([
+      makeCheckin({ readinessLevel: 8, sorenessLevel: 3, hrv: null }),
+    ]);
+
+    expect(suggestion).toBeNull();
   });
 });

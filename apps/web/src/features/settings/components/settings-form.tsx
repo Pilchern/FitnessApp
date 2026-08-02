@@ -114,7 +114,12 @@ function RadioPill({
   );
 }
 
-export function SettingsForm({ profile, userEmail, action, recomputeNutritionTargetsAction }: SettingsFormProps) {
+export function SettingsForm({
+  profile,
+  userEmail,
+  action,
+  recomputeNutritionTargetsAction,
+}: SettingsFormProps) {
   const [state, formAction] = useActionState(action, initialState);
   const [values, setValues] = useState<SettingsFormValues>(() =>
     toSettingsFormValues(profile),
@@ -130,7 +135,9 @@ export function SettingsForm({ profile, userEmail, action, recomputeNutritionTar
         setValues((current) => ({
           ...current,
           dailyCaloriesTarget: String(result.targets!.dailyCaloriesTarget),
-          dailyProteinGramsTarget: String(result.targets!.dailyProteinGramsTarget),
+          dailyProteinGramsTarget: String(
+            result.targets!.dailyProteinGramsTarget,
+          ),
           dailyFiberGramsTarget: String(result.targets!.dailyFiberGramsTarget),
         }));
       }
@@ -172,7 +179,9 @@ export function SettingsForm({ profile, userEmail, action, recomputeNutritionTar
               onChange={(event) => set("displayName", event.target.value)}
             />
             {state.fieldErrors?.displayName ? (
-              <p className="text-xs text-ember">{state.fieldErrors.displayName}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.displayName}
+              </p>
             ) : null}
           </label>
 
@@ -319,7 +328,9 @@ export function SettingsForm({ profile, userEmail, action, recomputeNutritionTar
               onChange={(event) => set("targetDate", event.target.value)}
             />
             {state.fieldErrors?.targetDate ? (
-              <p className="text-xs text-ember">{state.fieldErrors.targetDate}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.targetDate}
+              </p>
             ) : null}
           </label>
         </div>
@@ -349,7 +360,9 @@ export function SettingsForm({ profile, userEmail, action, recomputeNutritionTar
               step={1}
               placeholder="e.g. 180"
               value={values.dailyProteinGramsTarget}
-              onChange={(event) => set("dailyProteinGramsTarget", event.target.value)}
+              onChange={(event) =>
+                set("dailyProteinGramsTarget", event.target.value)
+              }
             />
             {state.fieldErrors?.dailyProteinGramsTarget ? (
               <p className="text-xs text-ember">
@@ -368,7 +381,9 @@ export function SettingsForm({ profile, userEmail, action, recomputeNutritionTar
               step={1}
               placeholder="e.g. 2200"
               value={values.dailyCaloriesTarget}
-              onChange={(event) => set("dailyCaloriesTarget", event.target.value)}
+              onChange={(event) =>
+                set("dailyCaloriesTarget", event.target.value)
+              }
             />
             {state.fieldErrors?.dailyCaloriesTarget ? (
               <p className="text-xs text-ember">
@@ -387,7 +402,9 @@ export function SettingsForm({ profile, userEmail, action, recomputeNutritionTar
               step={1}
               placeholder="e.g. 30"
               value={values.dailyFiberGramsTarget}
-              onChange={(event) => set("dailyFiberGramsTarget", event.target.value)}
+              onChange={(event) =>
+                set("dailyFiberGramsTarget", event.target.value)
+              }
             />
             {state.fieldErrors?.dailyFiberGramsTarget ? (
               <p className="text-xs text-ember">
@@ -415,6 +432,26 @@ export function SettingsForm({ profile, userEmail, action, recomputeNutritionTar
             <p className="text-sm text-ember">{recomputeState.error}</p>
           ) : null}
         </div>
+        {recomputeState.targets ? (
+          <div
+            className={`mt-3 rounded-2xl border px-4 py-3 text-xs ${
+              recomputeState.targets.safetyFloorApplied
+                ? "border-ember/20 bg-ember/10 text-ember"
+                : "border-ink/10 bg-mist/50 text-ink/60"
+            }`}
+          >
+            <ul className="list-disc space-y-1 pl-4">
+              {recomputeState.targets.notes.map((note) => (
+                <li key={note}>{note}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-ink/50">
+              This is a general fitness estimate, not medical advice. Talk to a
+              doctor or registered dietitian before making significant changes
+              to your diet.
+            </p>
+          </div>
+        ) : null}
       </section>
 
       {/* ── Save ── */}

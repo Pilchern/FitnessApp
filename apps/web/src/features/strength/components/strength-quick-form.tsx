@@ -140,9 +140,13 @@ export function StrengthQuickForm({
                           rir: set.rir != null ? `${set.rir}` : "",
                           isWarmup: false,
                           durationSeconds:
-                            set.durationSeconds != null ? `${set.durationSeconds}` : "",
+                            set.durationSeconds != null
+                              ? `${set.durationSeconds}`
+                              : "",
                           distanceMeters:
-                            set.distanceMeters != null ? `${set.distanceMeters}` : "",
+                            set.distanceMeters != null
+                              ? `${set.distanceMeters}`
+                              : "",
                           notes: set.notes ?? "",
                         }))
                       : [createEmptyStrengthSet()],
@@ -154,9 +158,7 @@ export function StrengthQuickForm({
             </button>
             <p className="text-xs text-ink/50">
               From:{" "}
-              {lastSession.sessionName
-                ? `${lastSession.sessionName} · `
-                : ""}
+              {lastSession.sessionName ? `${lastSession.sessionName} · ` : ""}
               {formatStrengthDate(lastSession.sessionDate)}
             </p>
           </div>
@@ -177,7 +179,11 @@ export function StrengthQuickForm({
         </datalist>
 
         {values.id ? <input type="hidden" name="id" value={values.id} /> : null}
-        <input type="hidden" name="setsPayload" value={JSON.stringify(values.sets)} />
+        <input
+          type="hidden"
+          name="setsPayload"
+          value={JSON.stringify(values.sets)}
+        />
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <label className="grid gap-2 text-sm font-medium text-ink">
@@ -295,7 +301,9 @@ export function StrengthQuickForm({
                   ...current,
                   sets: [
                     ...current.sets,
-                    createEmptyStrengthSet({ setNumber: current.sets.length + 1 }),
+                    createEmptyStrengthSet({
+                      setNumber: current.sets.length + 1,
+                    }),
                   ],
                 }))
               }
@@ -315,6 +323,7 @@ export function StrengthQuickForm({
                   className={fieldClassName()}
                   list="strength-exercise-names"
                   placeholder="Exercise name"
+                  aria-label={`Exercise name for set ${index + 1}`}
                   value={set.exerciseName}
                   onChange={(event) =>
                     setValues((current) => ({
@@ -329,6 +338,7 @@ export function StrengthQuickForm({
                   className={fieldClassName()}
                   inputMode="numeric"
                   placeholder="Set"
+                  aria-label={`Set number for set ${index + 1}`}
                   value={set.setNumber}
                   onChange={(event) =>
                     setValues((current) => ({
@@ -343,6 +353,7 @@ export function StrengthQuickForm({
                   className={fieldClassName()}
                   inputMode="numeric"
                   placeholder="Reps"
+                  aria-label={`Reps for set ${index + 1}`}
                   value={set.reps}
                   onChange={(event) =>
                     setValues((current) => ({
@@ -357,6 +368,7 @@ export function StrengthQuickForm({
                   className={fieldClassName()}
                   inputMode="decimal"
                   placeholder="Weight"
+                  aria-label={`Weight for set ${index + 1}`}
                   value={set.weight}
                   onChange={(event) =>
                     setValues((current) => ({
@@ -371,6 +383,7 @@ export function StrengthQuickForm({
                   className={fieldClassName()}
                   inputMode="decimal"
                   placeholder="RIR"
+                  aria-label={`Reps in reserve for set ${index + 1}`}
                   value={set.rir}
                   onChange={(event) =>
                     setValues((current) => ({
@@ -405,7 +418,9 @@ export function StrengthQuickForm({
                       ...current,
                       sets:
                         current.sets.length > 1
-                          ? current.sets.filter((_, currentIndex) => currentIndex !== index)
+                          ? current.sets.filter(
+                              (_, currentIndex) => currentIndex !== index,
+                            )
                           : current.sets,
                     }))
                   }
@@ -419,6 +434,7 @@ export function StrengthQuickForm({
                     className={`${fieldClassName()} md:w-40`}
                     inputMode="numeric"
                     placeholder="Duration (sec)"
+                    aria-label={`Duration in seconds for set ${index + 1}`}
                     value={set.durationSeconds}
                     onChange={(event) =>
                       setValues((current) => ({
@@ -433,6 +449,7 @@ export function StrengthQuickForm({
                     className={`${fieldClassName()} md:w-40`}
                     inputMode="decimal"
                     placeholder="Distance (m)"
+                    aria-label={`Distance in meters for set ${index + 1}`}
                     value={set.distanceMeters}
                     onChange={(event) =>
                       setValues((current) => ({
@@ -446,6 +463,7 @@ export function StrengthQuickForm({
                   <textarea
                     className={`${textAreaClassName()} flex-1`}
                     placeholder="Optional set note"
+                    aria-label={`Notes for set ${index + 1}`}
                     value={set.notes}
                     onChange={(event) =>
                       setValues((current) => ({
@@ -492,7 +510,9 @@ export function StrengthQuickForm({
         <div className="flex justify-end">
           <AuthSubmitButton
             idleLabel={mode === "edit" ? "Save session" : "Save lift session"}
-            pendingLabel={mode === "edit" ? "Saving session..." : "Saving lift..."}
+            pendingLabel={
+              mode === "edit" ? "Saving session..." : "Saving lift..."
+            }
           />
         </div>
       </form>

@@ -70,6 +70,7 @@ function ClassifyExerciseRow({ exerciseName }: { exerciseName: string }) {
       </p>
       <select
         name="muscleGroup"
+        aria-label={`Muscle group for ${exerciseName}`}
         className={selectClassName()}
         defaultValue=""
         required
@@ -85,6 +86,7 @@ function ClassifyExerciseRow({ exerciseName }: { exerciseName: string }) {
       </select>
       <select
         name="movementPattern"
+        aria-label={`Movement pattern for ${exerciseName}`}
         className={selectClassName()}
         defaultValue=""
         required
@@ -100,6 +102,7 @@ function ClassifyExerciseRow({ exerciseName }: { exerciseName: string }) {
       </select>
       <select
         name="category"
+        aria-label={`Category for ${exerciseName}`}
         className={selectClassName()}
         defaultValue=""
         required

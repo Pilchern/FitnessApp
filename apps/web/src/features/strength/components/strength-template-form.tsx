@@ -62,8 +62,13 @@ type StrengthTemplateFormProps = {
   knownExercises?: string[];
 };
 
-export function StrengthTemplateForm({ knownExercises = [] }: StrengthTemplateFormProps) {
-  const [state, formAction] = useActionState(createStrengthTemplateAction, initialState);
+export function StrengthTemplateForm({
+  knownExercises = [],
+}: StrengthTemplateFormProps) {
+  const [state, formAction] = useActionState(
+    createStrengthTemplateAction,
+    initialState,
+  );
   const [exercises, setExercises] = useState<TemplateExerciseRow[]>([
     createEmptyExercise(),
   ]);
@@ -170,8 +175,13 @@ export function StrengthTemplateForm({ knownExercises = [] }: StrengthTemplateFo
               >
                 <input
                   className={fieldClassName()}
-                  list={knownExercises.length > 0 ? "template-exercise-names" : undefined}
+                  list={
+                    knownExercises.length > 0
+                      ? "template-exercise-names"
+                      : undefined
+                  }
                   placeholder="Exercise name"
+                  aria-label={`Exercise name for exercise ${index + 1}`}
                   value={ex.exerciseName}
                   onChange={(e) =>
                     setExercises((current) =>
@@ -185,6 +195,7 @@ export function StrengthTemplateForm({ knownExercises = [] }: StrengthTemplateFo
                   className={fieldClassName()}
                   inputMode="numeric"
                   placeholder="Sets"
+                  aria-label={`Target sets for exercise ${index + 1}`}
                   value={ex.targetSets}
                   onChange={(e) =>
                     setExercises((current) =>
@@ -198,6 +209,7 @@ export function StrengthTemplateForm({ knownExercises = [] }: StrengthTemplateFo
                   className={fieldClassName()}
                   inputMode="numeric"
                   placeholder="Reps"
+                  aria-label={`Target reps for exercise ${index + 1}`}
                   value={ex.targetReps}
                   onChange={(e) =>
                     setExercises((current) =>
@@ -211,6 +223,7 @@ export function StrengthTemplateForm({ knownExercises = [] }: StrengthTemplateFo
                   className={fieldClassName()}
                   inputMode="decimal"
                   placeholder="Target weight (lb)"
+                  aria-label={`Target weight in pounds for exercise ${index + 1}`}
                   value={ex.targetWeight}
                   onChange={(e) =>
                     setExercises((current) =>
@@ -224,6 +237,7 @@ export function StrengthTemplateForm({ knownExercises = [] }: StrengthTemplateFo
                   className={fieldClassName()}
                   inputMode="numeric"
                   placeholder="RIR"
+                  aria-label={`Target reps in reserve for exercise ${index + 1}`}
                   value={ex.targetRir}
                   onChange={(e) =>
                     setExercises((current) =>
@@ -250,6 +264,7 @@ export function StrengthTemplateForm({ knownExercises = [] }: StrengthTemplateFo
                 <textarea
                   className={`${textAreaClassName()} md:col-span-6`}
                   placeholder="Optional exercise note"
+                  aria-label={`Notes for exercise ${index + 1}`}
                   value={ex.notes}
                   onChange={(e) =>
                     setExercises((current) =>

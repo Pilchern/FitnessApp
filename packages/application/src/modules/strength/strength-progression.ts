@@ -96,9 +96,20 @@ function roundOneDecimal(value: number) {
   return Math.round(value * 10) / 10;
 }
 
+/**
+ * Epley-style estimated-1RM formulas become unreliable well past ~12 reps — the
+ * multiplier grows without bound, so a lighter-weight, very-high-rep set (e.g. an
+ * AMRAP or bodyweight-style set logged with a token weight) can out-score a
+ * genuine heavy top set and get flagged as a false personal record. Capping the
+ * rep count used in the formula (not the logged rep count itself, which is left
+ * untouched everywhere else, e.g. volume math) keeps the estimate from diverging.
+ */
+const MAX_REPS_FOR_ONE_REP_MAX_ESTIMATE = 12;
+
 function setScore(set: Pick<StrengthExerciseSet, "weight" | "reps">) {
   if (set.weight != null && set.reps != null) {
-    return roundOneDecimal(set.weight * (1 + set.reps / 30));
+    const cappedReps = Math.min(set.reps, MAX_REPS_FOR_ONE_REP_MAX_ESTIMATE);
+    return roundOneDecimal(set.weight * (1 + cappedReps / 30));
   }
 
   if (set.weight != null) {
@@ -112,13 +123,17 @@ function setScore(set: Pick<StrengthExerciseSet, "weight" | "reps">) {
   return null;
 }
 
-function compareSetPerformance(left: TopSetPoint | null, right: TopSetPoint | null) {
+function compareSetPerformance(
+  left: TopSetPoint | null,
+  right: TopSetPoint | null,
+) {
   if (!left || !right) {
     return "new" as const;
   }
 
   const leftScore = left.estimatedOneRepMax ?? left.weight ?? left.reps ?? 0;
-  const rightScore = right.estimatedOneRepMax ?? right.weight ?? right.reps ?? 0;
+  const rightScore =
+    right.estimatedOneRepMax ?? right.weight ?? right.reps ?? 0;
   const difference = roundOneDecimal(leftScore - rightScore);
 
   if (difference > 0.5) {
@@ -139,7 +154,9 @@ function groupSetsByExerciseAndDate(sessions: StrengthSession[]) {
     session.sets
       .filter((set) => !set.isWarmup)
       .forEach((set) => {
-        const exerciseGroups = groups.get(set.exerciseName) ?? new Map<string, StrengthExerciseSet[]>();
+        const exerciseGroups =
+          groups.get(set.exerciseName) ??
+          new Map<string, StrengthExerciseSet[]>();
         const sets = exerciseGroups.get(session.sessionDate) ?? [];
         sets.push(set);
         exerciseGroups.set(session.sessionDate, sets);
@@ -154,7 +171,8 @@ export function buildVolumeTrend(
   sessions: StrengthSession[],
   exerciseName: string,
 ): VolumeTrendPoint[] {
-  const grouped = groupSetsByExerciseAndDate(sessions).get(exerciseName) ?? new Map();
+  const grouped =
+    groupSetsByExerciseAndDate(sessions).get(exerciseName) ?? new Map();
 
   return [...grouped.entries()]
     .map(([sessionDate, sets]) => ({
@@ -162,7 +180,10 @@ export function buildVolumeTrend(
       totalVolume: roundOneDecimal(
         sets.reduce(
           (sum: number, set: StrengthExerciseSet) =>
-            sum + (set.weight != null && set.reps != null ? set.weight * set.reps : 0),
+            sum +
+            (set.weight != null && set.reps != null
+              ? set.weight * set.reps
+              : 0),
           0,
         ),
       ),
@@ -174,7 +195,8 @@ export function buildTopSetProgression(
   sessions: StrengthSession[],
   exerciseName: string,
 ): TopSetPoint[] {
-  const grouped = groupSetsByExerciseAndDate(sessions).get(exerciseName) ?? new Map();
+  const grouped =
+    groupSetsByExerciseAndDate(sessions).get(exerciseName) ?? new Map();
 
   return [...grouped.entries()]
     .map(([sessionDate, sets]) => {
@@ -198,7 +220,9 @@ export function buildTopSetProgression(
     .sort((left, right) => left.sessionDate.localeCompare(right.sessionDate));
 }
 
-export function detectRepeatedStall(topSets: TopSetPoint[]): StallDetectionResult {
+export function detectRepeatedStall(
+  topSets: TopSetPoint[],
+): StallDetectionResult {
   if (topSets.length < 3) {
     return {
       stalled: false,
@@ -208,9 +232,12 @@ export function detectRepeatedStall(topSets: TopSetPoint[]): StallDetectionResul
   }
 
   const recent = topSets.slice(-3);
-  const baseline = recent[0].estimatedOneRepMax ?? recent[0].weight ?? recent[0].reps ?? 0;
+  const baseline =
+    recent[0].estimatedOneRepMax ?? recent[0].weight ?? recent[0].reps ?? 0;
   const bestRecent = Math.max(
-    ...recent.map((set) => set.estimatedOneRepMax ?? set.weight ?? set.reps ?? 0),
+    ...recent.map(
+      (set) => set.estimatedOneRepMax ?? set.weight ?? set.reps ?? 0,
+    ),
   );
 
   if (bestRecent - baseline > 0.5) {
@@ -242,8 +269,10 @@ export function buildStrengthProgressionSummaries(
       const volumeTrend = buildVolumeTrend(sessions, exerciseName);
       const latestTopSet = topSets[topSets.length - 1] ?? null;
       const previousTopSet = topSets[topSets.length - 2] ?? null;
-      const latestVolume = volumeTrend[volumeTrend.length - 1]?.totalVolume ?? null;
-      const previousVolume = volumeTrend[volumeTrend.length - 2]?.totalVolume ?? null;
+      const latestVolume =
+        volumeTrend[volumeTrend.length - 1]?.totalVolume ?? null;
+      const previousVolume =
+        volumeTrend[volumeTrend.length - 2]?.totalVolume ?? null;
 
       let volumeTrendLabel: StrengthProgressionSummary["volumeTrend"] =
         "insufficient_data";
@@ -259,7 +288,10 @@ export function buildStrengthProgressionSummaries(
 
       // Personal record: latest top set is the all-time best for this exercise
       const latestScore =
-        latestTopSet?.estimatedOneRepMax ?? latestTopSet?.weight ?? latestTopSet?.reps ?? null;
+        latestTopSet?.estimatedOneRepMax ??
+        latestTopSet?.weight ??
+        latestTopSet?.reps ??
+        null;
       const allTimeMax =
         topSets.length > 0
           ? Math.max(
