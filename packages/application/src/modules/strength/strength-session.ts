@@ -20,8 +20,24 @@ const strengthExerciseSetSchema = z.object({
   exerciseName: trimmedStringSchema,
   exerciseOrder: z.number().int().min(0),
   setNumber: z.number().int().min(1),
-  reps: z.number().int().min(0).nullable().optional(),
-  weight: z.number().min(0).nullable().optional(),
+  // Upper bounds are a data-entry sanity check (catch a fat-fingered extra
+  // digit, e.g. 1850 instead of 185), not a training constraint — set well
+  // above any realistic single-set value (loaded machines like leg press can
+  // legitimately exceed 1000lb; extreme AMRAP/endurance sets can exceed 100
+  // reps) so no genuine log entry is ever rejected.
+  reps: z
+    .number()
+    .int()
+    .min(0)
+    .max(1000, "Reps must be 1000 or fewer")
+    .nullable()
+    .optional(),
+  weight: z
+    .number()
+    .min(0)
+    .max(2000, "Weight must be 2000 or less")
+    .nullable()
+    .optional(),
   rir: z.number().min(0).max(6).nullable().optional(),
   isWarmup: z.boolean().default(false),
   durationSeconds: z.number().int().min(0).nullable().optional(),
@@ -38,7 +54,9 @@ const strengthSessionBaseSchema = z.object({
   energyPost: z.number().int().min(1).max(10).nullable().optional(),
   completedAsPlanned: z.boolean().default(true),
   source: manualOrImportedRecordSourceSchema.default(defaultManualSource),
-  sets: z.array(strengthExerciseSetSchema).min(1, "At least one set is required"),
+  sets: z
+    .array(strengthExerciseSetSchema)
+    .min(1, "At least one set is required"),
 });
 
 export const createStrengthSessionSchema = strengthSessionBaseSchema.extend({
@@ -52,12 +70,18 @@ export const updateStrengthSessionSchema = strengthSessionBaseSchema.extend({
 
 export const strengthSessionDateRangeQuerySchema = dateRangeQuerySchema;
 
-export type CreateStrengthSessionInput = z.infer<typeof createStrengthSessionSchema>;
-export type UpdateStrengthSessionInput = z.infer<typeof updateStrengthSessionSchema>;
+export type CreateStrengthSessionInput = z.infer<
+  typeof createStrengthSessionSchema
+>;
+export type UpdateStrengthSessionInput = z.infer<
+  typeof updateStrengthSessionSchema
+>;
 export type StrengthSessionDateRangeQuery = z.infer<
   typeof strengthSessionDateRangeQuerySchema
 >;
-export type StrengthExerciseSetInput = z.infer<typeof strengthExerciseSetSchema>;
+export type StrengthExerciseSetInput = z.infer<
+  typeof strengthExerciseSetSchema
+>;
 
 export type StrengthSessionListItemDto = {
   id: EntityId;
@@ -73,7 +97,9 @@ export interface StrengthSessionRepository {
   update(input: UpdateStrengthSessionInput): Promise<StrengthSession>;
   archive(userId: UserId, id: EntityId): Promise<void>;
   findById(userId: UserId, id: EntityId): Promise<StrengthSession | null>;
-  listByDateRange(query: StrengthSessionDateRangeQuery): Promise<StrengthSession[]>;
+  listByDateRange(
+    query: StrengthSessionDateRangeQuery,
+  ): Promise<StrengthSession[]>;
 }
 
 export class StrengthSessionService {
@@ -101,10 +127,14 @@ export class StrengthSessionService {
     );
   }
 
-  async listListItemsByDateRange(input: unknown): Promise<StrengthSessionListItemDto[]> {
+  async listListItemsByDateRange(
+    input: unknown,
+  ): Promise<StrengthSessionListItemDto[]> {
     const sessions = await this.listByDateRange(input);
     return sessions.map((session) => {
-      const exerciseNames = new Set(session.sets.map((set) => set.exerciseName));
+      const exerciseNames = new Set(
+        session.sets.map((set) => set.exerciseName),
+      );
       return {
         id: session.id,
         sessionDate: session.sessionDate,

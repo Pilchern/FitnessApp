@@ -4,7 +4,10 @@ import type {
   UserId,
 } from "@fitness-app/domain";
 import { z } from "zod";
-import { optionalTrimmedStringSchema, uuidSchema } from "../../shared/primitives";
+import {
+  optionalTrimmedStringSchema,
+  uuidSchema,
+} from "../../shared/primitives";
 
 export const cardioTrainingTemplateDefinitionSchema: z.ZodType<CardioTrainingTemplateDefinition> =
   z.object({
@@ -23,7 +26,11 @@ export const strengthTemplateExerciseSchema = z.object({
   exerciseOrder: z.number().int().min(0),
   targetSets: z.number().int().min(1).max(20),
   targetReps: z.number().int().min(1).max(100).nullable(),
-  targetWeight: z.number().min(0).nullable(),
+  targetWeight: z
+    .number()
+    .min(0)
+    .max(2000, "Target weight must be 2000 or less")
+    .nullable(),
   targetRir: z.number().int().min(0).max(6).nullable(),
   notes: z.string().nullable(),
 });
@@ -33,7 +40,9 @@ export const strengthTrainingTemplateDefinitionSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
-export type StrengthTrainingTemplateDefinition = z.infer<typeof strengthTrainingTemplateDefinitionSchema>;
+export type StrengthTrainingTemplateDefinition = z.infer<
+  typeof strengthTrainingTemplateDefinitionSchema
+>;
 
 export const dayOfWeekSchema = z.union([
   z.literal(0),
@@ -52,7 +61,9 @@ export const createStrengthTemplateSchema = z.object({
   scheduledDayOfWeek: dayOfWeekSchema.nullable().optional(),
 });
 
-export type CreateStrengthTemplateInput = z.infer<typeof createStrengthTemplateSchema>;
+export type CreateStrengthTemplateInput = z.infer<
+  typeof createStrengthTemplateSchema
+>;
 
 export const setTemplateScheduleSchema = z.object({
   userId: uuidSchema,
@@ -60,7 +71,9 @@ export const setTemplateScheduleSchema = z.object({
   scheduledDayOfWeek: dayOfWeekSchema.nullable(),
 });
 
-export type SetTemplateScheduleInput = z.infer<typeof setTemplateScheduleSchema>;
+export type SetTemplateScheduleInput = z.infer<
+  typeof setTemplateScheduleSchema
+>;
 
 export const listActiveCardioTemplatesQuerySchema = z.object({
   userId: uuidSchema,
@@ -81,9 +94,13 @@ export type ListActiveStrengthTemplatesQuery = z.infer<
 export interface TrainingTemplateRepository {
   listActiveCardioTemplates(userId: UserId): Promise<TrainingTemplate[]>;
   listActiveStrengthTemplates(userId: UserId): Promise<TrainingTemplate[]>;
-  createStrengthTemplate(input: CreateStrengthTemplateInput): Promise<TrainingTemplate>;
+  createStrengthTemplate(
+    input: CreateStrengthTemplateInput,
+  ): Promise<TrainingTemplate>;
   archiveTemplate(userId: UserId, id: string): Promise<void>;
-  setTemplateSchedule(input: SetTemplateScheduleInput): Promise<TrainingTemplate>;
+  setTemplateSchedule(
+    input: SetTemplateScheduleInput,
+  ): Promise<TrainingTemplate>;
 }
 
 export class TrainingTemplateService {
