@@ -16,15 +16,19 @@ import {
   uuidSchema,
 } from "../../shared/primitives";
 
+// Upper bounds are data-entry sanity checks matching the equivalent web-form
+// bounds (weekly-review/form-schema.ts) — this summary is user-editable via
+// manualOverrides, so it needs the same protection as the source data it
+// otherwise mirrors (body-metric, cardio, recovery).
 const weeklyReviewSummarySchema = z.object({
-  averageWeightLb: z.number().nullable().optional(),
-  waistIn: z.number().nullable().optional(),
-  liftsCompleted: z.number().int().nullable().optional(),
-  ridesCompleted: z.number().int().nullable().optional(),
-  zone2Minutes: z.number().int().nullable().optional(),
+  averageWeightLb: z.number().positive().max(1000).nullable().optional(),
+  waistIn: z.number().positive().max(120).nullable().optional(),
+  liftsCompleted: z.number().int().min(0).max(14).nullable().optional(),
+  ridesCompleted: z.number().int().min(0).max(14).nullable().optional(),
+  zone2Minutes: z.number().int().min(0).max(2000).nullable().optional(),
   vo2Completed: z.boolean().nullable().optional(),
-  sleepAverageHours: z.number().nullable().optional(),
-  alcoholTotal: z.number().int().nullable().optional(),
+  sleepAverageHours: z.number().min(0).max(24).nullable().optional(),
+  alcoholTotal: z.number().int().min(0).max(99).nullable().optional(),
 });
 
 const weeklyReviewScoreComponentSchema = z.object({
@@ -43,35 +47,38 @@ const weeklyReviewScoreComponentSchema = z.object({
   detail: z.string(),
 });
 
-const weeklyReviewScoreDetailsSchema: z.ZodType<WeeklyReviewScoreDetails> = z.object({
-  version: z.literal("v1"),
-  totalScore: z.number().int().min(0).max(100),
-  band: z.enum(["strong", "solid", "fragile"]),
-  components: weeklyReviewScoreComponentSchema.array(),
-});
+const weeklyReviewScoreDetailsSchema: z.ZodType<WeeklyReviewScoreDetails> =
+  z.object({
+    version: z.literal("v1"),
+    totalScore: z.number().int().min(0).max(100),
+    band: z.enum(["strong", "solid", "fragile"]),
+    components: weeklyReviewScoreComponentSchema.array(),
+  });
 
-const weeklyReviewManualOverridesSchema: z.ZodType<WeeklyReviewManualOverrides> = z.object({
-  averageWeightLb: z.boolean().optional(),
-  waistIn: z.boolean().optional(),
-  liftsCompleted: z.boolean().optional(),
-  ridesCompleted: z.boolean().optional(),
-  zone2Minutes: z.boolean().optional(),
-  vo2Completed: z.boolean().optional(),
-  sleepAverageHours: z.boolean().optional(),
-  alcoholTotal: z.boolean().optional(),
-});
+const weeklyReviewManualOverridesSchema: z.ZodType<WeeklyReviewManualOverrides> =
+  z.object({
+    averageWeightLb: z.boolean().optional(),
+    waistIn: z.boolean().optional(),
+    liftsCompleted: z.boolean().optional(),
+    ridesCompleted: z.boolean().optional(),
+    zone2Minutes: z.boolean().optional(),
+    vo2Completed: z.boolean().optional(),
+    sleepAverageHours: z.boolean().optional(),
+    alcoholTotal: z.boolean().optional(),
+  });
 
-export const weeklyReviewAiDraftSchema: z.ZodType<WeeklyReviewAiDraft> = z.object({
-  score: z.number().int().min(1).max(100),
-  scoreRationale: z.string(),
-  whatWorked: z.string(),
-  whatNeedsAttention: z.string(),
-  strategicDecision: z.string(),
-  riskForecast: z.string(),
-  nextBestAction: z.string(),
-  model: z.string(),
-  generatedAt: isoDateTimeSchema,
-});
+export const weeklyReviewAiDraftSchema: z.ZodType<WeeklyReviewAiDraft> =
+  z.object({
+    score: z.number().int().min(1).max(100),
+    scoreRationale: z.string(),
+    whatWorked: z.string(),
+    whatNeedsAttention: z.string(),
+    strategicDecision: z.string(),
+    riskForecast: z.string(),
+    nextBestAction: z.string(),
+    model: z.string(),
+    generatedAt: isoDateTimeSchema,
+  });
 
 const weeklyReviewAiDraftStatusSchema = z.enum([
   "none",
@@ -120,7 +127,9 @@ function withWeeklyReviewRules<T extends z.ZodTypeAny>(schema: T) {
     )
     .refine(
       (value: z.infer<T>) =>
-        !value.status || value.status !== "completed" || value.completedAt != null,
+        !value.status ||
+        value.status !== "completed" ||
+        value.completedAt != null,
       {
         message: "completedAt is required when the review is completed",
         path: ["completedAt"],
@@ -160,23 +169,23 @@ export const updateWeeklyReviewSchema = withWeeklyReviewRules(
     .refine(
       (value) =>
         ensureAtLeastOneDefined(value, [
-        "weekStart",
-        "weekEnd",
-        "status",
-        "summary",
-        "bestWin",
-        "biggestMiss",
-        "lesson",
-        "nextWeekPriority",
-        "confidence",
-        "scoreDetails",
-        "strategicDecision",
-        "riskForecast",
-        "manualOverrides",
-        "aiDraft",
-        "aiDraftStatus",
-        "completedAt",
-      ]),
+          "weekStart",
+          "weekEnd",
+          "status",
+          "summary",
+          "bestWin",
+          "biggestMiss",
+          "lesson",
+          "nextWeekPriority",
+          "confidence",
+          "scoreDetails",
+          "strategicDecision",
+          "riskForecast",
+          "manualOverrides",
+          "aiDraft",
+          "aiDraftStatus",
+          "completedAt",
+        ]),
       {
         message: "At least one field must be provided for update",
       },
@@ -217,7 +226,9 @@ export class WeeklyReviewService {
   }
 
   async getByWeekStart(input: unknown) {
-    return this.repository.findByWeekStart(weeklyReviewLookupSchema.parse(input));
+    return this.repository.findByWeekStart(
+      weeklyReviewLookupSchema.parse(input),
+    );
   }
 
   async getLatest(userId: string) {

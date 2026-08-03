@@ -1,4 +1,8 @@
-import type { DailyActivityMetric, EntityId, UserId } from "@fitness-app/domain";
+import type {
+  DailyActivityMetric,
+  EntityId,
+  UserId,
+} from "@fitness-app/domain";
 import { z } from "zod";
 import {
   dateRangeQuerySchema,
@@ -9,19 +13,29 @@ import {
   uuidSchema,
 } from "../../shared/primitives";
 
+// Upper bounds are data-entry/import sanity checks — this table is populated
+// entirely by the Apple Health webhook (no manual web form), so a malformed
+// or buggy payload is the realistic failure mode, not a typo.
 const dailyActivityMetricBaseSchema = z.object({
   metricDate: isoDateSchema,
-  steps: z.number().int().nonnegative().nullable().optional(),
-  vo2Max: z.number().positive().nullable().optional(),
-  restingHeartRate: z.number().positive().nullable().optional(),
-  exerciseMinutes: z.number().int().nonnegative().nullable().optional(),
-  activeEnergyKcal: z.number().nonnegative().nullable().optional(),
+  steps: z.number().int().nonnegative().max(200000).nullable().optional(),
+  vo2Max: z.number().positive().max(100).nullable().optional(),
+  restingHeartRate: z.number().positive().max(250).nullable().optional(),
+  exerciseMinutes: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(1440)
+    .nullable()
+    .optional(),
+  activeEnergyKcal: z.number().nonnegative().max(20000).nullable().optional(),
   source: manualOrImportedRecordSourceSchema.default(defaultManualSource),
 });
 
-export const createDailyActivityMetricSchema = dailyActivityMetricBaseSchema.extend({
-  userId: uuidSchema,
-});
+export const createDailyActivityMetricSchema =
+  dailyActivityMetricBaseSchema.extend({
+    userId: uuidSchema,
+  });
 
 export const updateDailyActivityMetricSchema = dailyActivityMetricBaseSchema
   .partial()
@@ -62,7 +76,10 @@ export interface DailyActivityMetricRepository {
   update(input: UpdateDailyActivityMetricInput): Promise<DailyActivityMetric>;
   archive(userId: UserId, id: EntityId): Promise<void>;
   findById(userId: UserId, id: EntityId): Promise<DailyActivityMetric | null>;
-  findByDate(userId: UserId, metricDate: string): Promise<DailyActivityMetric | null>;
+  findByDate(
+    userId: UserId,
+    metricDate: string,
+  ): Promise<DailyActivityMetric | null>;
   listByDateRange(
     query: DailyActivityMetricDateRangeQuery,
   ): Promise<DailyActivityMetric[]>;
