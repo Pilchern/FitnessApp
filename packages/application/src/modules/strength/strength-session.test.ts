@@ -59,7 +59,10 @@ class FakeStrengthSessionRepository implements StrengthSessionRepository {
     return {
       ...created,
       id: input.id,
-      sets: created.sets.map((set) => ({ ...set, strengthSessionId: input.id })),
+      sets: created.sets.map((set) => ({
+        ...set,
+        strengthSessionId: input.id,
+      })),
     };
   }
 
@@ -132,6 +135,60 @@ describe("strength validation", () => {
     expect(parsed.sets[0].durationSeconds).toBe(60);
     expect(parsed.sets[0].reps).toBeUndefined();
     expect(parsed.sets[1].distanceMeters).toBe(20);
+  });
+
+  it("rejects a weight that is obviously a data-entry error", () => {
+    expect(() =>
+      createStrengthSessionSchema.parse({
+        userId,
+        sessionDate: "2026-04-01",
+        sets: [
+          {
+            exerciseName: "Back Squat",
+            exerciseOrder: 0,
+            setNumber: 1,
+            reps: 5,
+            weight: 99999,
+          },
+        ],
+      }),
+    ).toThrow(/Weight must be 2000 or less/);
+  });
+
+  it("rejects a rep count that is obviously a data-entry error", () => {
+    expect(() =>
+      createStrengthSessionSchema.parse({
+        userId,
+        sessionDate: "2026-04-01",
+        sets: [
+          {
+            exerciseName: "Back Squat",
+            exerciseOrder: 0,
+            setNumber: 1,
+            reps: 100000,
+            weight: 225,
+          },
+        ],
+      }),
+    ).toThrow(/Reps must be 1000 or fewer/);
+  });
+
+  it("accepts a heavy machine-lift weight at the boundary", () => {
+    const parsed = createStrengthSessionSchema.parse({
+      userId,
+      sessionDate: "2026-04-01",
+      sets: [
+        {
+          exerciseName: "Leg Press",
+          exerciseOrder: 0,
+          setNumber: 1,
+          reps: 10,
+          weight: 2000,
+        },
+      ],
+    });
+
+    expect(parsed.sets[0].weight).toBe(2000);
   });
 });
 

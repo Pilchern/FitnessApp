@@ -29,6 +29,20 @@ describe("strengthTemplateExerciseSchema", () => {
     expect(parsed.exerciseName).toBe("Barbell Bench Press");
     expect(parsed.targetSets).toBe(3);
   });
+
+  it("rejects a target weight that is obviously a data-entry error", () => {
+    expect(() =>
+      strengthTemplateExerciseSchema.parse({
+        exerciseName: "Barbell Bench Press",
+        exerciseOrder: 0,
+        targetSets: 3,
+        targetReps: 8,
+        targetWeight: 99999,
+        targetRir: 2,
+        notes: null,
+      }),
+    ).toThrow(/Target weight must be 2000 or less/);
+  });
 });
 
 describe("createStrengthTemplateSchema", () => {

@@ -4,8 +4,8 @@ import { optionalString, parseOptionalNumber } from "@/lib/form-utils";
 const parsedStrengthSetSchema = z.object({
   exerciseName: z.string().trim().min(1, "Exercise name is required"),
   setNumber: z.number().int().min(1),
-  reps: parseOptionalNumber(z.number().int().min(0), "Reps"),
-  weight: parseOptionalNumber(z.number().min(0), "Weight"),
+  reps: parseOptionalNumber(z.number().int().min(0).max(1000), "Reps"),
+  weight: parseOptionalNumber(z.number().min(0).max(2000), "Weight"),
   rir: parseOptionalNumber(z.number().min(0).max(6), "RIR"),
   isWarmup: z.boolean().optional().default(false),
   durationSeconds: parseOptionalNumber(z.number().int().min(0), "Duration"),
@@ -19,9 +19,14 @@ export const strengthSessionFormSchema = z.object({
   sessionName: optionalString,
   notes: optionalString,
   durationMinutes: parseOptionalNumber(z.number().int().min(0), "Duration"),
-  readinessPre: parseOptionalNumber(z.number().int().min(1).max(10), "Readiness"),
+  readinessPre: parseOptionalNumber(
+    z.number().int().min(1).max(10),
+    "Readiness",
+  ),
   energyPost: parseOptionalNumber(z.number().int().min(1).max(10), "Energy"),
-  completedAsPlanned: z.enum(["true", "false"]).transform((value) => value === "true"),
+  completedAsPlanned: z
+    .enum(["true", "false"])
+    .transform((value) => value === "true"),
   setsPayload: optionalString.transform((value, ctx) => {
     try {
       const parsed = JSON.parse(value || "[]");
@@ -43,4 +48,6 @@ export const strengthSessionFormSchema = z.object({
   }),
 });
 
-export type StrengthSessionFormInput = z.infer<typeof strengthSessionFormSchema>;
+export type StrengthSessionFormInput = z.infer<
+  typeof strengthSessionFormSchema
+>;
