@@ -79,6 +79,26 @@ describe("daily activity metric validation", () => {
     ).toThrow();
   });
 
+  it("rejects a step count that is obviously a malformed import payload", () => {
+    expect(() =>
+      createDailyActivityMetricSchema.parse({
+        userId,
+        metricDate: "2026-07-15",
+        steps: 99999999,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects exercise minutes that exceed the minutes in a day", () => {
+    expect(() =>
+      createDailyActivityMetricSchema.parse({
+        userId,
+        metricDate: "2026-07-15",
+        exerciseMinutes: 5000,
+      }),
+    ).toThrow();
+  });
+
   it("rejects updates with no fields provided", () => {
     expect(() =>
       updateDailyActivityMetricSchema.parse({
