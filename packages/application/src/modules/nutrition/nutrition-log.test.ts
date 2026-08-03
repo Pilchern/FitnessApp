@@ -32,6 +32,16 @@ describe("nutrition log validation", () => {
       }),
     ).toThrow();
   });
+
+  it("createNutritionLogSchema rejects an alcoholCount that is obviously a data-entry error", () => {
+    expect(() =>
+      createNutritionLogSchema.parse({
+        userId,
+        logDate: "2026-04-01",
+        alcoholCount: 500,
+      }),
+    ).toThrow();
+  });
 });
 
 describe("buildNutritionAdherenceSummary", () => {

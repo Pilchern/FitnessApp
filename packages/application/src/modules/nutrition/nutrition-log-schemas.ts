@@ -14,7 +14,7 @@ const nutritionLogBaseSchema = z.object({
   noPostDinnerSnacking: z.boolean().nullable().optional(),
   junkLeakage: z.boolean().nullable().optional(),
   fiberTaken: z.boolean().nullable().optional(),
-  alcoholCount: z.number().int().min(0).default(0),
+  alcoholCount: z.number().int().min(0).max(50).default(0),
   notes: optionalTrimmedStringSchema,
 });
 

@@ -104,6 +104,16 @@ describe("recovery validation", () => {
     ).toThrow();
   });
 
+  it("rejects an alcoholCount that is obviously a data-entry error", () => {
+    expect(() =>
+      createRecoveryCheckinSchema.parse({
+        userId,
+        checkinDate: "2026-03-31",
+        alcoholCount: 500,
+      }),
+    ).toThrow();
+  });
+
   it("accepts HH:MM bedtime/wake time and a cold plunge flag", () => {
     const parsed = createRecoveryCheckinSchema.parse({
       userId,
