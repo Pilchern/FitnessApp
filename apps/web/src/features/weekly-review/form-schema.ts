@@ -16,21 +16,42 @@ export const weeklyReviewFormSchema = z.object({
   id: optionalString,
   weekStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   weekEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  averageWeightLb: parseOptionalNumber(z.number().positive(), "Average weight"),
-  waistIn: parseOptionalNumber(z.number().positive(), "Waist"),
-  liftsCompleted: parseOptionalNumber(z.number().int().min(0).max(14), "Lifts completed"),
-  ridesCompleted: parseOptionalNumber(z.number().int().min(0).max(14), "Rides completed"),
-  zone2Minutes: parseOptionalNumber(z.number().int().min(0).max(2000), "Zone 2 minutes"),
+  averageWeightLb: parseOptionalNumber(
+    z.number().positive().max(1000),
+    "Average weight",
+  ),
+  waistIn: parseOptionalNumber(z.number().positive().max(120), "Waist"),
+  liftsCompleted: parseOptionalNumber(
+    z.number().int().min(0).max(14),
+    "Lifts completed",
+  ),
+  ridesCompleted: parseOptionalNumber(
+    z.number().int().min(0).max(14),
+    "Rides completed",
+  ),
+  zone2Minutes: parseOptionalNumber(
+    z.number().int().min(0).max(2000),
+    "Zone 2 minutes",
+  ),
   vo2Completed: z.enum(["true", "false"]),
-  sleepAverageHours: parseOptionalNumber(z.number().min(0).max(24), "Sleep average"),
-  alcoholTotal: parseOptionalNumber(z.number().int().min(0).max(99), "Alcohol total"),
+  sleepAverageHours: parseOptionalNumber(
+    z.number().min(0).max(24),
+    "Sleep average",
+  ),
+  alcoholTotal: parseOptionalNumber(
+    z.number().int().min(0).max(99),
+    "Alcohol total",
+  ),
   bestWin: optionalString,
   biggestMiss: optionalString,
   lesson: optionalString,
   nextWeekPriority: optionalString,
   strategicDecision: optionalString,
   riskForecast: optionalString,
-  confidence: parseOptionalNumber(z.number().int().min(1).max(10), "Confidence"),
+  confidence: parseOptionalNumber(
+    z.number().int().min(1).max(10),
+    "Confidence",
+  ),
   manualOverrides: optionalString.transform((value, ctx) => {
     if (!value) {
       return {};

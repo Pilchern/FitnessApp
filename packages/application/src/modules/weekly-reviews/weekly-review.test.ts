@@ -9,6 +9,7 @@ import type {
 import {
   buildWeeklyReviewSummary,
   calculateWeeklyReviewScore,
+  createWeeklyReviewSchema,
   getLastCompletedWeekStart,
   getWeekRangeFromStart,
   mapAiDraftToManualFields,
@@ -17,6 +18,34 @@ import {
 } from "../../index";
 
 const userId = "11111111-1111-4111-8111-111111111111";
+
+describe("weekly review summary validation", () => {
+  it("rejects a summary weight that is obviously a data-entry error", () => {
+    // The summary is user-editable via manualOverrides, so it needs the same
+    // sanity bound as the body-metric data it otherwise mirrors.
+    expect(() =>
+      createWeeklyReviewSchema.parse({
+        userId,
+        weekStart: "2026-03-16",
+        weekEnd: "2026-03-22",
+        status: "draft",
+        summary: { averageWeightLb: 18900 },
+      }),
+    ).toThrow();
+  });
+
+  it("rejects zone2Minutes that exceed the minutes in a week", () => {
+    expect(() =>
+      createWeeklyReviewSchema.parse({
+        userId,
+        weekStart: "2026-03-16",
+        weekEnd: "2026-03-22",
+        status: "draft",
+        summary: { zone2Minutes: 99999 },
+      }),
+    ).toThrow();
+  });
+});
 
 describe("weekly review aggregation", () => {
   it("builds a weekly summary from cardio, recovery, body metrics, and lift counts", () => {
@@ -259,9 +288,9 @@ describe("weekly review aggregation", () => {
       weekStart: "2026-03-23",
       weekEnd: "2026-03-29",
     });
-    expect(getLastCompletedWeekStart(new Date("2026-03-31T12:00:00-05:00"))).toBe(
-      "2026-03-23",
-    );
+    expect(
+      getLastCompletedWeekStart(new Date("2026-03-31T12:00:00-05:00")),
+    ).toBe("2026-03-23");
   });
 });
 
@@ -327,7 +356,9 @@ describe("AI weekly review draft mapping and lifecycle", () => {
     });
   });
 
-  function buildStoredReview(overrides: Partial<WeeklyReview> = {}): WeeklyReview {
+  function buildStoredReview(
+    overrides: Partial<WeeklyReview> = {},
+  ): WeeklyReview {
     return {
       id: "22222222-2222-4222-8222-222222222222",
       userId: "11111111-1111-4111-8111-111111111111",
@@ -387,7 +418,10 @@ describe("AI weekly review draft mapping and lifecycle", () => {
   });
 
   it("acceptAiDraft only sets aiDraftStatus to accepted (no bestWin/biggestMiss/strategicDecision/riskForecast in the update payload)", async () => {
-    const stored = buildStoredReview({ aiDraftStatus: "pending_review", aiDraft });
+    const stored = buildStoredReview({
+      aiDraftStatus: "pending_review",
+      aiDraft,
+    });
     const { repository, update } = buildMockRepository(stored);
     const service = new WeeklyReviewService(repository);
 
@@ -406,7 +440,10 @@ describe("AI weekly review draft mapping and lifecycle", () => {
   });
 
   it("dismissAiDraft sets aiDraftStatus to dismissed", async () => {
-    const stored = buildStoredReview({ aiDraftStatus: "pending_review", aiDraft });
+    const stored = buildStoredReview({
+      aiDraftStatus: "pending_review",
+      aiDraft,
+    });
     const { repository, update } = buildMockRepository(stored);
     const service = new WeeklyReviewService(repository);
 
