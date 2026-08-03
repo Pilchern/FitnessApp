@@ -8,8 +8,14 @@ export const cardioSessionFormSchema = z.object({
   sessionKind: z.enum(["zone2", "vo2", "recovery", "other"]),
   plannedVsCompleted: z.enum(["planned", "completed", "partial", "skipped"]),
   durationMinutes: parseOptionalNumber(z.number().int().min(0), "Duration"),
-  avgHeartRate: parseOptionalNumber(z.number().int().min(0), "Average heart rate"),
-  maxHeartRate: parseOptionalNumber(z.number().int().min(0), "Max heart rate"),
+  avgHeartRate: parseOptionalNumber(
+    z.number().int().min(0).max(250),
+    "Average heart rate",
+  ),
+  maxHeartRate: parseOptionalNumber(
+    z.number().int().min(0).max(250),
+    "Max heart rate",
+  ),
   avgOutput: parseOptionalNumber(z.number().min(0), "Average output"),
   cadenceMin: parseOptionalNumber(z.number().int().min(0), "Cadence min"),
   cadenceMax: parseOptionalNumber(z.number().int().min(0), "Cadence max"),
