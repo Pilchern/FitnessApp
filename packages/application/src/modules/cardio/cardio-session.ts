@@ -34,8 +34,10 @@ const cardioSessionFields = {
   plannedVsCompleted: cardioSessionCompletionSchema.default("completed"),
   durationMinutes: z.number().int().min(0).nullable().optional(),
   zone2Minutes: z.number().int().min(0).nullable().optional(),
-  avgHeartRate: z.number().int().min(0).nullable().optional(),
-  maxHeartRate: z.number().int().min(0).nullable().optional(),
+  // Upper bound is a data-entry sanity check (well above any real human heart
+  // rate, including extreme training outliers), not a physiological limit.
+  avgHeartRate: z.number().int().min(0).max(250).nullable().optional(),
+  maxHeartRate: z.number().int().min(0).max(250).nullable().optional(),
   avgOutput: z.number().nonnegative().nullable().optional(),
   cadenceMin: z.number().int().min(0).nullable().optional(),
   cadenceMax: z.number().int().min(0).nullable().optional(),
@@ -54,7 +56,8 @@ function withCardioSessionRules<T extends z.ZodTypeAny>(schema: T) {
       (value: z.infer<T>) =>
         !value.startedAt ||
         !value.endedAt ||
-        new Date(value.startedAt).getTime() <= new Date(value.endedAt).getTime(),
+        new Date(value.startedAt).getTime() <=
+          new Date(value.endedAt).getTime(),
       {
         message: "endedAt must be after startedAt",
         path: ["endedAt"],
@@ -113,8 +116,8 @@ export const updateCardioSessionSchema = withCardioSessionRules(
       plannedVsCompleted: cardioSessionCompletionSchema.optional(),
       durationMinutes: z.number().int().min(0).nullable().optional(),
       zone2Minutes: z.number().int().min(0).nullable().optional(),
-      avgHeartRate: z.number().int().min(0).nullable().optional(),
-      maxHeartRate: z.number().int().min(0).nullable().optional(),
+      avgHeartRate: z.number().int().min(0).max(250).nullable().optional(),
+      maxHeartRate: z.number().int().min(0).max(250).nullable().optional(),
       avgOutput: z.number().nonnegative().nullable().optional(),
       cadenceMin: z.number().int().min(0).nullable().optional(),
       cadenceMax: z.number().int().min(0).nullable().optional(),
@@ -158,8 +161,12 @@ export const updateCardioSessionSchema = withCardioSessionRules(
 
 export const cardioSessionDateRangeQuerySchema = dateRangeQuerySchema;
 
-export type CreateCardioSessionInput = z.infer<typeof createCardioSessionSchema>;
-export type UpdateCardioSessionInput = z.infer<typeof updateCardioSessionSchema>;
+export type CreateCardioSessionInput = z.infer<
+  typeof createCardioSessionSchema
+>;
+export type UpdateCardioSessionInput = z.infer<
+  typeof updateCardioSessionSchema
+>;
 export type CardioSessionDateRangeQuery = z.infer<
   typeof cardioSessionDateRangeQuerySchema
 >;
@@ -221,7 +228,9 @@ export class CardioSessionService {
     userId: string,
     session: Omit<CreateCardioSessionInput, "userId">,
   ): Promise<{ created: boolean; session: CardioSession }> {
-    const source = session.source as { sourceProvider?: string; sourceExternalId?: string } | undefined;
+    const source = session.source as
+      | { sourceProvider?: string; sourceExternalId?: string }
+      | undefined;
     const sourceProvider = source?.sourceProvider ?? null;
     const sourceExternalId = source?.sourceExternalId ?? null;
 
@@ -242,7 +251,9 @@ export class CardioSessionService {
     return { created: true, session: created };
   }
 
-  async listListItemsByDateRange(input: unknown): Promise<CardioSessionListItemDto[]> {
+  async listListItemsByDateRange(
+    input: unknown,
+  ): Promise<CardioSessionListItemDto[]> {
     const sessions = await this.listByDateRange(input);
 
     return sessions.map((session) => ({

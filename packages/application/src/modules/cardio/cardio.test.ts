@@ -51,6 +51,28 @@ describe("cardio validation", () => {
       }),
     ).toThrow();
   });
+
+  it("rejects a heart rate that is obviously a data-entry error", () => {
+    expect(() =>
+      createCardioSessionSchema.parse({
+        userId,
+        sessionDate: "2026-03-31",
+        sessionKind: "zone2",
+        avgHeartRate: 9999,
+      }),
+    ).toThrow();
+  });
+
+  it("accepts a heart rate at the sanity-check boundary", () => {
+    const parsed = createCardioSessionSchema.parse({
+      userId,
+      sessionDate: "2026-03-31",
+      sessionKind: "zone2",
+      maxHeartRate: 250,
+    });
+
+    expect(parsed.maxHeartRate).toBe(250);
+  });
 });
 
 describe("cardio summaries", () => {

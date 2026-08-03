@@ -82,6 +82,28 @@ describe("recovery validation", () => {
     ).toThrow();
   });
 
+  it("rejects a resting heart rate that is obviously a data-entry error", () => {
+    expect(() =>
+      createRecoveryCheckinSchema.parse({
+        userId,
+        checkinDate: "2026-03-31",
+        alcoholCount: 0,
+        restingHeartRate: 9999,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects an HRV value that is obviously a data-entry error", () => {
+    expect(() =>
+      createRecoveryCheckinSchema.parse({
+        userId,
+        checkinDate: "2026-03-31",
+        alcoholCount: 0,
+        hrv: 50000,
+      }),
+    ).toThrow();
+  });
+
   it("accepts HH:MM bedtime/wake time and a cold plunge flag", () => {
     const parsed = createRecoveryCheckinSchema.parse({
       userId,
