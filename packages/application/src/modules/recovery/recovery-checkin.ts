@@ -13,8 +13,9 @@ import {
 
 const recoveryCheckinBaseSchema = z.object({
   checkinDate: isoDateSchema,
-  restingHeartRate: z.number().int().min(0).nullable().optional(),
-  hrv: z.number().nonnegative().nullable().optional(),
+  // Upper bounds are data-entry sanity checks, not physiological limits.
+  restingHeartRate: z.number().int().min(0).max(250).nullable().optional(),
+  hrv: z.number().nonnegative().max(500).nullable().optional(),
   sleepDurationMinutes: z.number().int().min(0).nullable().optional(),
   bedtimeLocal: optionalLocalTimeSchema,
   wakeTimeLocal: optionalLocalTimeSchema,
@@ -98,8 +99,13 @@ export interface RecoveryCheckinRepository {
   update(input: UpdateRecoveryCheckinInput): Promise<RecoveryCheckin>;
   archive(userId: UserId, id: EntityId): Promise<void>;
   findById(userId: UserId, id: EntityId): Promise<RecoveryCheckin | null>;
-  findByDate(userId: UserId, checkinDate: string): Promise<RecoveryCheckin | null>;
-  listByDateRange(query: RecoveryCheckinDateRangeQuery): Promise<RecoveryCheckin[]>;
+  findByDate(
+    userId: UserId,
+    checkinDate: string,
+  ): Promise<RecoveryCheckin | null>;
+  listByDateRange(
+    query: RecoveryCheckinDateRangeQuery,
+  ): Promise<RecoveryCheckin[]>;
 }
 
 export class RecoveryCheckinService {
