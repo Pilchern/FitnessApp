@@ -32,6 +32,29 @@ describe("body metric validation", () => {
     ).toThrow();
   });
 
+  it("rejects a weight that is obviously a data-entry error", () => {
+    // This value directly feeds NutritionTargetService's calorie/protein
+    // calculation, so a garbage weight would silently corrupt someone's
+    // nutrition targets if it weren't caught here.
+    expect(() =>
+      createBodyMetricSchema.parse({
+        userId,
+        measuredOn: "2026-03-31",
+        weightLb: 18900,
+      }),
+    ).toThrow();
+  });
+
+  it("rejects a waist measurement that is obviously a data-entry error", () => {
+    expect(() =>
+      createBodyMetricSchema.parse({
+        userId,
+        measuredOn: "2026-03-31",
+        waistIn: 3410,
+      }),
+    ).toThrow();
+  });
+
   it("accepts the hip and gut waist measurement points", () => {
     const parsed = createBodyMetricSchema.parse({
       userId,

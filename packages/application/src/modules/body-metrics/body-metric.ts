@@ -10,23 +10,34 @@ import {
   uuidSchema,
 } from "../../shared/primitives";
 
+// Upper bounds are data-entry/import sanity checks (well above any real human
+// body measurement), not physiological limits. weightLb/weightKg matter most
+// here: they feed NutritionTargetService's calorie/protein calculation
+// directly, so a garbage value (a typo, or a unit-conversion bug in an
+// imported payload) would silently corrupt someone's nutrition targets.
 const bodyMetricBaseSchema = z.object({
   measuredOn: isoDateSchema,
-  weightLb: z.number().positive().nullable().optional(),
-  weightKg: z.number().positive().nullable().optional(),
-  waistIn: z.number().positive().nullable().optional(),
-  waistCm: z.number().positive().nullable().optional(),
-  waistHipIn: z.number().positive().nullable().optional(),
-  waistGutIn: z.number().positive().nullable().optional(),
+  weightLb: z.number().positive().max(1000).nullable().optional(),
+  weightKg: z.number().positive().max(500).nullable().optional(),
+  waistIn: z.number().positive().max(120).nullable().optional(),
+  waistCm: z.number().positive().max(300).nullable().optional(),
+  waistHipIn: z.number().positive().max(120).nullable().optional(),
+  waistGutIn: z.number().positive().max(120).nullable().optional(),
   bodyFatPct: z.number().min(0).max(100).nullable().optional(),
-  muscleMassLb: z.number().nonnegative().nullable().optional(),
-  muscleMassKg: z.number().nonnegative().nullable().optional(),
-  boneMassKg: z.number().nonnegative().nullable().optional(),
-  boneMassLb: z.number().nonnegative().nullable().optional(),
-  fatFreeMassKg: z.number().nonnegative().nullable().optional(),
-  fatFreeMassLb: z.number().nonnegative().nullable().optional(),
+  muscleMassLb: z.number().nonnegative().max(1000).nullable().optional(),
+  muscleMassKg: z.number().nonnegative().max(500).nullable().optional(),
+  boneMassKg: z.number().nonnegative().max(500).nullable().optional(),
+  boneMassLb: z.number().nonnegative().max(1000).nullable().optional(),
+  fatFreeMassKg: z.number().nonnegative().max(500).nullable().optional(),
+  fatFreeMassLb: z.number().nonnegative().max(1000).nullable().optional(),
   hydrationPct: z.number().min(0).max(100).nullable().optional(),
-  visceralFatIndex: z.number().int().nonnegative().nullable().optional(),
+  visceralFatIndex: z
+    .number()
+    .int()
+    .nonnegative()
+    .max(60)
+    .nullable()
+    .optional(),
   notes: optionalTrimmedStringSchema,
   source: manualOrImportedRecordSourceSchema.default(defaultManualSource),
 });
@@ -66,7 +77,9 @@ export const bodyMetricDateRangeQuerySchema = dateRangeQuerySchema;
 
 export type CreateBodyMetricInput = z.infer<typeof createBodyMetricSchema>;
 export type UpdateBodyMetricInput = z.infer<typeof updateBodyMetricSchema>;
-export type BodyMetricDateRangeQuery = z.infer<typeof bodyMetricDateRangeQuerySchema>;
+export type BodyMetricDateRangeQuery = z.infer<
+  typeof bodyMetricDateRangeQuerySchema
+>;
 
 export type BodyMetricTrendPointDto = {
   id: EntityId;
@@ -96,7 +109,9 @@ export class BodyMetricService {
     const parsed = createBodyMetricSchema.parse(input);
 
     if (parsed.source.sourceType !== "imported") {
-      throw new Error("Imported body metric upserts require an imported source.");
+      throw new Error(
+        "Imported body metric upserts require an imported source.",
+      );
     }
 
     return this.repository.upsertImported(parsed);

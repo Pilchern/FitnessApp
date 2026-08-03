@@ -24,7 +24,7 @@ const recoveryCheckinBaseSchema = z.object({
   readinessLevel: z.number().int().min(1).max(10).nullable().optional(),
   stressLevel: z.number().int().min(1).max(10).nullable().optional(),
   sorenessLevel: z.number().int().min(1).max(10).nullable().optional(),
-  alcoholCount: z.number().int().min(0).default(0),
+  alcoholCount: z.number().int().min(0).max(20).default(0),
   notes: optionalTrimmedStringSchema,
   timeInBedMinutes: z.number().nullable().optional(),
   sleepEfficiencyPct: z.number().nullable().optional(),
