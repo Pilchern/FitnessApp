@@ -23,7 +23,9 @@ const generatedInsightSchema = z.object({
 
 const responseSchema = z.array(generatedInsightSchema).min(1).max(10);
 
-function buildContext(input: InsightEngineInput & { recentJournalEntries?: string[] }): string {
+function buildContext(
+  input: InsightEngineInput & { recentJournalEntries?: string[] },
+): string {
   const lines: string[] = [];
 
   if (input.weeklyReviews.length > 0) {
@@ -79,9 +81,9 @@ function buildContext(input: InsightEngineInput & { recentJournalEntries?: strin
     }
   }
 
-  const liftsEntries = Object.entries(input.liftsCompletedByWeek).sort(([a], [b]) =>
-    b.localeCompare(a),
-  ).slice(0, 4);
+  const liftsEntries = Object.entries(input.liftsCompletedByWeek)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 4);
   if (liftsEntries.length > 0) {
     lines.push("Strength sessions by week:");
     for (const [week, count] of liftsEntries) {
@@ -125,7 +127,12 @@ Rules:
 - insightType must be a short snake_case identifier like "low_hrv_trend" or "strong_strength_progress"
 - title: max 8 words
 - message: max 30 words, specific and actionable
-- severity: "warning" for declining metrics, "positive" for progress, "info" for observations`;
+- severity: "warning" for declining metrics, "positive" for progress, "info" for observations
+- Ground every insight in the data provided above — never invent a number, trend, or metric that isn't in the data
+- You are not a medical professional. Never diagnose a condition, name a disease or injury, or claim a training/diet change will treat or prevent one
+- Never recommend a specific calorie target, macro target, training load, supplement, or medication/dosage — that's outside this data snapshot's scope
+- If the data suggests a possible injury, illness, overtraining, or a pattern a doctor or physical therapist should weigh in on, say so plainly and recommend they consult one — don't try to resolve it yourself
+- Do not use guilt, shame, or alarmist language (e.g. "you're falling behind," "this is dangerous") — state what the data shows and what to consider next, plainly and without pressure`;
 
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -160,7 +167,10 @@ Rules:
 
       const parsed = responseSchema.safeParse(JSON.parse(textBlock.text));
       if (!parsed.success) {
-        console.error("[AiInsightService] Invalid response shape:", parsed.error.message);
+        console.error(
+          "[AiInsightService] Invalid response shape:",
+          parsed.error.message,
+        );
         return [];
       }
 

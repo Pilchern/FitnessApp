@@ -1,5 +1,8 @@
 import { z } from "zod";
-import type { WeeklyReviewAiDraft, WeeklyReviewSummary } from "@fitness-app/domain";
+import type {
+  WeeklyReviewAiDraft,
+  WeeklyReviewSummary,
+} from "@fitness-app/domain";
 
 export type AiWeeklyReviewConfig = {
   apiKey: string;
@@ -23,16 +26,16 @@ const aiWeeklyReviewResponseSchema = z.object({
   nextBestAction: z.string().min(1),
 });
 
-export type AiWeeklyReviewResponse = z.infer<typeof aiWeeklyReviewResponseSchema>;
+export type AiWeeklyReviewResponse = z.infer<
+  typeof aiWeeklyReviewResponseSchema
+>;
 
 function buildContext(input: AiWeeklyReviewInput): string {
   const s = input.summary;
   const lines: string[] = [];
 
   lines.push(`Week: ${input.weekStart} to ${input.weekEnd}`);
-  lines.push(
-    `Lifts completed: ${s.liftsCompleted ?? 0}`,
-  );
+  lines.push(`Lifts completed: ${s.liftsCompleted ?? 0}`);
   lines.push(`Cardio sessions completed: ${s.ridesCompleted ?? 0}`);
   lines.push(`Zone 2 minutes: ${s.zone2Minutes ?? 0}`);
   lines.push(`VO2 session completed: ${s.vo2Completed ? "yes" : "no"}`);
@@ -53,7 +56,9 @@ function buildContext(input: AiWeeklyReviewInput): string {
 export class AiWeeklyReviewService {
   constructor(private readonly config: AiWeeklyReviewConfig) {}
 
-  async generateDraft(input: AiWeeklyReviewInput): Promise<WeeklyReviewAiDraft | null> {
+  async generateDraft(
+    input: AiWeeklyReviewInput,
+  ): Promise<WeeklyReviewAiDraft | null> {
     if (!this.config.enabled) {
       return null;
     }
@@ -75,7 +80,12 @@ Rules:
 - whatNeedsAttention: max 40 words, specific and evidence-based
 - strategicDecision: ONE clear, actionable decision for next week, max 25 words
 - riskForecast: a 2-3 week outlook on what could go wrong if current patterns continue, max 40 words
-- nextBestAction: ONE specific next action, max 20 words`;
+- nextBestAction: ONE specific next action, max 20 words
+- Ground every field in the data provided above — never invent a number, trend, or metric that isn't in the data
+- You are not a medical professional. Never diagnose a condition, name a disease or injury, or claim a training/diet change will treat or prevent one
+- Never prescribe a specific calorie target, macro target, training load, supplement, or medication/dosage — that's outside this data snapshot's scope
+- If the data suggests a possible injury, illness, overtraining, or a pattern a doctor or physical therapist should weigh in on, say so plainly in whatNeedsAttention or riskForecast and recommend they consult one — don't try to resolve it yourself
+- Do not use guilt, shame, or alarmist language (e.g. "you're falling behind," "this is dangerous") — state what the data shows and what to consider next, plainly and without pressure`;
 
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -108,7 +118,9 @@ Rules:
         return null;
       }
 
-      const parsed = aiWeeklyReviewResponseSchema.safeParse(JSON.parse(textBlock.text));
+      const parsed = aiWeeklyReviewResponseSchema.safeParse(
+        JSON.parse(textBlock.text),
+      );
       if (!parsed.success) {
         console.error(
           "[AiWeeklyReviewService] Invalid response shape:",
