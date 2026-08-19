@@ -41,7 +41,7 @@ function GenerateWebhookTokenForm({ hasWebhookToken }: { hasWebhookToken: boolea
           <CodeLine value={state.token} />
           <p className="text-xs font-semibold text-ember">
             Copy this now — it won&apos;t be shown again. Paste it into your
-            Shortcut&apos;s Authorization header right away.
+            bridge app&apos;s Authorization header right away.
           </p>
         </div>
       ) : null}
@@ -67,8 +67,8 @@ function GenerateWebhookTokenForm({ hasWebhookToken }: { hasWebhookToken: boolea
       {hasWebhookToken && !state.token ? (
         <p className="text-xs text-ink/60">
           A token has already been generated for your account. Regenerating
-          replaces it — you&apos;ll need to update your Shortcut with the new
-          value.
+          replaces it — you&apos;ll need to update your bridge app with the
+          new value.
         </p>
       ) : null}
     </div>
@@ -108,7 +108,8 @@ export function AppleHealthConnectionCard({
   userId,
   appUrl,
 }: AppleHealthConnectionCardProps) {
-  const webhookUrl = `${appUrl}/api/integrations/apple-health/sleep`;
+  const sleepWebhookUrl = `${appUrl}/api/integrations/apple-health/sleep`;
+  const dailyMetricsWebhookUrl = `${appUrl}/api/integrations/apple-health/daily-metrics`;
   const lastSyncedAt = connection?.lastSyncedAt ?? null;
 
   return (
@@ -120,10 +121,10 @@ export function AppleHealthConnectionCard({
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">Apple Health</h2>
           <p className="mt-2 text-sm leading-6 text-ink/75">
-            Push sleep and recovery data from Apple Health using an iPhone
-            Shortcut. Once set up, the Shortcut runs automatically each morning
-            and syncs last night&apos;s sleep, heart rate, and HRV into your
-            recovery log.
+            Push sleep, recovery, and daily activity data from Apple Health
+            using a bridge app on your phone. Set it up once and it runs on
+            its own background schedule from then on — nothing to open or
+            run yourself day to day.
           </p>
         </div>
 
@@ -155,7 +156,7 @@ export function AppleHealthConnectionCard({
             <SummaryStatCard
               label="Status"
               value={lastSyncedAt ? "Receiving data" : "Not yet synced"}
-              hint="Data arrives when you run the Shortcut."
+              hint="Data arrives automatically on your bridge app's schedule — nothing to run."
               tone={lastSyncedAt ? "accent" : "default"}
             />
           </div>
@@ -163,11 +164,22 @@ export function AppleHealthConnectionCard({
           <div className="mt-6 space-y-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pine">
-                Shortcut setup
+                Recommended: Health Auto Export
               </p>
               <p className="mt-2 text-sm leading-6 text-ink/75">
-                Create an iPhone Shortcut that runs each morning and posts your
-                Apple Health data to the webhook below. Follow these steps:
+                Install{" "}
+                <a
+                  href="https://www.healthyapps.dev/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-semibold text-pine underline"
+                >
+                  Health Auto Export
+                </a>
+                , then under <strong>Automations → REST API export</strong>{" "}
+                add the headers and webhook URLs below. Once its schedule is
+                set, it pushes data in the background on its own — no need to
+                open the app, run a Shortcut, or do anything else afterward.
               </p>
             </div>
 
@@ -178,10 +190,16 @@ export function AppleHealthConnectionCard({
                 </span>
                 <div className="min-w-0 flex-1 space-y-2">
                   <p>
-                    <strong>Webhook URL</strong> — the endpoint your Shortcut
-                    posts to:
+                    <strong>Sleep webhook URL</strong> — once daily, shortly
+                    after waking:
                   </p>
-                  <CodeLine value={webhookUrl} />
+                  <CodeLine value={sleepWebhookUrl} />
+                  <p>
+                    <strong>Daily activity webhook URL</strong> — every 4–6
+                    hours through the day (steps, VO2 max, resting HR,
+                    exercise minutes, active energy):
+                  </p>
+                  <CodeLine value={dailyMetricsWebhookUrl} />
                 </div>
               </li>
 
@@ -193,7 +211,7 @@ export function AppleHealthConnectionCard({
                   <p>
                     <strong>Your user ID</strong> — add this as the{" "}
                     <code className="rounded bg-ink/5 px-1 font-mono text-xs">X-User-Id</code>{" "}
-                    header:
+                    header on both:
                   </p>
                   <CodeLine value={userId} />
                 </div>
@@ -205,47 +223,23 @@ export function AppleHealthConnectionCard({
                 </span>
                 <GenerateWebhookTokenForm hasWebhookToken={hasWebhookToken} />
               </li>
-
-              <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pine/10 text-xs font-bold text-pine">
-                  4
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p>
-                    <strong>JSON body</strong> — post an array with one object
-                    per night. Supported fields:
-                  </p>
-                  <div className="mt-2 overflow-x-auto rounded-xl border border-ink/10 bg-ink/5 px-3 py-2">
-                    <pre className="font-mono text-xs leading-5 text-ink/80">
-{`[{
-  "date": "2026-04-06",
-  "sleep_duration_minutes": 450,
-  "deep_sleep_minutes": 90,
-  "rem_sleep_minutes": 110,
-  "core_sleep_minutes": 240,
-  "awake_minutes": 10,
-  "sleep_efficiency_pct": 95.0,
-  "resting_heart_rate": 52,
-  "hrv": 68
-}]`}
-                    </pre>
-                  </div>
-                  <p className="mt-2 text-xs text-ink/60">
-                    All fields except <code className="font-mono">date</code> are optional.
-                    The Shortcut can query each metric from Health and only include
-                    what is available.
-                  </p>
-                </div>
-              </li>
             </ol>
 
             <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 px-4 py-3 text-sm leading-6 text-ink/75">
-              <strong className="font-semibold text-ink">Tip:</strong> In the
-              Shortcuts app, use a &ldquo;Get Health Samples&rdquo; action for each
-              metric, then build the JSON dictionary, and finish with a
-              &ldquo;Get Contents of URL&rdquo; action set to{" "}
-              <strong>POST</strong> with the JSON body and the headers above.
-              Automate it to run each morning after you wake up.
+              <strong className="font-semibold text-ink">
+                Don&apos;t want Health Auto Export?
+              </strong>{" "}
+              You can build your own automation instead with the Shortcuts
+              app (a &ldquo;Get Health Samples&rdquo; action per metric, a
+              JSON dictionary, then &ldquo;Get Contents of URL&rdquo; set to{" "}
+              <strong>POST</strong> with the headers above). Turn off
+              &ldquo;Ask Before Running&rdquo; on its personal automation
+              trigger so it runs in the background too, the same as Health
+              Auto Export — see the full payload shapes for both endpoints in{" "}
+              <code className="font-mono text-xs">
+                docs/integrations/apple-health-bridge-setup.md
+              </code>
+              .
             </div>
           </div>
         </>
