@@ -63,13 +63,21 @@ function dedupeKey(userId: UserId) {
 
 function toMinutes(value: number | undefined | null): number | null {
   if (value == null) return null;
-  // The route schema validates incoming sleep fields as minutes (0..1440).
-  // Defensive ceiling for any caller that bypasses the edge schema: values
-  // >= 1440 (24h * 60) almost certainly came in as seconds; convert and warn.
-  if (value >= 1440) {
+  // The route schema validates incoming sleep fields as minutes with an
+  // INCLUSIVE ceiling: z.number().min(0).max(1440). 1440 (a full 24h) is
+  // therefore a legitimate, accepted value and must pass through untouched —
+  // an exclusive `>= 1440` here silently rewrote it to 24 minutes.
+  //
+  // The boundary sits at `> 1440` so it is exactly the complement of what the
+  // edge schema accepts: nothing the validator lets through is ever
+  // reinterpreted, and anything above the 24h-in-minutes ceiling cannot be a
+  // minutes value at all, so treating it as seconds is the only sane reading.
+  // This branch only fires for callers that bypass the route schema (direct
+  // job invocation, backfills), hence the warn.
+  if (value > 1440) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[apple-health-sleep-sync] sleep value ${value} >= 1440 — assuming seconds and converting to minutes`,
+      `[apple-health-sleep-sync] sleep value ${value} > 1440 — assuming seconds and converting to minutes`,
     );
     return Math.round(value / 60);
   }
