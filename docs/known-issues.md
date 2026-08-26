@@ -1,24 +1,22 @@
 # Known Issues
 
+**Last verified against code:** 2026-08-26.
+
 ## Current weak spots
 
 - Playwright E2E covers auth, navigation, body, cardio, integrations connect flow, and weekly-review (6 specs); the remaining modules (strength, recovery, nutrition, journal, insights, settings) have no browser coverage yet.
+- E2E does not run in CI — Playwright's `webServer` needs a live Supabase project, and CI has no credentials for one. The GitHub Actions workflow (`.github/workflows/ci.yml`) runs format, typecheck, lint, unit tests, and the production build only.
 - OAuth callback and sync behavior are covered by unit tests, not live-provider integration tests.
-- Withings, Peloton, and Apple Health integrations are code-complete but not configured/connected — nutrition and settings are fully implemented, not placeholders.
+- Withings and Apple Health are live and verified. Strava's app registration is deactivated on Strava's side and its API now requires a paid subscription the user has declined; Peloton's unofficial auth endpoint returns `403` for any credentials as of 2026-07-16 and is not fixable from this codebase. Apple Health is the only active cardio-import path today.
 - Integration credentials are intentionally server-only and require correct service-role usage in deployment.
-- Background job queue/retry/dead-letter handling exists for the 4 cron routes (Supabase pg_cron + pg_net sweep, TD-014 resolved) — but there is still no cross-provider duplicate detection (TD-019): the same real-world workout or weigh-in landing via two connected providers isn't deduplicated, only same-provider re-imports are.
-- No application-level login/signup rate limiting — relies entirely on Supabase Auth's own protections (TD-018).
-- Muscle-group/exercise classification is a static, in-code catalog (not user-editable) — exercises outside it are tracked but excluded from muscle-group/push-pull reporting, surfaced via an explicit "unclassified" count rather than silently dropped (TD-021).
-- `duration_seconds`/`distance_meters` on strength sets are still unused by the UI, so timed sets (planks) and distance-based movements (carries) can't be logged with those fields yet (TD-020).
+- Nutrition calorie/protein targets still substitute population-average age, height, and an implicit male BMR constant, because `profiles` has no age/height/sex columns (TD-030). A 1200 kcal/day safety floor and an in-UI disclosure of exactly what the estimate does and doesn't account for are in place, so the number is not presented as personalized — but it isn't personalized either.
 
-## Operational cautions
+## Resolved since this file was last accurate
 
-- Withings local testing requires valid OAuth credentials and a base64-encoded 32-byte `INTEGRATION_ENCRYPTION_KEY`.
-- Peloton uses the same encryption key but authenticates with a per-user Peloton username/password against an unofficial API — no public API exists, so behavior can change without notice.
-- Full resync replays provider data through canonical dedupe; it should not create duplicates, but it can still produce many raw import audit rows.
+The 2026-07-15 audit corrected this file once; it drifted again. These were listed as open here but had already shipped:
 
-## QA gaps to close next
-
-- Add browser coverage for the remaining unspec'd modules (strength, recovery, nutrition, journal, insights, settings).
-- Add live sandbox verification for the Withings OAuth flow and a real Peloton-connected sync if credentials are available.
-- Add migration smoke tests around sync/import tables.
+- **TD-018** — application-level login/signup rate limiting (DB-backed rolling window). Shipped.
+- **TD-020** — `duration_seconds`/`distance_meters` on strength sets wired through to the UI. Shipped.
+- **TD-021** — user-editable exercise catalog overrides and per-user aliases. Shipped.
+- **TD-022** — account deletion and full data export ("Danger zone" in Settings). Shipped.
+- **TD-019** — cross-provider duplicate detection. Shipped 2026-08-26: imported cardio sessions and body metrics are now matched against the same day's stored records from *other* sources, with an explicit source-priority order (manual outranks every provider; a direct provider outranks a relay). The losing record is skipped or soft-deleted, never hard-deleted, and both sync results and `sync_job_runs` carry `skippedCrossProviderCount`/`supersededCrossProviderCount` so the decision is inspectable. See `packages/application/src/modules/integrations/cross-provider-dedup.ts`.

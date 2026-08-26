@@ -1,6 +1,6 @@
 # Current State — FitnessApp
 
-**Last updated:** 2026-08-02 (nutrition-target safety floor + estimate disclosure, strength-form accessibility labels)
+**Last updated:** 2026-08-26 (CI pipeline, repo-wide format normalization, cross-provider duplicate detection)
 **Overall health:** Stable. TypeScript clean. 244 tests pass. Lint clean. Production build succeeds. **All migrations through `20260722180000` have been applied to the live Supabase project** (done directly via the Supabase MCP connector this session — no more manual `supabase db push` step outstanding for those). Withings and Apple Health are live and verified. **Strava now requires a paid subscription to keep API access** (a Strava policy change, not something fixable in this codebase) — the user has chosen not to subscribe, so Strava is being retired as the cardio path in favor of Apple Health (see below). Peloton's unofficial API auth endpoint is also confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not viable either way.
 
 This session ran a full product/UX/security/fitness-safety audit (see "What Was Done in This Session (2026-08-02, fitness-safety audit)" below), using parallel research passes over (a) strength/cardio unit conversion and progression logic and (b) security/auth/accessibility. Four concrete fixes shipped:
@@ -22,9 +22,9 @@ This session's audit found the app's integration/data-integrity layer (auth, OAu
 | ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeScript   | CLEAN   | Zero errors across all 6 packages                                                                                                                                                                                                                                                                  |
 | Lint         | CLEAN   | No warnings                                                                                                                                                                                                                                                                                        |
-| Tests        | PASSING | 269/269 (47 web, 176 application, 14 integrations, 32 jobs)                                                                                                                                                                                                                                        |
+| Tests        | PASSING | 308/308 (47 web, 213 application, 14 integrations, 34 jobs)                                                                                                                                                                                                                                        |
 | Build        | PASSING | `pnpm build` succeeds without a live `.env.local` — all data-dependent routes are dynamic, so no Supabase connectivity is needed at build time                                                                                                                                                     |
-| E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review)                                                                                                                                                                                                  |
+| E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review). Not run in CI — needs a live Supabase project.                                                                                                                                                                                                  |
 | Database     | LIVE    | Cloud Supabase project, credentials in .env.local                                                                                                                                                                                                                                                  |
 | Integrations | PARTIAL | Withings and Apple Health live and verified (Apple Health now also syncs individual workouts, not just sleep/daily-activity). Strava requires a paid subscription the user has declined — being retired as the cardio path. Peloton direct sync confirmed blocked by Peloton's own API as of 2026-07-16. Free path forward: Peloton (once the user's meniscus injury heals) writes rides to Apple Health, which syncs into `cardio_sessions` via the new `/api/integrations/apple-health/workouts` webhook. |
 
@@ -115,13 +115,12 @@ None of the four cron routes have retry logic, a queue, or a dead-letter path �
 
 1. **Strava broken** — app deactivated on Strava's side (`403: Application Status Inactive`), confirmed via a failed `sync_job_runs` row on 2026-07-16. User must reactivate at strava.com/settings/api. This blocks the recommended Peloton→Strava relay path too.
 2. **Peloton direct sync blocked by Peloton** — `POST https://api.onepeloton.com/auth/login` returns `403` for any credentials as of 2026-07-16. Not fixable without reverse-engineering around a deliberate access restriction. Recommended path is now Peloton's own "auto-export to Strava" setting, once Strava is reactivated.
-3. **No cross-provider duplicate detection** (TD-019) — see `TECH_DEBT.md` Priority 1.
-4. **Nutrition calorie/protein targets don't account for age, height, or sex** (TD-030) — see `TECH_DEBT.md` Priority 1. Partially mitigated this session (safety floor + UI disclosure); full fix needs a schema migration.
+3. **Nutrition calorie/protein targets don't account for age, height, or sex** (TD-030) — see `TECH_DEBT.md` Priority 1. Partially mitigated this session (safety floor + UI disclosure); full fix needs a schema migration.
 
 ### Low
 
-4. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
-5. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale. (TD-016)
+3. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
+4. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale. (TD-016)
 
 ### Resolved this session (2026-07-21)
 
@@ -165,18 +164,42 @@ See `TECH_DEBT.md` for full prioritized list.
 - **Cron + retry:** 5 cron routes scheduled via `vercel.json`/pg_cron (peloton-sync, strava-sync, withings-sync, weekly-review-auto-finalize, retry-failed-syncs every 15min); `sync_job_runs` now used as a real retry queue with exponential backoff and a `dead_letter` terminal status after 5 attempts (TD-014, resolved)
 - **Local Supabase:** Can be run locally with `supabase start && supabase db reset`
 - **Seed user (local only):** `dev@example.com` / `password1234`
-- **CI/CD:** None configured yet
+- **CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs format, typecheck, lint, unit tests, and the production build on every PR and every push to `main`. No env vars are needed — the build succeeds without an `.env.local` because every data-dependent route is dynamic. E2E is excluded (needs a live Supabase project).
 
 ---
 
 ## Active Priorities (Recommended Next Sprint)
 
+See `docs/next-release-roadmap.md` for the full ranked list. In brief: TD-030 (personalize nutrition targets — the last Priority 1 item, needs an additive migration verified against the live DB), browser e2e for the six uncovered modules, and a decision on whether to keep the Strava/Peloton code paths at all.
+
 1. User: set a target weight/date under Settings → Training Goals, and create/pin your M/W/F strength templates with a scheduled day under `/strength` (adjusted for your current meniscus injury as needed) — the underlying capability (TD-027) is built and the migration is live, but the actual numbers/templates are personal data this container has no way to enter on your behalf
 2. User: once you're back to riding, set up a bridge app (e.g. Health Auto Export) to POST workout data to `/api/integrations/apple-health/workouts` — see `docs/integrations/apple-health-bridge-setup.md` for the exact payload shape. This is now the recommended free cardio-sync path since Strava requires a paid subscription.
-3. Cross-provider duplicate detection + source-priority rules for cardio/body metrics (TD-019) — re-escalated to a real (if not currently active) risk now that Apple Health syncs cardio workouts too; prioritize this before ever reconnecting Strava/Peloton direct sync alongside Apple Health workout sync
-4. Consider whether to keep the Strava/Peloton-direct code paths at all now that neither is realistically usable (Strava paywalled, Peloton API blocked) — not urgent, but worth a decision at some point rather than carrying unused integration surface indefinitely
+3. Consider whether to keep the Strava/Peloton-direct code paths at all now that neither is realistically usable (Strava paywalled, Peloton API blocked) — not urgent, but worth a decision at some point rather than carrying unused integration surface indefinitely
 
 ---
+
+---
+
+## What Was Done in This Session (2026-08-26, CI + formatting + TD-019)
+
+Started from a verified baseline (typecheck/lint/test/build all clean, 269/269, matching the docs), then worked down the highest-value remaining items.
+
+1. **CI pipeline added.** This file had listed "CI/CD: None configured yet" for the project's whole life, and every session was re-running the four checks by hand with nothing enforcing them on a pull request. `.github/workflows/ci.yml` now runs format, typecheck, lint, unit tests, and the production build on every PR and every push to `main`, with per-ref concurrency and cancel-in-progress. Verified in a clean container with no `apps/web/.env.local` that `pnpm build` succeeds unaided, so the job needs no secrets. E2E stays out: Playwright's `webServer` needs a live Supabase project CI has no credentials for.
+
+2. **Repo-wide Prettier normalization.** `pnpm format` — a script the repo already ships — had been failing on the committed tree, with 179 files drifted from the repo's own `.prettierrc.json`. The 2026-08-02 session recorded this as a baseline finding and left it as out of scope; it has to be fixed for a format gate to exist at all. Done as an isolated mechanical commit with a `.git-blame-ignore-revs` entry so `git blame` skips it. Two decisions: markdown is now in `.prettierignore` (Prettier re-pads every table cell to its widest column, so a one-word edit to this file would produce a whole-table diff), and `printWidth` stays at the default 80 — measured the drift at 80/90/100/110/120 first and 80 was the minimum-churn choice, because the tree is unformatted in both directions rather than uniformly wide.
+
+3. **TD-019 resolved — cross-provider duplicate detection.** The last conditional Priority 1 item, and one reconnection away from live since Apple Health started syncing individual workouts. New pure decision module `packages/application/src/modules/integrations/cross-provider-dedup.ts`:
+   - Explicit source priority. Cardio: `manual > peloton > strava > apple_health`, ordered by how much of the event each path actually records. Body metrics: `manual > withings > apple_health`, since Withings *is* the scale. An unrecognized provider sorts below every known one.
+   - Manual entries always outrank every import — an import never overwrites something the user typed by hand.
+   - Conservative matching that abstains rather than guesses: a cardio match needs the same day, different sources, and every *shared* signal to agree (start times within 20 minutes, durations within 5). Two same-day records with neither signal comparable are treated as distinct, because a bare date match is not evidence and wrongly merging two real workouts is worse than leaving a visible duplicate.
+   - Wired into `CardioSessionService.upsertImported` and `BodyMetricService.upsertImported`, which covers Strava, Peloton, Apple Health workouts, and Withings at once without touching an orchestrator constructor or the composition root.
+   - The losing record is skipped (its raw import event marked *skipped*, not mapped) or archived — a soft delete, so no call the heuristic gets wrong is unrecoverable. All three affected orchestrators report `skippedCrossProviderCount`/`supersededCrossProviderCount` in the result and in `sync_job_runs`, which is the inspectability the debt item asked for.
+   - Deliberately not done: no schema change, and no merging of field values between winner and loser — both risk losing data on a heuristic.
+   - Known cost: one extra same-day query per imported item. Fine for a weekly cron over one user's rides; noted in the roadmap as something to batch before any bulk historical import.
+
+4. **Doc drift corrected again.** `docs/known-issues.md` and `docs/next-release-roadmap.md` still listed TD-018, TD-020, TD-021, and TD-022 as open — all four shipped between 2026-07-22 and 2026-07-25. Both files were rewritten against actual code state and now carry a "last verified against code" date.
+
+5. 39 new tests (308 total, up from 269) — 28 on the decision logic including every abstain case, 9 proving the services actually skip/archive against a repository, 2 on the Apple Health orchestrator's counters. format/typecheck/lint/test/build verified clean after every change.
 
 ## What Was Done in This Session (2026-07-21, muscle-group tracking + coaching-rule audit)
 

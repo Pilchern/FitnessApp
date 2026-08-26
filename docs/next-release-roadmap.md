@@ -1,21 +1,26 @@
 # Recommended Next Release
 
-Muscle-group/movement-pattern volume tracking and 4 new coaching-insight rules shipped 2026-07-21 (see `CURRENT_STATE.md`). Nutrition logging and settings (timezone/units/profile goals) shipped earlier; a second and third provider adapter (Peloton, Apple Health) already exist in code. Updated as of 2026-07-21.
+**Last verified against code:** 2026-08-26.
+
+Since the 2026-07-21 version of this file, everything in its top-5 has shipped except the provider-configuration items, which are blocked on things outside this codebase. Cross-provider duplicate detection (TD-019) shipped 2026-08-26; timed/distance strength sets (TD-020), login rate limiting (TD-018), account deletion + export (TD-022), user-editable exercise overrides (TD-021), and numeric goal targets + training-plan scheduling (TD-027) all shipped earlier.
 
 ## Highest-value next steps
 
-1. Configure Withings OAuth credentials end to end (register app, wire env vars, verify a real sync).
-2. Reactivate the Strava app registration (currently deactivated on Strava's side) and enable Peloton's native "auto-export to Strava" setting — Peloton-direct sync is confirmed blocked by Peloton's own API as of 2026-07-16 and isn't fixable from this codebase.
-3. Wire `duration_seconds`/`distance_meters` on strength sets to the UI so timed sets (planks) and distance-based movements (carries) can be logged (TD-020) — `is_warmup` had the identical dead-column problem and was fixed 2026-07-21, same pattern applies.
-4. Cross-provider duplicate detection + source-priority rules for cardio/body metrics — today only same-provider re-imports are deduplicated; connecting two overlapping providers (e.g. Peloton direct + Strava relay, or Withings + an Apple Health bridge) can double-count (TD-019).
-5. DB-backed login/signup rate limiting — no application-level throttling exists today beyond whatever Supabase Auth enforces (TD-018).
-6. Goal/training-plan entities with real numeric targets (target weight, target date, weekly split assigned to specific days) — today `profiles` only has 3 boolean goal flags and there's no scheduled-workout concept.
-7. Add browser e2e tests for strength, recovery, nutrition, journal, insights, and settings (integration connect/sync flow coverage already shipped).
-8. Add import-center retry tooling and richer sync diagnostics.
-9. Account deletion / full data export flow (TD-022).
+1. **TD-030 — personalize nutrition targets.** `NutritionTargetService` still substitutes a 30-year-old, 170cm, implicitly-male body for the user's real one, because `profiles` has no `heightCm`/`ageYears`/`biologicalSex` columns. This is the last Priority 1 item in `TECH_DEBT.md`. It needs an additive migration (nullable columns), so it also needs someone present to verify the change against the live Supabase project.
+2. **Browser e2e for the uncovered modules** — strength, recovery, nutrition, journal, insights, settings. Six specs exist; these six modules have none. Strength is the highest-value of them: it has the most complex form logic in the app and the most stateful flows (templates, scheduling, set logging).
+3. **Decide whether to retire the Strava and Peloton code paths.** Neither is realistically usable — Strava's API now requires a paid subscription the user has declined and its app registration is deactivated; Peloton's unofficial auth endpoint has been returning `403` for any credentials since 2026-07-16. The adapters, connect routes, weekly crons, and UI cards for both are still carried. Keeping them costs maintenance on every integration change; removing them is easy to reverse from git. This is a judgment call for the user, not something to decide unilaterally.
+4. **AI-generated weekly review narrative in the weekly-review format.** `AiWeeklyReviewService` produces a draft (score/why/what-worked/what-needs-attention/strategic-decision/risk-forecast/next-action) that the user must accept; the rule-based numeric summary auto-fills separately. These two are not yet one coherent surface.
+5. **Import-center retry tooling and richer sync diagnostics.** The retry queue and dead-letter path exist (TD-014); there is no UI for inspecting or replaying a failed run. The new cross-provider skip/supersede counters give this a second thing worth surfacing.
+
+## User-side actions (not code)
+
+These are blocked on the user, not on implementation:
+
+1. Set a target weight/date under Settings → Training Goals and create the M/W/F strength templates with scheduled days under `/strength`. The capability shipped with TD-027; the numbers are personal data.
+2. Once riding resumes, point a bridge app (e.g. Health Auto Export) at `POST /api/integrations/apple-health/workouts` — see `docs/integrations/apple-health-bridge-setup.md` for the payload shape. This is the recommended free cardio-sync path now that Strava is paywalled.
 
 ## Hardening follow-ups
 
 1. Normalize server-action error mapping across all modules.
 2. Add small shared composition helpers in `apps/web/src/lib/server` to reduce repeated repository wiring.
-3. A user-editable exercise catalog or per-user alias overrides, once uncategorized strength volume becomes a recurring nuisance (today's catalog is static and in-code, TD-021).
+3. Consider batching the cross-provider duplicate lookup. It currently costs one same-day query per imported item, which is fine at a weekly cron over one user's rides but would not be at a bulk historical import.
