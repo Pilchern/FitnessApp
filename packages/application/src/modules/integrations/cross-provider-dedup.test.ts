@@ -8,6 +8,7 @@ import {
   isSameCardioEvent,
   normalizeWeightLb,
   resolveSourcePriority,
+  resolveSportFamily,
 } from "./cross-provider-dedup";
 import type {
   BodyMetricDedupShape,
@@ -25,6 +26,7 @@ function cardio(overrides: Partial<CardioDedupShape> = {}): CardioDedupShape {
     sessionDate: "2026-08-10",
     startedAt: "2026-08-10T14:00:00.000Z",
     durationMinutes: 45,
+    sportType: null,
     source: imported("strava"),
     ...overrides,
   };
@@ -156,13 +158,125 @@ describe("isSameCardioEvent", () => {
     ).toBe(false);
   });
 
-  it("does not match across different days", () => {
+  it("matches the same instant even when the two providers filed different dates", () => {
+    // The headline TD-019 case, and the one the first version of this module
+    // got wrong. Apple Health's bridge sends a local timestamp with an offset,
+    // so its sessionDate is local; Strava slices its UTC start_date. One
+    // 18:30 Pacific ride therefore lands as 2026-08-10 via Apple Health and
+    // 2026-08-11 via Strava. Both records describe the same instant.
     expect(
       isSameCardioEvent(
-        cardio({ sessionDate: "2026-08-11", source: imported("apple_health") }),
-        cardio({ sessionDate: "2026-08-10", source: imported("strava") }),
+        cardio({
+          sessionDate: "2026-08-10",
+          startedAt: "2026-08-10T18:30:00-07:00",
+          source: imported("apple_health"),
+        }),
+        cardio({
+          sessionDate: "2026-08-11",
+          startedAt: "2026-08-11T01:30:00.000Z",
+          source: imported("strava"),
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("matches a workout that straddles midnight", () => {
+    // 23:56Z seen by one provider, 00:02Z the next day by another — six
+    // minutes apart, so the same workout, on two different calendar dates.
+    expect(
+      isSameCardioEvent(
+        cardio({
+          sessionDate: "2026-08-11",
+          startedAt: "2026-08-11T00:02:00.000Z",
+          source: imported("peloton"),
+        }),
+        cardio({
+          sessionDate: "2026-08-10",
+          startedAt: "2026-08-10T23:56:00.000Z",
+          source: imported("apple_health"),
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it("does not match genuinely different days", () => {
+    expect(
+      isSameCardioEvent(
+        cardio({
+          sessionDate: "2026-08-11",
+          startedAt: "2026-08-11T14:00:00.000Z",
+          source: imported("apple_health"),
+        }),
+        cardio({
+          sessionDate: "2026-08-10",
+          startedAt: "2026-08-10T14:00:00.000Z",
+          source: imported("strava"),
+        }),
       ),
     ).toBe(false);
+  });
+
+  it("falls back to the calendar date only when a start time is missing", () => {
+    // Weakest case: without an instant to compare, the date is all there is,
+    // and it only counts alongside a duration match.
+    expect(
+      isSameCardioEvent(
+        cardio({ startedAt: null, source: imported("apple_health") }),
+        cardio({ startedAt: null, source: imported("strava") }),
+      ),
+    ).toBe(true);
+
+    expect(
+      isSameCardioEvent(
+        cardio({
+          startedAt: null,
+          sessionDate: "2026-08-11",
+          source: imported("apple_health"),
+        }),
+        cardio({
+          startedAt: null,
+          sessionDate: "2026-08-10",
+          source: imported("strava"),
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps a walk and a ride distinct even when they line up in time", () => {
+    // Without a sport check, a lunchtime walk logged by Apple Health was
+    // treated as a duplicate of a lunchtime ride from Strava and discarded.
+    expect(
+      isSameCardioEvent(
+        cardio({
+          source: imported("apple_health"),
+          sportType: "Outdoor Walk",
+          startedAt: "2026-08-10T14:10:00.000Z",
+        }),
+        cardio({ source: imported("strava"), sportType: "Ride" }),
+      ),
+    ).toBe(false);
+  });
+
+  it("matches the same ride across each provider's own sport vocabulary", () => {
+    // Strava says "Ride", an Apple Health bridge says "Cycling", Peloton says
+    // "cycling". Comparing the raw strings would reject every real duplicate.
+    expect(
+      isSameCardioEvent(
+        cardio({ source: imported("apple_health"), sportType: "Cycling" }),
+        cardio({ source: imported("strava"), sportType: "Ride" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("treats an unrecognized sport label as no opinion, not as a mismatch", () => {
+    // A provider adding a new activity name must not silently switch
+    // duplicate detection off.
+    expect(
+      isSameCardioEvent(
+        cardio({ source: imported("apple_health"), sportType: "Padel" }),
+        cardio({ source: imported("strava"), sportType: "Ride" }),
+      ),
+    ).toBe(true);
   });
 
   it("matches an import against a manual entry for the same workout", () => {
@@ -183,6 +297,28 @@ describe("isSameCardioEvent", () => {
         cardio({ source: imported("strava"), durationMinutes: 45 }),
       ),
     ).toBe(false);
+  });
+});
+
+describe("resolveSportFamily", () => {
+  it("groups each provider's vocabulary for the same activity", () => {
+    expect(resolveSportFamily("Ride")).toBe("cycle");
+    expect(resolveSportFamily("Cycling")).toBe("cycle");
+    expect(resolveSportFamily("cycling")).toBe("cycle");
+    expect(resolveSportFamily("Indoor Cycling")).toBe("cycle");
+  });
+
+  it("separates activities that are not the same thing", () => {
+    expect(resolveSportFamily("Outdoor Walk")).toBe("walk");
+    expect(resolveSportFamily("Trail Run")).toBe("run");
+    expect(resolveSportFamily("Rowing")).toBe("row");
+  });
+
+  it("returns null for an absent or unrecognized label", () => {
+    expect(resolveSportFamily(null)).toBeNull();
+    expect(resolveSportFamily("")).toBeNull();
+    expect(resolveSportFamily("   ")).toBeNull();
+    expect(resolveSportFamily("Padel")).toBeNull();
   });
 });
 

@@ -207,6 +207,30 @@ export class SupabaseCardioSessionRepository implements CardioSessionRepository 
       : null;
   }
 
+  async findArchivedByExternalId(
+    userId: string,
+    sourceProvider: string,
+    sourceExternalId: string,
+  ) {
+    const response = await this.client
+      .from("cardio_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("source_provider", sourceProvider)
+      .eq("source_external_id", sourceExternalId)
+      .not("deleted_at", "is", null)
+      .maybeSingle();
+
+    throwOnError(
+      response.error,
+      "Find soft-deleted cardio session by external id",
+    );
+
+    return response.data
+      ? mapCardioSessionRow(cardioSessionRowSchema.parse(response.data))
+      : null;
+  }
+
   async archive(userId: string, id: string) {
     const response = await this.client
       .from("cardio_sessions")

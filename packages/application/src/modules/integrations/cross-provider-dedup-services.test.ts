@@ -34,7 +34,7 @@ function storedCardio(
     rpe: null,
     distanceMeters: null,
     notes: null,
-    sportType: null,
+    sportType: "Ride",
     source: {
       sourceType: "imported",
       sourceProvider: "strava",
@@ -94,6 +94,7 @@ function createCardioRepository(sameDay: CardioSession[]) {
     archive: vi.fn(),
     findById: vi.fn(),
     findByExternalId: vi.fn().mockResolvedValue(null),
+    findArchivedByExternalId: vi.fn().mockResolvedValue(null),
     listByDateRange: vi.fn().mockResolvedValue(sameDay),
   };
 }
@@ -117,6 +118,7 @@ const importedAppleHealthRide = {
   durationMinutes: 45,
   sessionKind: "zone2" as const,
   plannedVsCompleted: "completed" as const,
+  sportType: "Cycling",
   source: {
     sourceType: "imported" as const,
     sourceProvider: "apple_health",
@@ -208,7 +210,7 @@ describe("CardioSessionService.upsertImported cross-provider handling", () => {
     expect(repository.listByDateRange).not.toHaveBeenCalled();
   });
 
-  it("scopes the duplicate lookup to the incoming session's own day", async () => {
+  it("widens the duplicate lookup to the adjacent days", async () => {
     const repository = createCardioRepository([]);
     const service = new CardioSessionService(repository as never);
 
@@ -216,9 +218,30 @@ describe("CardioSessionService.upsertImported cross-provider handling", () => {
 
     expect(repository.listByDateRange).toHaveBeenCalledWith({
       userId,
-      startDate: "2026-08-10",
-      endDate: "2026-08-10",
+      startDate: "2026-08-09",
+      endDate: "2026-08-11",
     });
+  });
+  it("returns an archived same-provider row instead of re-creating it", async () => {
+    // `cardio_sessions_external_id_dedup_idx` has no `deleted_at is null`
+    // predicate, so a tombstone still holds its slot. Falling through to
+    // create here would violate that constraint on every sync, forever —
+    // and for Apple Health, which re-posts whatever the bridge sends with no
+    // cursor, "forever" is literal.
+    const repository = createCardioRepository([]);
+    repository.findArchivedByExternalId.mockResolvedValue(
+      storedCardio({ id: "archived-1" }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    const result = await service.upsertImported(
+      userId,
+      importedAppleHealthRide,
+    );
+
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(result.created).toBe(false);
+    expect(result.session.id).toBe("archived-1");
   });
 });
 
@@ -302,5 +325,43 @@ describe("BodyMetricService.upsertImported cross-provider handling", () => {
         weightLb: 182.5,
       }),
     ).rejects.toThrow("imported source");
+  });
+  it("does not archive the loser when the repository refused to write (tombstone)", async () => {
+    // The repository has tombstone semantics: if this provider's external id
+    // was soft-deleted by the user, it returns the tombstone and writes
+    // nothing. Archiving the loser anyway left the day with NO live record —
+    // both the row we thought we wrote and the one we superseded gone — and
+    // repeated on every sync.
+    const repository = createBodyMetricRepository([
+      storedMetric({
+        id: "apple-1",
+        source: {
+          sourceType: "imported",
+          sourceProvider: "apple_health",
+          sourceExternalId: "ah-weight-1",
+          importBatchId: null,
+          rawImportEventId: null,
+        },
+      }),
+    ]);
+    repository.upsertImported.mockResolvedValue(
+      storedMetric({
+        id: "withings-tombstone",
+        deletedAt: "2026-08-11T00:00:00.000Z",
+      }),
+    );
+    const service = new BodyMetricService(repository as never);
+
+    const result = await service.upsertImported({
+      ...importedAppleHealthWeight,
+      source: {
+        ...importedAppleHealthWeight.source,
+        sourceProvider: "withings",
+        sourceExternalId: "withings-1",
+      },
+    });
+
+    expect(repository.archive).not.toHaveBeenCalled();
+    expect(result.crossProvider.outcome).toBe("skip_incoming");
   });
 });

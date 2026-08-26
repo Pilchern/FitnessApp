@@ -28,6 +28,18 @@
  * - **Higher-fidelity providers win over relays.** A record from the device
  *   that measured the event carries fields a relay drops (see
  *   `CARDIO_SOURCE_PRIORITY` below).
+ *
+ * Known trade-off: priority ranks *source trust*, not *field richness*, and
+ * nothing merges the two records. So a user who hand-logs "182 lb" on a day
+ * the Withings scale also reports 182.4 keeps their own entry and loses the
+ * scale's body-composition fields; the same applies to a hand-logged ride
+ * versus a Peloton import carrying power and cadence. This is deliberate --
+ * an import silently rewriting what a person typed is the worse failure --
+ * but it is a behavior change from before this module existed, when both rows
+ * were kept and the user could delete the poorer one. The losing payload is
+ * still retained in `raw_import_events`. Merging field-by-field is the
+ * obvious next step and was left out because it risks losing data on a
+ * heuristic.
  */
 
 /** The provider set that can write imported records today. */
@@ -177,8 +189,53 @@ export type CardioDedupShape = {
   sessionDate: string;
   startedAt: string | null;
   durationMinutes: number | null;
+  sportType: string | null;
   source: DedupRecordSource;
 };
+
+/**
+ * Coarse activity families, used to keep two genuinely different workouts on
+ * the same day from matching each other.
+ *
+ * A family, not the raw string, because the providers disagree on vocabulary
+ * for the same activity: Strava's `sport_type` says `"Ride"`, an Apple Health
+ * bridge's `workout_type` says `"Cycling"`, Peloton's discipline says
+ * `"cycling"`. Comparing the raw strings would reject every real duplicate;
+ * comparing nothing (the original version of this module) accepted a
+ * lunchtime walk as a duplicate of a lunchtime ride.
+ */
+const SPORT_FAMILY_PATTERNS: Array<[RegExp, string]> = [
+  [/cycl|ride|bike|biking|spin|peloton|handcycle/, "cycle"],
+  [/run|jog|treadmill|trail ?run/, "run"],
+  [/walk|hike|hiking|rucking|ruck/, "walk"],
+  [/swim/, "swim"],
+  [/row/, "row"],
+  [/elliptical|stair|climb/, "stairs"],
+  [/yoga|pilates|stretch|mobility/, "mobility"],
+  [/strength|weight|lifting|functional|cross ?train/, "strength"],
+];
+
+/**
+ * Maps a provider's sport label to a coarse family, or null when the label is
+ * absent or unrecognized. Null means "no opinion" — an unrecognized label must
+ * never block a match, or a provider adding a new activity name would silently
+ * turn duplicate detection off.
+ */
+export function resolveSportFamily(sportType: string | null): string | null {
+  if (!sportType) {
+    return null;
+  }
+  const normalized = sportType.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  for (const [pattern, family] of SPORT_FAMILY_PATTERNS) {
+    if (pattern.test(normalized)) {
+      return family;
+    }
+  }
+  return null;
+}
 
 /** The fields of a body metric this module compares. */
 export type BodyMetricDedupShape = {
@@ -191,42 +248,63 @@ export type BodyMetricDedupShape = {
 /**
  * Whether two cardio sessions describe the same real-world workout.
  *
- * Requires the same calendar day, different sources, and *every* signal the
- * two records share to agree. Abstains (returns false) when they share no
- * comparable signal at all — a bare date match is not evidence.
+ * The primary signal is `startedAt`, an absolute instant, deliberately *not*
+ * `sessionDate`. The three cardio importers derive `sessionDate` in different
+ * timezones — Strava slices its UTC `start_date`, Peloton converts its epoch
+ * through `toISOString()` (also UTC), and the Apple Health bridge sends a
+ * local timestamp with an offset, so its date is local. One evening ride
+ * therefore lands as two different `sessionDate` values, which is exactly the
+ * Peloton-via-Strava-plus-Apple-Health collision this module exists to catch.
+ * Comparing instants sidesteps the whole problem, and also handles a workout
+ * that straddles midnight.
+ *
+ * `sessionDate` is used only as a fallback when one of the two records has no
+ * `startedAt` to compare, which is the weakest case and correspondingly
+ * demands a duration match too.
+ *
+ * Every signal the two records share must agree; the function abstains when
+ * they share none, because a bare date match is not evidence and wrongly
+ * merging two real workouts is worse than leaving a visible duplicate.
  */
 export function isSameCardioEvent(
   incoming: CardioDedupShape,
   existing: CardioDedupShape,
 ): boolean {
-  if (incoming.sessionDate !== existing.sessionDate) {
-    return false;
-  }
   if (!isDifferentSource(incoming.source, existing.source)) {
     return false;
   }
 
-  let comparedAnySignal = false;
+  // Different activities on the same day are not the same event. Only applied
+  // when both labels resolve to a known family — an unrecognized label means
+  // "no opinion", never "no match".
+  const incomingFamily = resolveSportFamily(incoming.sportType);
+  const existingFamily = resolveSportFamily(existing.sportType);
+  if (incomingFamily && existingFamily && incomingFamily !== existingFamily) {
+    return false;
+  }
+
+  const durationsComparable =
+    incoming.durationMinutes != null && existing.durationMinutes != null;
+  const durationsAgree =
+    durationsComparable &&
+    Math.abs(incoming.durationMinutes! - existing.durationMinutes!) <=
+      CARDIO_DURATION_TOLERANCE_MINUTES;
+
+  if (durationsComparable && !durationsAgree) {
+    return false;
+  }
 
   if (incoming.startedAt && existing.startedAt) {
     const apart = minutesApart(incoming.startedAt, existing.startedAt);
     if (apart != null) {
-      if (apart > CARDIO_START_TIME_TOLERANCE_MINUTES) {
-        return false;
-      }
-      comparedAnySignal = true;
+      return apart <= CARDIO_START_TIME_TOLERANCE_MINUTES;
     }
   }
 
-  if (incoming.durationMinutes != null && existing.durationMinutes != null) {
-    const apart = Math.abs(incoming.durationMinutes - existing.durationMinutes);
-    if (apart > CARDIO_DURATION_TOLERANCE_MINUTES) {
-      return false;
-    }
-    comparedAnySignal = true;
-  }
-
-  return comparedAnySignal;
+  // No comparable start times. Fall back to the calendar date, which is only
+  // meaningful alongside a duration match — and even then only when both
+  // records happen to have derived their date the same way.
+  return incoming.sessionDate === existing.sessionDate && durationsAgree;
 }
 
 /**

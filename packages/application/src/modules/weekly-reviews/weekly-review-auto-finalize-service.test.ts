@@ -174,6 +174,10 @@ class EmptyCardioSessionRepository implements CardioSessionRepository {
   async findByExternalId(): Promise<CardioSession | null> {
     return null;
   }
+
+  async findArchivedByExternalId(): Promise<CardioSession | null> {
+    return null;
+  }
   async listByDateRange(): Promise<CardioSession[]> {
     return [];
   }

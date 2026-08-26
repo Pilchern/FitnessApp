@@ -21,6 +21,16 @@ import {
   decideCardioCrossProvider,
 } from "../integrations/cross-provider-dedup";
 
+/**
+ * Shifts a `YYYY-MM-DD` string by whole days. Anchored at midday UTC so a
+ * daylight-saving transition can't push the result onto the wrong date.
+ */
+function shiftIsoDate(isoDate: string, days: number): string {
+  const anchored = new Date(`${isoDate}T12:00:00.000Z`);
+  anchored.setUTCDate(anchored.getUTCDate() + days);
+  return anchored.toISOString().slice(0, 10);
+}
+
 const cardioSessionKindSchema = z.enum(["zone2", "vo2", "recovery", "other"]);
 const cardioSessionCompletionSchema = z.enum([
   "planned",
@@ -195,6 +205,21 @@ export interface CardioSessionRepository {
     sourceProvider: string,
     sourceExternalId: string,
   ): Promise<CardioSession | null>;
+  /**
+   * Same lookup as `findByExternalId`, but for soft-deleted rows only.
+   *
+   * Needed because `cardio_sessions_external_id_dedup_idx` is NOT predicated
+   * on `deleted_at is null` (unlike its sibling
+   * `cardio_sessions_provider_external_unique_idx`), so a tombstone still
+   * occupies its slot in that index. Without this check, re-importing an
+   * external id that cross-provider dedup previously archived would fall
+   * through to `create` and hit a unique-constraint violation on every sync.
+   */
+  findArchivedByExternalId(
+    userId: UserId,
+    sourceProvider: string,
+    sourceExternalId: string,
+  ): Promise<CardioSession | null>;
   listByDateRange(query: CardioSessionDateRangeQuery): Promise<CardioSession[]>;
 }
 
@@ -265,27 +290,49 @@ export class CardioSessionService {
       if (existing) {
         return { created: false, session: existing };
       }
+
+      // A tombstone for this external id still occupies a slot in
+      // `cardio_sessions_external_id_dedup_idx`, which has no `deleted_at`
+      // predicate. Falling through to `create` here would violate that
+      // constraint on every sync, forever. Returning the tombstone also
+      // preserves the user's intent when they deleted the row themselves,
+      // matching how the body-metric repository already behaves.
+      const archived = await this.repository.findArchivedByExternalId(
+        userId,
+        sourceProvider,
+        sourceExternalId,
+      );
+      if (archived) {
+        return { created: false, session: archived };
+      }
     }
 
     const parsed = createCardioSessionSchema.parse({ userId, ...session });
 
-    const sameDayExisting = await this.repository.listByDateRange({
+    // Deliberately +/- one day rather than the session's own date. The three
+    // cardio importers derive sessionDate in different timezones (Strava and
+    // Peloton from UTC, the Apple Health bridge from a local timestamp), so
+    // the same ride can be filed under two adjacent dates -- and a workout
+    // that straddles midnight lands on two dates for any single provider.
+    // Matching then happens on `startedAt`, which is an absolute instant.
+    const nearbyExisting = await this.repository.listByDateRange({
       userId,
-      startDate: parsed.sessionDate,
-      endDate: parsed.sessionDate,
+      startDate: shiftIsoDate(parsed.sessionDate, -1),
+      endDate: shiftIsoDate(parsed.sessionDate, 1),
     });
     const decision = decideCardioCrossProvider(
       {
         sessionDate: parsed.sessionDate,
         startedAt: parsed.startedAt ?? null,
         durationMinutes: parsed.durationMinutes ?? null,
+        sportType: parsed.sportType ?? null,
         source: parsed.source,
       },
-      sameDayExisting,
+      nearbyExisting,
     );
 
     if (decision.outcome === "skip_incoming") {
-      const winner = sameDayExisting.find(
+      const winner = nearbyExisting.find(
         (candidate) => candidate.id === decision.duplicateOf,
       );
       // `duplicateOf` always names a member of the list the decision was made

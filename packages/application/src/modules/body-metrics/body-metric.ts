@@ -167,8 +167,31 @@ export class BodyMetricService {
 
     const metric = await this.repository.upsertImported(parsed);
 
-    if (decision.outcome === "supersede_existing") {
+    // `repository.upsertImported` has tombstone semantics: if this provider's
+    // external id was previously soft-deleted by the user, it refuses to
+    // resurrect the row and hands back the tombstone without writing
+    // anything. Archiving the loser in that case would leave the day with no
+    // live record at all -- both the row we thought we wrote and the one we
+    // superseded gone -- and it would repeat on every sync. A returned row
+    // that is still deleted means nothing was stored, so there is nothing to
+    // supersede.
+    if (decision.outcome === "supersede_existing" && metric.deletedAt == null) {
       await this.repository.archive(parsed.userId, decision.duplicateOf);
+      return { metric, crossProvider: decision };
+    }
+
+    if (decision.outcome === "supersede_existing") {
+      return {
+        metric,
+        crossProvider: {
+          outcome: "skip_incoming",
+          duplicateOf: decision.duplicateOf,
+          reason:
+            "Skipped: this measurement was previously deleted for this " +
+            "provider, so it was not re-imported and the existing record " +
+            "was left in place.",
+        },
+      };
     }
 
     return { metric, crossProvider: decision };

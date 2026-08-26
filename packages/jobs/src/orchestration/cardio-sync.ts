@@ -45,6 +45,8 @@ export type SyncCardioSessionsResult = {
   failedItemCount: number;
   /** Duplicates of another item in the same page, from the same provider. */
   skippedDuplicateCount: number;
+  /** Items the provider adapter declined to map (e.g. an incomplete workout). */
+  skippedUnmappableCount: number;
   /** Incoming sessions dropped because a higher-priority provider already had them (TD-019). */
   skippedCrossProviderCount: number;
   /** Stored sessions archived because this provider outranks the source that wrote them (TD-019). */
@@ -263,6 +265,7 @@ export class CardioSyncOrchestrator {
     let processedItemCount = 0;
     let failedItemCount = 0;
     let skippedDuplicateCount = 0;
+    let skippedUnmappableCount = 0;
     let skippedCrossProviderCount = 0;
     let supersededCrossProviderCount = 0;
 
@@ -326,7 +329,11 @@ export class CardioSyncOrchestrator {
             });
 
             if (!mapped) {
+              // Peloton's adapter returns null for non-COMPLETE workouts, so
+              // this bucket is non-empty in practice. Counting it keeps
+              // rawItemCount reconcilable against the other four counters.
               await this.rawImportEventStore.markSkipped(rawEvent.id);
+              skippedUnmappableCount += 1;
               continue;
             }
 
@@ -340,9 +347,8 @@ export class CardioSyncOrchestrator {
 
             const { providerExternalId, ...sessionFields } = mapped;
 
-            const { crossProvider } = await this.cardioService.upsertImported(
-              input.userId,
-              {
+            const { session, crossProvider } =
+              await this.cardioService.upsertImported(input.userId, {
                 ...sessionFields,
                 source: {
                   sourceType: "imported",
@@ -351,8 +357,7 @@ export class CardioSyncOrchestrator {
                   importBatchId: importBatch.id,
                   rawImportEventId: rawEvent.id,
                 },
-              },
-            );
+              });
 
             // A cross-provider duplicate (TD-019): this workout is already
             // recorded from a higher-priority source, so nothing was written.
@@ -371,9 +376,12 @@ export class CardioSyncOrchestrator {
               supersededCrossProviderCount += 1;
             }
 
+            // Was `rawEvent.id` -- the raw event's own id, not the row it
+            // produced -- so the import log pointed nowhere useful. The other
+            // two orchestrators already used the created row's id.
             await this.rawImportEventStore.markMapped(rawEvent.id, {
               canonicalTargetTable: "cardio_sessions",
-              canonicalTargetId: rawEvent.id,
+              canonicalTargetId: session.id,
             });
 
             processedItemCount += 1;
@@ -442,6 +450,7 @@ export class CardioSyncOrchestrator {
         processedItemCount,
         failedItemCount,
         skippedDuplicateCount,
+        skippedUnmappableCount,
         skippedCrossProviderCount,
         supersededCrossProviderCount,
       });
@@ -471,6 +480,7 @@ export class CardioSyncOrchestrator {
       processedItemCount,
       failedItemCount,
       skippedDuplicateCount,
+      skippedUnmappableCount,
       skippedCrossProviderCount,
       supersededCrossProviderCount,
     };
