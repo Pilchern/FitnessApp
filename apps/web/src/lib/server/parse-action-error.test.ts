@@ -7,7 +7,8 @@ function makeRedirectError(url = "/dashboard") {
   const err = new Error(`NEXT_REDIRECT;replace;${url};307;`);
   // The discriminator isRedirectError checks for is the "NEXT_REDIRECT" digest prefix
   // plus a `digest` string on the error.
-  (err as Error & { digest: string }).digest = `NEXT_REDIRECT;replace;${url};307;`;
+  (err as Error & { digest: string }).digest =
+    `NEXT_REDIRECT;replace;${url};307;`;
   return err;
 }
 

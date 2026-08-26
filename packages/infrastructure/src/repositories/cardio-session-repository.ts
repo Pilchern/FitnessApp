@@ -1,6 +1,4 @@
-import type {
-  CardioSession,
-} from "@fitness-app/domain";
+import type { CardioSession } from "@fitness-app/domain";
 import type {
   CardioSessionRepository,
   CreateCardioSessionInput,

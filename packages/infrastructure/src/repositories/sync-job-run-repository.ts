@@ -11,7 +11,14 @@ const syncJobRunRowSchema = z.object({
   user_id: z.string().uuid().nullable(),
   integration_connection_id: z.string().uuid().nullable(),
   job_type: z.string(),
-  status: z.enum(["queued", "running", "succeeded", "failed", "cancelled", "dead_letter"]),
+  status: z.enum([
+    "queued",
+    "running",
+    "succeeded",
+    "failed",
+    "cancelled",
+    "dead_letter",
+  ]),
   trigger_type: z.enum(["scheduled", "manual", "retry", "system", "webhook"]),
   dedupe_key: z.string().nullable(),
   attempt_count: z.number().int(),
@@ -26,7 +33,9 @@ const syncJobRunRowSchema = z.object({
   updated_at: z.string(),
 });
 
-function mapSyncJobRunRow(row: z.infer<typeof syncJobRunRowSchema>): SyncJobRun {
+function mapSyncJobRunRow(
+  row: z.infer<typeof syncJobRunRowSchema>,
+): SyncJobRun {
   return {
     id: row.id,
     userId: row.user_id,
@@ -108,7 +117,11 @@ export class SupabaseSyncJobRunRepository {
     throwOnError(response.error, "Mark sync job run running");
   }
 
-  async markSucceeded(id: string, result: Record<string, unknown>, attemptCount = 1) {
+  async markSucceeded(
+    id: string,
+    result: Record<string, unknown>,
+    attemptCount = 1,
+  ) {
     const response = await this.client
       .from("sync_job_runs")
       .update({

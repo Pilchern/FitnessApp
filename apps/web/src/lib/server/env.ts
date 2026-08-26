@@ -75,9 +75,9 @@ export function hasWithingsServerEnv() {
 
   return Boolean(
     env.WITHINGS_CLIENT_ID &&
-      env.WITHINGS_CLIENT_SECRET &&
-      env.WITHINGS_REDIRECT_URI &&
-      env.INTEGRATION_ENCRYPTION_KEY,
+    env.WITHINGS_CLIENT_SECRET &&
+    env.WITHINGS_REDIRECT_URI &&
+    env.INTEGRATION_ENCRYPTION_KEY,
   );
 }
 
@@ -90,9 +90,9 @@ export function hasStravaServerEnv() {
   const env = getServerEnv();
   return Boolean(
     env.STRAVA_CLIENT_ID &&
-      env.STRAVA_CLIENT_SECRET &&
-      env.STRAVA_REDIRECT_URI &&
-      env.INTEGRATION_ENCRYPTION_KEY,
+    env.STRAVA_CLIENT_SECRET &&
+    env.STRAVA_REDIRECT_URI &&
+    env.INTEGRATION_ENCRYPTION_KEY,
   );
 }
 

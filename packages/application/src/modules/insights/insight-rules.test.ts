@@ -22,7 +22,8 @@ function manualSource() {
 }
 
 function makeStrengthSet(
-  overrides: Partial<StrengthExerciseSet> & Pick<StrengthExerciseSet, "exerciseName">,
+  overrides: Partial<StrengthExerciseSet> &
+    Pick<StrengthExerciseSet, "exerciseName">,
 ): StrengthExerciseSet {
   return {
     id: `set-${Math.random()}`,
@@ -465,8 +466,9 @@ describe("insight rules", () => {
     ]);
 
     expect(
-      insights.find((insight) => insight.insightType === "repeated_missed_saturday")
-        ?.recommendedNextAction,
+      insights.find(
+        (insight) => insight.insightType === "repeated_missed_saturday",
+      )?.recommendedNextAction,
     ).toMatch(/Saturday/);
     expect(
       insights.find((insight) => insight.insightType === "poor_recovery_trend")
@@ -535,7 +537,9 @@ describe("insight rules", () => {
     };
   }
 
-  function emptyInput(overrides: Partial<Parameters<typeof buildInsights>[0]> = {}): Parameters<typeof buildInsights>[0] {
+  function emptyInput(
+    overrides: Partial<Parameters<typeof buildInsights>[0]> = {},
+  ): Parameters<typeof buildInsights>[0] {
     return {
       bodyMetrics: [],
       cardioSessions: [],
@@ -554,42 +558,58 @@ describe("insight rules", () => {
 
   describe("zone2_below_target", () => {
     it("fires a warning when zone2Minutes is 0", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { zone2Minutes: 0 })],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "zone2_below_target");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [makeWeeklyReview("2026-03-30", { zone2Minutes: 0 })],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "zone2_below_target",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("warning");
       expect(insight?.explanation).toContain("0 min");
     });
 
     it("fires a caution when zone2Minutes is 1–59", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { zone2Minutes: 45 })],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "zone2_below_target");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [makeWeeklyReview("2026-03-30", { zone2Minutes: 45 })],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "zone2_below_target",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("caution");
     });
 
     it("fires an info insight when zone2Minutes is 60–89", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { zone2Minutes: 75 })],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "zone2_below_target");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [makeWeeklyReview("2026-03-30", { zone2Minutes: 75 })],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "zone2_below_target",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("info");
     });
 
     it("does not fire when zone2Minutes >= 90", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { zone2Minutes: 90 })],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "zone2_below_target")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [makeWeeklyReview("2026-03-30", { zone2Minutes: 90 })],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "zone2_below_target"),
+      ).toBeUndefined();
     });
   });
 
@@ -597,46 +617,60 @@ describe("insight rules", () => {
 
   describe("consecutive_strength_missed", () => {
     it("fires a warning when both last and previous week had 0 lifts", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { liftsCompleted: 0 }),
-          makeWeeklyReview("2026-03-23", { liftsCompleted: 0 }),
-        ],
-        liftsCompletedByWeek: { "2026-03-30": 0, "2026-03-23": 0 },
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "consecutive_strength_missed");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { liftsCompleted: 0 }),
+            makeWeeklyReview("2026-03-23", { liftsCompleted: 0 }),
+          ],
+          liftsCompletedByWeek: { "2026-03-30": 0, "2026-03-23": 0 },
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "consecutive_strength_missed",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("warning");
     });
 
     it("does not fire when the last completed week had lifts", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { liftsCompleted: 2 }),
-          makeWeeklyReview("2026-03-23", { liftsCompleted: 0 }),
-        ],
-        liftsCompletedByWeek: { "2026-03-30": 2, "2026-03-23": 0 },
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "consecutive_strength_missed")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { liftsCompleted: 2 }),
+            makeWeeklyReview("2026-03-23", { liftsCompleted: 0 }),
+          ],
+          liftsCompletedByWeek: { "2026-03-30": 2, "2026-03-23": 0 },
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "consecutive_strength_missed"),
+      ).toBeUndefined();
     });
 
     it("does not fire when only the last week had 0 lifts", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { liftsCompleted: 0 }),
-          makeWeeklyReview("2026-03-23", { liftsCompleted: 3 }),
-        ],
-        liftsCompletedByWeek: { "2026-03-30": 0, "2026-03-23": 3 },
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "consecutive_strength_missed")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { liftsCompleted: 0 }),
+            makeWeeklyReview("2026-03-23", { liftsCompleted: 3 }),
+          ],
+          liftsCompletedByWeek: { "2026-03-30": 0, "2026-03-23": 3 },
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "consecutive_strength_missed"),
+      ).toBeUndefined();
     });
 
     it("fires when no review data exists (falls back to 0 lifts for both weeks)", () => {
       const insights = buildInsights(emptyInput({ now: TEST_NOW }));
-      expect(insights.find((i) => i.insightType === "consecutive_strength_missed")).toBeDefined();
+      expect(
+        insights.find((i) => i.insightType === "consecutive_strength_missed"),
+      ).toBeDefined();
     });
   });
 
@@ -644,40 +678,64 @@ describe("insight rules", () => {
 
   describe("sleep_below_target", () => {
     it("fires a warning when sleep average is below 6 hours", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { sleepAverageHours: 5.5 })],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "sleep_below_target");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { sleepAverageHours: 5.5 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "sleep_below_target",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("warning");
       expect(insight?.explanation).toContain("5.5h");
     });
 
     it("fires a caution when sleep average is 6–6.9 hours", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { sleepAverageHours: 6.5 })],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "sleep_below_target");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { sleepAverageHours: 6.5 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "sleep_below_target",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("caution");
     });
 
     it("does not fire when sleep average is 7 hours or above", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { sleepAverageHours: 7.0 })],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "sleep_below_target")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { sleepAverageHours: 7.0 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "sleep_below_target"),
+      ).toBeUndefined();
     });
 
     it("does not fire when sleepAverageHours is null", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { sleepAverageHours: null })],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "sleep_below_target")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { sleepAverageHours: null }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "sleep_below_target"),
+      ).toBeUndefined();
     });
   });
 
@@ -685,40 +743,58 @@ describe("insight rules", () => {
 
   describe("alcohol_elevated", () => {
     it("fires a caution when alcohol total is 8–14 drinks", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { alcoholTotal: 10 })],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "alcohol_elevated");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [makeWeeklyReview("2026-03-30", { alcoholTotal: 10 })],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "alcohol_elevated",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("caution");
       expect(insight?.explanation).toContain("10 drinks");
     });
 
     it("fires a warning when alcohol total is 15 or more drinks", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { alcoholTotal: 16 })],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "alcohol_elevated");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [makeWeeklyReview("2026-03-30", { alcoholTotal: 16 })],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "alcohol_elevated",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("warning");
     });
 
     it("does not fire when alcohol total is 7 or below", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { alcoholTotal: 7 })],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "alcohol_elevated")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [makeWeeklyReview("2026-03-30", { alcoholTotal: 7 })],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "alcohol_elevated"),
+      ).toBeUndefined();
     });
 
     it("does not fire when alcoholTotal is null", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [makeWeeklyReview("2026-03-30", { alcoholTotal: null })],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "alcohol_elevated")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { alcoholTotal: null }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "alcohol_elevated"),
+      ).toBeUndefined();
     });
   });
 
@@ -726,70 +802,90 @@ describe("insight rules", () => {
 
   describe("weight_trending_up", () => {
     it("fires a caution when weight increases monotonically by more than 3 lbs over 4 weeks", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { averageWeightLb: 196.0 }),
-          makeWeeklyReview("2026-03-23", { averageWeightLb: 194.5 }),
-          makeWeeklyReview("2026-03-16", { averageWeightLb: 193.0 }),
-          makeWeeklyReview("2026-03-09", { averageWeightLb: 192.0 }),
-        ],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "weight_trending_up");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { averageWeightLb: 196.0 }),
+            makeWeeklyReview("2026-03-23", { averageWeightLb: 194.5 }),
+            makeWeeklyReview("2026-03-16", { averageWeightLb: 193.0 }),
+            makeWeeklyReview("2026-03-09", { averageWeightLb: 192.0 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "weight_trending_up",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("caution");
       expect(insight?.explanation).toContain("4 lb");
     });
 
     it("does not fire when weight increase is 3 lbs or less", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { averageWeightLb: 195.0 }),
-          makeWeeklyReview("2026-03-23", { averageWeightLb: 194.0 }),
-          makeWeeklyReview("2026-03-16", { averageWeightLb: 193.0 }),
-          makeWeeklyReview("2026-03-09", { averageWeightLb: 192.0 }),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "weight_trending_up")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { averageWeightLb: 195.0 }),
+            makeWeeklyReview("2026-03-23", { averageWeightLb: 194.0 }),
+            makeWeeklyReview("2026-03-16", { averageWeightLb: 193.0 }),
+            makeWeeklyReview("2026-03-09", { averageWeightLb: 192.0 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "weight_trending_up"),
+      ).toBeUndefined();
     });
 
     it("does not fire when weight is not monotonically increasing", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { averageWeightLb: 196.0 }),
-          makeWeeklyReview("2026-03-23", { averageWeightLb: 194.0 }),
-          makeWeeklyReview("2026-03-16", { averageWeightLb: 195.0 }),
-          makeWeeklyReview("2026-03-09", { averageWeightLb: 192.0 }),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "weight_trending_up")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { averageWeightLb: 196.0 }),
+            makeWeeklyReview("2026-03-23", { averageWeightLb: 194.0 }),
+            makeWeeklyReview("2026-03-16", { averageWeightLb: 195.0 }),
+            makeWeeklyReview("2026-03-09", { averageWeightLb: 192.0 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "weight_trending_up"),
+      ).toBeUndefined();
     });
 
     it("does not fire when fewer than 4 weeks of data exist", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { averageWeightLb: 196.0 }),
-          makeWeeklyReview("2026-03-23", { averageWeightLb: 194.0 }),
-          makeWeeklyReview("2026-03-16", { averageWeightLb: 193.0 }),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "weight_trending_up")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { averageWeightLb: 196.0 }),
+            makeWeeklyReview("2026-03-23", { averageWeightLb: 194.0 }),
+            makeWeeklyReview("2026-03-16", { averageWeightLb: 193.0 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "weight_trending_up"),
+      ).toBeUndefined();
     });
 
     it("does not fire when averageWeightLb is null for any week", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { averageWeightLb: 196.0 }),
-          makeWeeklyReview("2026-03-23", { averageWeightLb: null }),
-          makeWeeklyReview("2026-03-16", { averageWeightLb: 193.0 }),
-          makeWeeklyReview("2026-03-09", { averageWeightLb: 192.0 }),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "weight_trending_up")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { averageWeightLb: 196.0 }),
+            makeWeeklyReview("2026-03-23", { averageWeightLb: null }),
+            makeWeeklyReview("2026-03-16", { averageWeightLb: 193.0 }),
+            makeWeeklyReview("2026-03-09", { averageWeightLb: 192.0 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "weight_trending_up"),
+      ).toBeUndefined();
     });
   });
 
@@ -797,17 +893,19 @@ describe("insight rules", () => {
 
   describe("strong_week", () => {
     it("fires an info insight when all three pillars are hit in the last completed week", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", {
-            liftsCompleted: 3,
-            ridesCompleted: 3,
-            zone2Minutes: 90,
-          }),
-        ],
-        liftsCompletedByWeek: { "2026-03-30": 3 },
-        now: TEST_NOW,
-      }));
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              liftsCompleted: 3,
+              ridesCompleted: 3,
+              zone2Minutes: 90,
+            }),
+          ],
+          liftsCompletedByWeek: { "2026-03-30": 3 },
+          now: TEST_NOW,
+        }),
+      );
       const insight = insights.find((i) => i.insightType === "strong_week");
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("info");
@@ -815,50 +913,64 @@ describe("insight rules", () => {
     });
 
     it("does not fire when lifts are below 3", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", {
-            liftsCompleted: 2,
-            ridesCompleted: 3,
-            zone2Minutes: 90,
-          }),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "strong_week")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              liftsCompleted: 2,
+              ridesCompleted: 3,
+              zone2Minutes: 90,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "strong_week"),
+      ).toBeUndefined();
     });
 
     it("does not fire when cardio rides are below 3", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", {
-            liftsCompleted: 3,
-            ridesCompleted: 2,
-            zone2Minutes: 90,
-          }),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "strong_week")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              liftsCompleted: 3,
+              ridesCompleted: 2,
+              zone2Minutes: 90,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "strong_week"),
+      ).toBeUndefined();
     });
 
     it("does not fire when zone 2 minutes are below 90", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", {
-            liftsCompleted: 3,
-            ridesCompleted: 3,
-            zone2Minutes: 89,
-          }),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "strong_week")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              liftsCompleted: 3,
+              ridesCompleted: 3,
+              zone2Minutes: 89,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "strong_week"),
+      ).toBeUndefined();
     });
 
     it("does not fire when no review data exists", () => {
       const insights = buildInsights(emptyInput({ now: TEST_NOW }));
-      expect(insights.find((i) => i.insightType === "strong_week")).toBeUndefined();
+      expect(
+        insights.find((i) => i.insightType === "strong_week"),
+      ).toBeUndefined();
     });
   });
 
@@ -866,57 +978,90 @@ describe("insight rules", () => {
 
   describe("muscle_group_neglected", () => {
     it("fires when chest is trained but back is skipped with meaningful weekly volume", () => {
-      const insights = buildInsights(emptyInput({
-        strengthSessions: [
-          makeStrengthSession("2026-04-01", [
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 2 }),
-          ]),
-          makeStrengthSession("2026-04-03", [
-            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 2 }),
-            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 3 }),
-            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 4 }),
-          ]),
-        ],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "muscle_group_neglected");
+      const insights = buildInsights(
+        emptyInput({
+          strengthSessions: [
+            makeStrengthSession("2026-04-01", [
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                setNumber: 1,
+              }),
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                setNumber: 2,
+              }),
+            ]),
+            makeStrengthSession("2026-04-03", [
+              makeStrengthSet({ exerciseName: "Back Squat", setNumber: 1 }),
+              makeStrengthSet({ exerciseName: "Back Squat", setNumber: 2 }),
+              makeStrengthSet({ exerciseName: "Back Squat", setNumber: 3 }),
+              makeStrengthSet({ exerciseName: "Back Squat", setNumber: 4 }),
+            ]),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "muscle_group_neglected",
+      );
       expect(insight).toBeDefined();
       expect(insight?.title).toMatch(/back skipped/i);
     });
 
     it("does not fire when there isn't enough weekly training volume to judge", () => {
-      const insights = buildInsights(emptyInput({
-        strengthSessions: [
-          makeStrengthSession("2026-04-01", [
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 2 }),
-          ]),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "muscle_group_neglected")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          strengthSessions: [
+            makeStrengthSession("2026-04-01", [
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                setNumber: 1,
+              }),
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                setNumber: 2,
+              }),
+            ]),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "muscle_group_neglected"),
+      ).toBeUndefined();
     });
 
     it("does not fire when every major muscle group has been trained", () => {
-      const insights = buildInsights(emptyInput({
-        strengthSessions: [
-          makeStrengthSession("2026-04-01", [
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", setNumber: 2 }),
-            makeStrengthSet({ exerciseName: "Barbell Row", setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Barbell Row", setNumber: 2 }),
-            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Back Squat", setNumber: 2 }),
-            makeStrengthSet({ exerciseName: "Overhead Press", setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Romanian Deadlift", setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Hip Thrust", setNumber: 1 }),
-          ]),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "muscle_group_neglected")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          strengthSessions: [
+            makeStrengthSession("2026-04-01", [
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                setNumber: 1,
+              }),
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                setNumber: 2,
+              }),
+              makeStrengthSet({ exerciseName: "Barbell Row", setNumber: 1 }),
+              makeStrengthSet({ exerciseName: "Barbell Row", setNumber: 2 }),
+              makeStrengthSet({ exerciseName: "Back Squat", setNumber: 1 }),
+              makeStrengthSet({ exerciseName: "Back Squat", setNumber: 2 }),
+              makeStrengthSet({ exerciseName: "Overhead Press", setNumber: 1 }),
+              makeStrengthSet({
+                exerciseName: "Romanian Deadlift",
+                setNumber: 1,
+              }),
+              makeStrengthSet({ exerciseName: "Hip Thrust", setNumber: 1 }),
+            ]),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "muscle_group_neglected"),
+      ).toBeUndefined();
     });
   });
 
@@ -924,55 +1069,100 @@ describe("insight rules", () => {
 
   describe("push_pull_imbalance", () => {
     it("fires when press volume heavily outpaces pull volume over 14 days", () => {
-      const insights = buildInsights(emptyInput({
-        strengthSessions: [
-          makeStrengthSession("2026-04-01", [
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", weight: 150, reps: 10, setNumber: 1 }),
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", weight: 150, reps: 10, setNumber: 2 }),
-          ]),
-          makeStrengthSession("2026-04-02", [
-            makeStrengthSet({ exerciseName: "Barbell Row", weight: 50, reps: 10, setNumber: 1 }),
-          ]),
-        ],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "push_pull_imbalance");
+      const insights = buildInsights(
+        emptyInput({
+          strengthSessions: [
+            makeStrengthSession("2026-04-01", [
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                weight: 150,
+                reps: 10,
+                setNumber: 1,
+              }),
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                weight: 150,
+                reps: 10,
+                setNumber: 2,
+              }),
+            ]),
+            makeStrengthSession("2026-04-02", [
+              makeStrengthSet({
+                exerciseName: "Barbell Row",
+                weight: 50,
+                reps: 10,
+                setNumber: 1,
+              }),
+            ]),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "push_pull_imbalance",
+      );
       expect(insight).toBeDefined();
       expect(insight?.title).toMatch(/pressing/i);
     });
 
     it("does not fire when combined volume is too small to be meaningful", () => {
-      const insights = buildInsights(emptyInput({
-        strengthSessions: [
-          makeStrengthSession("2026-04-01", [
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", weight: 50, reps: 5, setNumber: 1 }),
-          ]),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "push_pull_imbalance")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          strengthSessions: [
+            makeStrengthSession("2026-04-01", [
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                weight: 50,
+                reps: 5,
+                setNumber: 1,
+              }),
+            ]),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "push_pull_imbalance"),
+      ).toBeUndefined();
     });
 
     it("does not fire when push and pull volume are roughly balanced", () => {
-      const insights = buildInsights(emptyInput({
-        strengthSessions: [
-          makeStrengthSession("2026-04-01", [
-            makeStrengthSet({ exerciseName: "Barbell Bench Press", weight: 150, reps: 10, setNumber: 1 }),
-          ]),
-          makeStrengthSession("2026-04-02", [
-            makeStrengthSet({ exerciseName: "Barbell Row", weight: 145, reps: 10, setNumber: 1 }),
-          ]),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "push_pull_imbalance")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          strengthSessions: [
+            makeStrengthSession("2026-04-01", [
+              makeStrengthSet({
+                exerciseName: "Barbell Bench Press",
+                weight: 150,
+                reps: 10,
+                setNumber: 1,
+              }),
+            ]),
+            makeStrengthSession("2026-04-02", [
+              makeStrengthSet({
+                exerciseName: "Barbell Row",
+                weight: 145,
+                reps: 10,
+                setNumber: 1,
+              }),
+            ]),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "push_pull_imbalance"),
+      ).toBeUndefined();
     });
   });
 
   // ── Rule: deload_suggested ───────────────────────────────────────────────
 
   describe("deload_suggested", () => {
-    function makeRecoveryCheckin(checkinDate: string, readinessLevel: number): RecoveryCheckin {
+    function makeRecoveryCheckin(
+      checkinDate: string,
+      readinessLevel: number,
+    ): RecoveryCheckin {
       return {
         id: `recovery-${checkinDate}`,
         userId,
@@ -1008,43 +1198,51 @@ describe("insight rules", () => {
     }
 
     it("fires after 3 consistent training weeks combined with a readiness decline", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { liftsCompleted: 3 }),
-          makeWeeklyReview("2026-03-23", { liftsCompleted: 3 }),
-          makeWeeklyReview("2026-03-16", { liftsCompleted: 4 }),
-        ],
-        recoveryCheckins: [
-          makeRecoveryCheckin("2026-04-04", 4),
-          makeRecoveryCheckin("2026-04-03", 4),
-          makeRecoveryCheckin("2026-04-02", 5),
-          makeRecoveryCheckin("2026-03-28", 8),
-          makeRecoveryCheckin("2026-03-27", 7),
-          makeRecoveryCheckin("2026-03-26", 8),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "deload_suggested")).toBeDefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { liftsCompleted: 3 }),
+            makeWeeklyReview("2026-03-23", { liftsCompleted: 3 }),
+            makeWeeklyReview("2026-03-16", { liftsCompleted: 4 }),
+          ],
+          recoveryCheckins: [
+            makeRecoveryCheckin("2026-04-04", 4),
+            makeRecoveryCheckin("2026-04-03", 4),
+            makeRecoveryCheckin("2026-04-02", 5),
+            makeRecoveryCheckin("2026-03-28", 8),
+            makeRecoveryCheckin("2026-03-27", 7),
+            makeRecoveryCheckin("2026-03-26", 8),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "deload_suggested"),
+      ).toBeDefined();
     });
 
     it("does not fire without 3 consecutive high-volume training weeks", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { liftsCompleted: 1 }),
-          makeWeeklyReview("2026-03-23", { liftsCompleted: 3 }),
-          makeWeeklyReview("2026-03-16", { liftsCompleted: 4 }),
-        ],
-        recoveryCheckins: [
-          makeRecoveryCheckin("2026-04-04", 4),
-          makeRecoveryCheckin("2026-04-03", 4),
-          makeRecoveryCheckin("2026-04-02", 5),
-          makeRecoveryCheckin("2026-03-28", 8),
-          makeRecoveryCheckin("2026-03-27", 7),
-          makeRecoveryCheckin("2026-03-26", 8),
-        ],
-        now: TEST_NOW,
-      }));
-      expect(insights.find((i) => i.insightType === "deload_suggested")).toBeUndefined();
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { liftsCompleted: 1 }),
+            makeWeeklyReview("2026-03-23", { liftsCompleted: 3 }),
+            makeWeeklyReview("2026-03-16", { liftsCompleted: 4 }),
+          ],
+          recoveryCheckins: [
+            makeRecoveryCheckin("2026-04-04", 4),
+            makeRecoveryCheckin("2026-04-03", 4),
+            makeRecoveryCheckin("2026-04-02", 5),
+            makeRecoveryCheckin("2026-03-28", 8),
+            makeRecoveryCheckin("2026-03-27", 7),
+            makeRecoveryCheckin("2026-03-26", 8),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "deload_suggested"),
+      ).toBeUndefined();
     });
   });
 
@@ -1052,30 +1250,38 @@ describe("insight rules", () => {
 
   describe("cardio_target_consistently_exceeded", () => {
     it("fires (positive) after 3 straight weeks of exceeding the cardio target", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { ridesCompleted: 4 }),
-          makeWeeklyReview("2026-03-23", { ridesCompleted: 5 }),
-          makeWeeklyReview("2026-03-16", { ridesCompleted: 4 }),
-        ],
-        now: TEST_NOW,
-      }));
-      const insight = insights.find((i) => i.insightType === "cardio_target_consistently_exceeded");
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { ridesCompleted: 4 }),
+            makeWeeklyReview("2026-03-23", { ridesCompleted: 5 }),
+            makeWeeklyReview("2026-03-16", { ridesCompleted: 4 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "cardio_target_consistently_exceeded",
+      );
       expect(insight).toBeDefined();
       expect(insight?.severity).toBe("positive");
     });
 
     it("does not fire when any of the last 3 weeks only hits the target instead of exceeding it", () => {
-      const insights = buildInsights(emptyInput({
-        weeklyReviews: [
-          makeWeeklyReview("2026-03-30", { ridesCompleted: 3 }),
-          makeWeeklyReview("2026-03-23", { ridesCompleted: 5 }),
-          makeWeeklyReview("2026-03-16", { ridesCompleted: 4 }),
-        ],
-        now: TEST_NOW,
-      }));
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { ridesCompleted: 3 }),
+            makeWeeklyReview("2026-03-23", { ridesCompleted: 5 }),
+            makeWeeklyReview("2026-03-16", { ridesCompleted: 4 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
       expect(
-        insights.find((i) => i.insightType === "cardio_target_consistently_exceeded"),
+        insights.find(
+          (i) => i.insightType === "cardio_target_consistently_exceeded",
+        ),
       ).toBeUndefined();
     });
   });

@@ -21,7 +21,10 @@ const MUSCLE_GROUP_LABELS: Record<string, string> = {
 };
 
 function formatWeekRange(weekStart: string, weekEnd: string) {
-  const fmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  });
   return `${fmt.format(new Date(`${weekStart}T12:00:00`))} – ${fmt.format(new Date(`${weekEnd}T12:00:00`))}`;
 }
 
@@ -38,16 +41,30 @@ function Stat({ label, value, sub, href }: StatProps) {
       href={href}
       className="group rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4 transition hover:border-pine/30 hover:bg-pine/5"
     >
-      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">{label}</div>
+      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+        {label}
+      </div>
       <div className="mt-2 text-3xl font-semibold text-ink">{value}</div>
       {sub ? <div className="mt-1.5 text-sm text-ink/60">{sub}</div> : null}
     </Link>
   );
 }
 
-export function TrainingWeekCard({ data, muscleGroupVolume }: TrainingWeekCardProps) {
-  const { weekStart, weekEnd, liftsCompleted, ridesCompleted, zone2Minutes, totalMinutes } = data;
-  const trainedAnything = muscleGroupVolume.byMuscleGroup.some((g) => g.workingSetCount > 0);
+export function TrainingWeekCard({
+  data,
+  muscleGroupVolume,
+}: TrainingWeekCardProps) {
+  const {
+    weekStart,
+    weekEnd,
+    liftsCompleted,
+    ridesCompleted,
+    zone2Minutes,
+    totalMinutes,
+  } = data;
+  const trainedAnything = muscleGroupVolume.byMuscleGroup.some(
+    (g) => g.workingSetCount > 0,
+  );
   const neglected = muscleGroupVolume.neglectedMuscleGroups;
 
   return (
@@ -95,10 +112,16 @@ export function TrainingWeekCard({ data, muscleGroupVolume }: TrainingWeekCardPr
           className="mt-4 flex items-center justify-between gap-3 rounded-[1.25rem] border border-ember/20 bg-ember/5 px-4 py-3 text-sm text-ink/80 transition hover:border-ember/40"
         >
           <span>
-            <span className="font-semibold text-ember">Not trained this week: </span>
-            {neglected.map((group) => MUSCLE_GROUP_LABELS[group] ?? group).join(", ")}
+            <span className="font-semibold text-ember">
+              Not trained this week:{" "}
+            </span>
+            {neglected
+              .map((group) => MUSCLE_GROUP_LABELS[group] ?? group)
+              .join(", ")}
           </span>
-          <span className="shrink-0 text-xs font-semibold text-ember">View breakdown →</span>
+          <span className="shrink-0 text-xs font-semibold text-ember">
+            View breakdown →
+          </span>
         </Link>
       ) : null}
     </section>

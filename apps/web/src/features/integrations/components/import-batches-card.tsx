@@ -1,8 +1,5 @@
 import type { ImportBatch } from "@fitness-app/domain";
-import {
-  formatImportBatchStatus,
-  formatIntegrationDateTime,
-} from "../helpers";
+import { formatImportBatchStatus, formatIntegrationDateTime } from "../helpers";
 
 type ImportBatchesCardProps = {
   importBatches: ImportBatch[];
@@ -41,11 +38,14 @@ export function ImportBatchesCard({ importBatches }: ImportBatchesCardProps) {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-semibold text-ink">
-                    {providerLabel(batch.provider)} — {formatImportBatchStatus(batch.status)}
+                    {providerLabel(batch.provider)} —{" "}
+                    {formatImportBatchStatus(batch.status)}
                   </div>
                   <div className="mt-1 text-sm text-ink/60">
                     {batch.processedItemCount} of {batch.rawItemCount} imported
-                    {batch.failedItemCount > 0 ? ` • ${batch.failedItemCount} failed` : ""}
+                    {batch.failedItemCount > 0
+                      ? ` • ${batch.failedItemCount} failed`
+                      : ""}
                   </div>
                 </div>
                 <div className="text-sm text-ink/70">

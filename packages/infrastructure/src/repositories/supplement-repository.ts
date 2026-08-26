@@ -62,7 +62,9 @@ export class SupabaseSupplementRepository implements SupplementRepository {
       .single();
 
     return mapSupplementRow(
-      supplementRowSchema.parse(requireSingleResult(response, "Create supplement")),
+      supplementRowSchema.parse(
+        requireSingleResult(response, "Create supplement"),
+      ),
     );
   }
 
@@ -76,7 +78,9 @@ export class SupabaseSupplementRepository implements SupplementRepository {
       .single();
 
     return mapSupplementRow(
-      supplementRowSchema.parse(requireSingleResult(response, "Update supplement")),
+      supplementRowSchema.parse(
+        requireSingleResult(response, "Update supplement"),
+      ),
     );
   }
 

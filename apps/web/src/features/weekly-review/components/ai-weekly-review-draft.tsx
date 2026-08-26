@@ -42,7 +42,11 @@ function DraftBlock({ label, value, tone = "default" }: BlockProps) {
   );
 }
 
-export function AiWeeklyReviewDraft({ draft, reviewId, weekStart }: AiWeeklyReviewDraftProps) {
+export function AiWeeklyReviewDraft({
+  draft,
+  reviewId,
+  weekStart,
+}: AiWeeklyReviewDraftProps) {
   const [acceptState, acceptAction] = useActionState(
     useAiWeeklyReviewDraftAction,
     initialState,
@@ -65,17 +69,21 @@ export function AiWeeklyReviewDraft({ draft, reviewId, weekStart }: AiWeeklyRevi
             A first pass at this week&apos;s review
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ink/70">
-            Generated from your logged data. Nothing here is saved until you
-            use it and submit the form below — review it like you would a
-            draft from a coach.
+            Generated from your logged data. Nothing here is saved until you use
+            it and submit the form below — review it like you would a draft from
+            a coach.
           </p>
         </div>
         <div className="shrink-0 rounded-[1.25rem] border border-pine/25 bg-white/80 px-5 py-3 text-center">
           <div className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">
             AI score
           </div>
-          <div className="mt-1 font-display text-3xl text-ink">{draft.score}</div>
-          <div className="text-[11px] text-ink/50">out of 100 · informational only</div>
+          <div className="mt-1 font-display text-3xl text-ink">
+            {draft.score}
+          </div>
+          <div className="text-[11px] text-ink/50">
+            out of 100 · informational only
+          </div>
         </div>
       </div>
 
@@ -88,10 +96,21 @@ export function AiWeeklyReviewDraft({ draft, reviewId, weekStart }: AiWeeklyRevi
       <div className="grid gap-3 sm:grid-cols-2">
         <DraftBlock label="Why this score" value={draft.scoreRationale} />
         <DraftBlock label="What worked" value={draft.whatWorked} tone="pine" />
-        <DraftBlock label="What needs attention" value={draft.whatNeedsAttention} tone="ember" />
+        <DraftBlock
+          label="What needs attention"
+          value={draft.whatNeedsAttention}
+          tone="ember"
+        />
         <DraftBlock label="Next best action" value={draft.nextBestAction} />
-        <DraftBlock label="Strategic decision" value={draft.strategicDecision} />
-        <DraftBlock label="Risk forecast (2-3 weeks)" value={draft.riskForecast} tone="ember" />
+        <DraftBlock
+          label="Strategic decision"
+          value={draft.strategicDecision}
+        />
+        <DraftBlock
+          label="Risk forecast (2-3 weeks)"
+          value={draft.riskForecast}
+          tone="ember"
+        />
       </div>
 
       <div className="text-[11px] text-ink/40">
@@ -102,7 +121,10 @@ export function AiWeeklyReviewDraft({ draft, reviewId, weekStart }: AiWeeklyRevi
         <form action={acceptAction}>
           <input type="hidden" name="id" value={reviewId} />
           <input type="hidden" name="weekStart" value={weekStart} />
-          <AuthSubmitButton idleLabel="Use this draft" pendingLabel="Applying..." />
+          <AuthSubmitButton
+            idleLabel="Use this draft"
+            pendingLabel="Applying..."
+          />
         </form>
         <form action={dismissAction}>
           <input type="hidden" name="id" value={reviewId} />

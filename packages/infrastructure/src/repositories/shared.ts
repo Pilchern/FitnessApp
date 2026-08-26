@@ -55,7 +55,9 @@ export function toSourceColumns(
   };
 }
 
-export function mapManualOrImportedSourceFromRow(row: SourceColumns): ManualOrImportedRecordSource {
+export function mapManualOrImportedSourceFromRow(
+  row: SourceColumns,
+): ManualOrImportedRecordSource {
   if (row.source_type === "manual") {
     return {
       sourceType: "manual",
@@ -75,7 +77,9 @@ export function mapManualOrImportedSourceFromRow(row: SourceColumns): ManualOrIm
   };
 }
 
-export function mapCanonicalSourceFromRow(row: SourceColumns): CanonicalRecordSource {
+export function mapCanonicalSourceFromRow(
+  row: SourceColumns,
+): CanonicalRecordSource {
   if (row.source_type === "manual") {
     return {
       sourceType: "manual",

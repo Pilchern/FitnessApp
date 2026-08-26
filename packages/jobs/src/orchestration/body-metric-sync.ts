@@ -93,7 +93,10 @@ export class BodyMetricSyncOrchestrator {
   }
 
   async disconnect(userId: UserId, provider: IntegrationProvider) {
-    const connection = await this.connectionStore.getByUserAndProvider(userId, provider);
+    const connection = await this.connectionStore.getByUserAndProvider(
+      userId,
+      provider,
+    );
 
     if (!connection) {
       return;
@@ -103,7 +106,9 @@ export class BodyMetricSyncOrchestrator {
     await this.connectionStore.disconnect(userId, provider);
   }
 
-  async syncBodyMetrics(input: SyncBodyMetricsInput): Promise<SyncBodyMetricsResult> {
+  async syncBodyMetrics(
+    input: SyncBodyMetricsInput,
+  ): Promise<SyncBodyMetricsResult> {
     const connection = await this.connectionStore.getByUserAndProvider(
       input.userId,
       input.provider,
@@ -228,7 +233,10 @@ export class BodyMetricSyncOrchestrator {
           });
         } catch (error) {
           failedItemCount += 1;
-          await this.rawImportEventStore.markFailed(event.id, toError(error).message);
+          await this.rawImportEventStore.markFailed(
+            event.id,
+            toError(error).message,
+          );
         }
       }
 
@@ -266,11 +274,15 @@ export class BodyMetricSyncOrchestrator {
       const syncError = toError(error);
 
       if (importBatch) {
-        await this.importBatchStore.markFailed(importBatch.id, syncError.message, {
-          rawItemCount,
-          processedItemCount,
-          failedItemCount,
-        });
+        await this.importBatchStore.markFailed(
+          importBatch.id,
+          syncError.message,
+          {
+            rawItemCount,
+            processedItemCount,
+            failedItemCount,
+          },
+        );
       }
 
       await this.connectionStore.recordSyncFailure({

@@ -214,7 +214,11 @@ export class PelotonCardioAdapter implements CardioProviderAdapter {
       for (const workout of parsed.data) {
         // Only sync completed cycling workouts
         if (workout.status !== "COMPLETE") continue;
-        if (workout.fitness_discipline && workout.fitness_discipline !== "cycling") continue;
+        if (
+          workout.fitness_discipline &&
+          workout.fitness_discipline !== "cycling"
+        )
+          continue;
 
         const workoutMs = workout.start_time
           ? workout.start_time * 1000
@@ -269,14 +273,15 @@ export class PelotonCardioAdapter implements CardioProviderAdapter {
       : null;
 
     const sessionKind = inferSessionKind(workout);
-    const zone2Minutes =
-      sessionKind === "zone2" ? durationMinutes : null;
+    const zone2Minutes = sessionKind === "zone2" ? durationMinutes : null;
 
     const sessionDate = workout.start_time
       ? epochToIsoDate(workout.start_time)
       : epochToIsoDate(workout.created_at);
 
-    const startedAt = workout.start_time ? epochToIso(workout.start_time) : null;
+    const startedAt = workout.start_time
+      ? epochToIso(workout.start_time)
+      : null;
     const endedAt = workout.end_time ? epochToIso(workout.end_time) : null;
 
     // Peloton resistance is 0-100 percentage; store as-is
@@ -306,9 +311,7 @@ export class PelotonCardioAdapter implements CardioProviderAdapter {
       ? Math.round(workout.distance * 1609.344)
       : null;
 
-    const notes = workout.ride?.title
-      ? `Peloton: ${workout.ride.title}`
-      : null;
+    const notes = workout.ride?.title ? `Peloton: ${workout.ride.title}` : null;
 
     return {
       sessionDate,

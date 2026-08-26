@@ -1,6 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { buildOverridesLookup, getWeekRangeFromStart } from "@fitness-app/application";
+import {
+  buildOverridesLookup,
+  getWeekRangeFromStart,
+} from "@fitness-app/application";
 import { getServerEnv } from "@/lib/server/env";
 import { createCoreServices } from "@/lib/server/services";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
@@ -14,17 +17,20 @@ async function mapWithConcurrency<T, R>(
 ): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = new Array(items.length);
   let cursor = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (true) {
-      const idx = cursor++;
-      if (idx >= items.length) return;
-      try {
-        results[idx] = { status: "fulfilled", value: await fn(items[idx]) };
-      } catch (err) {
-        results[idx] = { status: "rejected", reason: err };
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (true) {
+        const idx = cursor++;
+        if (idx >= items.length) return;
+        try {
+          results[idx] = { status: "fulfilled", value: await fn(items[idx]) };
+        } catch (err) {
+          results[idx] = { status: "rejected", reason: err };
+        }
       }
-    }
-  });
+    },
+  );
   await Promise.all(workers);
   return results;
 }
@@ -52,7 +58,10 @@ export async function GET(request: NextRequest) {
   const cronSecret = env.CRON_SECRET;
 
   if (!cronSecret) {
-    return NextResponse.json({ error: "cron_secret_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "cron_secret_not_configured" },
+      { status: 503 },
+    );
   }
 
   const authHeader = request.headers.get("authorization") ?? "";
@@ -76,57 +85,83 @@ export async function GET(request: NextRequest) {
   // below — these services are stateless wrappers over repositories, so
   // there's no correctness reason to reconstruct them per user like the
   // pre-composition-root version of this route did.
-  const { weeklyReviewService, cardioService, recoveryService, bodyMetricService, strengthService, strengthSummaryService, exerciseOverrideService, insightOrchestrator } =
-    await createCoreServices(adminClient);
+  const {
+    weeklyReviewService,
+    cardioService,
+    recoveryService,
+    bodyMetricService,
+    strengthService,
+    strengthSummaryService,
+    exerciseOverrideService,
+    insightOrchestrator,
+  } = await createCoreServices(adminClient);
 
-  const settled = await mapWithConcurrency(rows, CONCURRENCY, async (profile) => {
-    const startDate = sixMonthsAgoIsoDate();
-    const timezone = profile.timezone ?? "UTC";
+  const settled = await mapWithConcurrency(
+    rows,
+    CONCURRENCY,
+    async (profile) => {
+      const startDate = sixMonthsAgoIsoDate();
+      const timezone = profile.timezone ?? "UTC";
 
-    const [weeklyReviews, recentCardio, recentRecovery, recentBody, recentStrength, exerciseOverrides] = await Promise.all([
-      weeklyReviewService.listRecent(profile.user_id, 8),
-      cardioService.listByDateRange({ userId: profile.user_id, startDate }),
-      recoveryService.listByDateRange({ userId: profile.user_id, startDate }),
-      bodyMetricService.listByDateRange({ userId: profile.user_id, startDate }),
-      strengthService.listByDateRange({ userId: profile.user_id, startDate }),
-      exerciseOverrideService.listActive({ userId: profile.user_id }),
-    ]);
-
-    const weekStarts = new Set(weeklyReviews.map((r) => r.weekStart));
-    const liftPairs = await Promise.all(
-      [...weekStarts].map(async (weekStart) => {
-        const { weekEnd } = getWeekRangeFromStart(weekStart);
-        const count = await strengthSummaryService.countCompletedByDateRange({
+      const [
+        weeklyReviews,
+        recentCardio,
+        recentRecovery,
+        recentBody,
+        recentStrength,
+        exerciseOverrides,
+      ] = await Promise.all([
+        weeklyReviewService.listRecent(profile.user_id, 8),
+        cardioService.listByDateRange({ userId: profile.user_id, startDate }),
+        recoveryService.listByDateRange({ userId: profile.user_id, startDate }),
+        bodyMetricService.listByDateRange({
           userId: profile.user_id,
-          startDate: weekStart,
-          endDate: weekEnd,
-        });
-        return [weekStart, count] as const;
-      }),
-    );
+          startDate,
+        }),
+        strengthService.listByDateRange({ userId: profile.user_id, startDate }),
+        exerciseOverrideService.listActive({ userId: profile.user_id }),
+      ]);
 
-    await insightOrchestrator.generateAndPersist({
-      userId: profile.user_id,
-      bodyMetrics: recentBody,
-      cardioSessions: recentCardio,
-      recoveryCheckins: recentRecovery,
-      weeklyReviews,
-      strengthSessions: recentStrength,
-      exerciseOverrides: buildOverridesLookup(exerciseOverrides),
-      liftsCompletedByWeek: Object.fromEntries(liftPairs),
-      now: new Date(),
-      timezone,
-    });
+      const weekStarts = new Set(weeklyReviews.map((r) => r.weekStart));
+      const liftPairs = await Promise.all(
+        [...weekStarts].map(async (weekStart) => {
+          const { weekEnd } = getWeekRangeFromStart(weekStart);
+          const count = await strengthSummaryService.countCompletedByDateRange({
+            userId: profile.user_id,
+            startDate: weekStart,
+            endDate: weekEnd,
+          });
+          return [weekStart, count] as const;
+        }),
+      );
 
-    return profile.user_id;
-  });
+      await insightOrchestrator.generateAndPersist({
+        userId: profile.user_id,
+        bodyMetrics: recentBody,
+        cardioSessions: recentCardio,
+        recoveryCheckins: recentRecovery,
+        weeklyReviews,
+        strengthSessions: recentStrength,
+        exerciseOverrides: buildOverridesLookup(exerciseOverrides),
+        liftsCompletedByWeek: Object.fromEntries(liftPairs),
+        now: new Date(),
+        timezone,
+      });
+
+      return profile.user_id;
+    },
+  );
 
   const results = settled.map((res, i) => {
     if (res.status === "fulfilled") {
       return { userId: rows[i].user_id, ok: true };
     }
-    const message = res.reason instanceof Error ? res.reason.message : "Unknown error";
-    console.error(`[cron/insights-generate] Failed for user ${rows[i].user_id}:`, message);
+    const message =
+      res.reason instanceof Error ? res.reason.message : "Unknown error";
+    console.error(
+      `[cron/insights-generate] Failed for user ${rows[i].user_id}:`,
+      message,
+    );
     return { userId: rows[i].user_id, ok: false, error: message };
   });
 

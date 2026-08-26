@@ -1,7 +1,11 @@
 import Link from "next/link";
 import type { CardioSession, JournalEntry } from "@fitness-app/domain";
 import { deleteJournalEntryAction } from "../actions";
-import { formatCardioLinkLabel, formatJournalDate, summarizeBody } from "../helpers";
+import {
+  formatCardioLinkLabel,
+  formatJournalDate,
+  summarizeBody,
+} from "../helpers";
 
 type JournalEntryListProps = {
   entries: JournalEntry[];
@@ -16,7 +20,9 @@ function findCardioLabel(
     return null;
   }
 
-  const session = cardioSessions.find((item) => item.id === relatedCardioSessionId);
+  const session = cardioSessions.find(
+    (item) => item.id === relatedCardioSessionId,
+  );
   return session ? formatCardioLinkLabel(session) : "Linked workout";
 }
 
@@ -29,9 +35,12 @@ export function JournalEntryList({
       <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 py-12 shadow-panel">
         <div className="max-w-sm mx-auto text-center">
           <div className="text-4xl">📝</div>
-          <h2 className="mt-4 font-display text-xl text-ink">No journal entries yet</h2>
+          <h2 className="mt-4 font-display text-xl text-ink">
+            No journal entries yet
+          </h2>
           <p className="mt-2 text-sm text-ink/60">
-            Write your first entry — reflect on your training, how you&apos;re feeling, or anything on your mind.
+            Write your first entry — reflect on your training, how you&apos;re
+            feeling, or anything on your mind.
           </p>
         </div>
       </section>

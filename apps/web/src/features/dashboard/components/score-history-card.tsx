@@ -6,7 +6,10 @@ type ScoreHistoryCardProps = {
 };
 
 function formatWeekRange(weekStart: string, weekEnd: string) {
-  const fmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  });
   return `${fmt.format(new Date(`${weekStart}T12:00:00`))} – ${fmt.format(new Date(`${weekEnd}T12:00:00`))}`;
 }
 
@@ -67,7 +70,9 @@ export function ScoreHistoryCard({ reviews }: ScoreHistoryCardProps) {
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
             Score history
           </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">Last {reviews.length} weeks</h2>
+          <h2 className="mt-3 font-display text-2xl text-ink">
+            Last {reviews.length} weeks
+          </h2>
         </div>
         <Link
           href="/weekly-review"

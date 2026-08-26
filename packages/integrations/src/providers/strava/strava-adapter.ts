@@ -67,18 +67,25 @@ function inferSessionKind(activity: StravaRawActivity): CardioSessionKind {
   const watts = activity.average_watts ?? 0;
 
   // Explicit recovery signals
-  if (/recovery|active recovery|easy|flush|cool.?down/.test(title)) return "recovery";
+  if (/recovery|active recovery|easy|flush|cool.?down/.test(title))
+    return "recovery";
 
   // Yoga, pilates, stretching, mobility
   if (/yoga|pilates|stretch|mobility|meditat/.test(title)) return "recovery";
   if (/yoga|pilates/.test(sport)) return "recovery";
 
   // High intensity signals
-  if (/hiit|tabata|sprint|interval|threshold|tempo|race|5k|10k|half marathon|marathon|vo2|max effort|all out/.test(title)) return "vo2";
+  if (
+    /hiit|tabata|sprint|interval|threshold|tempo|race|5k|10k|half marathon|marathon|vo2|max effort|all out/.test(
+      title,
+    )
+  )
+    return "vo2";
   if (/hiit/.test(sport)) return "vo2";
 
   // Strength/weight training → other
-  if (/weight|strength|lift|gym|cross.?train|circuit/.test(title)) return "other";
+  if (/weight|strength|lift|gym|cross.?train|circuit/.test(title))
+    return "other";
   if (/weighttraining|crossfit|workout/.test(sport)) return "other";
 
   // Walk/hike → zone2
@@ -87,7 +94,8 @@ function inferSessionKind(activity: StravaRawActivity): CardioSessionKind {
   // Run inference
   if (/run/.test(sport)) {
     if (/easy|recovery|jog|base|aerobic|zone 2|z2/.test(title)) return "zone2";
-    if (/tempo|threshold|interval|fartlek|speed|fast|race|parkrun/.test(title)) return "vo2";
+    if (/tempo|threshold|interval|fartlek|speed|fast|race|parkrun/.test(title))
+      return "vo2";
     return "zone2"; // default runs to zone2
   }
 
@@ -105,9 +113,15 @@ function inferSessionKind(activity: StravaRawActivity): CardioSessionKind {
 
   // Cycling inference (original logic)
   if (/ride|cycle|cycling/.test(sport)) {
-    if (/power zone max|pz max|tabata|hiit|sprint|vo2|threshold|climbing/.test(title)) return "vo2";
+    if (
+      /power zone max|pz max|tabata|hiit|sprint|vo2|threshold|climbing/.test(
+        title,
+      )
+    )
+      return "vo2";
     if (/recovery|active recovery/.test(title)) return "recovery";
-    if (/low impact|zone 2|endurance|base|aerobic|fun ride/.test(title)) return "zone2";
+    if (/low impact|zone 2|endurance|base|aerobic|fun ride/.test(title))
+      return "zone2";
     if (watts >= 175) return "vo2";
     if (watts > 0) return "zone2";
     return "zone2";
@@ -128,7 +142,7 @@ async function stravaFetch(
   const response = await fetch(`${STRAVA_API}${path}`, {
     ...options,
     headers: {
-      "Authorization": `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
       ...(options.headers as Record<string, string> | undefined),
     },
@@ -137,7 +151,9 @@ async function stravaFetch(
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Strava API error ${response.status}: ${text.slice(0, 200)}`);
+    throw new Error(
+      `Strava API error ${response.status}: ${text.slice(0, 200)}`,
+    );
   }
 
   return response.json();
@@ -150,13 +166,19 @@ async function exchangeToken(
   const response = await fetch(STRAVA_TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ client_id: config.clientId, client_secret: config.clientSecret, ...body }),
+    body: JSON.stringify({
+      client_id: config.clientId,
+      client_secret: config.clientSecret,
+      ...body,
+    }),
     cache: "no-store",
   });
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`Strava token error ${response.status}: ${text.slice(0, 200)}`);
+    throw new Error(
+      `Strava token error ${response.status}: ${text.slice(0, 200)}`,
+    );
   }
 
   return stravaTokenResponseSchema.parse(await response.json());
@@ -254,7 +276,10 @@ export class StravaCardioAdapter implements OAuthCardioProviderAdapter {
         qs.set("after", String(afterEpoch));
       }
 
-      const activities = await stravaFetch(`/athlete/activities?${qs}`, input.accessToken);
+      const activities = await stravaFetch(
+        `/athlete/activities?${qs}`,
+        input.accessToken,
+      );
       const parsed = z.array(stravaActivitySchema).parse(activities);
 
       for (const activity of parsed) {
@@ -279,7 +304,8 @@ export class StravaCardioAdapter implements OAuthCardioProviderAdapter {
       const t = Math.floor(new Date(it.occurredAt).getTime() / 1000);
       if (t > maxEpoch) maxEpoch = t;
     }
-    const nextCursor = maxEpoch > 0 ? String(maxEpoch) : input.lastCursor ?? null;
+    const nextCursor =
+      maxEpoch > 0 ? String(maxEpoch) : (input.lastCursor ?? null);
 
     return {
       items: allItems,

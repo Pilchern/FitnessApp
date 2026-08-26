@@ -1,7 +1,4 @@
-import {
-  createJournalEntryAction,
-  updateJournalEntryAction,
-} from "../actions";
+import { createJournalEntryAction, updateJournalEntryAction } from "../actions";
 import { getJournalPageData } from "../server";
 import { JournalEntryForm } from "./journal-entry-form";
 import { JournalEntryList } from "./journal-entry-list";
@@ -36,7 +33,9 @@ export async function JournalScreen({
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Notes
         </p>
-        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">Journal</h1>
+        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
+          Journal
+        </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
           Capture quick notes about your training. Add tags to keep things
           searchable and link entries to specific rides or weeks.
@@ -47,13 +46,20 @@ export async function JournalScreen({
         mode={data.editingEntry ? "edit" : "create"}
         entry={data.editingEntry}
         cardioSessions={data.cardioSessions}
-        action={data.editingEntry ? updateJournalEntryAction : createJournalEntryAction}
+        action={
+          data.editingEntry
+            ? updateJournalEntryAction
+            : createJournalEntryAction
+        }
         formError={data.formError}
       />
 
       <JournalFilterBar {...data.filters} />
 
-      <JournalEntryList entries={data.entries} cardioSessions={data.cardioSessions} />
+      <JournalEntryList
+        entries={data.entries}
+        cardioSessions={data.cardioSessions}
+      />
     </div>
   );
 }

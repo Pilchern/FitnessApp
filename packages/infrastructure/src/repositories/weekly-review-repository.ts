@@ -30,39 +30,41 @@ const weeklyReviewSummaryRowSchema: z.ZodType<WeeklyReviewSummary> = z.object({
   alcoholTotal: z.number().int().nullable().optional(),
 });
 
-const weeklyReviewScoreDetailsRowSchema: z.ZodType<WeeklyReviewScoreDetails> = z.object({
-  version: z.literal("v1"),
-  totalScore: z.number().int(),
-  band: z.enum(["strong", "solid", "fragile"]),
-  components: z.array(
-    z.object({
-      key: z.enum([
-        "lifts",
-        "rides",
-        "zone2",
-        "vo2",
-        "sleep",
-        "alcohol",
-        "confidence",
-      ]),
-      label: z.string(),
-      score: z.number().int(),
-      maxScore: z.number().int(),
-      detail: z.string(),
-    }),
-  ),
-});
+const weeklyReviewScoreDetailsRowSchema: z.ZodType<WeeklyReviewScoreDetails> =
+  z.object({
+    version: z.literal("v1"),
+    totalScore: z.number().int(),
+    band: z.enum(["strong", "solid", "fragile"]),
+    components: z.array(
+      z.object({
+        key: z.enum([
+          "lifts",
+          "rides",
+          "zone2",
+          "vo2",
+          "sleep",
+          "alcohol",
+          "confidence",
+        ]),
+        label: z.string(),
+        score: z.number().int(),
+        maxScore: z.number().int(),
+        detail: z.string(),
+      }),
+    ),
+  });
 
-const weeklyReviewManualOverridesRowSchema: z.ZodType<WeeklyReviewManualOverrides> = z.object({
-  averageWeightLb: z.boolean().optional(),
-  waistIn: z.boolean().optional(),
-  liftsCompleted: z.boolean().optional(),
-  ridesCompleted: z.boolean().optional(),
-  zone2Minutes: z.boolean().optional(),
-  vo2Completed: z.boolean().optional(),
-  sleepAverageHours: z.boolean().optional(),
-  alcoholTotal: z.boolean().optional(),
-});
+const weeklyReviewManualOverridesRowSchema: z.ZodType<WeeklyReviewManualOverrides> =
+  z.object({
+    averageWeightLb: z.boolean().optional(),
+    waistIn: z.boolean().optional(),
+    liftsCompleted: z.boolean().optional(),
+    ridesCompleted: z.boolean().optional(),
+    zone2Minutes: z.boolean().optional(),
+    vo2Completed: z.boolean().optional(),
+    sleepAverageHours: z.boolean().optional(),
+    alcoholTotal: z.boolean().optional(),
+  });
 
 const weeklyReviewAiDraftRowSchema: z.ZodType<WeeklyReviewAiDraft> = z.object({
   score: z.number().int(),

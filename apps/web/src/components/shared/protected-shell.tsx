@@ -71,7 +71,9 @@ export function ProtectedShell({
           </nav>
 
           <div className="mt-6 rounded-[1.5rem] border border-ink/10 bg-sand/70 p-4">
-            <div className="text-sm font-semibold text-ink">{userDisplayName}</div>
+            <div className="text-sm font-semibold text-ink">
+              {userDisplayName}
+            </div>
             <div className="mt-1 text-xs text-ink/65">{userEmail}</div>
             <div className="mt-4">
               <SignOutForm action={logoutAction} />

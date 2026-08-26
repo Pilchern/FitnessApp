@@ -129,7 +129,11 @@ function toStrengthSessionUpdate(input: UpdateStrengthSessionInput) {
   };
 }
 
-function toStrengthSetInsert(userId: string, strengthSessionId: string, input: any) {
+function toStrengthSetInsert(
+  userId: string,
+  strengthSessionId: string,
+  input: any,
+) {
   return {
     user_id: userId,
     strength_session_id: strengthSessionId,
@@ -190,7 +194,11 @@ export class SupabaseStrengthSessionRepository implements StrengthSessionReposit
 
     const setsResponse = await this.client
       .from("strength_exercise_sets")
-      .insert(input.sets.map((set) => toStrengthSetInsert(input.userId, sessionRow.id, set)))
+      .insert(
+        input.sets.map((set) =>
+          toStrengthSetInsert(input.userId, sessionRow.id, set),
+        ),
+      )
       .select("*");
 
     throwOnError(setsResponse.error, "Create strength sets");
@@ -229,7 +237,11 @@ export class SupabaseStrengthSessionRepository implements StrengthSessionReposit
 
     const setsResponse = await this.client
       .from("strength_exercise_sets")
-      .insert(input.sets.map((set) => toStrengthSetInsert(input.userId, input.id, set)))
+      .insert(
+        input.sets.map((set) =>
+          toStrengthSetInsert(input.userId, input.id, set),
+        ),
+      )
       .select("*");
 
     throwOnError(setsResponse.error, "Replace strength sets");
@@ -301,6 +313,8 @@ export class SupabaseStrengthSessionRepository implements StrengthSessionReposit
       rows.map((row) => row.id),
     );
 
-    return rows.map((row) => mapStrengthSessionRow(row, setsBySession.get(row.id) ?? []));
+    return rows.map((row) =>
+      mapStrengthSessionRow(row, setsBySession.get(row.id) ?? []),
+    );
   }
 }

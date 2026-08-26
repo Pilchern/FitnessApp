@@ -1,8 +1,14 @@
 import "server-only";
 
-import { buildOverridesLookup, getWeekRangeFromStart } from "@fitness-app/application";
+import {
+  buildOverridesLookup,
+  getWeekRangeFromStart,
+} from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createCoreServices, getCachedUserProfile } from "@/lib/server/services";
+import {
+  createCoreServices,
+  getCachedUserProfile,
+} from "@/lib/server/services";
 
 function sixMonthsAgoIsoDate() {
   const date = new Date();
@@ -15,29 +21,39 @@ export async function getInsightsData() {
   const { insightOrchestrator, ...services } = await createCoreServices();
 
   const startDate = sixMonthsAgoIsoDate();
-  const [profile, weeklyReviews, recentCardio, recentRecovery, recentBody, recentStrength, exerciseOverrides] =
-    await Promise.all([
-      getCachedUserProfile(user.id),
-      services.weeklyReviewService.listRecent(user.id, 8),
-      services.cardioService.listByDateRange({ userId: user.id, startDate }),
-      services.recoveryService.listByDateRange({ userId: user.id, startDate }),
-      services.bodyMetricService.listByDateRange({ userId: user.id, startDate }),
-      services.strengthService.listByDateRange({ userId: user.id, startDate }),
-      services.exerciseOverrideService.listActive({ userId: user.id }),
-    ]);
+  const [
+    profile,
+    weeklyReviews,
+    recentCardio,
+    recentRecovery,
+    recentBody,
+    recentStrength,
+    exerciseOverrides,
+  ] = await Promise.all([
+    getCachedUserProfile(user.id),
+    services.weeklyReviewService.listRecent(user.id, 8),
+    services.cardioService.listByDateRange({ userId: user.id, startDate }),
+    services.recoveryService.listByDateRange({ userId: user.id, startDate }),
+    services.bodyMetricService.listByDateRange({ userId: user.id, startDate }),
+    services.strengthService.listByDateRange({ userId: user.id, startDate }),
+    services.exerciseOverrideService.listActive({ userId: user.id }),
+  ]);
   const exerciseOverridesLookup = buildOverridesLookup(exerciseOverrides);
 
   const timezone = profile?.timezone || "UTC";
-  const weekStarts = new Set<string>(weeklyReviews.map((review) => review.weekStart));
+  const weekStarts = new Set<string>(
+    weeklyReviews.map((review) => review.weekStart),
+  );
 
   const liftPairs = await Promise.all(
     [...weekStarts].map(async (weekStart) => {
       const { weekEnd } = getWeekRangeFromStart(weekStart);
-      const count = await services.strengthSummaryService.countCompletedByDateRange({
-        userId: user.id,
-        startDate: weekStart,
-        endDate: weekEnd,
-      });
+      const count =
+        await services.strengthSummaryService.countCompletedByDateRange({
+          userId: user.id,
+          startDate: weekStart,
+          endDate: weekEnd,
+        });
       return [weekStart, count] as const;
     }),
   );

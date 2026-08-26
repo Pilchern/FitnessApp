@@ -24,7 +24,8 @@ function buildDeltaLabel(
     return "Need at least 2 points for a trend";
   }
 
-  const delta = Math.round((points[points.length - 1].value - points[0].value) * 10) / 10;
+  const delta =
+    Math.round((points[points.length - 1].value - points[0].value) * 10) / 10;
   const prefix = delta > 0 ? "+" : "";
   return `${prefix}${formatValue(delta)}`;
 }

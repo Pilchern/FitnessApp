@@ -18,11 +18,13 @@ const baseInput = {
 
 const validResponseBody = {
   score: 78,
-  scoreRationale: "Solid consistency with slightly under target Zone 2 minutes.",
+  scoreRationale:
+    "Solid consistency with slightly under target Zone 2 minutes.",
   whatWorked: "Three lifts completed, sleep held above 7 hours all week.",
   whatNeedsAttention: "Zone 2 minutes came in below the weekly target.",
   strategicDecision: "Hold the plan and add one more Zone 2 session next week.",
-  riskForecast: "Low risk over the next 2-3 weeks if cardio volume is restored.",
+  riskForecast:
+    "Low risk over the next 2-3 weeks if cardio volume is restored.",
   nextBestAction: "Schedule the missed Zone 2 ride for early next week.",
 };
 
@@ -60,7 +62,11 @@ describe("AiWeeklyReviewService", () => {
   it("parses a valid response into a WeeklyReviewAiDraft with model and generatedAt attached", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(anthropicResponse(JSON.stringify(validResponseBody))),
+      vi
+        .fn()
+        .mockResolvedValue(
+          anthropicResponse(JSON.stringify(validResponseBody)),
+        ),
     );
 
     const service = new AiWeeklyReviewService({
@@ -75,7 +81,9 @@ describe("AiWeeklyReviewService", () => {
     expect(result?.score).toBe(78);
     expect(result?.scoreRationale).toBe(validResponseBody.scoreRationale);
     expect(result?.whatWorked).toBe(validResponseBody.whatWorked);
-    expect(result?.whatNeedsAttention).toBe(validResponseBody.whatNeedsAttention);
+    expect(result?.whatNeedsAttention).toBe(
+      validResponseBody.whatNeedsAttention,
+    );
     expect(result?.strategicDecision).toBe(validResponseBody.strategicDecision);
     expect(result?.riskForecast).toBe(validResponseBody.riskForecast);
     expect(result?.nextBestAction).toBe(validResponseBody.nextBestAction);
@@ -111,7 +119,10 @@ describe("AiWeeklyReviewService", () => {
       "fetch",
       vi.fn().mockResolvedValue(
         anthropicResponse(
-          JSON.stringify({ score: 200, whatWorked: "missing other required fields" }),
+          JSON.stringify({
+            score: 200,
+            whatWorked: "missing other required fields",
+          }),
         ),
       ),
     );
@@ -128,7 +139,10 @@ describe("AiWeeklyReviewService", () => {
 
   it("fails soft on non-JSON text content", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(anthropicResponse("not json at all")));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(anthropicResponse("not json at all")),
+    );
 
     const service = new AiWeeklyReviewService({
       apiKey: "test-key",
@@ -142,7 +156,10 @@ describe("AiWeeklyReviewService", () => {
 
   it("fails soft when fetch itself throws (network error)", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockRejectedValue(new Error("network down")),
+    );
 
     const service = new AiWeeklyReviewService({
       apiKey: "test-key",
@@ -158,9 +175,13 @@ describe("AiWeeklyReviewService", () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        anthropicResponse(JSON.stringify({ ...validResponseBody, score: 150 })),
-      ),
+      vi
+        .fn()
+        .mockResolvedValue(
+          anthropicResponse(
+            JSON.stringify({ ...validResponseBody, score: 150 }),
+          ),
+        ),
     );
 
     const service = new AiWeeklyReviewService({

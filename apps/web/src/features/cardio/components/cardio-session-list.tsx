@@ -40,7 +40,8 @@ function findTemplateName(
   templates: CardioTemplatePreset[],
 ) {
   return (
-    templates.find((template) => template.id === session.trainingTemplateId)?.name ?? null
+    templates.find((template) => template.id === session.trainingTemplateId)
+      ?.name ?? null
   );
 }
 
@@ -68,7 +69,9 @@ export function CardioSessionList({
       <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 py-12 shadow-panel">
         <div className="max-w-sm mx-auto text-center">
           <div className="text-4xl">🚴</div>
-          <h2 className="mt-4 font-display text-xl text-ink">No cardio logged yet</h2>
+          <h2 className="mt-4 font-display text-xl text-ink">
+            No cardio logged yet
+          </h2>
           <p className="mt-2 text-sm text-ink/60">
             Log your first ride, run, or workout using the form above.
           </p>
@@ -84,7 +87,9 @@ export function CardioSessionList({
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
             History
           </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">Recent workouts</h2>
+          <h2 className="mt-3 font-display text-2xl text-ink">
+            Recent workouts
+          </h2>
         </div>
         <div className="text-sm text-ink/65">{sessions.length} total</div>
       </div>
@@ -131,7 +136,9 @@ export function CardioSessionList({
                       <span>RPE {session.rpe}</span>
                     ) : null}
                     {session.distanceMeters != null ? (
-                      <span>{(session.distanceMeters / 1000).toFixed(1)} km</span>
+                      <span>
+                        {(session.distanceMeters / 1000).toFixed(1)} km
+                      </span>
                     ) : null}
                   </div>
 
@@ -142,7 +149,9 @@ export function CardioSessionList({
                   ) : null}
 
                   {session.notes ? (
-                    <p className="text-sm leading-6 text-ink/75">{session.notes}</p>
+                    <p className="text-sm leading-6 text-ink/75">
+                      {session.notes}
+                    </p>
                   ) : null}
                 </div>
 

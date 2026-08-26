@@ -44,7 +44,9 @@ describe("resolveExercise", () => {
       },
     ]);
 
-    expect(resolveExercise("Some Made Up Machine Exercise", overrides)).toBeNull();
+    expect(
+      resolveExercise("Some Made Up Machine Exercise", overrides),
+    ).toBeNull();
     const entry = resolveExercise("Cable Pull Thing", overrides);
     expect(entry?.muscleGroup).toBe("back");
     expect(entry?.movementPattern).toBe("pull");

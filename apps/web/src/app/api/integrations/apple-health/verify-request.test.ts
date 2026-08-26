@@ -22,14 +22,24 @@ const lookupSecret: AppleHealthSecretLookup = async (userId: string) =>
   SECRETS_BY_USER[userId] ?? null;
 
 function makeRequest(headers: Record<string, string>) {
-  return new NextRequest("https://example.com/api/integrations/apple-health/daily-metrics", {
-    method: "POST",
-    headers,
-  });
+  return new NextRequest(
+    "https://example.com/api/integrations/apple-health/daily-metrics",
+    {
+      method: "POST",
+      headers,
+    },
+  );
 }
 
-function signHmac(secret: string, userId: string, timestamp: number, body: string) {
-  return createHmac("sha256", secret).update(`${userId}.${timestamp}.${body}`).digest("hex");
+function signHmac(
+  secret: string,
+  userId: string,
+  timestamp: number,
+  body: string,
+) {
+  return createHmac("sha256", secret)
+    .update(`${userId}.${timestamp}.${body}`)
+    .digest("hex");
 }
 
 describe("verifyAppleHealthRequest", () => {
@@ -57,7 +67,11 @@ describe("verifyAppleHealthRequest", () => {
       "X-User-Id": "user-1",
     });
     const result = await verifyAppleHealthRequest(request, BODY, lookupSecret);
-    expect(result).toEqual({ ok: false, status: 401, error: "Invalid bearer token." });
+    expect(result).toEqual({
+      ok: false,
+      status: 401,
+      error: "Invalid bearer token.",
+    });
   });
 
   it("rejects user 2's correct secret when claiming to be user 1 (cross-user forgery)", async () => {
@@ -66,7 +80,11 @@ describe("verifyAppleHealthRequest", () => {
       "X-User-Id": "user-1",
     });
     const result = await verifyAppleHealthRequest(request, BODY, lookupSecret);
-    expect(result).toEqual({ ok: false, status: 401, error: "Invalid bearer token." });
+    expect(result).toEqual({
+      ok: false,
+      status: 401,
+      error: "Invalid bearer token.",
+    });
   });
 
   it("rejects user 1's correct secret when claiming to be user 2 (cross-user forgery, reversed)", async () => {
@@ -75,7 +93,11 @@ describe("verifyAppleHealthRequest", () => {
       "X-User-Id": "user-2",
     });
     const result = await verifyAppleHealthRequest(request, BODY, lookupSecret);
-    expect(result).toEqual({ ok: false, status: 401, error: "Invalid bearer token." });
+    expect(result).toEqual({
+      ok: false,
+      status: 401,
+      error: "Invalid bearer token.",
+    });
   });
 
   it("rejects a request with no X-User-Id at all", async () => {
@@ -107,7 +129,11 @@ describe("verifyAppleHealthRequest", () => {
       Authorization: `Bearer ${USER_ONE_SECRET}`,
       "X-User-Id": "user-1",
     });
-    const result = await verifyAppleHealthRequest(request, BODY, alwaysNullLookup);
+    const result = await verifyAppleHealthRequest(
+      request,
+      BODY,
+      alwaysNullLookup,
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(401);
@@ -137,7 +163,11 @@ describe("verifyAppleHealthRequest", () => {
       "X-Signature": `sha256=${wrongSignature}`,
     });
     const result = await verifyAppleHealthRequest(request, BODY, lookupSecret);
-    expect(result).toEqual({ ok: false, status: 401, error: "Invalid signature." });
+    expect(result).toEqual({
+      ok: false,
+      status: 401,
+      error: "Invalid signature.",
+    });
   });
 
   it("rejects an HMAC signature computed with another user's secret while claiming to be user 1", async () => {
@@ -150,7 +180,11 @@ describe("verifyAppleHealthRequest", () => {
       "X-Signature": `sha256=${signature}`,
     });
     const result = await verifyAppleHealthRequest(request, BODY, lookupSecret);
-    expect(result).toEqual({ ok: false, status: 401, error: "Invalid signature." });
+    expect(result).toEqual({
+      ok: false,
+      status: 401,
+      error: "Invalid signature.",
+    });
   });
 
   it("rejects a timestamp outside the replay window", async () => {

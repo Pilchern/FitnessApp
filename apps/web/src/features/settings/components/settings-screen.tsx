@@ -30,8 +30,8 @@ export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
           Settings
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          Update your name, timezone, units, and training goals. Your goals
-          help personalise the Weekly Review and Insights.
+          Update your name, timezone, units, and training goals. Your goals help
+          personalise the Weekly Review and Insights.
         </p>
       </section>
 

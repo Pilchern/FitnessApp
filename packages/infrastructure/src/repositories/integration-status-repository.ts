@@ -4,15 +4,15 @@ import { SupabaseIntegrationConnectionRepository } from "./integration-connectio
 import { type AppSupabaseClient } from "./shared";
 import { SupabaseSyncJobRunRepository } from "./sync-job-run-repository";
 
-export class SupabaseIntegrationStatusRepository
-  implements IntegrationStatusRepository
-{
+export class SupabaseIntegrationStatusRepository implements IntegrationStatusRepository {
   private readonly connectionRepository: SupabaseIntegrationConnectionRepository;
   private readonly syncJobRunRepository: SupabaseSyncJobRunRepository;
   private readonly importBatchRepository: SupabaseImportBatchRepository;
 
   constructor(client: AppSupabaseClient) {
-    this.connectionRepository = new SupabaseIntegrationConnectionRepository(client);
+    this.connectionRepository = new SupabaseIntegrationConnectionRepository(
+      client,
+    );
     this.syncJobRunRepository = new SupabaseSyncJobRunRepository(client);
     this.importBatchRepository = new SupabaseImportBatchRepository(client);
   }

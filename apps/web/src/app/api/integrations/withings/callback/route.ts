@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { createWithingsAdapter, createWithingsSyncOrchestrator } from "@/lib/server/integrations";
+import {
+  createWithingsAdapter,
+  createWithingsSyncOrchestrator,
+} from "@/lib/server/integrations";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 
 const OAUTH_STATE_COOKIE = "withings_oauth_state";
@@ -27,7 +30,10 @@ export async function GET(request: NextRequest) {
   const user = await requireRouteUser();
 
   if (!user) {
-    return redirectWithMessage(request, "error=Please%20log%20in%20before%20connecting%20Withings.");
+    return redirectWithMessage(
+      request,
+      "error=Please%20log%20in%20before%20connecting%20Withings.",
+    );
   }
 
   const searchParams = request.nextUrl.searchParams;

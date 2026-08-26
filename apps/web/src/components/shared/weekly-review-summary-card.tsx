@@ -81,13 +81,17 @@ export function WeeklyReviewSummaryCard({
 
       <div className="mt-5 grid gap-4 md:grid-cols-3">
         <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Rating</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+            Rating
+          </div>
           <div className="mt-2 text-xl font-semibold capitalize text-ink">
             {review.scoreDetails?.band ?? "Draft"}
           </div>
         </div>
         <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Priority</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+            Priority
+          </div>
           <div className="mt-2 text-sm font-semibold leading-6 text-ink">
             {review.nextWeekPriority ?? "Not set"}
           </div>

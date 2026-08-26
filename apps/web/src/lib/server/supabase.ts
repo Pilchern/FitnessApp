@@ -37,22 +37,24 @@ export function createSupabaseServerClient(cookieStore: CookieStore) {
 
 // cache() deduplicates this within a single request render tree.
 // All services (layout, page, feature modules) share one Supabase client per request.
-export const createSupabaseRequestClient = cache(async function createSupabaseRequestClient() {
-  const cookieStore = await cookies();
+export const createSupabaseRequestClient = cache(
+  async function createSupabaseRequestClient() {
+    const cookieStore = await cookies();
 
-  return createSupabaseServerClient({
-    getAll: () => cookieStore.getAll(),
-    setAll: (cookiesToSet) => {
-      try {
-        cookiesToSet.forEach(({ name, value, options }) => {
-          cookieStore.set(name, value, options);
-        });
-      } catch {
-        // Server components cannot always mutate cookies. Middleware handles refresh persistence.
-      }
-    },
-  });
-});
+    return createSupabaseServerClient({
+      getAll: () => cookieStore.getAll(),
+      setAll: (cookiesToSet) => {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        } catch {
+          // Server components cannot always mutate cookies. Middleware handles refresh persistence.
+        }
+      },
+    });
+  },
+);
 
 export function createSupabaseAdminClient() {
   const serverEnv = getServerEnv();

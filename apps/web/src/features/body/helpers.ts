@@ -72,6 +72,8 @@ export function formatChange(value: number | null, unit: string) {
   return `${prefix}${value.toFixed(1)} ${unit}${arrow} vs first logged`;
 }
 
-export function formatSourceLabel(sourceType: BodyMetric["source"]["sourceType"]) {
+export function formatSourceLabel(
+  sourceType: BodyMetric["source"]["sourceType"],
+) {
   return sourceType === "manual" ? "Manual" : "Imported";
 }

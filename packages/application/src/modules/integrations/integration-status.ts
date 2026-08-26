@@ -12,7 +12,9 @@ export const integrationStatusQuerySchema = z.object({
   limit: z.number().int().positive().max(25).optional().default(10),
 });
 
-export type IntegrationStatusQuery = z.infer<typeof integrationStatusQuerySchema>;
+export type IntegrationStatusQuery = z.infer<
+  typeof integrationStatusQuerySchema
+>;
 
 export type IntegrationStatusSnapshot = {
   connections: IntegrationConnection[];
@@ -23,7 +25,10 @@ export type IntegrationStatusSnapshot = {
 export interface IntegrationStatusRepository {
   listConnections(userId: UserId): Promise<IntegrationConnection[]>;
   listRecentSyncRuns(userId: UserId, limit: number): Promise<SyncJobRun[]>;
-  listRecentImportBatches(userId: UserId, limit: number): Promise<ImportBatch[]>;
+  listRecentImportBatches(
+    userId: UserId,
+    limit: number,
+  ): Promise<ImportBatch[]>;
 }
 
 export class IntegrationStatusService {

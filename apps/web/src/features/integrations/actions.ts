@@ -25,7 +25,9 @@ export async function disconnectWithingsAction() {
     const orchestrator = createWithingsSyncOrchestrator();
     await orchestrator.disconnect(user.id, "withings");
   } catch (error) {
-    url = errorRedirectUrl(error instanceof Error ? error.message : "Disconnect failed.");
+    url = errorRedirectUrl(
+      error instanceof Error ? error.message : "Disconnect failed.",
+    );
   }
   redirect(url);
 }
@@ -42,7 +44,9 @@ export async function syncWithingsAction(formData: FormData) {
       forceFullResync: formData.get("mode") === "full",
     });
   } catch (error) {
-    url = errorRedirectUrl(error instanceof Error ? error.message : "Sync failed.");
+    url = errorRedirectUrl(
+      error instanceof Error ? error.message : "Sync failed.",
+    );
   }
   redirect(url);
 }
@@ -66,7 +70,8 @@ export async function connectPelotonAction(formData: FormData) {
       password,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Peloton connection failed.";
+    const message =
+      error instanceof Error ? error.message : "Peloton connection failed.";
     const isAuthError =
       message.includes("401") ||
       message.toLowerCase().includes("unauthorized") ||
@@ -91,7 +96,9 @@ export async function syncPelotonAction(formData: FormData) {
       forceFullResync: formData.get("mode") === "full",
     });
   } catch (error) {
-    url = errorRedirectUrl(error instanceof Error ? error.message : "Peloton sync failed.");
+    url = errorRedirectUrl(
+      error instanceof Error ? error.message : "Peloton sync failed.",
+    );
   }
   redirect(url);
 }
@@ -103,7 +110,9 @@ export async function disconnectPelotonAction() {
     const orchestrator = createPelotonSyncOrchestrator();
     await orchestrator.disconnect(user.id, "peloton");
   } catch (error) {
-    url = errorRedirectUrl(error instanceof Error ? error.message : "Disconnect failed.");
+    url = errorRedirectUrl(
+      error instanceof Error ? error.message : "Disconnect failed.",
+    );
   }
   redirect(url);
 }
@@ -120,7 +129,9 @@ export async function syncStravaAction(formData: FormData) {
       forceFullResync: formData.get("mode") === "full",
     });
   } catch (error) {
-    url = errorRedirectUrl(error instanceof Error ? error.message : "Strava sync failed.");
+    url = errorRedirectUrl(
+      error instanceof Error ? error.message : "Strava sync failed.",
+    );
   }
   redirect(url);
 }
@@ -132,7 +143,9 @@ export async function disconnectStravaAction() {
     const orchestrator = createStravaSyncOrchestrator();
     await orchestrator.disconnect(user.id, "strava");
   } catch (error) {
-    url = errorRedirectUrl(error instanceof Error ? error.message : "Disconnect failed.");
+    url = errorRedirectUrl(
+      error instanceof Error ? error.message : "Disconnect failed.",
+    );
   }
   redirect(url);
 }
@@ -157,7 +170,9 @@ export async function generateAppleHealthWebhookTokenAction(
   } catch (error) {
     return {
       error:
-        error instanceof Error ? error.message : "Failed to generate Apple Health webhook token.",
+        error instanceof Error
+          ? error.message
+          : "Failed to generate Apple Health webhook token.",
     };
   }
 }

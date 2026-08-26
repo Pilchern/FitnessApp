@@ -27,10 +27,15 @@ export async function getWeeklyReviewPageData(
 
   const profile = await profileService.getByUserId(user.id);
   const weekStartsOn = profile?.weekStartsOn ?? 1;
-  const weekStart = weekStartParam || getLastCompletedWeekStart(new Date(), weekStartsOn);
+  const weekStart =
+    weekStartParam || getLastCompletedWeekStart(new Date(), weekStartsOn);
   const { weekEnd } = getWeekRangeFromStart(weekStart);
 
-  const dateRangeQuery = { userId: user.id, startDate: weekStart, endDate: weekEnd };
+  const dateRangeQuery = {
+    userId: user.id,
+    startDate: weekStart,
+    endDate: weekEnd,
+  };
 
   const [
     bodyMetrics,
@@ -71,14 +76,18 @@ export async function getWeeklyReviewPageData(
   const averageReadiness =
     readinessValues.length > 0
       ? Math.round(
-          (readinessValues.reduce((sum, value) => sum + value, 0) / readinessValues.length) * 10,
+          (readinessValues.reduce((sum, value) => sum + value, 0) /
+            readinessValues.length) *
+            10,
         ) / 10
       : null;
 
   const autoPopulated: WeeklyReviewAutoPopulated = {
     proteinHitDays: nutritionSummary ? nutritionSummary.proteinHitDays : null,
     fiberTakenDays: nutritionSummary ? nutritionSummary.fiberTakenDays : null,
-    nutritionAdherencePct: nutritionSummary ? nutritionSummary.adherencePct : null,
+    nutritionAdherencePct: nutritionSummary
+      ? nutritionSummary.adherencePct
+      : null,
     nutritionLogCount: nutritionLogs.length,
     averageReadiness,
   };

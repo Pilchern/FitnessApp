@@ -63,7 +63,9 @@ function normalizeLocalTime(value: string | null): string | null {
   return value == null ? null : value.slice(0, 5);
 }
 
-export function mapRecoveryCheckinRow(row: RecoveryCheckinRow): RecoveryCheckin {
+export function mapRecoveryCheckinRow(
+  row: RecoveryCheckinRow,
+): RecoveryCheckin {
   return {
     id: row.id,
     userId: row.user_id,
@@ -162,9 +164,7 @@ function toRecoveryCheckinUpdate(input: UpdateRecoveryCheckinInput) {
   });
 }
 
-export class SupabaseRecoveryCheckinRepository
-  implements RecoveryCheckinRepository
-{
+export class SupabaseRecoveryCheckinRepository implements RecoveryCheckinRepository {
   constructor(private readonly client: AppSupabaseClient) {}
 
   async create(input: CreateRecoveryCheckinInput) {

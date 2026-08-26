@@ -19,9 +19,7 @@ type RecoveryCheckinListProps = {
   checkins: RecoveryCheckin[];
 };
 
-export function RecoveryCheckinList({
-  checkins,
-}: RecoveryCheckinListProps) {
+export function RecoveryCheckinList({ checkins }: RecoveryCheckinListProps) {
   const [showAll, setShowAll] = useState(false);
   const visible = showAll ? checkins : checkins.slice(0, PAGE_SIZE);
   if (checkins.length === 0) {
@@ -29,9 +27,12 @@ export function RecoveryCheckinList({
       <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 py-12 shadow-panel">
         <div className="max-w-sm mx-auto text-center">
           <div className="text-4xl">🌙</div>
-          <h2 className="mt-4 font-display text-xl text-ink">No check-ins yet</h2>
+          <h2 className="mt-4 font-display text-xl text-ink">
+            No check-ins yet
+          </h2>
           <p className="mt-2 text-sm text-ink/60">
-            Log today&apos;s readiness, sleep, and HRV to start building your recovery baseline.
+            Log today&apos;s readiness, sleep, and HRV to start building your
+            recovery baseline.
           </p>
         </div>
       </section>
@@ -66,13 +67,15 @@ export function RecoveryCheckinList({
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
                   <span>{`Sleep ${formatHours(
                     checkin.sleepDurationMinutes != null
-                      ? Math.round((checkin.sleepDurationMinutes / 60) * 10) / 10
+                      ? Math.round((checkin.sleepDurationMinutes / 60) * 10) /
+                          10
                       : null,
                   )}`}</span>
                   <span>{`Quality ${formatScore(checkin.sleepQuality, "/5")}`}</span>
                   <span className="inline-flex items-center gap-1.5">
                     {`Readiness ${formatScore(checkin.readinessLevel)}`}
-                    {checkin.readinessLevel != null && checkin.readinessLevel >= 8 ? (
+                    {checkin.readinessLevel != null &&
+                    checkin.readinessLevel >= 8 ? (
                       <span className="inline-block h-2 w-2 rounded-full bg-pine" />
                     ) : null}
                   </span>
@@ -80,7 +83,9 @@ export function RecoveryCheckinList({
                   <span>{`Soreness ${formatScore(checkin.sorenessLevel)}`}</span>
                   <span>{`Alcohol ${checkin.alcoholCount}`}</span>
                   <span>{`RHR ${formatRestingHeartRate(checkin.restingHeartRate)}`}</span>
-                  {checkin.hrv != null ? <span>{`HRV ${checkin.hrv}`}</span> : null}
+                  {checkin.hrv != null ? (
+                    <span>{`HRV ${checkin.hrv}`}</span>
+                  ) : null}
                   {checkin.bedtimeLocal != null ? (
                     <span>{`Bedtime ${checkin.bedtimeLocal}`}</span>
                   ) : null}
@@ -94,11 +99,11 @@ export function RecoveryCheckinList({
                   ) : null}
                 </div>
 
-                {(checkin.deepSleepMinutes != null ||
-                  checkin.remSleepMinutes != null ||
-                  checkin.coreSleepMinutes != null ||
-                  checkin.awakeMinutes != null ||
-                  checkin.sleepEfficiencyPct != null) ? (
+                {checkin.deepSleepMinutes != null ||
+                checkin.remSleepMinutes != null ||
+                checkin.coreSleepMinutes != null ||
+                checkin.awakeMinutes != null ||
+                checkin.sleepEfficiencyPct != null ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm text-ink/60">
                       {[
@@ -126,7 +131,9 @@ export function RecoveryCheckinList({
                           ? "Apple Health"
                           : checkin.source.sourceProvider === "withings"
                             ? "Withings"
-                            : checkin.source.sourceProvider.charAt(0).toUpperCase() +
+                            : checkin.source.sourceProvider
+                                .charAt(0)
+                                .toUpperCase() +
                               checkin.source.sourceProvider.slice(1)}
                       </span>
                     ) : null}
@@ -134,7 +141,9 @@ export function RecoveryCheckinList({
                 ) : null}
 
                 {checkin.notes ? (
-                  <p className="text-sm leading-6 text-ink/75">{checkin.notes}</p>
+                  <p className="text-sm leading-6 text-ink/75">
+                    {checkin.notes}
+                  </p>
                 ) : null}
               </div>
 

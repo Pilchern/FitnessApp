@@ -6,7 +6,9 @@ type StrengthPageProps = {
   }>;
 };
 
-export default async function StrengthPage({ searchParams }: StrengthPageProps) {
+export default async function StrengthPage({
+  searchParams,
+}: StrengthPageProps) {
   const params = (await searchParams) ?? {};
 
   return <StrengthScreen editSessionId={params.edit} />;

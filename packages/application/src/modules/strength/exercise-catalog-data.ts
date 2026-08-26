@@ -1,4 +1,7 @@
-import type { ExerciseCatalogEntry, ExerciseMuscleGroupOverride } from "@fitness-app/domain";
+import type {
+  ExerciseCatalogEntry,
+  ExerciseMuscleGroupOverride,
+} from "@fitness-app/domain";
 
 /**
  * Curated catalog scoped to the equipment this app is built around (squat
@@ -459,7 +462,11 @@ export function resolveExercise(
 export function buildOverridesLookup(
   overrides: Pick<
     ExerciseMuscleGroupOverride,
-    "normalizedName" | "exerciseName" | "muscleGroup" | "movementPattern" | "category"
+    | "normalizedName"
+    | "exerciseName"
+    | "muscleGroup"
+    | "movementPattern"
+    | "category"
   >[],
 ): Map<string, ExerciseCatalogEntry> {
   const lookup = new Map<string, ExerciseCatalogEntry>();

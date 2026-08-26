@@ -1,8 +1,5 @@
 import type { SyncJobRun } from "@fitness-app/domain";
-import {
-  formatIntegrationDateTime,
-  formatSyncRunStatus,
-} from "../helpers";
+import { formatIntegrationDateTime, formatSyncRunStatus } from "../helpers";
 
 type SyncRunsCardProps = {
   syncRuns: SyncJobRun[];
@@ -20,7 +17,9 @@ function formatJobType(jobType: string): string {
 }
 
 export function SyncRunsCard({ syncRuns }: SyncRunsCardProps) {
-  const deadLetteredCount = syncRuns.filter((run) => run.status === "dead_letter").length;
+  const deadLetteredCount = syncRuns.filter(
+    (run) => run.status === "dead_letter",
+  ).length;
 
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">

@@ -17,20 +17,23 @@ type AuthFormProps = {
 
 const initialState: AuthActionState = {};
 
-export function AuthForm({
-  action,
-  mode,
-  redirectTo,
-  message,
-}: AuthFormProps) {
+export function AuthForm({ action, mode, redirectTo, message }: AuthFormProps) {
   const [state, formAction] = useActionState(action, initialState);
   const isSignup = mode === "signup";
-  const [timezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [timezone] = useState(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+  );
 
   return (
     <form action={formAction} className="space-y-5">
-      <input type="hidden" name="redirectTo" value={redirectTo ?? "/dashboard"} />
-      {isSignup ? <input type="hidden" name="timezone" value={timezone} /> : null}
+      <input
+        type="hidden"
+        name="redirectTo"
+        value={redirectTo ?? "/dashboard"}
+      />
+      {isSignup ? (
+        <input type="hidden" name="timezone" value={timezone} />
+      ) : null}
 
       {message ? (
         <div className="rounded-2xl border border-pine/20 bg-pine/10 px-4 py-3 text-sm text-pine">
@@ -55,7 +58,9 @@ export function AuthForm({
             className="h-12 rounded-2xl border border-ink/10 bg-white px-4 text-base text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20"
           />
           {state.fieldErrors?.displayName ? (
-            <p className="text-xs text-ember">{state.fieldErrors.displayName}</p>
+            <p className="text-xs text-ember">
+              {state.fieldErrors.displayName}
+            </p>
           ) : null}
         </label>
       ) : null}
@@ -102,7 +107,9 @@ export function AuthForm({
             className="h-12 rounded-2xl border border-ink/10 bg-white px-4 text-base text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20"
           />
           {state.fieldErrors?.confirmPassword ? (
-            <p className="text-xs text-ember">{state.fieldErrors.confirmPassword}</p>
+            <p className="text-xs text-ember">
+              {state.fieldErrors.confirmPassword}
+            </p>
           ) : null}
         </label>
       ) : null}

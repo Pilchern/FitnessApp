@@ -1,6 +1,4 @@
-import type {
-  WeeklyReviewScoringResult,
-} from "@fitness-app/application";
+import type { WeeklyReviewScoringResult } from "@fitness-app/application";
 import type { WeeklyReview, WeeklyReviewSummary } from "@fitness-app/domain";
 
 export type WeeklyReviewAutoPopulated = {

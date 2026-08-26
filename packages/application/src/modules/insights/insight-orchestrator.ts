@@ -1,6 +1,10 @@
 import type { Insight } from "@fitness-app/domain";
 import type { InsightEngineInput } from "./insight-rules";
-import type { InsightRepository, PersistedInsight, UpsertInsightInput } from "./insight-repository";
+import type {
+  InsightRepository,
+  PersistedInsight,
+  UpsertInsightInput,
+} from "./insight-repository";
 import type { AiInsightService } from "./ai-insight-service";
 
 export type OrchestratorInput = InsightEngineInput & {
@@ -23,7 +27,9 @@ export class InsightOrchestrator {
     private readonly ruleEngine: (input: InsightEngineInput) => Insight[],
   ) {}
 
-  async generateAndPersist(input: OrchestratorInput): Promise<PersistedInsight[]> {
+  async generateAndPersist(
+    input: OrchestratorInput,
+  ): Promise<PersistedInsight[]> {
     const { userId, ...engineInput } = input;
 
     const ruleInsights = this.ruleEngine(engineInput);
@@ -82,7 +88,8 @@ export class InsightOrchestrator {
     }
 
     const reference = now ?? new Date();
-    const ageMs = reference.getTime() - new Date(mostRecentAiInsight.createdAt).getTime();
+    const ageMs =
+      reference.getTime() - new Date(mostRecentAiInsight.createdAt).getTime();
     return ageMs >= AI_INSIGHT_STALENESS_MS;
   }
 

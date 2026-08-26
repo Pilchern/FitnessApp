@@ -1,4 +1,7 @@
-import type { CreateBodyMetricInput, CreateCardioSessionInput } from "@fitness-app/application";
+import type {
+  CreateBodyMetricInput,
+  CreateCardioSessionInput,
+} from "@fitness-app/application";
 import type { EntityId, IntegrationProvider } from "@fitness-app/domain";
 
 export type OAuthTokenSet = {
@@ -36,7 +39,10 @@ export type ProviderBodyMetricImportPage = {
   metadata: Record<string, unknown>;
 };
 
-export type MappedImportedBodyMetric = Omit<CreateBodyMetricInput, "userId" | "source"> & {
+export type MappedImportedBodyMetric = Omit<
+  CreateBodyMetricInput,
+  "userId" | "source"
+> & {
   providerExternalId: string;
 };
 
@@ -51,7 +57,10 @@ export type ProviderOAuthConfig = {
   redirectUri: string;
 };
 
-export type MappedImportedCardioSession = Omit<CreateCardioSessionInput, "userId" | "source"> & {
+export type MappedImportedCardioSession = Omit<
+  CreateCardioSessionInput,
+  "userId" | "source"
+> & {
   providerExternalId: string;
 };
 

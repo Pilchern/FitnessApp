@@ -63,7 +63,9 @@ export function AppShell({ sections }: AppShellProps) {
 
       <section className="mt-8 grid gap-5 lg:grid-cols-[1.3fr_0.9fr]">
         <article className="rounded-[1.5rem] border border-ink/10 bg-white/70 p-6 shadow-panel">
-          <h2 className="font-display text-2xl text-ink">Manual-first logging</h2>
+          <h2 className="font-display text-2xl text-ink">
+            Manual-first logging
+          </h2>
           <ul className="mt-4 space-y-3 text-sm leading-6 text-ink/80">
             <li>Log workouts, measurements, and check-ins in seconds.</li>
             <li>Your data is always yours — no app required.</li>
@@ -74,8 +76,8 @@ export function AppShell({ sections }: AppShellProps) {
         <article className="rounded-[1.5rem] border border-pine/20 bg-pine p-6 text-mist shadow-panel">
           <h2 className="font-display text-2xl">Everything in one place</h2>
           <p className="mt-3 text-sm leading-6 text-mist/90">
-            Cardio, strength, recovery, body, nutrition, weekly reviews,
-            journal entries, and insights — all linked together.
+            Cardio, strength, recovery, body, nutrition, weekly reviews, journal
+            entries, and insights — all linked together.
           </p>
         </article>
       </section>

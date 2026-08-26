@@ -36,9 +36,9 @@ test("weekly-review page shows the 'Weekly review' section heading", async ({
 }) => {
   await page.goto("/weekly-review");
   // The form section has a "Weekly review" eyebrow label
-  await expect(
-    page.getByText(/weekly review/i).first(),
-  ).toBeVisible({ timeout: 8000 });
+  await expect(page.getByText(/weekly review/i).first()).toBeVisible({
+    timeout: 8000,
+  });
 });
 
 test("weekly-review page shows the 'Weekly metrics' section", async ({
@@ -46,7 +46,9 @@ test("weekly-review page shows the 'Weekly metrics' section", async ({
 }) => {
   await page.goto("/weekly-review");
   // h2 rendered inside the form for the auto-filled metrics grid
-  await expect(page.getByRole("heading", { name: /weekly metrics/i })).toBeVisible({
+  await expect(
+    page.getByRole("heading", { name: /weekly metrics/i }),
+  ).toBeVisible({
     timeout: 8000,
   });
 });
@@ -77,9 +79,7 @@ test("weekly-review page renders the week-picker date input and Load week button
   await page.goto("/weekly-review");
   // The week start date picker has an explicit label "Week start"
   await expect(page.getByLabel("Week start")).toBeVisible({ timeout: 8000 });
-  await expect(
-    page.getByRole("button", { name: /load week/i }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: /load week/i })).toBeVisible();
 });
 
 test("weekly-review page renders the save review submit button", async ({
@@ -88,7 +88,9 @@ test("weekly-review page renders the save review submit button", async ({
   await page.goto("/weekly-review");
   // Button label is either "Save weekly review" (new) or "Update weekly review" (existing)
   await expect(
-    page.getByRole("button", { name: /save weekly review|update weekly review/i }),
+    page.getByRole("button", {
+      name: /save weekly review|update weekly review/i,
+    }),
   ).toBeVisible({ timeout: 8000 });
 });
 

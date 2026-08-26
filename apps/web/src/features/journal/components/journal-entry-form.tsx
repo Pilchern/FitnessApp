@@ -37,7 +37,9 @@ export function JournalEntryForm({
   formError,
 }: JournalEntryFormProps) {
   const [state, formAction] = useActionState(action, initialState);
-  const [values, setValues] = useState<JournalFormValues>(() => toJournalFormValues(entry));
+  const [values, setValues] = useState<JournalFormValues>(() =>
+    toJournalFormValues(entry),
+  );
   const [showDeepEntry, setShowDeepEntry] = useState(mode === "edit");
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
 
@@ -70,7 +72,8 @@ export function JournalEntryForm({
             {mode === "edit" ? "Edit entry" : "New entry"}
           </h2>
           <p className="mt-2 text-sm leading-6 text-ink/75">
-            Write a note, add tags, and pick a date. Title and links are optional.
+            Write a note, add tags, and pick a date. Title and links are
+            optional.
           </p>
         </div>
 
@@ -102,7 +105,10 @@ export function JournalEntryForm({
               type="date"
               value={values.entryDate}
               onChange={(event) =>
-                setValues((current) => ({ ...current, entryDate: event.target.value }))
+                setValues((current) => ({
+                  ...current,
+                  entryDate: event.target.value,
+                }))
               }
             />
           </label>
@@ -115,7 +121,10 @@ export function JournalEntryForm({
               placeholder="cardio, review, recovery"
               value={values.tags}
               onChange={(event) =>
-                setValues((current) => ({ ...current, tags: event.target.value }))
+                setValues((current) => ({
+                  ...current,
+                  tags: event.target.value,
+                }))
               }
             />
           </label>
@@ -136,7 +145,9 @@ export function JournalEntryForm({
 
         {suggestedTags.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-ink/50">Suggested:</span>
+            <span className="text-xs font-semibold text-ink/50">
+              Suggested:
+            </span>
             {suggestedTags.map((tag) => (
               <button
                 key={tag}
@@ -144,9 +155,7 @@ export function JournalEntryForm({
                 onClick={() =>
                   setValues((current) => ({
                     ...current,
-                    tags: current.tags
-                      ? `${current.tags}, ${tag}`
-                      : tag,
+                    tags: current.tags ? `${current.tags}, ${tag}` : tag,
                   }))
                 }
                 className="rounded-full border border-ink/15 bg-sand px-3 py-1 text-xs font-semibold text-ink/60 transition hover:border-pine hover:text-pine"
@@ -163,7 +172,9 @@ export function JournalEntryForm({
             onClick={() => setShowDeepEntry((value) => !value)}
             className="text-sm font-semibold text-pine underline-offset-4 hover:underline"
           >
-            {showDeepEntry ? "Hide optional fields" : "Add title or link to a workout"}
+            {showDeepEntry
+              ? "Hide optional fields"
+              : "Add title or link to a workout"}
           </button>
         </div>
 
@@ -176,7 +187,10 @@ export function JournalEntryForm({
                 name="title"
                 value={values.title}
                 onChange={(event) =>
-                  setValues((current) => ({ ...current, title: event.target.value }))
+                  setValues((current) => ({
+                    ...current,
+                    title: event.target.value,
+                  }))
                 }
               />
             </label>
@@ -220,7 +234,6 @@ export function JournalEntryForm({
                 </select>
               </label>
             </div>
-
           </div>
         ) : null}
 

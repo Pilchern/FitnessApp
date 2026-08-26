@@ -1,6 +1,9 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { createStravaAdapter, createStravaSyncOrchestrator } from "@/lib/server/integrations";
+import {
+  createStravaAdapter,
+  createStravaSyncOrchestrator,
+} from "@/lib/server/integrations";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 
 const OAUTH_STATE_COOKIE = "strava_oauth_state";

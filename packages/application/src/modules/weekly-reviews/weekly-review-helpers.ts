@@ -42,7 +42,9 @@ function average(values: number[]) {
     return null;
   }
 
-  return roundOneDecimal(values.reduce((sum, value) => sum + value, 0) / values.length);
+  return roundOneDecimal(
+    values.reduce((sum, value) => sum + value, 0) / values.length,
+  );
 }
 
 function formatIsoDate(date: Date) {
@@ -85,7 +87,10 @@ export function getCurrentWeekRangeForUser(
   return { weekStart: isoStart, weekEnd: isoEnd };
 }
 
-export function getLastCompletedWeekStart(referenceDate = new Date(), weekStartsOn: 0 | 1 = 1) {
+export function getLastCompletedWeekStart(
+  referenceDate = new Date(),
+  weekStartsOn: 0 | 1 = 1,
+) {
   const base = new Date(referenceDate);
   base.setHours(12, 0, 0, 0);
 
@@ -121,11 +126,15 @@ export function buildWeeklyReviewSummary({
 
   const completedRides = cardioSessions.filter(
     (session) =>
-      session.plannedVsCompleted === "completed" && session.sessionKind !== "other",
+      session.plannedVsCompleted === "completed" &&
+      session.sessionKind !== "other",
   );
 
   const zone2Minutes = cardioSessions.reduce((sum, session) => {
-    if (session.plannedVsCompleted === "skipped" || session.plannedVsCompleted === "planned") {
+    if (
+      session.plannedVsCompleted === "skipped" ||
+      session.plannedVsCompleted === "planned"
+    ) {
       return sum;
     }
 
@@ -143,7 +152,9 @@ export function buildWeeklyReviewSummary({
   const sleepAverageHours = average(
     recoveryCheckins
       .map((checkin) =>
-        checkin.sleepDurationMinutes != null ? checkin.sleepDurationMinutes / 60 : null,
+        checkin.sleepDurationMinutes != null
+          ? checkin.sleepDurationMinutes / 60
+          : null,
       )
       .filter((value): value is number => value != null),
   );
@@ -151,7 +162,8 @@ export function buildWeeklyReviewSummary({
   // Count imported strength activities (WeightTraining, CrossFit, etc.) toward lifts
   const importedLifts = cardioSessions.filter(
     (session) =>
-      session.plannedVsCompleted === "completed" && session.sessionKind === "other",
+      session.plannedVsCompleted === "completed" &&
+      session.sessionKind === "other",
   ).length;
 
   return {
@@ -162,12 +174,16 @@ export function buildWeeklyReviewSummary({
     zone2Minutes,
     vo2Completed: cardioSessions.some(
       (session) =>
-        session.sessionKind === "vo2" && session.plannedVsCompleted === "completed",
+        session.sessionKind === "vo2" &&
+        session.plannedVsCompleted === "completed",
     ),
     sleepAverageHours,
     alcoholTotal:
       recoveryCheckins.length > 0
-        ? recoveryCheckins.reduce((sum, checkin) => sum + checkin.alcoholCount, 0)
+        ? recoveryCheckins.reduce(
+            (sum, checkin) => sum + checkin.alcoholCount,
+            0,
+          )
         : null,
   };
 }
@@ -313,11 +329,18 @@ export function calculateWeeklyReviewScore({
     },
   ];
 
-  const totalScore = components.reduce((sum, component) => sum + component.score, 0);
+  const totalScore = components.reduce(
+    (sum, component) => sum + component.score,
+    0,
+  );
   const band = bandForScore(totalScore);
 
   let strategicDecision = "Stay steady and close the biggest gap next week.";
-  if ((sleepAverageHours ?? 7) < 6.5 || (alcoholTotal ?? 0) > 4 || (confidence ?? 7) <= 4) {
+  if (
+    (sleepAverageHours ?? 7) < 6.5 ||
+    (alcoholTotal ?? 0) > 4 ||
+    (confidence ?? 7) <= 4
+  ) {
     strategicDecision = "Protect recovery before adding more intensity.";
   } else if (liftsCompleted < 2 || ridesCompleted < 2) {
     strategicDecision = "Reduce friction and reestablish baseline consistency.";
@@ -328,12 +351,17 @@ export function calculateWeeklyReviewScore({
     vo2Completed &&
     (confidence ?? 0) >= 7
   ) {
-    strategicDecision = "Hold the plan and progress one lever modestly next week.";
+    strategicDecision =
+      "Hold the plan and progress one lever modestly next week.";
   }
 
   let riskForecast =
     "Low risk: adherence and recovery are stable enough to carry momentum into next week.";
-  if ((sleepAverageHours ?? 7) < 6.5 || (alcoholTotal ?? 0) > 6 || (confidence ?? 7) <= 3) {
+  if (
+    (sleepAverageHours ?? 7) < 6.5 ||
+    (alcoholTotal ?? 0) > 6 ||
+    (confidence ?? 7) <= 3
+  ) {
     riskForecast =
       "High risk: under-recovery could compromise lift quality and make the next VO2 session harder than planned.";
   } else if (liftsCompleted < 3 || ridesCompleted < 3 || zone2Minutes < 90) {

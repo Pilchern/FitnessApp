@@ -137,7 +137,9 @@ export class SupabaseBodyMetricRepository implements BodyMetricRepository {
       .single();
 
     return mapBodyMetricRow(
-      bodyMetricRowSchema.parse(requireSingleResult(response, "Create body metric")),
+      bodyMetricRowSchema.parse(
+        requireSingleResult(response, "Create body metric"),
+      ),
     );
   }
 
@@ -180,7 +182,9 @@ export class SupabaseBodyMetricRepository implements BodyMetricRepository {
 
       if (tombstoneResponse.data) {
         // User soft-deleted this row; do not resurrect it on re-import.
-        return mapBodyMetricRow(bodyMetricRowSchema.parse(tombstoneResponse.data));
+        return mapBodyMetricRow(
+          bodyMetricRowSchema.parse(tombstoneResponse.data),
+        );
       }
 
       return this.create(input);
@@ -212,7 +216,9 @@ export class SupabaseBodyMetricRepository implements BodyMetricRepository {
       .single();
 
     return mapBodyMetricRow(
-      bodyMetricRowSchema.parse(requireSingleResult(response, "Update body metric")),
+      bodyMetricRowSchema.parse(
+        requireSingleResult(response, "Update body metric"),
+      ),
     );
   }
 

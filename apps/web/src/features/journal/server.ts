@@ -30,9 +30,13 @@ export async function getJournalPageData({
     }),
     cardioService.listByDateRange({
       userId: user.id,
-      startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+      startDate: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10),
     }),
-    editEntryId ? journalService.getById(user.id, editEntryId) : Promise.resolve(null),
+    editEntryId
+      ? journalService.getById(user.id, editEntryId)
+      : Promise.resolve(null),
   ]);
 
   return {

@@ -7,7 +7,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function isoSecondsUtc(y: number, m: number, d: number, h: number, min: number, s = 0): number {
+function isoSecondsUtc(
+  y: number,
+  m: number,
+  d: number,
+  h: number,
+  min: number,
+  s = 0,
+): number {
   return Math.floor(Date.UTC(y, m, d, h, min, s) / 1000);
 }
 
@@ -230,7 +237,10 @@ describe("PelotonCardioAdapter.authenticate", () => {
     );
 
     await expect(
-      adapter.authenticate({ username: "rider@example.com", password: "wrong" }),
+      adapter.authenticate({
+        username: "rider@example.com",
+        password: "wrong",
+      }),
     ).rejects.toThrow("Peloton API error 401");
   });
 });

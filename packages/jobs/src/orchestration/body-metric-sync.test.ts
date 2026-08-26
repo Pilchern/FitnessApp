@@ -196,7 +196,9 @@ describe("BodyMetricSyncOrchestrator", () => {
       buildAuthorizationUrl: vi.fn(),
       exchangeCode: vi.fn(),
       refreshToken: vi.fn(),
-      fetchBodyMetrics: vi.fn().mockRejectedValue(new Error("Provider unavailable")),
+      fetchBodyMetrics: vi
+        .fn()
+        .mockRejectedValue(new Error("Provider unavailable")),
       mapRawBodyMetricItem: vi.fn(),
     };
 

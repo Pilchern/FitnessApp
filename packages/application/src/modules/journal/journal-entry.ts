@@ -94,7 +94,10 @@ const TAG_RULES: Array<[RegExp, string]> = [
   [/\b(nutrition|diet|eating|macros)\b/, "nutrition"],
 ];
 
-export function inferJournalTags(body: string, existingTags: string[]): string[] {
+export function inferJournalTags(
+  body: string,
+  existingTags: string[],
+): string[] {
   const lower = body.toLowerCase();
   const tagSet = new Set(existingTags);
   for (const [pattern, tag] of TAG_RULES) {
@@ -158,6 +161,8 @@ export class JournalEntryService {
   }
 
   async listEntries(input: unknown) {
-    return this.repository.listByDateRange(journalEntryListQuerySchema.parse(input));
+    return this.repository.listByDateRange(
+      journalEntryListQuerySchema.parse(input),
+    );
   }
 }

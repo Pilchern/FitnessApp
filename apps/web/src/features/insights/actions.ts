@@ -8,7 +8,9 @@ export type InsightActionResult = {
   error?: string;
 };
 
-export async function dismissInsightAction(id: string): Promise<InsightActionResult> {
+export async function dismissInsightAction(
+  id: string,
+): Promise<InsightActionResult> {
   try {
     const user = await requireCurrentUser();
     const { insightOrchestrator } = await createCoreServices();
@@ -19,7 +21,9 @@ export async function dismissInsightAction(id: string): Promise<InsightActionRes
   }
 }
 
-export async function archiveInsightAction(id: string): Promise<InsightActionResult> {
+export async function archiveInsightAction(
+  id: string,
+): Promise<InsightActionResult> {
   try {
     const user = await requireCurrentUser();
     const { insightOrchestrator } = await createCoreServices();

@@ -16,9 +16,11 @@ describe("token crypto", () => {
   });
 
   it("evaluates token expiry thresholds safely", () => {
-    expect(isTokenExpired(new Date(Date.now() - 5_000).toISOString())).toBe(true);
-    expect(isTokenExpired(new Date(Date.now() + 60_000 * 10).toISOString())).toBe(
-      false,
+    expect(isTokenExpired(new Date(Date.now() - 5_000).toISOString())).toBe(
+      true,
     );
+    expect(
+      isTokenExpired(new Date(Date.now() + 60_000 * 10).toISOString()),
+    ).toBe(false);
   });
 });

@@ -31,23 +31,26 @@ function buildIntervalStructure(definition: CardioTrainingTemplateDefinition) {
 export function buildCardioTemplatePresets(
   templates: TrainingTemplate[],
 ): CardioTemplatePreset[] {
-  return templates
-    .flatMap((template) => {
-      if (template.templateType !== "cardio" || !isCardioDefinition(template.definition)) {
-        return [];
-      }
+  return templates.flatMap((template) => {
+    if (
+      template.templateType !== "cardio" ||
+      !isCardioDefinition(template.definition)
+    ) {
+      return [];
+    }
 
-      return [
-        {
-          id: template.id,
-          name: template.name,
-          sessionKind: template.definition.sessionKind,
-          targetDurationMinutes: template.definition.targetDurationMinutes ?? null,
-          intervalStructure: buildIntervalStructure(template.definition),
-          helperText: template.definition.notes ?? null,
-        },
-      ];
-    });
+    return [
+      {
+        id: template.id,
+        name: template.name,
+        sessionKind: template.definition.sessionKind,
+        targetDurationMinutes:
+          template.definition.targetDurationMinutes ?? null,
+        intervalStructure: buildIntervalStructure(template.definition),
+        helperText: template.definition.notes ?? null,
+      },
+    ];
+  });
 }
 
 function todayIsoDate() {
@@ -146,7 +149,9 @@ export function formatSportType(sportType: string): string {
   return sportType.replace(/([A-Z])/g, " $1").trim();
 }
 
-export function formatCompletionLabel(value: CardioSession["plannedVsCompleted"]) {
+export function formatCompletionLabel(
+  value: CardioSession["plannedVsCompleted"],
+) {
   switch (value) {
     case "completed":
       return "Completed";

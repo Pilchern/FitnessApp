@@ -27,7 +27,8 @@ function buildProfilePayload(userId: string, formData: FormData) {
     goalPreserveMuscle: formData.get("goalPreserveMuscle") === "on",
     goalImproveVo2: formData.get("goalImproveVo2") === "on",
     // Number inputs — empty string means "no target set"; null (absent field) treated as empty
-    dailyProteinGramsTarget: formData.get("dailyProteinGramsTarget") ?? undefined,
+    dailyProteinGramsTarget:
+      formData.get("dailyProteinGramsTarget") ?? undefined,
     dailyCaloriesTarget: formData.get("dailyCaloriesTarget") ?? undefined,
     dailyFiberGramsTarget: formData.get("dailyFiberGramsTarget") ?? undefined,
     targetWeightLb: formData.get("targetWeightLb") ?? undefined,
@@ -60,8 +61,11 @@ export async function recomputeNutritionTargetsAction(): Promise<{
 }> {
   try {
     const user = await requireCurrentUser();
-    const { nutritionTargetService, profileService } = await createCoreServices();
-    const targets = await nutritionTargetService.computeNutritionTargets(user.id);
+    const { nutritionTargetService, profileService } =
+      await createCoreServices();
+    const targets = await nutritionTargetService.computeNutritionTargets(
+      user.id,
+    );
     const profile = await profileService.getByUserId(user.id);
     if (!profile) {
       return { error: "Profile not found" };
@@ -116,7 +120,9 @@ export async function deactivateSupplementAction(formData: FormData) {
     await supplementService.archive(user.id, id);
   } catch (error) {
     url = `/settings?error=${encodeURIComponent(
-      error instanceof Error ? error.message : "Could not deactivate supplement.",
+      error instanceof Error
+        ? error.message
+        : "Could not deactivate supplement.",
     )}`;
   }
   redirect(url);
@@ -135,7 +141,9 @@ export async function reactivateSupplementAction(formData: FormData) {
     await supplementService.update({ id, userId: user.id, isActive: true });
   } catch (error) {
     url = `/settings?error=${encodeURIComponent(
-      error instanceof Error ? error.message : "Could not reactivate supplement.",
+      error instanceof Error
+        ? error.message
+        : "Could not reactivate supplement.",
     )}`;
   }
   redirect(url);

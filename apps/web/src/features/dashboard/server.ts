@@ -11,9 +11,17 @@ import {
   getRecoveryCoachingSuggestion,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createCoreServices, getCachedUserProfile } from "@/lib/server/services";
+import {
+  createCoreServices,
+  getCachedUserProfile,
+} from "@/lib/server/services";
 import { getInsightsData } from "@/features/insights/server";
-import type { DashboardData, GoalProgress, TodayNutrition, NutritionTargetsSnapshot } from "./types";
+import type {
+  DashboardData,
+  GoalProgress,
+  TodayNutrition,
+  NutritionTargetsSnapshot,
+} from "./types";
 
 function formatIsoDate(date: Date) {
   return date.toISOString().slice(0, 10);
@@ -38,8 +46,16 @@ function computeGoalProgress(
     targetDate: string | null;
   } | null,
   recentBody: { measuredOn: string; weightLb: number | null }[],
-  strengthSessions: { sessionDate: string; sets: { weight: number | null; reps: number | null }[] }[],
-  cardioLast8Weeks: { sessionDate: string; sessionKind: string; zone2Minutes: number | null; durationMinutes: number | null }[],
+  strengthSessions: {
+    sessionDate: string;
+    sets: { weight: number | null; reps: number | null }[];
+  }[],
+  cardioLast8Weeks: {
+    sessionDate: string;
+    sessionKind: string;
+    zone2Minutes: number | null;
+    durationMinutes: number | null;
+  }[],
 ): GoalProgress[] {
   if (!profile) return [];
 
@@ -89,7 +105,8 @@ function computeGoalProgress(
           let paceDetail = "";
           if (profile.targetDate) {
             const weeksRemaining =
-              (new Date(`${profile.targetDate}T12:00:00`).getTime() - now.getTime()) /
+              (new Date(`${profile.targetDate}T12:00:00`).getTime() -
+                now.getTime()) /
               (7 * 24 * 60 * 60 * 1000);
             if (weeksRemaining > 0) {
               const requiredWeeklyRate = remaining / weeksRemaining;
@@ -124,14 +141,20 @@ function computeGoalProgress(
     const thisMonthStart = daysAgoStr(30);
     const lastMonthStart = daysAgoStr(60);
 
-    function sessionVolume(s: { sets: { weight: number | null; reps: number | null }[] }) {
+    function sessionVolume(s: {
+      sets: { weight: number | null; reps: number | null }[];
+    }) {
       return s.sets.reduce(
-        (sum, set) => sum + (set.weight != null && set.reps != null ? set.weight * set.reps : 0),
+        (sum, set) =>
+          sum +
+          (set.weight != null && set.reps != null ? set.weight * set.reps : 0),
         0,
       );
     }
 
-    const thisMonth = strengthSessions.filter((s) => s.sessionDate >= thisMonthStart);
+    const thisMonth = strengthSessions.filter(
+      (s) => s.sessionDate >= thisMonthStart,
+    );
     const lastMonth = strengthSessions.filter(
       (s) => s.sessionDate >= lastMonthStart && s.sessionDate < thisMonthStart,
     );
@@ -150,7 +173,8 @@ function computeGoalProgress(
       progress.push({
         label: "Preserve muscle",
         description: "Maintaining strength training volume month over month",
-        trend: pct >= 5 ? "improving" : pct <= -10 ? "declining" : "maintaining",
+        trend:
+          pct >= 5 ? "improving" : pct <= -10 ? "declining" : "maintaining",
         trendDetail:
           pct >= 0
             ? `volume up ${pct.toFixed(0)}% vs last month`
@@ -180,7 +204,11 @@ function computeGoalProgress(
     }
 
     const thisMinutes = rangeMinutes(cardioLast8Weeks, fourWeeksAgo, today);
-    const priorMinutes = rangeMinutes(cardioLast8Weeks, eightWeeksAgo, fourWeeksAgo);
+    const priorMinutes = rangeMinutes(
+      cardioLast8Weeks,
+      eightWeeksAgo,
+      fourWeeksAgo,
+    );
     const thisPerWeek = thisMinutes / 4;
     const priorPerWeek = priorMinutes / 4;
     const delta = thisPerWeek - priorPerWeek;
@@ -197,7 +225,12 @@ function computeGoalProgress(
       progress.push({
         label: "Improve VO2",
         description: "Increasing Zone 2 + VO2 cardio minutes per week",
-        trend: delta >= 20 ? "improving" : delta <= -20 ? "declining" : "maintaining",
+        trend:
+          delta >= 20
+            ? "improving"
+            : delta <= -20
+              ? "declining"
+              : "maintaining",
         trendDetail:
           delta >= 0
             ? `up ${absDelta} min/week vs prior 4 weeks`
@@ -226,7 +259,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   const profile = await getCachedUserProfile(user.id);
   const weekStartsOn = profile?.weekStartsOn ?? 1;
   const timezone = profile?.timezone || "UTC";
-  const { weekStart, weekEnd } = getCurrentWeekRangeForUser(timezone, weekStartsOn);
+  const { weekStart, weekEnd } = getCurrentWeekRangeForUser(
+    timezone,
+    weekStartsOn,
+  );
 
   const today = formatIsoDate(new Date());
 
@@ -243,7 +279,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     cardioLast8WeeksResult,
     exerciseOverridesResult,
   ] = await Promise.allSettled([
-    cardioService.listByDateRange({ userId: user.id, startDate: weekStart, endDate: weekEnd }),
+    cardioService.listByDateRange({
+      userId: user.id,
+      startDate: weekStart,
+      endDate: weekEnd,
+    }),
     strengthSummaryService.countCompletedByDateRange({
       userId: user.id,
       startDate: weekStart,
@@ -297,8 +337,10 @@ export async function getDashboardData(): Promise<DashboardData> {
     nutritionLogs.length === 0
       ? null
       : {
-          proteinHitDays: nutritionLogs.filter((l) => l.proteinHit === true).length,
-          fiberTakenDays: nutritionLogs.filter((l) => l.fiberTaken === true).length,
+          proteinHitDays: nutritionLogs.filter((l) => l.proteinHit === true)
+            .length,
+          fiberTakenDays: nutritionLogs.filter((l) => l.fiberTaken === true)
+            .length,
           totalDays: nutritionLogs.length,
         };
 
@@ -313,7 +355,9 @@ export async function getDashboardData(): Promise<DashboardData> {
   const weightTrend = buildBodyWeightTrend(recentBody);
   const latestBodyDate =
     recentBody.length > 0
-      ? [...recentBody].sort((a, b) => b.measuredOn.localeCompare(a.measuredOn))[0]?.measuredOn ?? null
+      ? ([...recentBody].sort((a, b) =>
+          b.measuredOn.localeCompare(a.measuredOn),
+        )[0]?.measuredOn ?? null)
       : null;
 
   // Count imported strength activities (WeightTraining, CrossFit, etc.) toward lifts
@@ -326,7 +370,9 @@ export async function getDashboardData(): Promise<DashboardData> {
   );
   const latestRecovery = sortedRecovery[0] ?? null;
   const latestReview = recentReviews[0] ?? null;
-  const coachingSuggestion = getRecoveryCoachingSuggestion(sortedRecovery.slice(0, 7));
+  const coachingSuggestion = getRecoveryCoachingSuggestion(
+    sortedRecovery.slice(0, 7),
+  );
   const muscleGroupVolume = computeMuscleGroupVolume(
     strengthSessions,
     { startDate: daysAgoIsoDate(7), endDate: today },
@@ -339,7 +385,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       weekEnd,
       liftsCompleted: liftsCompleted + importedLifts,
       ridesCompleted: cardioThisWeek.filter(
-        (s) => s.plannedVsCompleted === "completed" && s.sessionKind !== "other",
+        (s) =>
+          s.plannedVsCompleted === "completed" && s.sessionKind !== "other",
       ).length,
       zone2Minutes: cardioTotals.zone2Minutes,
       totalMinutes: cardioTotals.totalMinutes,
@@ -357,7 +404,12 @@ export async function getDashboardData(): Promise<DashboardData> {
     topInsights: topInsights.slice(0, 3),
     coachingSuggestion,
     journalStreak,
-    goalProgress: computeGoalProgress(profile, recentBody, strengthSessions, cardioLast8Weeks),
+    goalProgress: computeGoalProgress(
+      profile,
+      recentBody,
+      strengthSessions,
+      cardioLast8Weeks,
+    ),
     todayNutrition,
     nutritionTargets,
     muscleGroupVolume,

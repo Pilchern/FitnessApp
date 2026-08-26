@@ -12,7 +12,13 @@ const importBatchRowSchema = z.object({
   integration_connection_id: z.string().uuid().nullable(),
   provider: z.enum(["withings", "peloton", "strava", "apple_health"]),
   batch_type: z.string(),
-  status: z.enum(["received", "processing", "processed", "partially_processed", "failed"]),
+  status: z.enum([
+    "received",
+    "processing",
+    "processed",
+    "partially_processed",
+    "failed",
+  ]),
   provider_cursor: z.string().nullable(),
   started_at: z.string().nullable(),
   finished_at: z.string().nullable(),
@@ -25,7 +31,9 @@ const importBatchRowSchema = z.object({
   updated_at: z.string(),
 });
 
-function mapImportBatchRow(row: z.infer<typeof importBatchRowSchema>): ImportBatch {
+function mapImportBatchRow(
+  row: z.infer<typeof importBatchRowSchema>,
+): ImportBatch {
   return {
     id: row.id,
     userId: row.user_id,

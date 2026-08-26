@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createAppleHealthDailyMetricsOrchestrator, createAppleHealthWebhookSecretLookup } from "@/lib/server/integrations";
+import {
+  createAppleHealthDailyMetricsOrchestrator,
+  createAppleHealthWebhookSecretLookup,
+} from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
 import { verifyAppleHealthRequest } from "../verify-request";
 
@@ -53,7 +56,10 @@ export async function POST(request: NextRequest) {
   const lookupSecret = createAppleHealthWebhookSecretLookup();
   const auth = await verifyAppleHealthRequest(request, rawBody, lookupSecret);
   if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    return NextResponse.json(
+      { ok: false, error: auth.error },
+      { status: auth.status },
+    );
   }
   const userId = auth.userId;
 
@@ -61,7 +67,10 @@ export async function POST(request: NextRequest) {
   try {
     body = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ ok: false, error: "Invalid JSON body." }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Invalid JSON body." },
+      { status: 400 },
+    );
   }
 
   const parsed = appleHealthDailyMetricsBodySchema.safeParse(body);
@@ -69,8 +78,14 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     // Don't leak Zod internals to clients; log server-side.
     // eslint-disable-next-line no-console
-    console.warn("[apple-health/daily-metrics] invalid payload", parsed.error.flatten());
-    return NextResponse.json({ ok: false, error: "invalid_payload" }, { status: 400 });
+    console.warn(
+      "[apple-health/daily-metrics] invalid payload",
+      parsed.error.flatten(),
+    );
+    return NextResponse.json(
+      { ok: false, error: "invalid_payload" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -88,6 +103,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[apple-health/daily-metrics] Sync failed:", error);
-    return NextResponse.json({ ok: false, error: "sync_failed" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "sync_failed" },
+      { status: 500 },
+    );
   }
 }

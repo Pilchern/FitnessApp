@@ -13,17 +13,20 @@ async function mapWithConcurrency<T, R>(
 ): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = new Array(items.length);
   let cursor = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (true) {
-      const idx = cursor++;
-      if (idx >= items.length) return;
-      try {
-        results[idx] = { status: "fulfilled", value: await fn(items[idx]) };
-      } catch (err) {
-        results[idx] = { status: "rejected", reason: err };
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (true) {
+        const idx = cursor++;
+        if (idx >= items.length) return;
+        try {
+          results[idx] = { status: "fulfilled", value: await fn(items[idx]) };
+        } catch (err) {
+          results[idx] = { status: "rejected", reason: err };
+        }
       }
-    }
-  });
+    },
+  );
   await Promise.all(workers);
   return results;
 }
@@ -40,7 +43,10 @@ export async function GET(request: NextRequest) {
   const cronSecret = env.CRON_SECRET;
 
   if (!cronSecret) {
-    return NextResponse.json({ error: "cron_secret_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "cron_secret_not_configured" },
+      { status: 503 },
+    );
   }
 
   const authHeader = request.headers.get("authorization") ?? "";
@@ -49,7 +55,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (!hasStravaServerEnv()) {
-    return NextResponse.json({ skipped: true, reason: "Strava not configured" });
+    return NextResponse.json({
+      skipped: true,
+      reason: "Strava not configured",
+    });
   }
 
   const client = createSupabaseAdminClient();
@@ -81,8 +90,12 @@ export async function GET(request: NextRequest) {
     if (res.status === "fulfilled") {
       return { userId: rows[i].user_id, ok: true };
     }
-    const message = res.reason instanceof Error ? res.reason.message : "Unknown error";
-    console.error(`[cron/strava-sync] Failed for user ${rows[i].user_id}:`, message);
+    const message =
+      res.reason instanceof Error ? res.reason.message : "Unknown error";
+    console.error(
+      `[cron/strava-sync] Failed for user ${rows[i].user_id}:`,
+      message,
+    );
     return { userId: rows[i].user_id, ok: false, error: message };
   });
 

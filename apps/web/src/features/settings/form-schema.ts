@@ -67,7 +67,9 @@ export const settingsFormSchema = z.object({
     message: "Units system must be imperial or metric",
   }),
   weekStartsOn: z
-    .enum(["0", "1"], { message: "Week start must be 0 (Sunday) or 1 (Monday)" })
+    .enum(["0", "1"], {
+      message: "Week start must be 0 (Sunday) or 1 (Monday)",
+    })
     .transform((value) => Number(value) as 0 | 1),
   goalFatLoss: z.boolean(),
   goalPreserveMuscle: z.boolean(),

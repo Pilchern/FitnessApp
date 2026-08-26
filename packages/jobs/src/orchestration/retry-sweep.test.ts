@@ -25,21 +25,27 @@ describe("isRetryableJobType", () => {
 
 describe("resolveRetryTarget", () => {
   it("resolves a cardio_session_sync/peloton row", () => {
-    expect(resolveRetryTarget("cardio_session_sync", { provider: "peloton" })).toEqual({
+    expect(
+      resolveRetryTarget("cardio_session_sync", { provider: "peloton" }),
+    ).toEqual({
       kind: "cardio",
       provider: "peloton",
     });
   });
 
   it("resolves a cardio_session_sync/strava row", () => {
-    expect(resolveRetryTarget("cardio_session_sync", { provider: "strava" })).toEqual({
+    expect(
+      resolveRetryTarget("cardio_session_sync", { provider: "strava" }),
+    ).toEqual({
       kind: "cardio",
       provider: "strava",
     });
   });
 
   it("resolves a body_metric_sync/withings row", () => {
-    expect(resolveRetryTarget("body_metric_sync", { provider: "withings" })).toEqual({
+    expect(
+      resolveRetryTarget("body_metric_sync", { provider: "withings" }),
+    ).toEqual({
       kind: "body_metric",
       provider: "withings",
     });
@@ -47,17 +53,25 @@ describe("resolveRetryTarget", () => {
 
   it("returns unsupported for apple_health rows", () => {
     expect(
-      resolveRetryTarget("apple_health_sleep_sync", { provider: "apple_health" }),
+      resolveRetryTarget("apple_health_sleep_sync", {
+        provider: "apple_health",
+      }),
     ).toEqual({ kind: "unsupported" });
   });
 
   it("returns unsupported when payload is missing or has no provider", () => {
-    expect(resolveRetryTarget("cardio_session_sync", null)).toEqual({ kind: "unsupported" });
-    expect(resolveRetryTarget("cardio_session_sync", {})).toEqual({ kind: "unsupported" });
+    expect(resolveRetryTarget("cardio_session_sync", null)).toEqual({
+      kind: "unsupported",
+    });
+    expect(resolveRetryTarget("cardio_session_sync", {})).toEqual({
+      kind: "unsupported",
+    });
   });
 
   it("returns unsupported for a mismatched job_type/provider pairing", () => {
-    expect(resolveRetryTarget("cardio_session_sync", { provider: "withings" })).toEqual({
+    expect(
+      resolveRetryTarget("cardio_session_sync", { provider: "withings" }),
+    ).toEqual({
       kind: "unsupported",
     });
   });
@@ -80,19 +94,27 @@ describe("computeRetryBackoff", () => {
   const now = new Date("2026-07-15T12:00:00.000Z");
 
   it("attempt 1 -> 5 minutes", () => {
-    expect(computeRetryBackoff(1, now).toISOString()).toBe("2026-07-15T12:05:00.000Z");
+    expect(computeRetryBackoff(1, now).toISOString()).toBe(
+      "2026-07-15T12:05:00.000Z",
+    );
   });
 
   it("attempt 2 -> 20 minutes", () => {
-    expect(computeRetryBackoff(2, now).toISOString()).toBe("2026-07-15T12:20:00.000Z");
+    expect(computeRetryBackoff(2, now).toISOString()).toBe(
+      "2026-07-15T12:20:00.000Z",
+    );
   });
 
   it("attempt 3 -> 45 minutes", () => {
-    expect(computeRetryBackoff(3, now).toISOString()).toBe("2026-07-15T12:45:00.000Z");
+    expect(computeRetryBackoff(3, now).toISOString()).toBe(
+      "2026-07-15T12:45:00.000Z",
+    );
   });
 
   it("attempt 4 -> 80 minutes", () => {
-    expect(computeRetryBackoff(4, now).toISOString()).toBe("2026-07-15T13:20:00.000Z");
+    expect(computeRetryBackoff(4, now).toISOString()).toBe(
+      "2026-07-15T13:20:00.000Z",
+    );
   });
 
   it("grows quadratically with the attempt number", () => {

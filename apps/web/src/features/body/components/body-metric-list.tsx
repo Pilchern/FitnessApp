@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { BodyMetric } from "@fitness-app/domain";
 import { deleteBodyMetricAction } from "../actions";
-import {
-  formatBodyDate,
-  formatBodyValue,
-} from "../helpers";
+import { formatBodyDate, formatBodyValue } from "../helpers";
 import { useToast } from "@/components/shared/toast-provider";
 
 const PAGE_SIZE = 12;
@@ -38,9 +35,12 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
       <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 py-12 shadow-panel">
         <div className="max-w-sm mx-auto text-center">
           <div className="text-4xl">⚖️</div>
-          <h2 className="mt-4 font-display text-xl text-ink">No measurements yet</h2>
+          <h2 className="mt-4 font-display text-xl text-ink">
+            No measurements yet
+          </h2>
           <p className="mt-2 text-sm text-ink/60">
-            Log your first weight or waist measurement to start tracking your body composition trend.
+            Log your first weight or waist measurement to start tracking your
+            body composition trend.
           </p>
         </div>
       </section>
@@ -107,7 +107,9 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
                 </div>
 
                 {metric.notes ? (
-                  <p className="text-sm leading-6 text-ink/75">{metric.notes}</p>
+                  <p className="text-sm leading-6 text-ink/75">
+                    {metric.notes}
+                  </p>
                 ) : null}
               </div>
 

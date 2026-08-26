@@ -18,7 +18,9 @@ export type AppleHealthAuthResult =
  * from `integration_connection_credentials`, decrypting it with
  * `INTEGRATION_ENCRYPTION_KEY`.
  */
-export type AppleHealthSecretLookup = (userId: string) => Promise<string | null>;
+export type AppleHealthSecretLookup = (
+  userId: string,
+) => Promise<string | null>;
 
 function safeEqualHex(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -86,7 +88,9 @@ export async function verifyAppleHealthRequest(
 
   const authHeader = request.headers.get("Authorization");
   if (authHeader) {
-    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : authHeader;
     if (!safeEqualUtf8(token, secret)) {
       return { ok: false, status: 401, error: "Invalid bearer token." };
     }
@@ -112,7 +116,11 @@ export async function verifyAppleHealthRequest(
 
   const nowSeconds = Math.floor(Date.now() / 1000);
   if (Math.abs(nowSeconds - timestamp) > REPLAY_WINDOW_SECONDS) {
-    return { ok: false, status: 401, error: "Timestamp outside replay window." };
+    return {
+      ok: false,
+      status: 401,
+      error: "Timestamp outside replay window.",
+    };
   }
 
   const expectedHex = createHmac("sha256", secret)

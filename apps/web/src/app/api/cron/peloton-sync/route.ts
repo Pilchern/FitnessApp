@@ -13,17 +13,20 @@ async function mapWithConcurrency<T, R>(
 ): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = new Array(items.length);
   let cursor = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (true) {
-      const idx = cursor++;
-      if (idx >= items.length) return;
-      try {
-        results[idx] = { status: "fulfilled", value: await fn(items[idx]) };
-      } catch (err) {
-        results[idx] = { status: "rejected", reason: err };
+  const workers = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (true) {
+        const idx = cursor++;
+        if (idx >= items.length) return;
+        try {
+          results[idx] = { status: "fulfilled", value: await fn(items[idx]) };
+        } catch (err) {
+          results[idx] = { status: "rejected", reason: err };
+        }
       }
-    }
-  });
+    },
+  );
   await Promise.all(workers);
   return results;
 }
@@ -48,7 +51,10 @@ export async function GET(request: NextRequest) {
   const cronSecret = env.CRON_SECRET;
 
   if (!cronSecret) {
-    return NextResponse.json({ error: "cron_secret_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "cron_secret_not_configured" },
+      { status: 503 },
+    );
   }
 
   const authHeader = request.headers.get("authorization") ?? "";
@@ -73,7 +79,10 @@ export async function GET(request: NextRequest) {
   const rows = connections ?? [];
 
   if (rows.length === 0) {
-    return NextResponse.json({ synced: 0, message: "No active Peloton connections." });
+    return NextResponse.json({
+      synced: 0,
+      message: "No active Peloton connections.",
+    });
   }
 
   const orchestrator = createPelotonSyncOrchestrator();
@@ -91,8 +100,12 @@ export async function GET(request: NextRequest) {
     if (res.status === "fulfilled") {
       return { userId: rows[i].user_id, status: "ok" };
     }
-    const message = res.reason instanceof Error ? res.reason.message : "Unknown error";
-    console.error(`[cron/peloton-sync] Failed for user ${rows[i].user_id}:`, message);
+    const message =
+      res.reason instanceof Error ? res.reason.message : "Unknown error";
+    console.error(
+      `[cron/peloton-sync] Failed for user ${rows[i].user_id}:`,
+      message,
+    );
     return { userId: rows[i].user_id, status: "error", error: message };
   });
 

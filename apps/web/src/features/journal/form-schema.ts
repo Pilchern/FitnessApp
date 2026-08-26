@@ -36,7 +36,10 @@ export const journalEntryFormSchema = z.object({
       return null;
     }
 
-    const result = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(value);
+    const result = z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .safeParse(value);
     if (!result.success) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

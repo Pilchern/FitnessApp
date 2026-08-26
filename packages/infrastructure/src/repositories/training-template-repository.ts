@@ -12,7 +12,11 @@ import {
   strengthTrainingTemplateDefinitionSchema,
 } from "@fitness-app/application";
 import { z } from "zod";
-import { type AppSupabaseClient, requireSingleResult, throwOnError } from "./shared";
+import {
+  type AppSupabaseClient,
+  requireSingleResult,
+  throwOnError,
+} from "./shared";
 
 const dayOfWeekRowSchema = z
   .union([
@@ -58,7 +62,9 @@ function parseDefinition(
   return definition;
 }
 
-export function mapTrainingTemplateRow(row: TrainingTemplateRow): TrainingTemplate {
+export function mapTrainingTemplateRow(
+  row: TrainingTemplateRow,
+): TrainingTemplate {
   return {
     id: row.id,
     userId: row.user_id,
@@ -73,9 +79,7 @@ export function mapTrainingTemplateRow(row: TrainingTemplateRow): TrainingTempla
   };
 }
 
-export class SupabaseTrainingTemplateRepository
-  implements TrainingTemplateRepository
-{
+export class SupabaseTrainingTemplateRepository implements TrainingTemplateRepository {
   constructor(private readonly client: AppSupabaseClient) {}
 
   async listActiveCardioTemplates(userId: string) {
@@ -128,7 +132,10 @@ export class SupabaseTrainingTemplateRepository
       .select("*")
       .single();
 
-    const row = requireSingleResult(response, "Create strength training template");
+    const row = requireSingleResult(
+      response,
+      "Create strength training template",
+    );
     return mapTrainingTemplateRow(trainingTemplateRowSchema.parse(row));
   }
 

@@ -7,7 +7,11 @@ type SignOutFormProps = {
   variant?: "desktop" | "mobile";
 };
 
-function SignOutButton({ variant = "desktop" }: { variant?: "desktop" | "mobile" }) {
+function SignOutButton({
+  variant = "desktop",
+}: {
+  variant?: "desktop" | "mobile";
+}) {
   const { pending } = useFormStatus();
 
   return (

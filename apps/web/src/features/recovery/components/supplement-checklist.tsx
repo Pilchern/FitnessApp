@@ -44,10 +44,15 @@ export function SupplementChecklist({
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Supplements
         </p>
-        <h2 className="mt-3 font-display text-2xl text-ink">Today&apos;s supplements</h2>
+        <h2 className="mt-3 font-display text-2xl text-ink">
+          Today&apos;s supplements
+        </h2>
         <p className="mt-2 text-sm leading-6 text-ink/75">
           You haven&apos;t added any supplements yet.{" "}
-          <Link href="/settings" className="font-semibold text-pine underline-offset-4 hover:underline">
+          <Link
+            href="/settings"
+            className="font-semibold text-pine underline-offset-4 hover:underline"
+          >
             Add some in Settings
           </Link>{" "}
           to track daily adherence here.
@@ -61,7 +66,9 @@ export function SupplementChecklist({
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
         Supplements
       </p>
-      <h2 className="mt-3 font-display text-2xl text-ink">Today&apos;s supplements</h2>
+      <h2 className="mt-3 font-display text-2xl text-ink">
+        Today&apos;s supplements
+      </h2>
       <p className="mt-2 text-sm leading-6 text-ink/75">
         Check off what you took today. Unchecked items are saved as not taken.
       </p>
@@ -96,7 +103,10 @@ export function SupplementChecklist({
         ))}
 
         <div className="flex justify-end pt-2">
-          <AuthSubmitButton idleLabel="Save supplements" pendingLabel="Saving..." />
+          <AuthSubmitButton
+            idleLabel="Save supplements"
+            pendingLabel="Saving..."
+          />
         </div>
       </form>
     </section>

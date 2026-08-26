@@ -4,7 +4,8 @@ import { getErrorMessage } from "./get-error-message";
 
 function makeRedirectError(url = "/dashboard") {
   const err = new Error(`NEXT_REDIRECT;replace;${url};307;`);
-  (err as Error & { digest: string }).digest = `NEXT_REDIRECT;replace;${url};307;`;
+  (err as Error & { digest: string }).digest =
+    `NEXT_REDIRECT;replace;${url};307;`;
   return err;
 }
 

@@ -18,10 +18,12 @@ export async function StrengthScreen({ editSessionId }: StrengthScreenProps) {
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           This week
         </p>
-        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">Strength</h1>
+        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
+          Strength
+        </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          Log your lifts, track your sets, and see how your key movements
-          are trending over time.
+          Log your lifts, track your sets, and see how your key movements are
+          trending over time.
         </p>
       </section>
 
@@ -42,7 +44,9 @@ export async function StrengthScreen({ editSessionId }: StrengthScreenProps) {
         overrides={data.exerciseOverrides}
       />
 
-      <StrengthProgressionSummarySection summaries={data.progressionSummaries} />
+      <StrengthProgressionSummarySection
+        summaries={data.progressionSummaries}
+      />
 
       <StrengthSessionList sessions={data.sessions} />
     </div>

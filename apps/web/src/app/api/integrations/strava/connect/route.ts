@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
-import { createStravaAdapter, getStravaIntegrationConfig } from "@/lib/server/integrations";
+import {
+  createStravaAdapter,
+  getStravaIntegrationConfig,
+} from "@/lib/server/integrations";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
 
 const OAUTH_STATE_COOKIE = "strava_oauth_state";

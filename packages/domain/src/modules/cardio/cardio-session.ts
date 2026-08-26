@@ -2,7 +2,11 @@ import type { EntityId, IsoDate, IsoDateTime, UserId } from "../../shared/ids";
 import type { ManualOrImportedRecordSource } from "../../shared/source";
 
 export type CardioSessionKind = "zone2" | "vo2" | "recovery" | "other";
-export type CardioSessionCompletion = "planned" | "completed" | "partial" | "skipped";
+export type CardioSessionCompletion =
+  | "planned"
+  | "completed"
+  | "partial"
+  | "skipped";
 
 export type CardioSession = {
   id: EntityId;

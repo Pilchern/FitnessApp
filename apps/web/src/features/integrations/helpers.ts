@@ -1,4 +1,8 @@
-import type { ImportBatch, IntegrationConnection, SyncJobRun } from "@fitness-app/domain";
+import type {
+  ImportBatch,
+  IntegrationConnection,
+  SyncJobRun,
+} from "@fitness-app/domain";
 
 function formatDateTime(value: string | null) {
   if (!value) {
@@ -17,7 +21,9 @@ export function formatIntegrationDateTime(value: string | null) {
   return formatDateTime(value);
 }
 
-export function formatIntegrationStatus(status: IntegrationConnection["status"]) {
+export function formatIntegrationStatus(
+  status: IntegrationConnection["status"],
+) {
   switch (status) {
     case "active":
       return "Connected";

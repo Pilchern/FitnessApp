@@ -10,5 +10,10 @@ type CardioPageProps = {
 export default async function CardioPage({ searchParams }: CardioPageProps) {
   const params = (await searchParams) ?? {};
 
-  return <CardioScreen editSessionId={params.edit} deleted={params.deleted === "1"} />;
+  return (
+    <CardioScreen
+      editSessionId={params.edit}
+      deleted={params.deleted === "1"}
+    />
+  );
 }

@@ -7,7 +7,10 @@ import type {
   SyncJobRunTriggerType,
   UserId,
 } from "@fitness-app/domain";
-import type { OAuthTokenSet, StoredProviderCredential } from "@fitness-app/integrations";
+import type {
+  OAuthTokenSet,
+  StoredProviderCredential,
+} from "@fitness-app/integrations";
 
 export type SaveConnectionInput = {
   userId: UserId;
@@ -137,7 +140,9 @@ export interface ImportBatchStore {
 }
 
 export interface RawImportEventStore {
-  createMany(inputs: CreateRawImportEventInput[]): Promise<StoredRawImportEvent[]>;
+  createMany(
+    inputs: CreateRawImportEventInput[],
+  ): Promise<StoredRawImportEvent[]>;
   markMapped(
     id: EntityId,
     target: { canonicalTargetTable: string; canonicalTargetId: EntityId },

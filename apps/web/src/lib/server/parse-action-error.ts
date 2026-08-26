@@ -31,7 +31,9 @@ export function parseActionError(error: unknown): ActionError {
       return { fieldErrors };
     }
     // ZodError with no named path (e.g. root-level refinements)
-    return { error: error.issues[0]?.message ?? "Please review the form fields." };
+    return {
+      error: error.issues[0]?.message ?? "Please review the form fields.",
+    };
   }
 
   if (error instanceof Error) {

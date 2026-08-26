@@ -83,7 +83,9 @@ export function NutritionLogList({ logs }: NutritionLogListProps) {
                       </span>
                     )}
                     {log.mealsOnPlan !== null && (
-                      <span>{log.mealsOnPlan ? "Meals on plan" : "Meals off plan"}</span>
+                      <span>
+                        {log.mealsOnPlan ? "Meals on plan" : "Meals off plan"}
+                      </span>
                     )}
                     {log.noPostDinnerSnacking !== null && (
                       <span>
@@ -100,9 +102,7 @@ export function NutritionLogList({ logs }: NutritionLogListProps) {
                   </div>
 
                   {log.notes ? (
-                    <p className="text-sm leading-6 text-ink/75">
-                      {log.notes}
-                    </p>
+                    <p className="text-sm leading-6 text-ink/75">{log.notes}</p>
                   ) : null}
                 </div>
 

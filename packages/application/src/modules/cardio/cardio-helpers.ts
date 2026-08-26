@@ -82,7 +82,10 @@ function addDays(input: Date, days: number) {
 }
 
 function normalizeTemplateName(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function isCardioDefinition(
@@ -102,7 +105,9 @@ function findTemplateForScheduleItem(
 ) {
   const label = normalizeTemplateName(scheduleItem.label);
   return (
-    templates.find((template) => normalizeTemplateName(template.name) === label) ??
+    templates.find(
+      (template) => normalizeTemplateName(template.name) === label,
+    ) ??
     templates.find(
       (template) =>
         isCardioDefinition(template.definition) &&
@@ -158,8 +163,9 @@ export function buildCardioWeeklyTotals(
     completedSessions: completedSessions.length,
     totalMinutes,
     zone2Minutes,
-    vo2Sessions: completedSessions.filter((session) => session.sessionKind === "vo2")
-      .length,
+    vo2Sessions: completedSessions.filter(
+      (session) => session.sessionKind === "vo2",
+    ).length,
     averageHeartRate,
   };
 }
@@ -173,13 +179,19 @@ export function buildCardioAdherenceSummary(
   const today = toIsoDate(now);
 
   const items = supportedSchedule.map((scheduleItem) => {
-    const targetDate = toIsoDate(addDays(weekStart, scheduleItem.weekdayOffset));
-    const matchedTemplate = findTemplateForScheduleItem(scheduleItem, templates);
+    const targetDate = toIsoDate(
+      addDays(weekStart, scheduleItem.weekdayOffset),
+    );
+    const matchedTemplate = findTemplateForScheduleItem(
+      scheduleItem,
+      templates,
+    );
     const loggedSession =
       sessions.find(
         (session) =>
           session.sessionDate === targetDate &&
-          ((matchedTemplate && session.trainingTemplateId === matchedTemplate.id) ||
+          ((matchedTemplate &&
+            session.trainingTemplateId === matchedTemplate.id) ||
             session.sessionKind === scheduleItem.sessionKind),
       ) ?? null;
 

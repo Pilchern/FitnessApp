@@ -5,7 +5,9 @@ import { CardioSyncOrchestrator } from "./cardio-sync";
 
 const encryptionKey = Buffer.alloc(32).toString("base64");
 
-function createConnection(overrides: Partial<IntegrationConnection> = {}): IntegrationConnection {
+function createConnection(
+  overrides: Partial<IntegrationConnection> = {},
+): IntegrationConnection {
   return {
     id: "00000000-0000-0000-0000-000000000010",
     userId: "00000000-0000-0000-0000-000000000001",
@@ -128,29 +130,65 @@ describe("CardioSyncOrchestrator.syncRides", () => {
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: "2026-03-01T12:00:00.000Z", payload: {} },
-        { id: "raw-2", providerExternalId: "ext-2", eventOccurredAt: "2026-03-02T12:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: "2026-03-01T12:00:00.000Z",
+          payload: {},
+        },
+        {
+          id: "raw-2",
+          providerExternalId: "ext-2",
+          eventOccurredAt: "2026-03-02T12:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
       markFailed: vi.fn(),
     };
 
-    const cardioService = { upsertImported: vi.fn().mockResolvedValue({ created: true, session: { id: "session-1" } }) };
+    const cardioService = {
+      upsertImported: vi
+        .fn()
+        .mockResolvedValue({ created: true, session: { id: "session-1" } }),
+    };
 
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: "2026-03-01T12:00:00.000Z", payload: {} },
-          { providerEventType: "peloton_workout", providerExternalId: "ext-2", occurredAt: "2026-03-02T12:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: "2026-03-01T12:00:00.000Z",
+            payload: {},
+          },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-2",
+            occurredAt: "2026-03-02T12:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "1700000000",
         metadata: {},
       }),
       mapRawCardioItem: vi
         .fn()
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-01", durationMinutes: 30, providerExternalId: "ext-1" }))
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-02", durationMinutes: 45, providerExternalId: "ext-2" })),
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-01",
+            durationMinutes: 30,
+            providerExternalId: "ext-1",
+          }),
+        )
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-02",
+            durationMinutes: 45,
+            providerExternalId: "ext-2",
+          }),
+        ),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -196,31 +234,67 @@ describe("CardioSyncOrchestrator.syncRides", () => {
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: "2026-03-01T12:00:00.000Z", payload: {} },
-        { id: "raw-2", providerExternalId: "ext-2", eventOccurredAt: "2026-03-01T13:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: "2026-03-01T12:00:00.000Z",
+          payload: {},
+        },
+        {
+          id: "raw-2",
+          providerExternalId: "ext-2",
+          eventOccurredAt: "2026-03-01T13:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
       markFailed: vi.fn(),
     };
 
-    const cardioService = { upsertImported: vi.fn().mockResolvedValue({ created: true, session: { id: "session-1" } }) };
+    const cardioService = {
+      upsertImported: vi
+        .fn()
+        .mockResolvedValue({ created: true, session: { id: "session-1" } }),
+    };
 
     // Both items map to the SAME sessionDate + durationMinutes, so they
     // produce the same dedupeKey `${userId}|${sessionDate}|${round(durationMinutes)}`.
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: "2026-03-01T12:00:00.000Z", payload: {} },
-          { providerEventType: "peloton_workout", providerExternalId: "ext-2", occurredAt: "2026-03-01T13:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: "2026-03-01T12:00:00.000Z",
+            payload: {},
+          },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-2",
+            occurredAt: "2026-03-01T13:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "1700000100",
         metadata: {},
       }),
       mapRawCardioItem: vi
         .fn()
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-01", durationMinutes: 30, providerExternalId: "ext-1" }))
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-01", durationMinutes: 30, providerExternalId: "ext-2" })),
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-01",
+            durationMinutes: 30,
+            providerExternalId: "ext-1",
+          }),
+        )
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-01",
+            durationMinutes: 30,
+            providerExternalId: "ext-2",
+          }),
+        ),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -259,8 +333,18 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const successOccurredAt = "2026-03-05T00:00:00.000Z";
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: successOccurredAt, payload: {} },
-        { id: "raw-2", providerExternalId: "ext-2", eventOccurredAt: "2026-03-06T00:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: successOccurredAt,
+          payload: {},
+        },
+        {
+          id: "raw-2",
+          providerExternalId: "ext-2",
+          eventOccurredAt: "2026-03-06T00:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
@@ -280,16 +364,38 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: successOccurredAt, payload: {} },
-          { providerEventType: "peloton_workout", providerExternalId: "ext-2", occurredAt: "2026-03-06T00:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: successOccurredAt,
+            payload: {},
+          },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-2",
+            occurredAt: "2026-03-06T00:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "9999999999",
         metadata: {},
       }),
       mapRawCardioItem: vi
         .fn()
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-05", durationMinutes: 30, providerExternalId: "ext-1" }))
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-06", durationMinutes: 45, providerExternalId: "ext-2" })),
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-05",
+            durationMinutes: 30,
+            providerExternalId: "ext-1",
+          }),
+        )
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-06",
+            durationMinutes: 45,
+            providerExternalId: "ext-2",
+          }),
+        ),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -309,10 +415,15 @@ describe("CardioSyncOrchestrator.syncRides", () => {
       triggerType: "manual",
     });
 
-    const expectedCursor = String(Math.floor(new Date(successOccurredAt).getTime() / 1000));
+    const expectedCursor = String(
+      Math.floor(new Date(successOccurredAt).getTime() / 1000),
+    );
 
     expect(result).toMatchObject({ processedItemCount: 1, failedItemCount: 1 });
-    expect(rawImportEventStore.markFailed).toHaveBeenCalledWith("raw-2", "insert failed");
+    expect(rawImportEventStore.markFailed).toHaveBeenCalledWith(
+      "raw-2",
+      "insert failed",
+    );
     expect(connectionStore.recordSyncSuccess).toHaveBeenCalledWith(
       expect.objectContaining({ lastCursor: expectedCursor }),
     );
@@ -330,8 +441,18 @@ describe("CardioSyncOrchestrator.syncRides", () => {
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: "2026-03-05T00:00:00.000Z", payload: {} },
-        { id: "raw-2", providerExternalId: "ext-2", eventOccurredAt: "2026-03-06T00:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: "2026-03-05T00:00:00.000Z",
+          payload: {},
+        },
+        {
+          id: "raw-2",
+          providerExternalId: "ext-2",
+          eventOccurredAt: "2026-03-06T00:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
@@ -345,16 +466,38 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: "2026-03-05T00:00:00.000Z", payload: {} },
-          { providerEventType: "peloton_workout", providerExternalId: "ext-2", occurredAt: "2026-03-06T00:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: "2026-03-05T00:00:00.000Z",
+            payload: {},
+          },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-2",
+            occurredAt: "2026-03-06T00:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "2000000000",
         metadata: {},
       }),
       mapRawCardioItem: vi
         .fn()
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-05", durationMinutes: 30, providerExternalId: "ext-1" }))
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-06", durationMinutes: 45, providerExternalId: "ext-2" })),
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-05",
+            durationMinutes: 30,
+            providerExternalId: "ext-1",
+          }),
+        )
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-06",
+            durationMinutes: 45,
+            providerExternalId: "ext-2",
+          }),
+        ),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -393,7 +536,12 @@ describe("CardioSyncOrchestrator.syncRides", () => {
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: "2026-03-05T00:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: "2026-03-05T00:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
@@ -405,7 +553,12 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: "2026-03-05T00:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: "2026-03-05T00:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "1700000200",
         metadata: {},
@@ -501,7 +654,9 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const cardioService = { upsertImported: vi.fn() };
 
     const adapter = createAdapter({
-      fetchCardioSessions: vi.fn().mockRejectedValue(new Error("Peloton API error 500: boom")),
+      fetchCardioSessions: vi
+        .fn()
+        .mockRejectedValue(new Error("Peloton API error 500: boom")),
     });
 
     const orchestrator = new CardioSyncOrchestrator(

@@ -64,7 +64,9 @@ function buildAuthError(error: unknown): AuthActionState {
       return { fieldErrors };
     }
     return {
-      error: error.issues[0]?.message ?? "Please check the form values and try again.",
+      error:
+        error.issues[0]?.message ??
+        "Please check the form values and try again.",
     };
   }
 

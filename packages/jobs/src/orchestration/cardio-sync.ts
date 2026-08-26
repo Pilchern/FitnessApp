@@ -61,7 +61,9 @@ function isOAuthAdapter(
 
 export class CardioSyncOrchestrator {
   constructor(
-    private readonly adapter: CardioProviderAdapter | OAuthCardioProviderAdapter,
+    private readonly adapter:
+      | CardioProviderAdapter
+      | OAuthCardioProviderAdapter,
     private readonly cardioService: CardioSessionService,
     private readonly connectionStore: IntegrationConnectionStore,
     private readonly credentialStore: IntegrationCredentialStore,
@@ -106,7 +108,9 @@ export class CardioSyncOrchestrator {
    * change here; `sourceCredentialKind` below is just to make the intent
    * legible at the call site.
    */
-  async connect(input: ConnectCardioProviderInput): Promise<IntegrationConnection> {
+  async connect(
+    input: ConnectCardioProviderInput,
+  ): Promise<IntegrationConnection> {
     if (isOAuthAdapter(this.adapter)) {
       throw new Error("Use finalizeOAuthConnection for OAuth providers.");
     }
@@ -139,7 +143,8 @@ export class CardioSyncOrchestrator {
         refreshToken: input.password,
         accessTokenExpiresAt: null,
         refreshTokenExpiresAt: null,
-        tokenType: sourceCredentialKind === "password" ? "credential" : "bearer",
+        tokenType:
+          sourceCredentialKind === "password" ? "credential" : "bearer",
         scopes: ["workouts"],
       },
       this.encryptionKey,
@@ -148,8 +153,14 @@ export class CardioSyncOrchestrator {
     return connection;
   }
 
-  async disconnect(userId: UserId, provider: IntegrationProvider): Promise<void> {
-    const connection = await this.connectionStore.getByUserAndProvider(userId, provider);
+  async disconnect(
+    userId: UserId,
+    provider: IntegrationProvider,
+  ): Promise<void> {
+    const connection = await this.connectionStore.getByUserAndProvider(
+      userId,
+      provider,
+    );
     if (!connection) return;
 
     await this.credentialStore.deleteByConnectionId(connection.id, userId);
@@ -176,7 +187,9 @@ export class CardioSyncOrchestrator {
     return updated;
   }
 
-  async syncRides(input: SyncCardioSessionsInput): Promise<SyncCardioSessionsResult> {
+  async syncRides(
+    input: SyncCardioSessionsInput,
+  ): Promise<SyncCardioSessionsResult> {
     const connection = await this.connectionStore.getByUserAndProvider(
       input.userId,
       input.provider,
@@ -205,7 +218,10 @@ export class CardioSyncOrchestrator {
       accessToken = refreshed.accessToken;
       providerUserId = connection.providerUserId ?? "";
     } else {
-      const username = decryptSecret(credential.accessToken, this.encryptionKey);
+      const username = decryptSecret(
+        credential.accessToken,
+        this.encryptionKey,
+      );
       const password = credential.refreshToken
         ? decryptSecret(credential.refreshToken, this.encryptionKey)
         : null;
@@ -214,7 +230,10 @@ export class CardioSyncOrchestrator {
         throw new Error("Stored password is missing — reconnect to fix this.");
       }
 
-      const authResult = await this.adapter.authenticate({ username, password });
+      const authResult = await this.adapter.authenticate({
+        username,
+        password,
+      });
       sessionToken = authResult.sessionToken;
       providerUserId = authResult.providerUserId;
     }
@@ -358,7 +377,7 @@ export class CardioSyncOrchestrator {
               .map((d) => Math.floor(new Date(d).getTime() / 1000))
               .reduce((a, b) => (b > a ? b : a), 0);
             connectionCursorToPersist =
-              maxEpoch > 0 ? String(maxEpoch) : connection.lastCursor ?? null;
+              maxEpoch > 0 ? String(maxEpoch) : (connection.lastCursor ?? null);
           }
         } else {
           connectionCursorToPersist = page.nextCursor ?? null;

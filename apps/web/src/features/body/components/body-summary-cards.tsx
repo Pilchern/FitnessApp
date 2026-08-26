@@ -1,9 +1,6 @@
 import type { BodyMetricSummary } from "@fitness-app/application";
 import { SummaryStatCard } from "@/components/shared/summary-stat-card";
-import {
-  formatBodyValue,
-  formatChange,
-} from "../helpers";
+import { formatBodyValue, formatChange } from "../helpers";
 
 type BodySummaryCardsProps = {
   summary: BodyMetricSummary;
