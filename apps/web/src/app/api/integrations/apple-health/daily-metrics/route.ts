@@ -5,6 +5,10 @@ import {
   createAppleHealthWebhookSecretLookup,
 } from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
+import {
+  MAX_WEBHOOK_ITEMS,
+  readBoundedWebhookBody,
+} from "../read-bounded-body";
 import { verifyAppleHealthRequest } from "../verify-request";
 
 /**
@@ -39,7 +43,7 @@ const appleHealthDailyMetricsPayloadSchema = z.object({
 });
 
 const appleHealthDailyMetricsBodySchema = z.union([
-  z.array(appleHealthDailyMetricsPayloadSchema),
+  z.array(appleHealthDailyMetricsPayloadSchema).max(MAX_WEBHOOK_ITEMS),
   appleHealthDailyMetricsPayloadSchema.transform((item) => [item]),
 ]);
 
@@ -51,7 +55,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rawBody = await request.text();
+  const bounded = await readBoundedWebhookBody(request);
+  if (!bounded.ok) {
+    return NextResponse.json(
+      { ok: false, error: bounded.error },
+      { status: bounded.status },
+    );
+  }
+  const rawBody = bounded.rawBody;
 
   const lookupSecret = createAppleHealthWebhookSecretLookup();
   const auth = await verifyAppleHealthRequest(request, rawBody, lookupSecret);

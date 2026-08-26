@@ -688,4 +688,99 @@ describe("CardioSyncOrchestrator.syncRides", () => {
       message: "Peloton API error 500: boom",
     });
   });
+  it("records a provider auth failure as a failed run instead of vanishing", async () => {
+    // Provider auth used to run before the sync_job_runs row existed and
+    // outside the try, so a revoked Strava token or a changed Peloton
+    // password threw with nothing recorded anywhere: no run row, so
+    // recordSyncFailure never fired, the connection stayed "active" with a
+    // null last_error, and the retry sweep (which selects status='failed')
+    // had nothing to find. Rides silently stopped importing while
+    // /integrations reported the integration as healthy.
+    const connection = createConnection({ lastCursor: "1000" });
+    const connectionStore = createConnectionStore(connection);
+    const credentialStore = createCredentialStore(connection);
+    const syncJobRunStore = createSyncJobRunStore();
+    const importBatchStore = createImportBatchStore();
+    const rawImportEventStore = {
+      createMany: vi.fn(),
+      markMapped: vi.fn(),
+      markSkipped: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const cardioService = { upsertImported: vi.fn() };
+
+    const adapter = createAdapter({
+      authenticate: vi
+        .fn()
+        .mockRejectedValue(new Error("Peloton login failed: 403")),
+    });
+
+    const orchestrator = new CardioSyncOrchestrator(
+      adapter as never,
+      cardioService as never,
+      connectionStore,
+      credentialStore,
+      syncJobRunStore as never,
+      importBatchStore as never,
+      rawImportEventStore,
+      encryptionKey,
+    );
+
+    await expect(
+      orchestrator.syncRides({
+        userId: connection.userId,
+        provider: "peloton",
+        triggerType: "scheduled",
+      }),
+    ).rejects.toThrow("Peloton login failed: 403");
+
+    expect(syncJobRunStore.create).toHaveBeenCalledTimes(1);
+    expect(syncJobRunStore.markFailed).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({ code: "sync_failed" }),
+    );
+    expect(connectionStore.recordSyncFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: "sync_failed" }),
+    );
+  });
+
+  it("records a missing-credential failure the same way", async () => {
+    const connection = createConnection({ lastCursor: "1000" });
+    const connectionStore = createConnectionStore(connection);
+    const credentialStore = {
+      save: vi.fn(),
+      getByConnectionId: vi.fn().mockResolvedValue(null),
+      deleteByConnectionId: vi.fn(),
+    };
+    const syncJobRunStore = createSyncJobRunStore();
+    const importBatchStore = createImportBatchStore();
+    const rawImportEventStore = {
+      createMany: vi.fn(),
+      markMapped: vi.fn(),
+      markSkipped: vi.fn(),
+      markFailed: vi.fn(),
+    };
+
+    const orchestrator = new CardioSyncOrchestrator(
+      createAdapter() as never,
+      { upsertImported: vi.fn() } as never,
+      connectionStore,
+      credentialStore,
+      syncJobRunStore as never,
+      importBatchStore as never,
+      rawImportEventStore,
+      encryptionKey,
+    );
+
+    await expect(
+      orchestrator.syncRides({
+        userId: connection.userId,
+        provider: "peloton",
+        triggerType: "scheduled",
+      }),
+    ).rejects.toThrow("No stored credentials");
+
+    expect(syncJobRunStore.markFailed).toHaveBeenCalled();
+    expect(connectionStore.recordSyncFailure).toHaveBeenCalled();
+  });
 });

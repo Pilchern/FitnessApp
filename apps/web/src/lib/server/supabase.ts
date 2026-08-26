@@ -3,6 +3,7 @@ import { cache } from "react";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getServerEnv } from "./env";
+import { AUTH_COOKIE_OPTIONS } from "../auth-cookie-options";
 
 type CookieRecord = {
   name: string;
@@ -31,6 +32,7 @@ export function createSupabaseServerClient(cookieStore: CookieStore) {
           cookieStore.setAll?.(cookiesToSet);
         },
       },
+      cookieOptions: AUTH_COOKIE_OPTIONS,
     },
   );
 }

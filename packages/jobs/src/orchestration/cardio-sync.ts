@@ -206,45 +206,21 @@ export class CardioSyncOrchestrator {
       throw new Error("No active connection was found.");
     }
 
-    const credential = await this.credentialStore.getByConnectionId(
-      connection.id,
-      input.userId,
-      this.encryptionKey,
-    );
-
-    if (!credential) {
-      throw new Error("No stored credentials were found for this connection.");
-    }
-
-    let sessionToken: string | null = null;
-    let accessToken: string | null = null;
-    let providerUserId: string;
-
-    if (isOAuthAdapter(this.adapter)) {
-      const refreshed = await this.refreshCredentialIfNeeded(credential);
-      accessToken = refreshed.accessToken;
-      providerUserId = connection.providerUserId ?? "";
-    } else {
-      const username = decryptSecret(
-        credential.accessToken,
-        this.encryptionKey,
-      );
-      const password = credential.refreshToken
-        ? decryptSecret(credential.refreshToken, this.encryptionKey)
-        : null;
-
-      if (!password) {
-        throw new Error("Stored password is missing — reconnect to fix this.");
-      }
-
-      const authResult = await this.adapter.authenticate({
-        username,
-        password,
-      });
-      sessionToken = authResult.sessionToken;
-      providerUserId = authResult.providerUserId;
-    }
-
+    // The sync-run row is created BEFORE any credential work, and everything
+    // that can talk to the provider happens inside the try below.
+    //
+    // This used to run the other way round: credential decryption, an OAuth
+    // token refresh, and the Peloton login all happened before the run row
+    // existed and outside the try. So when a user revoked the app at Strava,
+    // the Monday cron threw at the token refresh and *nothing recorded it* --
+    // no sync_job_runs row, so `recordSyncFailure` never ran and the
+    // connection stayed `status: 'active'` with `last_error: null`; the retry
+    // sweep selects on `status = 'failed'`, so there was nothing for it to
+    // pick up, ever. Rides silently stopped importing while /integrations
+    // kept reporting the integration as healthy. The same window covered a
+    // rotated INTEGRATION_ENCRYPTION_KEY and a changed Peloton password.
+    //
+    // body-metric-sync.ts already had this ordering; cardio was the outlier.
     const syncRun = await this.syncJobRunStore.create({
       userId: input.userId,
       integrationConnectionId: connection.id,
@@ -270,6 +246,49 @@ export class CardioSyncOrchestrator {
     let supersededCrossProviderCount = 0;
 
     try {
+      const credential = await this.credentialStore.getByConnectionId(
+        connection.id,
+        input.userId,
+        this.encryptionKey,
+      );
+
+      if (!credential) {
+        throw new Error(
+          "No stored credentials were found for this connection.",
+        );
+      }
+
+      let sessionToken: string | null = null;
+      let accessToken: string | null = null;
+      let providerUserId: string;
+
+      if (isOAuthAdapter(this.adapter)) {
+        const refreshed = await this.refreshCredentialIfNeeded(credential);
+        accessToken = refreshed.accessToken;
+        providerUserId = connection.providerUserId ?? "";
+      } else {
+        const username = decryptSecret(
+          credential.accessToken,
+          this.encryptionKey,
+        );
+        const password = credential.refreshToken
+          ? decryptSecret(credential.refreshToken, this.encryptionKey)
+          : null;
+
+        if (!password) {
+          throw new Error(
+            "Stored password is missing — reconnect to fix this.",
+          );
+        }
+
+        const authResult = await this.adapter.authenticate({
+          username,
+          password,
+        });
+        sessionToken = authResult.sessionToken;
+        providerUserId = authResult.providerUserId;
+      }
+
       const lastCursor = input.forceFullResync ? null : connection.lastCursor;
 
       const page = isOAuthAdapter(this.adapter)

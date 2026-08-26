@@ -15,6 +15,27 @@ describe("sanitizeRedirectTo", () => {
     expect(sanitizeRedirectTo("//example.com")).toBe("/dashboard");
   });
 
+  it("rejects backslash-prefixed hosts, which browsers resolve as protocol-relative", () => {
+    // The previous /^\/(?!\/)/ guard passed these: a browser normalizes the
+    // backslash when resolving a Location header on an https URL, so
+    // "/\\evil.com" becomes "https://evil.com/" — an open redirect fired
+    // immediately after a successful login.
+    expect(sanitizeRedirectTo("/\\example.com")).toBe("/dashboard");
+    expect(sanitizeRedirectTo("/\\/example.com")).toBe("/dashboard");
+    expect(sanitizeRedirectTo("\\\\example.com")).toBe("/dashboard");
+  });
+
+  it("rejects absolute URLs on other schemes", () => {
+    expect(sanitizeRedirectTo("javascript:alert(1)")).toBe("/dashboard");
+    expect(sanitizeRedirectTo("http://example.com/x")).toBe("/dashboard");
+  });
+
+  it("preserves the query string and fragment of an internal route", () => {
+    expect(sanitizeRedirectTo("/strength?tab=history#top")).toBe(
+      "/strength?tab=history#top",
+    );
+  });
+
   it("rejects redirects longer than 512 characters", () => {
     const longPath = `/dashboard?next=${"a".repeat(600)}`;
     expect(sanitizeRedirectTo(longPath)).toBe("/dashboard");

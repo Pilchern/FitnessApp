@@ -64,6 +64,9 @@ function safeEqualUtf8(a: string, b: string): boolean {
  * closes that gap: knowing the secret is no longer sufficient on its own,
  * you must know the secret *issued to the user you're claiming to be*.
  */
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export async function verifyAppleHealthRequest(
   request: NextRequest,
   rawBody: string,
@@ -72,6 +75,20 @@ export async function verifyAppleHealthRequest(
   const userId = request.headers.get("X-User-Id");
   if (!userId) {
     return { ok: false, status: 401, error: "Missing X-User-Id header." };
+  }
+
+  // `user_id` is a Postgres `uuid` column, so a malformed value reaches the
+  // credential lookup and comes back as a 22P02 error, which `throwOnError`
+  // turns into a throw. That throw escapes the route (verifyAppleHealthRequest
+  // is awaited outside its try) as an unhandled 500 — and the differing status
+  // code hands an unauthenticated caller an oracle the generic 401 below was
+  // specifically written to deny them.
+  if (!UUID_PATTERN.test(userId)) {
+    return {
+      ok: false,
+      status: 401,
+      error: "No Apple Health webhook token configured for this user.",
+    };
   }
 
   const secret = await lookupSecret(userId);
