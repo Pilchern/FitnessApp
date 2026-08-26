@@ -32,7 +32,10 @@ describe("BodyMetricSyncOrchestrator", () => {
   it("stores raw imports before mapping them into canonical body metrics", async () => {
     const connection = createConnection();
     const bodyMetricService = {
-      upsertImported: vi.fn().mockResolvedValue({ id: "metric-1" }),
+      upsertImported: vi.fn().mockResolvedValue({
+        metric: { id: "metric-1" },
+        crossProvider: { outcome: "insert", duplicateOf: null, reason: null },
+      }),
     };
     const connectionStore = {
       getByUserAndProvider: vi.fn().mockResolvedValue(connection),

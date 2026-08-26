@@ -40,6 +40,10 @@ export type SyncAppleHealthWorkoutsResult = {
   rawItemCount: number;
   processedItemCount: number;
   failedItemCount: number;
+  /** Incoming workouts dropped because a higher-priority provider already had them (TD-019). */
+  skippedCrossProviderCount: number;
+  /** Stored workouts archived because Apple Health outranked their source (TD-019). */
+  supersededCrossProviderCount: number;
 };
 
 function toError(error: unknown) {
@@ -124,6 +128,8 @@ export class AppleHealthWorkoutSyncOrchestrator {
     let rawItemCount = 0;
     let processedItemCount = 0;
     let failedItemCount = 0;
+    let skippedCrossProviderCount = 0;
+    let supersededCrossProviderCount = 0;
 
     try {
       await this.syncJobRunStore.markRunning(syncRun.id);
@@ -161,9 +167,8 @@ export class AppleHealthWorkoutSyncOrchestrator {
         try {
           const payload = event.payload as AppleHealthWorkoutPayload;
 
-          const { session } = await this.cardioService.upsertImported(
-            input.userId,
-            {
+          const { session, crossProvider } =
+            await this.cardioService.upsertImported(input.userId, {
               sessionDate: toIsoDate(payload.start),
               startedAt: payload.start,
               endedAt: payload.end ?? null,
@@ -190,8 +195,21 @@ export class AppleHealthWorkoutSyncOrchestrator {
                 importBatchId: currentImportBatch.id,
                 rawImportEventId: event.id,
               },
-            },
-          );
+            });
+
+          // A cross-provider duplicate (TD-019). Apple Health sits lowest in
+          // the cardio source priority, so a ride that also reached the app
+          // via Peloton direct sync or the Strava relay lands here and is
+          // dropped rather than double-counted.
+          if (crossProvider?.outcome === "skip_incoming") {
+            skippedCrossProviderCount += 1;
+            await this.rawImportEventStore.markSkipped(event.id);
+            continue;
+          }
+
+          if (crossProvider?.outcome === "supersede_existing") {
+            supersededCrossProviderCount += 1;
+          }
 
           processedItemCount += 1;
 
@@ -228,6 +246,8 @@ export class AppleHealthWorkoutSyncOrchestrator {
         rawItemCount,
         processedItemCount,
         failedItemCount,
+        skippedCrossProviderCount,
+        supersededCrossProviderCount,
       });
 
       return {
@@ -237,6 +257,8 @@ export class AppleHealthWorkoutSyncOrchestrator {
         rawItemCount,
         processedItemCount,
         failedItemCount,
+        skippedCrossProviderCount,
+        supersededCrossProviderCount,
       };
     } catch (error) {
       const syncError = toError(error);

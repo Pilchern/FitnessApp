@@ -9,6 +9,10 @@ import {
   optionalTrimmedStringSchema,
   uuidSchema,
 } from "../../shared/primitives";
+import {
+  type CrossProviderDecision,
+  decideBodyMetricCrossProvider,
+} from "../integrations/cross-provider-dedup";
 
 // Upper bounds are data-entry/import sanity checks (well above any real human
 // body measurement), not physiological limits. weightLb/weightKg matter most
@@ -105,7 +109,27 @@ export class BodyMetricService {
     return this.repository.create(createBodyMetricSchema.parse(input));
   }
 
-  async upsertImported(input: unknown) {
+  /**
+   * Inserts an imported body metric, skipping it when the same real-world
+   * weigh-in is already stored.
+   *
+   * The repository handles the same-provider case (a re-import of the same
+   * `sourceExternalId` updates the existing row). This method adds the
+   * cross-provider case (TD-019): the same weigh-in can reach the app from
+   * two different providers with different external ids — a Withings scale
+   * reading and the same reading relayed through an Apple Health bridge —
+   * and neither the unique index nor the repository's own check sees the
+   * collision. Every metric already stored for that calendar day is compared
+   * against the incoming one; on a match the higher-priority source wins.
+   * See `cross-provider-dedup.ts` for the matching rules and priority order.
+   *
+   * When the incoming metric wins, the superseded row is archived — a soft
+   * delete, so nothing is unrecoverable if the heuristic ever gets it wrong.
+   */
+  async upsertImported(input: unknown): Promise<{
+    metric: BodyMetric;
+    crossProvider: CrossProviderDecision;
+  }> {
     const parsed = createBodyMetricSchema.parse(input);
 
     if (parsed.source.sourceType !== "imported") {
@@ -114,7 +138,40 @@ export class BodyMetricService {
       );
     }
 
-    return this.repository.upsertImported(parsed);
+    const sameDayExisting = await this.repository.listByDateRange({
+      userId: parsed.userId,
+      startDate: parsed.measuredOn,
+      endDate: parsed.measuredOn,
+    });
+    const decision = decideBodyMetricCrossProvider(
+      {
+        measuredOn: parsed.measuredOn,
+        weightLb: parsed.weightLb ?? null,
+        weightKg: parsed.weightKg ?? null,
+        source: parsed.source,
+      },
+      sameDayExisting,
+    );
+
+    if (decision.outcome === "skip_incoming") {
+      const winner = sameDayExisting.find(
+        (candidate) => candidate.id === decision.duplicateOf,
+      );
+      // `duplicateOf` always names a member of the list the decision was made
+      // from, so this fallback is unreachable in practice — it exists so a
+      // future refactor of the lookup can't turn a miss into a crash.
+      if (winner) {
+        return { metric: winner, crossProvider: decision };
+      }
+    }
+
+    const metric = await this.repository.upsertImported(parsed);
+
+    if (decision.outcome === "supersede_existing") {
+      await this.repository.archive(parsed.userId, decision.duplicateOf);
+    }
+
+    return { metric, crossProvider: decision };
   }
 
   async update(input: unknown) {

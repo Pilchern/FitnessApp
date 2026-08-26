@@ -47,6 +47,10 @@ export type SyncBodyMetricsResult = {
   rawItemCount: number;
   processedItemCount: number;
   failedItemCount: number;
+  /** Incoming metrics dropped because a higher-priority source already had them (TD-019). */
+  skippedCrossProviderCount: number;
+  /** Stored metrics archived because this provider outranks the source that wrote them (TD-019). */
+  supersededCrossProviderCount: number;
 };
 
 function toError(error: unknown) {
@@ -145,6 +149,8 @@ export class BodyMetricSyncOrchestrator {
     let rawItemCount = 0;
     let processedItemCount = 0;
     let failedItemCount = 0;
+    let skippedCrossProviderCount = 0;
+    let supersededCrossProviderCount = 0;
 
     try {
       await this.syncJobRunStore.markRunning(syncRun.id);
@@ -205,25 +211,41 @@ export class BodyMetricSyncOrchestrator {
             continue;
           }
 
-          const bodyMetric = await this.bodyMetricService.upsertImported({
-            userId: input.userId,
-            measuredOn: mapped.measuredOn,
-            weightLb: mapped.weightLb ?? null,
-            weightKg: mapped.weightKg ?? null,
-            waistIn: mapped.waistIn ?? null,
-            waistCm: mapped.waistCm ?? null,
-            bodyFatPct: mapped.bodyFatPct ?? null,
-            muscleMassLb: mapped.muscleMassLb ?? null,
-            muscleMassKg: mapped.muscleMassKg ?? null,
-            notes: mapped.notes ?? null,
-            source: {
-              sourceType: "imported",
-              sourceProvider: input.provider,
-              sourceExternalId: mapped.providerExternalId,
-              importBatchId: currentImportBatch.id,
-              rawImportEventId: event.id,
-            },
-          });
+          const { metric: bodyMetric, crossProvider } =
+            await this.bodyMetricService.upsertImported({
+              userId: input.userId,
+              measuredOn: mapped.measuredOn,
+              weightLb: mapped.weightLb ?? null,
+              weightKg: mapped.weightKg ?? null,
+              waistIn: mapped.waistIn ?? null,
+              waistCm: mapped.waistCm ?? null,
+              bodyFatPct: mapped.bodyFatPct ?? null,
+              muscleMassLb: mapped.muscleMassLb ?? null,
+              muscleMassKg: mapped.muscleMassKg ?? null,
+              notes: mapped.notes ?? null,
+              source: {
+                sourceType: "imported",
+                sourceProvider: input.provider,
+                sourceExternalId: mapped.providerExternalId,
+                importBatchId: currentImportBatch.id,
+                rawImportEventId: event.id,
+              },
+            });
+
+          // A cross-provider duplicate (TD-019): this weigh-in is already
+          // recorded from a higher-priority source, so nothing was written.
+          // Mark the raw event skipped rather than mapped, so the import log
+          // shows what happened instead of pointing at a row this event
+          // didn't produce.
+          if (crossProvider.outcome === "skip_incoming") {
+            skippedCrossProviderCount += 1;
+            await this.rawImportEventStore.markSkipped(event.id);
+            continue;
+          }
+
+          if (crossProvider.outcome === "supersede_existing") {
+            supersededCrossProviderCount += 1;
+          }
 
           processedItemCount += 1;
 
@@ -260,6 +282,8 @@ export class BodyMetricSyncOrchestrator {
         rawItemCount,
         processedItemCount,
         failedItemCount,
+        skippedCrossProviderCount,
+        supersededCrossProviderCount,
       });
 
       return {
@@ -269,6 +293,8 @@ export class BodyMetricSyncOrchestrator {
         rawItemCount,
         processedItemCount,
         failedItemCount,
+        skippedCrossProviderCount,
+        supersededCrossProviderCount,
       };
     } catch (error) {
       const syncError = toError(error);

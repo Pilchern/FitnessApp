@@ -16,6 +16,10 @@ import {
   optionalTrimmedStringSchema,
   uuidSchema,
 } from "../../shared/primitives";
+import {
+  type CrossProviderDecision,
+  decideCardioCrossProvider,
+} from "../integrations/cross-provider-dedup";
 
 const cardioSessionKindSchema = z.enum(["zone2", "vo2", "recovery", "other"]);
 const cardioSessionCompletionSchema = z.enum([
@@ -220,14 +224,32 @@ export class CardioSessionService {
   }
 
   /**
-   * Inserts an imported cardio session only if a row with the same
-   * (userId, sourceProvider, sourceExternalId) does not already exist.
-   * Returns the existing row if found, or the newly created one.
+   * Inserts an imported cardio session, skipping it when the same real-world
+   * workout is already stored.
+   *
+   * Two checks run, in order:
+   *
+   * 1. **Same provider** — a row with the same
+   *    `(userId, sourceProvider, sourceExternalId)` is a straight re-import;
+   *    the existing row is returned untouched.
+   * 2. **Cross-provider (TD-019)** — the same ride can arrive from two
+   *    different providers with different external ids, so neither the unique
+   *    index nor check 1 catches it. Every session already stored for that
+   *    calendar day is compared against the incoming one; on a match the
+   *    higher-priority source wins. See `cross-provider-dedup.ts` for the
+   *    matching rules and the priority order.
+   *
+   * When the incoming session wins, the superseded row is archived — a soft
+   * delete, so nothing is unrecoverable if the heuristic ever gets it wrong.
    */
   async upsertImported(
     userId: string,
     session: Omit<CreateCardioSessionInput, "userId">,
-  ): Promise<{ created: boolean; session: CardioSession }> {
+  ): Promise<{
+    created: boolean;
+    session: CardioSession;
+    crossProvider?: CrossProviderDecision;
+  }> {
     const source = session.source as
       | { sourceProvider?: string; sourceExternalId?: string }
       | undefined;
@@ -245,10 +267,42 @@ export class CardioSessionService {
       }
     }
 
-    const created = await this.repository.create(
-      createCardioSessionSchema.parse({ userId, ...session }),
+    const parsed = createCardioSessionSchema.parse({ userId, ...session });
+
+    const sameDayExisting = await this.repository.listByDateRange({
+      userId,
+      startDate: parsed.sessionDate,
+      endDate: parsed.sessionDate,
+    });
+    const decision = decideCardioCrossProvider(
+      {
+        sessionDate: parsed.sessionDate,
+        startedAt: parsed.startedAt ?? null,
+        durationMinutes: parsed.durationMinutes ?? null,
+        source: parsed.source,
+      },
+      sameDayExisting,
     );
-    return { created: true, session: created };
+
+    if (decision.outcome === "skip_incoming") {
+      const winner = sameDayExisting.find(
+        (candidate) => candidate.id === decision.duplicateOf,
+      );
+      // `duplicateOf` always names a member of the list the decision was made
+      // from, so this fallback is unreachable in practice — it exists so a
+      // future refactor of the lookup can't turn a miss into a crash.
+      if (winner) {
+        return { created: false, session: winner, crossProvider: decision };
+      }
+    }
+
+    const created = await this.repository.create(parsed);
+
+    if (decision.outcome === "supersede_existing") {
+      await this.repository.archive(userId, decision.duplicateOf);
+    }
+
+    return { created: true, session: created, crossProvider: decision };
   }
 
   async listListItemsByDateRange(

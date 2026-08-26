@@ -43,7 +43,12 @@ export type SyncCardioSessionsResult = {
   rawItemCount: number;
   processedItemCount: number;
   failedItemCount: number;
+  /** Duplicates of another item in the same page, from the same provider. */
   skippedDuplicateCount: number;
+  /** Incoming sessions dropped because a higher-priority provider already had them (TD-019). */
+  skippedCrossProviderCount: number;
+  /** Stored sessions archived because this provider outranks the source that wrote them (TD-019). */
+  supersededCrossProviderCount: number;
 };
 
 function dedupeKey(input: SyncCardioSessionsInput): string {
@@ -258,6 +263,8 @@ export class CardioSyncOrchestrator {
     let processedItemCount = 0;
     let failedItemCount = 0;
     let skippedDuplicateCount = 0;
+    let skippedCrossProviderCount = 0;
+    let supersededCrossProviderCount = 0;
 
     try {
       const lastCursor = input.forceFullResync ? null : connection.lastCursor;
@@ -333,16 +340,36 @@ export class CardioSyncOrchestrator {
 
             const { providerExternalId, ...sessionFields } = mapped;
 
-            await this.cardioService.upsertImported(input.userId, {
-              ...sessionFields,
-              source: {
-                sourceType: "imported",
-                sourceProvider: input.provider,
-                sourceExternalId: providerExternalId,
-                importBatchId: importBatch.id,
-                rawImportEventId: rawEvent.id,
+            const { crossProvider } = await this.cardioService.upsertImported(
+              input.userId,
+              {
+                ...sessionFields,
+                source: {
+                  sourceType: "imported",
+                  sourceProvider: input.provider,
+                  sourceExternalId: providerExternalId,
+                  importBatchId: importBatch.id,
+                  rawImportEventId: rawEvent.id,
+                },
               },
-            });
+            );
+
+            // A cross-provider duplicate (TD-019): this workout is already
+            // recorded from a higher-priority source, so nothing was written.
+            // Mark the raw event skipped rather than mapped, so the import log
+            // shows what happened instead of pointing at a row this event
+            // didn't produce. The cursor is still advanced for it below — the
+            // item was handled, just not stored.
+            if (crossProvider?.outcome === "skip_incoming") {
+              await this.rawImportEventStore.markSkipped(rawEvent.id);
+              skippedCrossProviderCount += 1;
+              if (item.occurredAt) successOccurredAts.push(item.occurredAt);
+              continue;
+            }
+
+            if (crossProvider?.outcome === "supersede_existing") {
+              supersededCrossProviderCount += 1;
+            }
 
             await this.rawImportEventStore.markMapped(rawEvent.id, {
               canonicalTargetTable: "cardio_sessions",
@@ -415,6 +442,8 @@ export class CardioSyncOrchestrator {
         processedItemCount,
         failedItemCount,
         skippedDuplicateCount,
+        skippedCrossProviderCount,
+        supersededCrossProviderCount,
       });
     } catch (error) {
       const message =
@@ -442,6 +471,8 @@ export class CardioSyncOrchestrator {
       processedItemCount,
       failedItemCount,
       skippedDuplicateCount,
+      skippedCrossProviderCount,
+      supersededCrossProviderCount,
     };
   }
 }
