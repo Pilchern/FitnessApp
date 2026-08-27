@@ -33,6 +33,9 @@ function buildProfilePayload(userId: string, formData: FormData) {
     dailyFiberGramsTarget: formData.get("dailyFiberGramsTarget") ?? undefined,
     targetWeightLb: formData.get("targetWeightLb") ?? undefined,
     targetDate: formData.get("targetDate") ?? undefined,
+    heightCm: formData.get("heightCm") ?? undefined,
+    birthDate: formData.get("birthDate") ?? undefined,
+    biologicalSex: formData.get("biologicalSex") ?? undefined,
   });
 
   return {

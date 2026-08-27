@@ -192,6 +192,70 @@ export function SettingsForm({
             </div>
           </label>
         </div>
+
+        <p className="mt-6 text-xs text-ink/60">
+          These three are optional and used only to make the calorie and protein
+          estimate under Nutrition Goals closer to your body. Leave any of them
+          blank and that part of the estimate falls back to a population
+          average, which the estimate will tell you it did.
+        </p>
+
+        <div className="mt-3 grid gap-4 sm:grid-cols-3">
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Height (cm)
+            <input
+              className={fieldClassName()}
+              name="heightCm"
+              type="number"
+              min={1}
+              max={300}
+              step={0.1}
+              placeholder="e.g. 178"
+              value={values.heightCm}
+              onChange={(event) => set("heightCm", event.target.value)}
+            />
+            {state.fieldErrors?.heightCm ? (
+              <p className="text-xs text-ember">{state.fieldErrors.heightCm}</p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Date of birth
+            <input
+              className={fieldClassName()}
+              name="birthDate"
+              type="date"
+              value={values.birthDate}
+              onChange={(event) => set("birthDate", event.target.value)}
+            />
+            {state.fieldErrors?.birthDate ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.birthDate}
+              </p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Biological sex
+            <select
+              className={fieldClassName()}
+              name="biologicalSex"
+              aria-label="Biological sex"
+              value={values.biologicalSex}
+              onChange={(event) => set("biologicalSex", event.target.value)}
+            >
+              <option value="">Prefer not to answer</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="unspecified">Neither / other</option>
+            </select>
+            {state.fieldErrors?.biologicalSex ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.biologicalSex}
+              </p>
+            ) : null}
+          </label>
+        </div>
       </section>
 
       {/* ── Preferences ── */}
@@ -421,7 +485,7 @@ export function SettingsForm({
             disabled={isRecomputing}
             className="inline-flex h-10 items-center justify-center rounded-full border border-pine px-5 text-sm font-semibold text-pine transition hover:bg-pine hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isRecomputing ? "Computing…" : "Recompute from my stats"}
+            {isRecomputing ? "Computing…" : "Recompute my estimate"}
           </button>
           {recomputeState.targets ? (
             <p className="text-sm text-pine">

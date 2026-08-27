@@ -25,6 +25,9 @@ export function toSettingsFormValues(profile: UserProfile): SettingsFormValues {
     targetWeightLb:
       profile.targetWeightLb != null ? String(profile.targetWeightLb) : "",
     targetDate: profile.targetDate ?? "",
+    heightCm: profile.heightCm != null ? String(profile.heightCm) : "",
+    birthDate: profile.birthDate ?? "",
+    biologicalSex: profile.biologicalSex ?? "",
   };
 }
 

@@ -5,7 +5,7 @@ import type {
   UpdateUserProfileInput,
   UserProfileRepository,
 } from "./user-profile";
-import { NutritionTargetService } from "./nutrition-target";
+import { NutritionTargetService, computeAgeYears } from "./nutrition-target";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 
@@ -25,6 +25,9 @@ function makeProfile(overrides: Partial<UserProfile> = {}): UserProfile {
     dailyFiberGramsTarget: null,
     targetWeightLb: null,
     targetDate: null,
+    heightCm: null,
+    birthDate: null,
+    biologicalSex: null,
     createdAt: "2026-01-01T00:00:00.000Z",
     updatedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
@@ -209,5 +212,136 @@ describe("NutritionTargetService.computeNutritionTargets", () => {
         note.toLowerCase().includes("rough starting point"),
       ),
     ).toBe(true);
+  });
+});
+
+describe("TD-030 personalization", () => {
+  const at = () => new Date("2026-08-27T12:00:00.000Z");
+
+  function serviceFor(
+    profileOverrides: Partial<UserProfile>,
+    metrics = [makeBodyMetric({ weightKg: 80 })],
+  ) {
+    return new NutritionTargetService(
+      new FakeProfileRepository(makeProfile(profileOverrides)),
+      new FakeBodyMetricRepository(metrics),
+      at,
+    );
+  }
+
+  it("uses the profile's own height, age, and sex when all are present", async () => {
+    // Mifflin-St Jeor, male: 10*80 + 6.25*180 - 5*36 + 5 = 1750 BMR.
+    const targets = await serviceFor({
+      heightCm: 180,
+      birthDate: "1990-01-15",
+      biologicalSex: "male",
+    }).computeNutritionTargets(userId);
+
+    // Population defaults (170cm, 30yo) would give 1730 — a different number.
+    const withDefaults = await serviceFor({}).computeNutritionTargets(userId);
+    expect(targets.dailyCaloriesTarget).not.toBe(
+      withDefaults.dailyCaloriesTarget,
+    );
+    expect(
+      targets.notes.some((note) => note.includes("population average")),
+    ).toBe(false);
+    expect(targets.notes.some((note) => note.includes("your own height"))).toBe(
+      true,
+    );
+  });
+
+  it("applies the female constant rather than defaulting to male", async () => {
+    const female = await serviceFor({
+      heightCm: 165,
+      birthDate: "1990-01-15",
+      biologicalSex: "female",
+    }).computeNutritionTargets(userId);
+    const male = await serviceFor({
+      heightCm: 165,
+      birthDate: "1990-01-15",
+      biologicalSex: "male",
+    }).computeNutritionTargets(userId);
+
+    // The two constants differ by 166 kcal of BMR before the activity
+    // multiplier, so these must not collapse to the same target.
+    expect(female.dailyCaloriesTarget).toBeLessThan(male.dailyCaloriesTarget);
+  });
+
+  it("names exactly the fields that fell back to a population average", async () => {
+    const targets = await serviceFor({
+      heightCm: 180,
+      birthDate: null,
+      biologicalSex: null,
+    }).computeNutritionTargets(userId);
+
+    const note = targets.notes.find((n) => n.includes("population average"));
+    expect(note).toBeDefined();
+    expect(note).toContain("age");
+    expect(note).toContain("biological sex");
+    expect(note).not.toContain("height");
+  });
+
+  it("treats an explicit 'unspecified' as no usable sex, and says so", async () => {
+    // Declining to answer is a real choice, but the formula still has no
+    // sex-specific constant to use — it must not quietly assume male.
+    const unspecified = await serviceFor({
+      heightCm: 175,
+      birthDate: "1990-01-15",
+      biologicalSex: "unspecified",
+    }).computeNutritionTargets(userId);
+    const male = await serviceFor({
+      heightCm: 175,
+      birthDate: "1990-01-15",
+      biologicalSex: "male",
+    }).computeNutritionTargets(userId);
+
+    expect(unspecified.dailyCaloriesTarget).not.toBe(male.dailyCaloriesTarget);
+    expect(
+      unspecified.notes.some((note) => note.includes("biological sex")),
+    ).toBe(true);
+  });
+
+  it("derives age from the birth date, including before the birthday", async () => {
+    // Born 1990-12-01, evaluated 2026-08-27: birthday not yet reached, so 35.
+    const beforeBirthday = computeAgeYears("1990-12-01", at());
+    // Born 1990-01-15: birthday passed, so 36.
+    const afterBirthday = computeAgeYears("1990-01-15", at());
+
+    expect(beforeBirthday).toBe(35);
+    expect(afterBirthday).toBe(36);
+  });
+
+  it("falls back to the default age for an unusable birth date", async () => {
+    // A future date (or anything implausible) must not feed a negative age
+    // into the formula.
+    expect(computeAgeYears("2030-01-01", at())).toBeNull();
+    expect(computeAgeYears("not-a-date", at())).toBeNull();
+
+    const targets = await serviceFor({
+      heightCm: 180,
+      birthDate: "2030-01-01",
+      biologicalSex: "male",
+    }).computeNutritionTargets(userId);
+
+    expect(
+      targets.notes.some(
+        (note) => note.includes("population average") && note.includes("age"),
+      ),
+    ).toBe(true);
+  });
+
+  it("still applies the safety floor when real stats produce a low target", async () => {
+    const targets = await serviceFor(
+      {
+        heightCm: 150,
+        birthDate: "1950-01-15",
+        biologicalSex: "female",
+        goalFatLoss: true,
+      },
+      [makeBodyMetric({ weightKg: 40 })],
+    ).computeNutritionTargets(userId);
+
+    expect(targets.safetyFloorApplied).toBe(true);
+    expect(targets.dailyCaloriesTarget).toBe(1200);
   });
 });

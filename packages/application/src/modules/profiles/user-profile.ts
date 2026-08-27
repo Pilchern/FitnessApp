@@ -16,6 +16,16 @@ export const updateUserProfileSchema = z.object({
   dailyFiberGramsTarget: z.number().int().positive().nullable().optional(),
   targetWeightLb: z.number().positive().nullable().optional(),
   targetDate: isoDateSchema.nullable().optional(),
+  // Bounds are data-entry sanity checks, matching the DB check constraints
+  // added alongside these columns (TD-030). They are generous rather than
+  // physiological: the point is to catch a typo or a unit mix-up, not to
+  // adjudicate what a real body can be.
+  heightCm: z.number().positive().max(300).nullable().optional(),
+  birthDate: isoDateSchema.nullable().optional(),
+  biologicalSex: z
+    .enum(["male", "female", "unspecified"])
+    .nullable()
+    .optional(),
 });
 
 export type UpdateUserProfileInput = z.infer<typeof updateUserProfileSchema>;
