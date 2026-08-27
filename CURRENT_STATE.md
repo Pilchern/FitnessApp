@@ -209,7 +209,12 @@ Started from a verified baseline (typecheck/lint/test/build all clean, 269/269, 
 
 10. **Method note.** The first TD-019 implementation passed 39 tests I wrote and still missed its own headline case; an adversarial review found six issues with reproducible proofs. Four were fixed, two documented. Treating any implementation — mine or an agent's — as a draft until mutation-verified is what caught that, and what every subsequent fix in this session was held to.
 
-**CI note:** three consecutive pushes mid-session did not trigger a `pull_request` workflow run at all; a manual `workflow_dispatch` on the same head ran fine and the trigger resumed on its own afterwards, so this looks transient GitHub-side rather than a config problem. Worth knowing that a missing run is possible: the `check_suite.completed` webhooks that arrived during the gap were Vercel's, so events alone read as "CI fine."
+**CI note — GitHub can delay run creation by hours, and `cancel-in-progress` then eats the backlog.** Mid-session, three consecutive pushes appeared to trigger no `pull_request` run at all; a manual `workflow_dispatch` on the same head ran fine. The runs were not missing, only late: GitHub created them ~16 hours after the pushes and fired them in one burst, at which point this workflow's `concurrency.cancel-in-progress` cancelled every superseded run and only the newest head completed. Two practical consequences:
+
+- A green PR can sit for hours with no run yet created, and querying during that window shows nothing. Don't read "no run" as "CI is broken" — or as "CI passed."
+- The `check_suite.completed` webhooks arriving during the gap were Vercel's, not this workflow's, so PR events alone read as "CI fine" while this CI had not run. Verify the workflow run itself on the head SHA.
+
+`cancel-in-progress: true` is still the right setting (it stops a queue of superseded runs burning minutes), but it means that after a burst of pushes only the final head is actually verified in CI. That is fine when every intermediate commit was validated locally, which is the convention here.
 
 ---
 
