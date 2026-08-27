@@ -4,6 +4,7 @@ import {
   buildStrengthProgressionSummaries,
   buildTopSetProgression,
   detectPersonalRecords,
+  detectRepeatedStall,
 } from "./strength-progression";
 
 const userId = "11111111-1111-4111-8111-111111111111";
@@ -166,5 +167,100 @@ describe("detectPersonalRecords", () => {
     );
 
     expect(results.some((r) => r.prType === "weight")).toBe(false);
+  });
+});
+
+describe("detectRepeatedStall", () => {
+  const point = (sessionDate: string, estimatedOneRepMax: number) =>
+    ({
+      sessionDate,
+      estimatedOneRepMax,
+      weight: estimatedOneRepMax,
+      reps: 1,
+    }) as never;
+
+  it("does not call a clear decline 'measurable improvement'", () => {
+    // Was compared against the window's MAX, which included the baseline
+    // itself and so was always >= it. A mid-window spike therefore masked the
+    // regression: 200 -> 205 -> 180 reported stalled: false with "still show
+    // measurable improvement", to a lifter whose latest top set was 20 below
+    // where the window started.
+    const result = detectRepeatedStall([
+      point("2026-03-17", 200),
+      point("2026-03-24", 205),
+      point("2026-03-31", 180),
+    ]);
+
+    expect(result.stalled).toBe(true);
+    expect(result.explanation).not.toContain("improvement");
+    expect(result.explanation).toContain("trended down");
+  });
+
+  it("still reports genuine progress as not stalled", () => {
+    const result = detectRepeatedStall([
+      point("2026-03-17", 200),
+      point("2026-03-24", 205),
+      point("2026-03-31", 210),
+    ]);
+
+    expect(result.stalled).toBe(false);
+    expect(result.stagnantSessions).toBe(0);
+  });
+
+  it("reports a recovery to above baseline as not stalled", () => {
+    // Dipped mid-window but finished ahead — that is progress, not a stall.
+    const result = detectRepeatedStall([
+      point("2026-03-17", 200),
+      point("2026-03-24", 180),
+      point("2026-03-31", 205),
+    ]);
+
+    expect(result.stalled).toBe(false);
+  });
+
+  it("treats a flat window as a plateau, not a decline", () => {
+    const result = detectRepeatedStall([
+      point("2026-03-17", 200),
+      point("2026-03-24", 200),
+      point("2026-03-31", 200),
+    ]);
+
+    expect(result.stalled).toBe(true);
+    expect(result.explanation).toContain("not improved meaningfully");
+  });
+
+  it("ignores movement smaller than the noise threshold", () => {
+    const result = detectRepeatedStall([
+      point("2026-03-17", 200),
+      point("2026-03-24", 200.2),
+      point("2026-03-31", 200.4),
+    ]);
+
+    expect(result.stalled).toBe(true);
+    expect(result.explanation).toContain("not improved meaningfully");
+  });
+
+  it("only considers the most recent three sessions", () => {
+    // A long-ago low start must not make a currently-flat lifter look like
+    // they are still progressing.
+    const result = detectRepeatedStall([
+      point("2026-02-01", 100),
+      point("2026-03-17", 200),
+      point("2026-03-24", 200),
+      point("2026-03-31", 200),
+    ]);
+
+    expect(result.stalled).toBe(true);
+  });
+
+  it("declines to judge fewer than three sessions", () => {
+    const result = detectRepeatedStall([
+      point("2026-03-17", 200),
+      point("2026-03-24", 180),
+    ]);
+
+    expect(result.stalled).toBe(false);
+    expect(result.stagnantSessions).toBe(2);
+    expect(result.explanation).toContain("at least 3 sessions");
   });
 });
