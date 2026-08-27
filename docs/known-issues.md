@@ -1,6 +1,6 @@
 # Known Issues
 
-**Last verified against code:** 2026-08-26.
+**Last verified against code:** 2026-08-27.
 
 ## Fixed 2026-08-26 (see CURRENT_STATE.md session log)
 
@@ -17,6 +17,7 @@
 - OAuth callback and sync behavior are covered by unit tests, not live-provider integration tests.
 - Withings and Apple Health are live and verified. Strava's app registration is deactivated on Strava's side and its API now requires a paid subscription the user has declined; Peloton's unofficial auth endpoint returns `403` for any credentials as of 2026-07-16 and is not fixable from this codebase. Apple Health is the only active cardio-import path today.
 - Integration credentials are intentionally server-only and require correct service-role usage in deployment.
+- Insight severity is computed by the rule engine and then dropped at the storage boundary: there is no `severity` column, so `InsightOrchestrator` hides it in the `evidence` JSONB and nothing reads it back. `listActive` orders by `insight_date desc`, and both "top 3" call sites are a bare `slice`, so the dashboard shows the three most recent insights rather than the three most important. Open and unfixed as of 2026-08-27 — it needs a product decision, not just a patch. See CURRENT_STATE.md.
 - Nutrition targets are personalized as of 2026-08-27 (TD-030 closed): `height_cm`/`birth_date`/`biological_sex` are on `profiles` and used in the BMR formula, falling back to population averages per-field and disclosing exactly which ones fell back.
 
 ## Resolved since this file was last accurate

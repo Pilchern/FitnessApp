@@ -1,7 +1,7 @@
 # Current State — FitnessApp
 
 **Last updated:** 2026-08-27 (TD-030 closed — tech-debt register now empty; CI, format normalization, TD-019, security fixes, coverage-audit bug fixes)
-**Overall health:** Stable. TypeScript clean. 244 tests pass. Lint clean. Production build succeeds. **All migrations through `20260722180000` have been applied to the live Supabase project** (done directly via the Supabase MCP connector this session — no more manual `supabase db push` step outstanding for those). Withings and Apple Health are live and verified. **Strava now requires a paid subscription to keep API access** (a Strava policy change, not something fixable in this codebase) — the user has chosen not to subscribe, so Strava is being retired as the cardio path in favor of Apple Health (see below). Peloton's unofficial API auth endpoint is also confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not viable either way.
+**Overall health:** Stable. TypeScript clean. 493 tests pass. Lint clean. Production build succeeds. CI runs format/typecheck/lint/test/build on every PR. **All migrations through `20260827154823` have been applied to the live Supabase project** (done directly via the Supabase MCP connector this session — no more manual `supabase db push` step outstanding for those). Withings and Apple Health are live and verified. **Strava now requires a paid subscription to keep API access** (a Strava policy change, not something fixable in this codebase) — the user has chosen not to subscribe, so Strava is being retired as the cardio path in favor of Apple Health (see below). Peloton's unofficial API auth endpoint is also confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not viable either way.
 
 This session ran a full product/UX/security/fitness-safety audit (see "What Was Done in This Session (2026-08-02, fitness-safety audit)" below), using parallel research passes over (a) strength/cardio unit conversion and progression logic and (b) security/auth/accessibility. Four concrete fixes shipped:
 
@@ -116,6 +116,8 @@ None of the four cron routes have retry logic, a queue, or a dead-letter path �
 1. **Strava broken** — app deactivated on Strava's side (`403: Application Status Inactive`), confirmed via a failed `sync_job_runs` row on 2026-07-16. User must reactivate at strava.com/settings/api. This blocks the recommended Peloton→Strava relay path too.
 2. **Peloton direct sync blocked by Peloton** — `POST https://api.onepeloton.com/auth/login` returns `403` for any credentials as of 2026-07-16. Not fixable without reverse-engineering around a deliberate access restriction. Recommended path is now Peloton's own "auto-export to Strava" setting, once Strava is reactivated.
 3. **None.** TD-030 was the last Priority 1 item and closed 2026-08-27; the tech-debt register is currently empty.
+
+4. **Insight severity is computed, then thrown away at the storage boundary.** `buildInsights` ranks its output by severity (`warning > caution > info > positive`), but `PersistedInsight`, the `insights` table, and `UpsertInsightInput` have no severity column — `InsightOrchestrator` stashes it inside the `evidence` JSONB (`insight-orchestrator.ts:41` and `:55`). Nothing reads it back. `SupabaseInsightRepository.listActive` orders by `insight_date desc` limit 50, `features/insights/server.ts:74` does `insights.slice(0, 3)`, and `getTopInsights` (`insight-rules.ts:854`) is a bare `slice` with no sort. So the dashboard's "top 3 insights" is the three most recent, not the three most important: a `warning` from yesterday loses to three `positive` notes from today. Verified by reading all five call sites; **not fixed** — deciding whether severity should drive ordering, be surfaced in the UI, or get a real column is a product call, not a unilateral one. Fixing it properly wants a `severity` column plus a migration; ordering off the JSONB would work but bakes in the smuggling.
 
 ### Low
 
@@ -232,6 +234,10 @@ Two changes, both applied and verified:
 2. `route_path` is now validated against `^/api/cron/[a-z0-9-]+$` inside the function, so even a caller that somehow regains EXECUTE cannot escape the configured base URL. Verified by probing: `@evil.example/x`, `.evil.example/x`, `https://evil.example/x`, `/api/cron/../../x`, and `/api/cron/withings-sync?x=1` all raise; both live cron paths still pass.
 
 To undo: `grant execute on function public.trigger_cron_route(text) to anon, authenticated;`
+
+### Open 2026-08-27 — insight severity never survives persistence
+
+Investigated at the end of this session and deliberately left unfixed; see "Active Known Issues → Medium 4" above for the full trace. Short version: severity is computed and ranked by the rule engine, written into the `evidence` JSONB because there is no column for it, and never read again. Every list the user sees is ordered by date. This needs a product decision (add a `severity` column and order by it? surface severity in the UI at all?) rather than a unilateral fix, so it is recorded rather than patched.
 
 ### Also 2026-08-27 — cron auth extracted and tested
 
