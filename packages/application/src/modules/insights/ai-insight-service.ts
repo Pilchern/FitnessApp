@@ -23,6 +23,26 @@ const generatedInsightSchema = z.object({
 
 const responseSchema = z.array(generatedInsightSchema).min(1).max(10);
 
+/**
+ * Models routinely wrap JSON in a ```json fence despite being asked for bare
+ * JSON. Without this, `JSON.parse` throws into the outer catch and the user
+ * sees zero AI insights with nothing surfaced anywhere — indistinguishable
+ * from the model having had nothing to say.
+ *
+ * Only strips a fence that wraps the *whole* response, so a fence appearing
+ * inside legitimate JSON string content is untouched.
+ */
+function stripCodeFence(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith("```")) {
+    return trimmed;
+  }
+  return trimmed
+    .replace(/^```(?:json)?\s*\n?/i, "")
+    .replace(/\n?```$/, "")
+    .trim();
+}
+
 function buildContext(
   input: InsightEngineInput & { recentJournalEntries?: string[] },
 ): string {
@@ -165,7 +185,9 @@ Rules:
         return [];
       }
 
-      const parsed = responseSchema.safeParse(JSON.parse(textBlock.text));
+      const parsed = responseSchema.safeParse(
+        JSON.parse(stripCodeFence(textBlock.text)),
+      );
       if (!parsed.success) {
         console.error(
           "[AiInsightService] Invalid response shape:",
