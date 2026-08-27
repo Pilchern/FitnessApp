@@ -9,6 +9,7 @@ import {
   computeMuscleGroupVolume,
   getCurrentWeekRangeForUser,
   getRecoveryCoachingSuggestion,
+  getZonedDate,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import {
@@ -16,9 +17,9 @@ import {
   getCachedUserProfile,
 } from "@/lib/server/services";
 import { getInsightsData } from "@/features/insights/server";
+import { computeGoalProgress, formatZonedIsoDate } from "./helpers";
 import type {
   DashboardData,
-  GoalProgress,
   TodayNutrition,
   NutritionTargetsSnapshot,
 } from "./types";
@@ -35,211 +36,6 @@ function daysAgoIsoDate(days: number) {
 
 function settledOrNull<T>(result: PromiseSettledResult<T>): T | null {
   return result.status === "fulfilled" ? result.value : null;
-}
-
-function computeGoalProgress(
-  profile: {
-    goalFatLoss: boolean;
-    goalPreserveMuscle: boolean;
-    goalImproveVo2: boolean;
-    targetWeightLb: number | null;
-    targetDate: string | null;
-  } | null,
-  recentBody: { measuredOn: string; weightLb: number | null }[],
-  strengthSessions: {
-    sessionDate: string;
-    sets: { weight: number | null; reps: number | null }[];
-  }[],
-  cardioLast8Weeks: {
-    sessionDate: string;
-    sessionKind: string;
-    zone2Minutes: number | null;
-    durationMinutes: number | null;
-  }[],
-): GoalProgress[] {
-  if (!profile) return [];
-
-  const now = new Date();
-
-  function daysAgoStr(days: number) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - days);
-    return d.toISOString().slice(0, 10);
-  }
-
-  const progress: GoalProgress[] = [];
-
-  if (profile.goalFatLoss) {
-    const cutoff = daysAgoStr(28);
-    const sorted = [...recentBody]
-      .filter((r) => r.weightLb != null)
-      .sort((a, b) => b.measuredOn.localeCompare(a.measuredOn));
-    const latest = sorted[0] ?? null;
-    const baseline = sorted.find((r) => r.measuredOn <= cutoff) ?? null;
-
-    if (!latest || !baseline) {
-      progress.push({
-        label: "Fat loss",
-        description: "Trending body weight down over time",
-        trend: "insufficient_data",
-        trendDetail: "Not enough data yet — keep logging",
-      });
-    } else {
-      const delta = (latest.weightLb ?? 0) - (baseline.weightLb ?? 0);
-      const absDelta = Math.abs(delta).toFixed(1);
-      const trend =
-        delta <= -0.5 ? "improving" : delta >= 1 ? "declining" : "maintaining";
-
-      const targetWeightLb = profile.targetWeightLb;
-      if (targetWeightLb != null && latest.weightLb != null) {
-        const remaining = latest.weightLb - targetWeightLb;
-
-        if (remaining <= 0) {
-          progress.push({
-            label: "Fat loss",
-            description: `Target weight: ${targetWeightLb}lb`,
-            trend: "improving",
-            trendDetail: `At or below target (${latest.weightLb}lb)`,
-          });
-        } else {
-          let paceDetail = "";
-          if (profile.targetDate) {
-            const weeksRemaining =
-              (new Date(`${profile.targetDate}T12:00:00`).getTime() -
-                now.getTime()) /
-              (7 * 24 * 60 * 60 * 1000);
-            if (weeksRemaining > 0) {
-              const requiredWeeklyRate = remaining / weeksRemaining;
-              const actualWeeklyRate = -delta / 4;
-              paceDetail =
-                actualWeeklyRate >= requiredWeeklyRate
-                  ? ` — on pace for ${profile.targetDate}`
-                  : ` — behind pace for ${profile.targetDate}`;
-            } else {
-              paceDetail = ` — target date (${profile.targetDate}) has passed`;
-            }
-          }
-          progress.push({
-            label: "Fat loss",
-            description: `Target weight: ${targetWeightLb}lb`,
-            trend,
-            trendDetail: `${remaining.toFixed(1)}lb to go${paceDetail}`,
-          });
-        }
-      } else {
-        progress.push({
-          label: "Fat loss",
-          description: "Trending body weight down over time",
-          trend,
-          trendDetail: `${delta < 0 ? "down" : "up"} ${absDelta}lb in 4 weeks`,
-        });
-      }
-    }
-  }
-
-  if (profile.goalPreserveMuscle) {
-    const thisMonthStart = daysAgoStr(30);
-    const lastMonthStart = daysAgoStr(60);
-
-    function sessionVolume(s: {
-      sets: { weight: number | null; reps: number | null }[];
-    }) {
-      return s.sets.reduce(
-        (sum, set) =>
-          sum +
-          (set.weight != null && set.reps != null ? set.weight * set.reps : 0),
-        0,
-      );
-    }
-
-    const thisMonth = strengthSessions.filter(
-      (s) => s.sessionDate >= thisMonthStart,
-    );
-    const lastMonth = strengthSessions.filter(
-      (s) => s.sessionDate >= lastMonthStart && s.sessionDate < thisMonthStart,
-    );
-    const thisVol = thisMonth.reduce((sum, s) => sum + sessionVolume(s), 0);
-    const lastVol = lastMonth.reduce((sum, s) => sum + sessionVolume(s), 0);
-
-    if (thisMonth.length === 0 || lastMonth.length === 0) {
-      progress.push({
-        label: "Preserve muscle",
-        description: "Maintaining strength training volume month over month",
-        trend: "insufficient_data",
-        trendDetail: "Not enough data yet — keep logging",
-      });
-    } else {
-      const pct = lastVol > 0 ? ((thisVol - lastVol) / lastVol) * 100 : 0;
-      progress.push({
-        label: "Preserve muscle",
-        description: "Maintaining strength training volume month over month",
-        trend:
-          pct >= 5 ? "improving" : pct <= -10 ? "declining" : "maintaining",
-        trendDetail:
-          pct >= 0
-            ? `volume up ${pct.toFixed(0)}% vs last month`
-            : `volume down ${Math.abs(pct).toFixed(0)}% vs last month`,
-      });
-    }
-  }
-
-  if (profile.goalImproveVo2) {
-    const fourWeeksAgo = daysAgoStr(28);
-    const eightWeeksAgo = daysAgoStr(56);
-    const today = daysAgoStr(0);
-
-    function rangeMinutes(
-      sessions: typeof cardioLast8Weeks,
-      from: string,
-      to: string,
-    ): number {
-      return sessions
-        .filter((s) => s.sessionDate >= from && s.sessionDate <= to)
-        .reduce((sum, s) => {
-          if (s.sessionKind === "zone2" || s.sessionKind === "vo2") {
-            return sum + (s.zone2Minutes ?? s.durationMinutes ?? 0);
-          }
-          return sum;
-        }, 0);
-    }
-
-    const thisMinutes = rangeMinutes(cardioLast8Weeks, fourWeeksAgo, today);
-    const priorMinutes = rangeMinutes(
-      cardioLast8Weeks,
-      eightWeeksAgo,
-      fourWeeksAgo,
-    );
-    const thisPerWeek = thisMinutes / 4;
-    const priorPerWeek = priorMinutes / 4;
-    const delta = thisPerWeek - priorPerWeek;
-
-    if (priorMinutes === 0 && thisMinutes === 0) {
-      progress.push({
-        label: "Improve VO2",
-        description: "Increasing Zone 2 + VO2 cardio minutes per week",
-        trend: "insufficient_data",
-        trendDetail: "Not enough data yet — keep logging",
-      });
-    } else {
-      const absDelta = Math.abs(delta).toFixed(0);
-      progress.push({
-        label: "Improve VO2",
-        description: "Increasing Zone 2 + VO2 cardio minutes per week",
-        trend:
-          delta >= 20
-            ? "improving"
-            : delta <= -20
-              ? "declining"
-              : "maintaining",
-        trendDetail:
-          delta >= 0
-            ? `up ${absDelta} min/week vs prior 4 weeks`
-            : `down ${absDelta} min/week vs prior 4 weeks`,
-      });
-    }
-  }
-
-  return progress;
 }
 
 export async function getDashboardData(): Promise<DashboardData> {
@@ -264,7 +60,11 @@ export async function getDashboardData(): Promise<DashboardData> {
     weekStartsOn,
   );
 
-  const today = formatIsoDate(new Date());
+  // "Now" in the user's timezone — the same basis as weekStart/weekEnd above.
+  // A raw `new Date()` here would yield the UTC date, which for users west of
+  // UTC flips to tomorrow in the early evening.
+  const zonedNow = getZonedDate(timezone);
+  const today = formatZonedIsoDate(zonedNow);
 
   const [
     cardioThisWeekResult,
@@ -409,6 +209,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       recentBody,
       strengthSessions,
       cardioLast8Weeks,
+      { zonedNow },
     ),
     todayNutrition,
     nutritionTargets,

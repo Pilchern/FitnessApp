@@ -108,6 +108,23 @@ export function inferJournalTags(
   return Array.from(tagSet);
 }
 
+/**
+ * Shift an ISO date (YYYY-MM-DD) by whole days without ever leaving UTC.
+ *
+ * Anchoring at 12:00 UTC and mutating/reading only UTC fields keeps the result
+ * independent of the host timezone. Parsing `${iso}T12:00:00` (no `Z`) would be
+ * interpreted as *local* time while `toISOString()` reads back UTC, which skips
+ * or repeats a day at large offsets.
+ *
+ * Mirrors the `shiftIsoDate` helper in ../cardio/cardio-session.ts; if a third
+ * caller appears this belongs in ../../shared as a single exported helper.
+ */
+function shiftIsoDate(isoDate: string, days: number): string {
+  const anchored = new Date(`${isoDate}T12:00:00.000Z`);
+  anchored.setUTCDate(anchored.getUTCDate() + days);
+  return anchored.toISOString().slice(0, 10);
+}
+
 export function computeJournalStreak(
   entries: { entryDate: string }[],
   today: string,
@@ -118,11 +135,10 @@ export function computeJournalStreak(
   if (!dates.has(today)) return 0;
 
   let streak = 1;
-  const cursor = new Date(`${today}T12:00:00`);
+  let cursor = today;
   for (;;) {
-    cursor.setDate(cursor.getDate() - 1);
-    const dateStr = cursor.toISOString().slice(0, 10);
-    if (!dates.has(dateStr)) break;
+    cursor = shiftIsoDate(cursor, -1);
+    if (!dates.has(cursor)) break;
     streak++;
   }
   return streak;

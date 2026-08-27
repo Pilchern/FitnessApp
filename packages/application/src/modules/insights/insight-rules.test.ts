@@ -551,6 +551,83 @@ describe("insight rules", () => {
     };
   }
 
+  function makeCardioSession(
+    sessionDate: string,
+    overrides: Partial<CardioSession> = {},
+  ): CardioSession {
+    return {
+      id: `ride-${sessionDate}`,
+      userId,
+      trainingTemplateId: null,
+      sessionDate,
+      startedAt: null,
+      endedAt: null,
+      sessionKind: "zone2",
+      plannedVsCompleted: "completed",
+      durationMinutes: 60,
+      zone2Minutes: 50,
+      avgHeartRate: null,
+      maxHeartRate: null,
+      avgOutput: null,
+      cadenceMin: null,
+      cadenceMax: null,
+      resistanceMin: null,
+      resistanceMax: null,
+      intervalStructure: null,
+      rpe: null,
+      distanceMeters: null,
+      notes: null,
+      sportType: null,
+      source: manualSource(),
+      createdAt: `${sessionDate}T12:00:00.000Z`,
+      updatedAt: `${sessionDate}T12:00:00.000Z`,
+      deletedAt: null,
+      ...overrides,
+    };
+  }
+
+  function makeRecovery(
+    checkinDate: string,
+    values: {
+      sleepMinutes?: number | null;
+      readiness?: number | null;
+      restingHr?: number | null;
+    } = {},
+  ): RecoveryCheckin {
+    return {
+      id: `recovery-${checkinDate}`,
+      userId,
+      checkinDate,
+      restingHeartRate: values.restingHr ?? null,
+      hrv: null,
+      sleepDurationMinutes: values.sleepMinutes ?? null,
+      sleepQuality: null,
+      energyLevel: null,
+      readinessLevel: values.readiness ?? null,
+      stressLevel: null,
+      sorenessLevel: null,
+      alcoholCount: 0,
+      notes: null,
+      timeInBedMinutes: null,
+      sleepEfficiencyPct: null,
+      deepSleepMinutes: null,
+      remSleepMinutes: null,
+      coreSleepMinutes: null,
+      awakeMinutes: null,
+      sleepRespiratoryRate: null,
+      sleepSpo2AvgPct: null,
+      sleepHrvAvg: null,
+      sleepAvgHeartRate: null,
+      bedtimeLocal: null,
+      wakeTimeLocal: null,
+      coldPlungeCompleted: null,
+      source: manualSource(),
+      createdAt: `${checkinDate}T08:00:00.000Z`,
+      updatedAt: `${checkinDate}T08:00:00.000Z`,
+      deletedAt: null,
+    };
+  }
+
   // now = 2026-04-06 (Monday) → last completed week starts 2026-03-30
   const TEST_NOW = new Date("2026-04-06T12:00:00Z");
 
@@ -1282,6 +1359,534 @@ describe("insight rules", () => {
         insights.find(
           (i) => i.insightType === "cardio_target_consistently_exceeded",
         ),
+      ).toBeUndefined();
+    });
+  });
+  // ── Rule: missing_weekly_review ─────────────────────────────────────────
+
+  describe("missing_weekly_review", () => {
+    it("fires when the last completed week has logged data but no completed review", () => {
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [makeCardioSession("2026-04-01")],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "missing_weekly_review",
+      );
+      expect(insight).toBeDefined();
+      expect(insight?.severity).toBe("caution");
+      expect(insight?.insightDate).toBe("2026-03-30");
+      expect(insight?.explanation).toContain("2026-03-30");
+    });
+
+    it("does not fire for a brand-new account with no logged data at all", () => {
+      // Old behavior: the rule only checked for a completed review, never for
+      // data, so an empty account was told on day one that "the week that
+      // started X has logged data but no completed weekly review".
+      const insights = buildInsights(emptyInput({ now: TEST_NOW }));
+      expect(
+        insights.find((i) => i.insightType === "missing_weekly_review"),
+      ).toBeUndefined();
+    });
+
+    it("does not fire when a completed review already exists for that week", () => {
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [makeCardioSession("2026-04-01")],
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { ridesCompleted: 3 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "missing_weekly_review"),
+      ).toBeUndefined();
+    });
+
+    it("fires when the week's review row exists but was left in draft", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            {
+              ...makeWeeklyReview("2026-03-30", { ridesCompleted: 3 }),
+              status: "draft",
+              completedAt: null,
+            },
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "missing_weekly_review"),
+      ).toBeDefined();
+    });
+
+    it("does not fire when the only logged data falls outside the target week", () => {
+      const insights = buildInsights(
+        emptyInput({
+          // 2026-04-07 is in the current (in-progress) week, not 2026-03-30..04-05.
+          cardioSessions: [makeCardioSession("2026-04-07")],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "missing_weekly_review"),
+      ).toBeUndefined();
+    });
+  });
+
+  // ── Rule: cardio_sessions_below_target ──────────────────────────────────
+
+  describe("cardio_sessions_below_target", () => {
+    it("fires a warning when 0 cardio sessions were completed", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { ridesCompleted: 0 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "cardio_sessions_below_target",
+      );
+      expect(insight).toBeDefined();
+      expect(insight?.severity).toBe("warning");
+      expect(insight?.explanation).toContain("0 cardio sessions");
+    });
+
+    it("stays a warning at 1 session and softens to caution at 2", () => {
+      const atOne = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { ridesCompleted: 1 }),
+          ],
+          now: TEST_NOW,
+        }),
+      ).find((i) => i.insightType === "cardio_sessions_below_target");
+      expect(atOne?.severity).toBe("warning");
+      expect(atOne?.explanation).toContain("1 cardio session ");
+
+      const atTwo = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { ridesCompleted: 2 }),
+          ],
+          now: TEST_NOW,
+        }),
+      ).find((i) => i.insightType === "cardio_sessions_below_target");
+      expect(atTwo?.severity).toBe("caution");
+    });
+
+    it("does not fire once the 3-session target is met", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", { ridesCompleted: 3 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "cardio_sessions_below_target"),
+      ).toBeUndefined();
+    });
+  });
+
+  // ── Rule: alcohol_recovery_caution ──────────────────────────────────────
+
+  describe("alcohol_recovery_caution", () => {
+    it("fires when alcohol rises to 4+ while sleep drops by 0.4h or more", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              alcoholTotal: 6,
+              sleepAverageHours: 6.9,
+            }),
+            makeWeeklyReview("2026-03-23", {
+              alcoholTotal: 2,
+              sleepAverageHours: 7.4,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "alcohol_recovery_caution",
+      );
+      expect(insight).toBeDefined();
+      expect(insight?.severity).toBe("caution");
+    });
+
+    it("does not fire when alcohol stays below the 4-drink floor", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              alcoholTotal: 3,
+              sleepAverageHours: 6.4,
+            }),
+            makeWeeklyReview("2026-03-23", {
+              alcoholTotal: 1,
+              sleepAverageHours: 7.4,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "alcohol_recovery_caution"),
+      ).toBeUndefined();
+    });
+
+    it("does not fire when alcohol rose but sleep barely moved", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              alcoholTotal: 8,
+              sleepAverageHours: 7.2,
+            }),
+            makeWeeklyReview("2026-03-23", {
+              alcoholTotal: 2,
+              // 0.2h drop — under the 0.4h threshold.
+              sleepAverageHours: 7.4,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "alcohol_recovery_caution"),
+      ).toBeUndefined();
+    });
+
+    it("does not fire when alcohol is high but did not increase week over week", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              alcoholTotal: 6,
+              sleepAverageHours: 6.4,
+            }),
+            makeWeeklyReview("2026-03-23", {
+              alcoholTotal: 6,
+              sleepAverageHours: 7.4,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "alcohol_recovery_caution"),
+      ).toBeUndefined();
+    });
+  });
+
+  // ── Rule: repeated_missed_saturday ──────────────────────────────────────
+
+  describe("repeated_missed_saturday", () => {
+    // Relative to TEST_NOW (Monday 2026-04-06) the last three completed
+    // Saturdays are 2026-04-04, 2026-03-28 and 2026-03-21.
+    it("fires when 2 of the last 3 Saturdays had no completed Zone 2 ride", () => {
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [makeCardioSession("2026-04-04")],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "repeated_missed_saturday",
+      );
+      expect(insight).toBeDefined();
+      expect(insight?.severity).toBe("warning");
+      expect(insight?.evidence.missedSaturdayDates).toEqual([
+        "2026-03-28",
+        "2026-03-21",
+      ]);
+    });
+
+    it("does not fire when only one of the last 3 Saturdays was missed", () => {
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [
+            makeCardioSession("2026-04-04"),
+            makeCardioSession("2026-03-28"),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "repeated_missed_saturday"),
+      ).toBeUndefined();
+    });
+
+    it("does not count a Saturday ride that was only planned or skipped", () => {
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [
+            makeCardioSession("2026-04-04", { plannedVsCompleted: "planned" }),
+            makeCardioSession("2026-03-28", { plannedVsCompleted: "skipped" }),
+            makeCardioSession("2026-03-21"),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "repeated_missed_saturday"),
+      ).toBeDefined();
+    });
+
+    it("does not judge today's Saturday while it is still in progress", () => {
+      // Old behavior: the walk started at index 0 = today, so when today WAS a
+      // Saturday the while-loop never ran and the in-progress Saturday counted
+      // as missed. With rides on 03-21 and 03-14 only, the old window
+      // (04-04, 03-28, 03-21) saw 2 misses and fired at 8am on a Saturday.
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [
+            makeCardioSession("2026-03-21"),
+            makeCardioSession("2026-03-14"),
+          ],
+          now: new Date("2026-04-04T08:00:00Z"),
+          timezone: "UTC",
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "repeated_missed_saturday"),
+      ).toBeUndefined();
+    });
+
+    it("still judges the earlier Saturdays when today is a Saturday", () => {
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [makeCardioSession("2026-03-14")],
+          now: new Date("2026-04-04T08:00:00Z"),
+          timezone: "UTC",
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "repeated_missed_saturday",
+      );
+      expect(insight).toBeDefined();
+      // Window shifts back one week: today (04-04) is excluded entirely.
+      expect(insight?.evidence.saturdayDates).toEqual([
+        "2026-03-28",
+        "2026-03-21",
+        "2026-03-14",
+      ]);
+    });
+
+    it("uses the user's timezone to decide whether today is an in-progress Saturday", () => {
+      // 2026-04-05T04:00Z is Sunday in UTC but still Saturday 21:00 in Los
+      // Angeles, so the LA user's Saturday must not be judged yet.
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [
+            makeCardioSession("2026-03-21"),
+            makeCardioSession("2026-03-14"),
+          ],
+          now: new Date("2026-04-05T04:00:00Z"),
+          timezone: "America/Los_Angeles",
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "repeated_missed_saturday"),
+      ).toBeUndefined();
+    });
+  });
+
+  // ── Rule: positive_waist_trend ──────────────────────────────────────────
+
+  describe("positive_waist_trend", () => {
+    it("fires (positive) when waist drops while adherence holds", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              waistIn: 34.3,
+              liftsCompleted: 3,
+              ridesCompleted: 3,
+            }),
+            makeWeeklyReview("2026-03-23", { waistIn: 34.8 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "positive_waist_trend",
+      );
+      expect(insight).toBeDefined();
+      expect(insight?.severity).toBe("positive");
+      expect(insight?.evidence.latestWaist).toBe(34.3);
+    });
+
+    it("does not fire when the waist drop is under the 0.2 in threshold", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              waistIn: 34.7,
+              liftsCompleted: 3,
+              ridesCompleted: 3,
+            }),
+            makeWeeklyReview("2026-03-23", { waistIn: 34.8 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "positive_waist_trend"),
+      ).toBeUndefined();
+    });
+
+    it("does not fire when the waist drop came with adherence below the floor", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              waistIn: 34.3,
+              liftsCompleted: 1,
+              ridesCompleted: 3,
+            }),
+            makeWeeklyReview("2026-03-23", { waistIn: 34.8 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "positive_waist_trend"),
+      ).toBeUndefined();
+    });
+
+    it("does not fire without a prior week to compare against", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              waistIn: 34.3,
+              liftsCompleted: 3,
+              ridesCompleted: 3,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "positive_waist_trend"),
+      ).toBeUndefined();
+    });
+  });
+
+  // ── Rule: poor_recovery_trend ───────────────────────────────────────────
+
+  describe("poor_recovery_trend", () => {
+    it("fires when both sleep and readiness decline versus the prior block", () => {
+      const insights = buildInsights(
+        emptyInput({
+          recoveryCheckins: [
+            makeRecovery("2026-04-04", { sleepMinutes: 360, readiness: 4 }),
+            makeRecovery("2026-04-03", { sleepMinutes: 360, readiness: 4 }),
+            makeRecovery("2026-04-02", { sleepMinutes: 360, readiness: 4 }),
+            makeRecovery("2026-03-28", { sleepMinutes: 450, readiness: 8 }),
+            makeRecovery("2026-03-27", { sleepMinutes: 450, readiness: 8 }),
+            makeRecovery("2026-03-26", { sleepMinutes: 450, readiness: 8 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "poor_recovery_trend",
+      );
+      expect(insight).toBeDefined();
+      expect(insight?.severity).toBe("warning");
+      expect(insight?.explanation).toMatch(/sleep down/);
+    });
+
+    it("fires on the resting-HR signal paired with a readiness drop", () => {
+      const insights = buildInsights(
+        emptyInput({
+          recoveryCheckins: [
+            makeRecovery("2026-04-04", { readiness: 4, restingHr: 60 }),
+            makeRecovery("2026-04-03", { readiness: 4, restingHr: 60 }),
+            makeRecovery("2026-04-02", { readiness: 4, restingHr: 60 }),
+            makeRecovery("2026-03-28", { readiness: 7, restingHr: 55 }),
+            makeRecovery("2026-03-27", { readiness: 7, restingHr: 55 }),
+            makeRecovery("2026-03-26", { readiness: 7, restingHr: 55 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "poor_recovery_trend",
+      );
+      expect(insight).toBeDefined();
+      expect(insight?.explanation).toMatch(/resting HR up/);
+    });
+
+    it("does not fire when only one signal crosses its threshold", () => {
+      const insights = buildInsights(
+        emptyInput({
+          recoveryCheckins: [
+            // Readiness down exactly 1 (fires that signal), sleep down only
+            // 0.2h (under 0.5h), resting HR unchanged.
+            makeRecovery("2026-04-04", {
+              sleepMinutes: 420,
+              readiness: 6,
+              restingHr: 55,
+            }),
+            makeRecovery("2026-04-03", {
+              sleepMinutes: 420,
+              readiness: 6,
+              restingHr: 55,
+            }),
+            makeRecovery("2026-04-02", {
+              sleepMinutes: 420,
+              readiness: 6,
+              restingHr: 55,
+            }),
+            makeRecovery("2026-03-28", {
+              sleepMinutes: 432,
+              readiness: 7,
+              restingHr: 55,
+            }),
+            makeRecovery("2026-03-27", {
+              sleepMinutes: 432,
+              readiness: 7,
+              restingHr: 55,
+            }),
+            makeRecovery("2026-03-26", {
+              sleepMinutes: 432,
+              readiness: 7,
+              restingHr: 55,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "poor_recovery_trend"),
+      ).toBeUndefined();
+    });
+
+    it("does not fire without at least 2 check-ins in the prior block", () => {
+      const insights = buildInsights(
+        emptyInput({
+          recoveryCheckins: [
+            makeRecovery("2026-04-04", { sleepMinutes: 360, readiness: 4 }),
+            makeRecovery("2026-04-03", { sleepMinutes: 360, readiness: 4 }),
+            makeRecovery("2026-04-02", { sleepMinutes: 360, readiness: 4 }),
+            makeRecovery("2026-03-28", { sleepMinutes: 450, readiness: 8 }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "poor_recovery_trend"),
       ).toBeUndefined();
     });
   });

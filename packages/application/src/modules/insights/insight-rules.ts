@@ -163,14 +163,19 @@ function evaluateRepeatedMissedSaturday(input: InsightEngineInput) {
   const tz = input.timezone || "UTC";
   const current = getZonedDate(tz, now);
   current.setUTCHours(12, 0, 0, 0);
-  const saturdayDates: string[] = [];
 
+  // Anchor on the most recent Saturday that has already *ended*. Starting the
+  // walk one day back means that when today is itself a Saturday it is treated
+  // as in progress rather than judged as missed — otherwise the rule fires at
+  // 8am on a Saturday, before the user has had any chance to ride.
+  const latestSaturday = addDaysUtc(current, -1);
+  while (latestSaturday.getUTCDay() !== 6) {
+    latestSaturday.setUTCDate(latestSaturday.getUTCDate() - 1);
+  }
+
+  const saturdayDates: string[] = [];
   for (let index = 0; index < 3; index += 1) {
-    const date = addDaysUtc(current, -(index * 7));
-    while (date.getUTCDay() !== 6) {
-      date.setUTCDate(date.getUTCDate() - 1);
-    }
-    saturdayDates.push(toIsoDateUtc(date));
+    saturdayDates.push(toIsoDateUtc(addDaysUtc(latestSaturday, -(index * 7))));
   }
 
   const missed = saturdayDates.filter((date) => {
@@ -361,6 +366,25 @@ function evaluateAlcoholRecoveryCaution(input: InsightEngineInput) {
   );
 }
 
+/**
+ * Did the user log anything at all inside the given week? Used to keep the
+ * "last week's review is missing" nudge off a brand-new/empty account, where
+ * there is nothing for a review to capture.
+ */
+function hasLoggedDataForWeek(weekStart: IsoDate, input: InsightEngineInput) {
+  const { weekEnd } = getWeekRangeFromStart(weekStart);
+  const inWeek = (date: string) => date >= weekStart && date <= weekEnd;
+
+  return (
+    input.bodyMetrics.some((metric) => inWeek(metric.measuredOn)) ||
+    input.cardioSessions.some((session) => inWeek(session.sessionDate)) ||
+    input.recoveryCheckins.some((checkin) => inWeek(checkin.checkinDate)) ||
+    input.strengthSessions.some((session) => inWeek(session.sessionDate)) ||
+    (input.liftsCompletedByWeek[weekStart] ?? 0) > 0 ||
+    input.weeklyReviews.some((review) => review.weekStart === weekStart)
+  );
+}
+
 function evaluateMissingWeeklyReview(input: InsightEngineInput) {
   const weekStart = getLastCompletedWeekStart(input.now);
   const latestReview = getReviewForWeek(
@@ -369,6 +393,12 @@ function evaluateMissingWeeklyReview(input: InsightEngineInput) {
   );
 
   if (latestReview) {
+    return null;
+  }
+
+  // The copy below claims the week "has logged data" — so verify that before
+  // firing, instead of nagging an account that logged nothing that week.
+  if (!hasLoggedDataForWeek(weekStart, input)) {
     return null;
   }
 
