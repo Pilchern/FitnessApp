@@ -22,7 +22,7 @@ This session's audit found the app's integration/data-integrity layer (auth, OAu
 | ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeScript   | CLEAN   | Zero errors across all 6 packages                                                                                                                                                                                                                                                                  |
 | Lint         | CLEAN   | No warnings                                                                                                                                                                                                                                                                                        |
-| Tests        | PASSING | 441/441 (102 web, 281 application, 14 integrations, 44 jobs)                                                                                                                                                                                                                                        |
+| Tests        | PASSING | 455/455 (116 web, 281 application, 14 integrations, 44 jobs)                                                                                                                                                                                                                                        |
 | Build        | PASSING | `pnpm build` succeeds without a live `.env.local` — all data-dependent routes are dynamic, so no Supabase connectivity is needed at build time                                                                                                                                                     |
 | E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review). Not run in CI — needs a live Supabase project.                                                                                                                                                                                                  |
 | Database     | LIVE    | Cloud Supabase project, credentials in .env.local                                                                                                                                                                                                                                                  |
@@ -218,21 +218,24 @@ Started from a verified baseline (typecheck/lint/test/build all clean, 269/269, 
 
 11. **TD-030 closed — nutrition targets are personalized.** `height_cm`, `birth_date`, and `biological_sex` added to `profiles` (nullable, no default) and wired end to end. Both this migration and the TD-019 index re-predicate were applied to the live Supabase project on 2026-08-27 **with the user's explicit approval**, then verified: the repository's exact `PROFILE_SELECT` returns the new columns, the existing profile still reads back, and row counts were unchanged. `birth_date` rather than an age integer so the age can't drift stale. Unknown/declined sex uses the midpoint of the two Mifflin-St Jeor constants rather than the male one, since defaulting to male silently overestimates BMR for about half of users. The `notes[]` disclosure now names exactly which inputs fell back to a population average.
 
-### Open security finding — `public.trigger_cron_route` is callable by `anon`
+### Resolved 2026-08-27 — `public.trigger_cron_route` was callable by `anon`
 
-Surfaced by `get_advisors` after the schema change; **pre-existing, not introduced by it**, and left unfixed because changing production DB permissions was outside what was authorized.
+Surfaced by `get_advisors` after the schema change; **pre-existing, not introduced by it**. Fixed 2026-08-27 with the user's approval.
 
 `trigger_cron_route(route_path text)` is `SECURITY DEFINER`, reads `cron_bearer_secret` and `cron_target_base_url` from Vault, and calls `net.http_post(url := v_base_url || route_path, headers := {Authorization: Bearer <secret>})`. Its ACL grants `EXECUTE` to `anon` and `authenticated`, so it is reachable unauthenticated via `POST /rest/v1/rpc/trigger_cron_route`.
 
 `route_path` is concatenated onto the base URL with no validation. Verified with Node's WHATWG URL parser that `"@evil.example/x"` turns `https://<app>` into `https://<app>@evil.example/x`, whose **host is `evil.example`** — so a caller can direct the request, with the real cron bearer secret in the Authorization header, at a server they control. That is unauthenticated exfiltration of `CRON_SECRET`, plus arbitrary triggering of the sync/insight jobs.
 
-Both `cron.job` entries run as `postgres` (verified), and no application code calls this RPC (verified by grep), so revoking from `anon`/`authenticated`/`PUBLIC` should not break the schedule:
+Two changes, both applied and verified:
 
-```sql
-revoke execute on function public.trigger_cron_route(text) from public, anon, authenticated;
-```
+1. `revoke execute ... from public, anon, authenticated` — the ACL is now `postgres` and `service_role` only. Safe because both `cron.job` entries run as `postgres` (verified) and no application code calls the RPC (verified by grep).
+2. `route_path` is now validated against `^/api/cron/[a-z0-9-]+$` inside the function, so even a caller that somehow regains EXECUTE cannot escape the configured base URL. Verified by probing: `@evil.example/x`, `.evil.example/x`, `https://evil.example/x`, `/api/cron/../../x`, and `/api/cron/withings-sync?x=1` all raise; both live cron paths still pass.
 
-Worth also validating `route_path` against an allowlist inside the function, so a future caller can't escape the base URL.
+To undo: `grant execute on function public.trigger_cron_route(text) to anon, authenticated;`
+
+### Also 2026-08-27 — cron auth extracted and tested
+
+`safeBearerEqual` and `mapWithConcurrency` existed as six byte-identical private copies, one per cron route, with no tests. `safeBearerEqual` is the *entire* authentication for those six endpoints, which run under `createSupabaseAdminClient()` and iterate every profile bypassing RLS — so a regression in one of six copies would be an unauthenticated trigger of an admin-scoped job, with nothing catching drift between them. Both now live in `apps/web/src/lib/server/cron-auth.ts` with 14 tests (198 lines of duplication removed). Mutation-verified: dropping the length guard fails 5, comparing without the `Bearer ` prefix fails 3, breaking index alignment fails 2.
 
 ---
 

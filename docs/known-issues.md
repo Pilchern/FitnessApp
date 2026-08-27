@@ -7,6 +7,7 @@
 - Session cookies were readable from JavaScript (`httpOnly` unset); open redirect via a backslash-prefixed `redirectTo`; Strava/Peloton sync failures that recorded nothing and were never retried; Apple Health webhooks with no body-size or array-length bound; no security headers.
 - `computeJournalStreak` skipped a day at positive UTC offsets; the Saturday-missed rule fired on an in-progress Saturday; the missing-weekly-review nudge fired on empty accounts; three dashboard goal-progress miscalculations (VO2 boundary double-count, fat-loss pace divided by a fixed 4 weeks, UTC `today` in a user-local streak).
 - The Apple Health sleep sync rewrote a valid 1440-minute value as 24 minutes.
+- `public.trigger_cron_route` was `SECURITY DEFINER` and executable by `anon` via PostgREST RPC, concatenating a caller-supplied `route_path` onto the base URL with no validation — so `"@evil.example/x"` escaped to that host carrying the cron bearer secret. EXECUTE revoked and a route allowlist added inside the function (2026-08-27).
 - `/api/account/export` silently truncated at 500 rows per table.
 
 ## Current weak spots
@@ -16,7 +17,6 @@
 - OAuth callback and sync behavior are covered by unit tests, not live-provider integration tests.
 - Withings and Apple Health are live and verified. Strava's app registration is deactivated on Strava's side and its API now requires a paid subscription the user has declined; Peloton's unofficial auth endpoint returns `403` for any credentials as of 2026-07-16 and is not fixable from this codebase. Apple Health is the only active cardio-import path today.
 - Integration credentials are intentionally server-only and require correct service-role usage in deployment.
-- **`public.trigger_cron_route` is executable by `anon`.** Pre-existing. It is `SECURITY DEFINER`, reads the cron bearer secret from Vault, and concatenates its caller-supplied `route_path` onto the base URL with no validation — so `"@evil.example/x"` escapes to host `evil.example` and ships the secret there. Reachable unauthenticated via PostgREST RPC. Fix and rationale in `CURRENT_STATE.md`; not applied, since it changes production DB permissions.
 - Nutrition targets are personalized as of 2026-08-27 (TD-030 closed): `height_cm`/`birth_date`/`biological_sex` are on `profiles` and used in the BMR formula, falling back to population averages per-field and disclosing exactly which ones fell back.
 
 ## Resolved since this file was last accurate
