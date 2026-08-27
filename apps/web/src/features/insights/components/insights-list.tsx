@@ -18,8 +18,12 @@ export function InsightsList({ initialInsights }: Props) {
   if (insights.length === 0) {
     return (
       <section className="rounded-[1.75rem] border border-dashed border-pine/30 bg-pine/5 p-8 text-center shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">All clear</p>
-        <h2 className="mt-3 font-display text-3xl text-ink">No patterns to flag right now.</h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
+          All clear
+        </p>
+        <h2 className="mt-3 font-display text-3xl text-ink">
+          No patterns to flag right now.
+        </h2>
         <p className="mt-3 text-sm leading-6 text-ink/75">
           Keep logging and check back after your next week.
         </p>

@@ -51,7 +51,9 @@ export function SupplementsManager({
   reactivateAction,
 }: SupplementsManagerProps) {
   const [state, formAction] = useActionState(createAction, initialState);
-  const activeSupplements = supplements.filter((supplement) => supplement.isActive);
+  const activeSupplements = supplements.filter(
+    (supplement) => supplement.isActive,
+  );
   const inactiveSupplements = supplements.filter(
     (supplement) => !supplement.isActive,
   );
@@ -70,7 +72,10 @@ export function SupplementsManager({
         </div>
       ) : null}
 
-      <form action={formAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <form
+        action={formAction}
+        className="flex flex-col gap-3 sm:flex-row sm:items-end"
+      >
         <label className="grid flex-1 gap-2 text-sm font-medium text-ink">
           Supplement name
           <input
@@ -93,7 +98,9 @@ export function SupplementsManager({
               key={supplement.id}
               className="flex items-center justify-between gap-4 rounded-2xl border border-ink/10 bg-sand/40 px-4 py-3"
             >
-              <span className="text-sm font-medium text-ink">{supplement.name}</span>
+              <span className="text-sm font-medium text-ink">
+                {supplement.name}
+              </span>
               <form action={deactivateAction}>
                 <input type="hidden" name="id" value={supplement.id} />
                 <ActionSubmitButton

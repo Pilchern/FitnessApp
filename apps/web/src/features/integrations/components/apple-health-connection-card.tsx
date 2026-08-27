@@ -17,7 +17,11 @@ type AppleHealthConnectionCardProps = {
 
 const initialTokenState: AppleHealthWebhookTokenActionState = {};
 
-function GenerateWebhookTokenForm({ hasWebhookToken }: { hasWebhookToken: boolean }) {
+function GenerateWebhookTokenForm({
+  hasWebhookToken,
+}: {
+  hasWebhookToken: boolean;
+}) {
   const [state, formAction, isPending] = useActionState(
     generateAppleHealthWebhookTokenAction,
     initialTokenState,
@@ -30,10 +34,13 @@ function GenerateWebhookTokenForm({ hasWebhookToken }: { hasWebhookToken: boolea
         <code className="rounded bg-ink/5 px-1 font-mono text-xs">
           Authorization: Bearer &lt;token&gt;
         </code>{" "}
-        header. This token is unique to your account — it&apos;s checked
-        against your <code className="rounded bg-ink/5 px-1 font-mono text-xs">X-User-Id</code>{" "}
-        above, so someone else knowing your user id isn&apos;t enough to write into
-        your data.
+        header. This token is unique to your account — it&apos;s checked against
+        your{" "}
+        <code className="rounded bg-ink/5 px-1 font-mono text-xs">
+          X-User-Id
+        </code>{" "}
+        above, so someone else knowing your user id isn&apos;t enough to write
+        into your data.
       </p>
 
       {state.token ? (
@@ -129,8 +136,11 @@ export function AppleHealthConnectionCard({
 
         {!configured ? (
           <div className="rounded-[1.25rem] border border-amber-300/40 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-700">
-            Add <code className="font-mono text-xs">INTEGRATION_ENCRYPTION_KEY</code> to your
-            environment to enable this integration.
+            Add{" "}
+            <code className="font-mono text-xs">
+              INTEGRATION_ENCRYPTION_KEY
+            </code>{" "}
+            to your environment to enable this integration.
           </div>
         ) : lastSyncedAt ? (
           <div className="rounded-full border border-pine/20 bg-pine/10 px-4 py-2 text-sm font-semibold text-pine">
@@ -192,7 +202,9 @@ export function AppleHealthConnectionCard({
                 <div className="min-w-0 flex-1 space-y-2">
                   <p>
                     <strong>Your user ID</strong> — add this as the{" "}
-                    <code className="rounded bg-ink/5 px-1 font-mono text-xs">X-User-Id</code>{" "}
+                    <code className="rounded bg-ink/5 px-1 font-mono text-xs">
+                      X-User-Id
+                    </code>{" "}
                     header:
                   </p>
                   <CodeLine value={userId} />
@@ -217,7 +229,7 @@ export function AppleHealthConnectionCard({
                   </p>
                   <div className="mt-2 overflow-x-auto rounded-xl border border-ink/10 bg-ink/5 px-3 py-2">
                     <pre className="font-mono text-xs leading-5 text-ink/80">
-{`[{
+                      {`[{
   "date": "2026-04-06",
   "sleep_duration_minutes": 450,
   "deep_sleep_minutes": 90,
@@ -231,9 +243,9 @@ export function AppleHealthConnectionCard({
                     </pre>
                   </div>
                   <p className="mt-2 text-xs text-ink/60">
-                    All fields except <code className="font-mono">date</code> are optional.
-                    The Shortcut can query each metric from Health and only include
-                    what is available.
+                    All fields except <code className="font-mono">date</code>{" "}
+                    are optional. The Shortcut can query each metric from Health
+                    and only include what is available.
                   </p>
                 </div>
               </li>
@@ -241,8 +253,8 @@ export function AppleHealthConnectionCard({
 
             <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 px-4 py-3 text-sm leading-6 text-ink/75">
               <strong className="font-semibold text-ink">Tip:</strong> In the
-              Shortcuts app, use a &ldquo;Get Health Samples&rdquo; action for each
-              metric, then build the JSON dictionary, and finish with a
+              Shortcuts app, use a &ldquo;Get Health Samples&rdquo; action for
+              each metric, then build the JSON dictionary, and finish with a
               &ldquo;Get Contents of URL&rdquo; action set to{" "}
               <strong>POST</strong> with the JSON body and the headers above.
               Automate it to run each morning after you wake up.
@@ -255,8 +267,8 @@ export function AppleHealthConnectionCard({
           instructions here. Add{" "}
           <code className="font-mono text-xs">INTEGRATION_ENCRYPTION_KEY</code>{" "}
           (a base64-encoded 32-byte key) to your{" "}
-          <code className="font-mono text-xs">.env.local</code> to get started
-          — it&apos;s used to encrypt the per-user webhook token you&apos;ll
+          <code className="font-mono text-xs">.env.local</code> to get started —
+          it&apos;s used to encrypt the per-user webhook token you&apos;ll
           generate here.
         </div>
       )}

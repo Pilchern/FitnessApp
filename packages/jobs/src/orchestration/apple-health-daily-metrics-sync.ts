@@ -151,7 +151,8 @@ export class AppleHealthDailyMetricsSyncOrchestrator {
             const updateInput: UpdateDailyActivityMetricInput = {
               id: existing.id,
               userId: input.userId,
-              steps: toRoundedOrNull(payload.steps) ?? existing.steps ?? undefined,
+              steps:
+                toRoundedOrNull(payload.steps) ?? existing.steps ?? undefined,
               vo2Max: payload.vo2_max ?? existing.vo2Max ?? undefined,
               restingHeartRate:
                 toRoundedOrNull(payload.resting_heart_rate) ??
@@ -162,7 +163,9 @@ export class AppleHealthDailyMetricsSyncOrchestrator {
                 existing.exerciseMinutes ??
                 undefined,
               activeEnergyKcal:
-                payload.active_energy_kcal ?? existing.activeEnergyKcal ?? undefined,
+                payload.active_energy_kcal ??
+                existing.activeEnergyKcal ??
+                undefined,
               source: {
                 sourceType: "imported",
                 sourceProvider: "apple_health",
@@ -198,7 +201,8 @@ export class AppleHealthDailyMetricsSyncOrchestrator {
               },
             };
 
-            const created = await this.dailyActivityMetricRepository.create(createInput);
+            const created =
+              await this.dailyActivityMetricRepository.create(createInput);
 
             processedItemCount += 1;
 
@@ -209,7 +213,10 @@ export class AppleHealthDailyMetricsSyncOrchestrator {
           }
         } catch (error) {
           failedItemCount += 1;
-          await this.rawImportEventStore.markFailed(event.id, toError(error).message);
+          await this.rawImportEventStore.markFailed(
+            event.id,
+            toError(error).message,
+          );
         }
       }
 
@@ -247,11 +254,15 @@ export class AppleHealthDailyMetricsSyncOrchestrator {
       const syncError = toError(error);
 
       if (importBatch) {
-        await this.importBatchStore.markFailed(importBatch.id, syncError.message, {
-          rawItemCount,
-          processedItemCount,
-          failedItemCount,
-        });
+        await this.importBatchStore.markFailed(
+          importBatch.id,
+          syncError.message,
+          {
+            rawItemCount,
+            processedItemCount,
+            failedItemCount,
+          },
+        );
       }
 
       await this.connectionStore.recordSyncFailure({

@@ -8,7 +8,10 @@ type ActionSubmitButtonProps = {
   tone?: "primary" | "secondary" | "danger";
 };
 
-const toneClasses: Record<NonNullable<ActionSubmitButtonProps["tone"]>, string> = {
+const toneClasses: Record<
+  NonNullable<ActionSubmitButtonProps["tone"]>,
+  string
+> = {
   primary:
     "bg-ink text-white hover:bg-ink/90 disabled:bg-ink/60 disabled:text-white",
   secondary:

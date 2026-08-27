@@ -18,9 +18,30 @@ describe("StravaCardioAdapter.fetchCardioSessions", () => {
     const newest = "2026-03-30T00:00:00Z";
 
     const stravaResponse = [
-      { id: 1, name: "Old", sport_type: "Run", start_date: oldest, elapsed_time: 3600, distance: 1000 },
-      { id: 2, name: "Mid", sport_type: "Run", start_date: middle, elapsed_time: 3600, distance: 1000 },
-      { id: 3, name: "New", sport_type: "Run", start_date: newest, elapsed_time: 3600, distance: 1000 },
+      {
+        id: 1,
+        name: "Old",
+        sport_type: "Run",
+        start_date: oldest,
+        elapsed_time: 3600,
+        distance: 1000,
+      },
+      {
+        id: 2,
+        name: "Mid",
+        sport_type: "Run",
+        start_date: middle,
+        elapsed_time: 3600,
+        distance: 1000,
+      },
+      {
+        id: 3,
+        name: "New",
+        sport_type: "Run",
+        start_date: newest,
+        elapsed_time: 3600,
+        distance: 1000,
+      },
     ];
 
     const fetchSpy = vi

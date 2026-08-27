@@ -8,7 +8,10 @@ import {
   resolveExercise,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createCoreServices, getCachedUserProfile } from "@/lib/server/services";
+import {
+  createCoreServices,
+  getCachedUserProfile,
+} from "@/lib/server/services";
 import type { StrengthDetailData, StrengthPageData } from "./types";
 
 function twoYearsAgoIsoDate() {
@@ -34,28 +37,32 @@ export async function getStrengthPageData(
   const { strengthService, trainingTemplateService, exerciseOverrideService } =
     await createCoreServices();
 
-  const [sessions, strengthTemplates, editingSession, exerciseOverrides, profile] =
-    await Promise.all([
-      strengthService.listByDateRange({
-        userId: user.id,
-        startDate: twoYearsAgoIsoDate(),
-      }),
-      trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
-      editSessionId
-        ? strengthService.getById(user.id, editSessionId)
-        : Promise.resolve(null),
-      exerciseOverrideService.listActive({ userId: user.id }),
-      getCachedUserProfile(user.id),
-    ]);
+  const [
+    sessions,
+    strengthTemplates,
+    editingSession,
+    exerciseOverrides,
+    profile,
+  ] = await Promise.all([
+    strengthService.listByDateRange({
+      userId: user.id,
+      startDate: twoYearsAgoIsoDate(),
+    }),
+    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
+    editSessionId
+      ? strengthService.getById(user.id, editSessionId)
+      : Promise.resolve(null),
+    exerciseOverrideService.listActive({ userId: user.id }),
+    getCachedUserProfile(user.id),
+  ]);
 
   const todayDayOfWeek = getZonedDate(profile?.timezone || "UTC").getUTCDay();
   const todaysScheduledTemplate =
-    strengthTemplates.find((t) => t.scheduledDayOfWeek === todayDayOfWeek) ?? null;
+    strengthTemplates.find((t) => t.scheduledDayOfWeek === todayDayOfWeek) ??
+    null;
 
   const knownExercises = [
-    ...new Set(
-      sessions.flatMap((s) => s.sets.map((set) => set.exerciseName))
-    ),
+    ...new Set(sessions.flatMap((s) => s.sets.map((set) => set.exerciseName))),
   ].sort((a, b) => a.localeCompare(b));
 
   const overridesLookup = buildOverridesLookup(exerciseOverrides);
@@ -100,11 +107,12 @@ export async function getStrengthDetailData(
   ]);
 
   const sessionExerciseNames = new Set(
-    session?.sets.map((set: { exerciseName: string }) => set.exerciseName) ?? [],
+    session?.sets.map((set: { exerciseName: string }) => set.exerciseName) ??
+      [],
   );
-  const exerciseProgressionSummaries = buildStrengthProgressionSummaries(sessions).filter(
-    (summary) => sessionExerciseNames.has(summary.exerciseName),
-  );
+  const exerciseProgressionSummaries = buildStrengthProgressionSummaries(
+    sessions,
+  ).filter((summary) => sessionExerciseNames.has(summary.exerciseName));
 
   return {
     session,

@@ -87,12 +87,11 @@ export function CardioSummaryCards({
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
               Adherence
             </p>
-            <h2 className="mt-3 font-display text-2xl text-ink">
-              This week
-            </h2>
+            <h2 className="mt-3 font-display text-2xl text-ink">This week</h2>
           </div>
           <div className="rounded-full border border-pine/20 bg-pine/10 px-4 py-2 text-sm font-semibold text-pine">
-            {adherence.completedCount}/{adherence.expectedCount || adherence.items.length} complete
+            {adherence.completedCount}/
+            {adherence.expectedCount || adherence.items.length} complete
           </div>
         </div>
 
@@ -112,7 +111,9 @@ export function CardioSummaryCards({
               className="flex items-center justify-between gap-4 rounded-[1.25rem] border border-ink/10 bg-white/60 px-4 py-3"
             >
               <div>
-                <div className="text-sm font-semibold text-ink">{item.label}</div>
+                <div className="text-sm font-semibold text-ink">
+                  {item.label}
+                </div>
                 <div className="text-xs text-ink/65">
                   {formatCardioDate(item.targetDate)}
                 </div>

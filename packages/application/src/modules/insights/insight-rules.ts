@@ -8,7 +8,11 @@ import type {
   StrengthSession,
   WeeklyReview,
 } from "@fitness-app/domain";
-import { buildWeeklyReviewSummary, getLastCompletedWeekStart, getWeekRangeFromStart } from "../weekly-reviews/weekly-review-helpers";
+import {
+  buildWeeklyReviewSummary,
+  getLastCompletedWeekStart,
+  getWeekRangeFromStart,
+} from "../weekly-reviews/weekly-review-helpers";
 import { getZonedDate } from "../../shared/timezone";
 import { computeMuscleGroupVolume } from "../strength/muscle-group-volume";
 
@@ -90,7 +94,11 @@ function compareAverages(values: Array<number | null | undefined>) {
     return null;
   }
 
-  return Math.round((present.reduce((sum, value) => sum + value, 0) / present.length) * 10) / 10;
+  return (
+    Math.round(
+      (present.reduce((sum, value) => sum + value, 0) / present.length) * 10,
+    ) / 10
+  );
 }
 
 function getCompletedWeeklyReviews(weeklyReviews: WeeklyReview[]) {
@@ -103,19 +111,18 @@ function getReviewForWeek(weeklyReviews: WeeklyReview[], weekStart: IsoDate) {
   return weeklyReviews.find((review) => review.weekStart === weekStart) ?? null;
 }
 
-function buildWeekSummary(
-  weekStart: IsoDate,
-  input: InsightEngineInput,
-) {
+function buildWeekSummary(weekStart: IsoDate, input: InsightEngineInput) {
   const { weekEnd } = getWeekRangeFromStart(weekStart);
   const bodyMetrics = input.bodyMetrics.filter(
     (metric) => metric.measuredOn >= weekStart && metric.measuredOn <= weekEnd,
   );
   const cardioSessions = input.cardioSessions.filter(
-    (session) => session.sessionDate >= weekStart && session.sessionDate <= weekEnd,
+    (session) =>
+      session.sessionDate >= weekStart && session.sessionDate <= weekEnd,
   );
   const recoveryCheckins = input.recoveryCheckins.filter(
-    (checkin) => checkin.checkinDate >= weekStart && checkin.checkinDate <= weekEnd,
+    (checkin) =>
+      checkin.checkinDate >= weekStart && checkin.checkinDate <= weekEnd,
   );
 
   return buildWeeklyReviewSummary({
@@ -156,18 +163,25 @@ function evaluateRepeatedMissedSaturday(input: InsightEngineInput) {
   const tz = input.timezone || "UTC";
   const current = getZonedDate(tz, now);
   current.setUTCHours(12, 0, 0, 0);
-  const saturdayDates: string[] = [];
 
+  // Anchor on the most recent Saturday that has already *ended*. Starting the
+  // walk one day back means that when today is itself a Saturday it is treated
+  // as in progress rather than judged as missed — otherwise the rule fires at
+  // 8am on a Saturday, before the user has had any chance to ride.
+  const latestSaturday = addDaysUtc(current, -1);
+  while (latestSaturday.getUTCDay() !== 6) {
+    latestSaturday.setUTCDate(latestSaturday.getUTCDate() - 1);
+  }
+
+  const saturdayDates: string[] = [];
   for (let index = 0; index < 3; index += 1) {
-    const date = addDaysUtc(current, -(index * 7));
-    while (date.getUTCDay() !== 6) {
-      date.setUTCDate(date.getUTCDate() - 1);
-    }
-    saturdayDates.push(toIsoDateUtc(date));
+    saturdayDates.push(toIsoDateUtc(addDaysUtc(latestSaturday, -(index * 7))));
   }
 
   const missed = saturdayDates.filter((date) => {
-    const sessions = input.cardioSessions.filter((session) => session.sessionDate === date);
+    const sessions = input.cardioSessions.filter(
+      (session) => session.sessionDate === date,
+    );
     return !sessions.some(
       (session) =>
         session.sessionKind === "zone2" &&
@@ -207,23 +221,35 @@ function evaluatePoorRecoveryTrend(input: InsightEngineInput) {
 
   const recentSleep = compareAverages(
     recent.map((checkin) =>
-      checkin.sleepDurationMinutes != null ? checkin.sleepDurationMinutes / 60 : null,
+      checkin.sleepDurationMinutes != null
+        ? checkin.sleepDurationMinutes / 60
+        : null,
     ),
   );
   const previousSleep = compareAverages(
     previous.map((checkin) =>
-      checkin.sleepDurationMinutes != null ? checkin.sleepDurationMinutes / 60 : null,
+      checkin.sleepDurationMinutes != null
+        ? checkin.sleepDurationMinutes / 60
+        : null,
     ),
   );
-  const recentReadiness = compareAverages(recent.map((checkin) => checkin.readinessLevel));
-  const previousReadiness = compareAverages(previous.map((checkin) => checkin.readinessLevel));
-  const recentRestingHr = compareAverages(recent.map((checkin) => checkin.restingHeartRate));
+  const recentReadiness = compareAverages(
+    recent.map((checkin) => checkin.readinessLevel),
+  );
+  const previousReadiness = compareAverages(
+    previous.map((checkin) => checkin.readinessLevel),
+  );
+  const recentRestingHr = compareAverages(
+    recent.map((checkin) => checkin.restingHeartRate),
+  );
   const previousRestingHr = compareAverages(
     previous.map((checkin) => checkin.restingHeartRate),
   );
 
   const sleepDown =
-    recentSleep != null && previousSleep != null && previousSleep - recentSleep >= 0.5;
+    recentSleep != null &&
+    previousSleep != null &&
+    previousSleep - recentSleep >= 0.5;
   const readinessDown =
     recentReadiness != null &&
     previousReadiness != null &&
@@ -233,7 +259,9 @@ function evaluatePoorRecoveryTrend(input: InsightEngineInput) {
     previousRestingHr != null &&
     recentRestingHr - previousRestingHr >= 2;
 
-  const worseningSignals = [sleepDown, readinessDown, restingHrUp].filter(Boolean).length;
+  const worseningSignals = [sleepDown, readinessDown, restingHrUp].filter(
+    Boolean,
+  ).length;
   if (worseningSignals < 2) {
     return null;
   }
@@ -314,7 +342,9 @@ function evaluateAlcoholRecoveryCaution(input: InsightEngineInput) {
 
   const alcoholElevated = latestAlcohol >= 4 && latestAlcohol > previousAlcohol;
   const sleepWorse =
-    latestSleep != null && previousSleep != null && previousSleep - latestSleep >= 0.4;
+    latestSleep != null &&
+    previousSleep != null &&
+    previousSleep - latestSleep >= 0.4;
 
   if (!alcoholElevated || !sleepWorse) {
     return null;
@@ -336,11 +366,39 @@ function evaluateAlcoholRecoveryCaution(input: InsightEngineInput) {
   );
 }
 
+/**
+ * Did the user log anything at all inside the given week? Used to keep the
+ * "last week's review is missing" nudge off a brand-new/empty account, where
+ * there is nothing for a review to capture.
+ */
+function hasLoggedDataForWeek(weekStart: IsoDate, input: InsightEngineInput) {
+  const { weekEnd } = getWeekRangeFromStart(weekStart);
+  const inWeek = (date: string) => date >= weekStart && date <= weekEnd;
+
+  return (
+    input.bodyMetrics.some((metric) => inWeek(metric.measuredOn)) ||
+    input.cardioSessions.some((session) => inWeek(session.sessionDate)) ||
+    input.recoveryCheckins.some((checkin) => inWeek(checkin.checkinDate)) ||
+    input.strengthSessions.some((session) => inWeek(session.sessionDate)) ||
+    (input.liftsCompletedByWeek[weekStart] ?? 0) > 0 ||
+    input.weeklyReviews.some((review) => review.weekStart === weekStart)
+  );
+}
+
 function evaluateMissingWeeklyReview(input: InsightEngineInput) {
   const weekStart = getLastCompletedWeekStart(input.now);
-  const latestReview = getReviewForWeek(getCompletedWeeklyReviews(input.weeklyReviews), weekStart);
+  const latestReview = getReviewForWeek(
+    getCompletedWeeklyReviews(input.weeklyReviews),
+    weekStart,
+  );
 
   if (latestReview) {
+    return null;
+  }
+
+  // The copy below claims the week "has logged data" — so verify that before
+  // firing, instead of nagging an account that logged nothing that week.
+  if (!hasLoggedDataForWeek(weekStart, input)) {
     return null;
   }
 
@@ -367,7 +425,8 @@ function evaluateZone2BelowTarget(input: InsightEngineInput) {
     return null;
   }
 
-  const severity = zone2Minutes === 0 ? "warning" : zone2Minutes <= 59 ? "caution" : "info";
+  const severity =
+    zone2Minutes === 0 ? "warning" : zone2Minutes <= 59 ? "caution" : "info";
 
   return makeInsight(
     weekStart,
@@ -386,15 +445,21 @@ function evaluateZone2BelowTarget(input: InsightEngineInput) {
 
 function evaluateConsecutiveStrengthMissed(input: InsightEngineInput) {
   const weekStart = getLastCompletedWeekStart(input.now);
-  const previousWeekStart = toIsoDate(addDays(new Date(`${weekStart}T12:00:00`), -7));
+  const previousWeekStart = toIsoDate(
+    addDays(new Date(`${weekStart}T12:00:00`), -7),
+  );
 
   const lastReview = getReviewForWeek(input.weeklyReviews, weekStart);
   const prevReview = getReviewForWeek(input.weeklyReviews, previousWeekStart);
 
   const lastLifts =
-    lastReview?.summary.liftsCompleted ?? input.liftsCompletedByWeek[weekStart] ?? 0;
+    lastReview?.summary.liftsCompleted ??
+    input.liftsCompletedByWeek[weekStart] ??
+    0;
   const prevLifts =
-    prevReview?.summary.liftsCompleted ?? input.liftsCompletedByWeek[previousWeekStart] ?? 0;
+    prevReview?.summary.liftsCompleted ??
+    input.liftsCompletedByWeek[previousWeekStart] ??
+    0;
 
   if (lastLifts > 0 || prevLifts > 0) {
     return null;
@@ -486,8 +551,11 @@ function evaluateWeightTrendingUp(input: InsightEngineInput) {
   const validWeights = weights as number[];
   // reviews are sorted newest-first; reverse to check oldest→newest monotonic increase
   const ordered = [...validWeights].reverse();
-  const isMonotonic = ordered.every((w, index) => index === 0 || w > ordered[index - 1]);
-  const delta = Math.round((ordered[ordered.length - 1] - ordered[0]) * 10) / 10;
+  const isMonotonic = ordered.every(
+    (w, index) => index === 0 || w > ordered[index - 1],
+  );
+  const delta =
+    Math.round((ordered[ordered.length - 1] - ordered[0]) * 10) / 10;
 
   if (!isMonotonic || delta <= 3) {
     return null;
@@ -548,14 +616,23 @@ function evaluateMuscleGroupNeglected(input: InsightEngineInput) {
     input.exerciseOverrides,
   );
 
-  const majorGroups = summary.byMuscleGroup.filter((g) => MAJOR_MUSCLE_GROUPS.includes(g.muscleGroup));
+  const majorGroups = summary.byMuscleGroup.filter((g) =>
+    MAJOR_MUSCLE_GROUPS.includes(g.muscleGroup),
+  );
   const trainedMajor = majorGroups.filter((g) => g.workingSetCount > 0);
   const neglectedMajor = majorGroups.filter((g) => g.workingSetCount === 0);
 
   // Only worth flagging once there's been meaningful training this week —
   // otherwise "neglected" just means "haven't gotten to it yet".
-  const totalMajorSets = majorGroups.reduce((sum, g) => sum + g.workingSetCount, 0);
-  if (trainedMajor.length === 0 || neglectedMajor.length === 0 || totalMajorSets < 6) {
+  const totalMajorSets = majorGroups.reduce(
+    (sum, g) => sum + g.workingSetCount,
+    0,
+  );
+  if (
+    trainedMajor.length === 0 ||
+    neglectedMajor.length === 0 ||
+    totalMajorSets < 6
+  ) {
     return null;
   }
 
@@ -565,14 +642,26 @@ function evaluateMuscleGroupNeglected(input: InsightEngineInput) {
   let title: string;
   let explanation: string;
 
-  if (chest && back && chest.workingSetCount >= 2 && back.workingSetCount === 0) {
+  if (
+    chest &&
+    back &&
+    chest.workingSetCount >= 2 &&
+    back.workingSetCount === 0
+  ) {
     title = "Chest trained, back skipped this week";
     explanation = `${chest.workingSetCount} chest working sets logged this week, but 0 for back. Pressing and pulling volume should generally track together.`;
-  } else if (chest && back && back.workingSetCount >= 2 && chest.workingSetCount === 0) {
+  } else if (
+    chest &&
+    back &&
+    back.workingSetCount >= 2 &&
+    chest.workingSetCount === 0
+  ) {
     title = "Back trained, chest skipped this week";
     explanation = `${back.workingSetCount} back working sets logged this week, but 0 for chest.`;
   } else {
-    const names = neglectedMajor.map((g) => MAJOR_MUSCLE_GROUP_LABELS[g.muscleGroup]).join(", ");
+    const names = neglectedMajor
+      .map((g) => MAJOR_MUSCLE_GROUP_LABELS[g.muscleGroup])
+      .join(", ");
     title = `${neglectedMajor.length === 1 ? "A muscle group" : "Muscle groups"} sitting untouched this week`;
     explanation = `${trainedMajor.length} major muscle group${trainedMajor.length === 1 ? "" : "s"} trained this week, but not: ${names}.`;
   }
@@ -603,8 +692,12 @@ function evaluatePushPullImbalance(input: InsightEngineInput) {
     input.exerciseOverrides,
   );
 
-  const push = summary.byMovementPattern.find((p) => p.movementPattern === "push");
-  const pull = summary.byMovementPattern.find((p) => p.movementPattern === "pull");
+  const push = summary.byMovementPattern.find(
+    (p) => p.movementPattern === "push",
+  );
+  const pull = summary.byMovementPattern.find(
+    (p) => p.movementPattern === "pull",
+  );
   const ratio = summary.pushPullVolumeRatio;
 
   // Require a meaningful combined sample so the ratio isn't noise from one or two sets.
@@ -643,7 +736,10 @@ function evaluateDeloadSuggested(input: InsightEngineInput) {
   const reviews = getCompletedWeeklyReviews(input.weeklyReviews);
   const last3 = reviews.slice(0, 3);
 
-  if (last3.length < 3 || last3.some((review) => (review.summary.liftsCompleted ?? 0) < 3)) {
+  if (
+    last3.length < 3 ||
+    last3.some((review) => (review.summary.liftsCompleted ?? 0) < 3)
+  ) {
     return null;
   }
 
@@ -657,8 +753,12 @@ function evaluateDeloadSuggested(input: InsightEngineInput) {
     return null;
   }
 
-  const recentReadiness = compareAverages(recent.map((checkin) => checkin.readinessLevel));
-  const previousReadiness = compareAverages(previous.map((checkin) => checkin.readinessLevel));
+  const recentReadiness = compareAverages(
+    recent.map((checkin) => checkin.readinessLevel),
+  );
+  const previousReadiness = compareAverages(
+    previous.map((checkin) => checkin.readinessLevel),
+  );
 
   const readinessDown =
     recentReadiness != null &&
@@ -692,7 +792,9 @@ function evaluateCardioTargetConsistentlyExceeded(input: InsightEngineInput) {
     return null;
   }
 
-  const allExceeded = last3.every((review) => (review.summary.ridesCompleted ?? 0) >= 4);
+  const allExceeded = last3.every(
+    (review) => (review.summary.ridesCompleted ?? 0) >= 4,
+  );
   if (!allExceeded) {
     return null;
   }
@@ -739,7 +841,8 @@ export function buildInsights(input: InsightEngineInput): Insight[] {
   ].filter((insight): insight is Insight => insight != null);
 
   return insights.sort((left, right) => {
-    const severityDifference = severityRank[right.severity] - severityRank[left.severity];
+    const severityDifference =
+      severityRank[right.severity] - severityRank[left.severity];
     if (severityDifference !== 0) {
       return severityDifference;
     }

@@ -1,5 +1,5 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { mapWithConcurrency, safeBearerEqual } from "@/lib/server/cron-auth";
 import {
   MAX_RETRY_ATTEMPTS,
   computeRetryBackoff,
@@ -28,35 +28,6 @@ type FailedSyncRow = {
 };
 
 type SweepOutcome = "retried" | "dead_lettered" | "still_failed";
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<PromiseSettledResult<R>[]> {
-  const results: PromiseSettledResult<R>[] = new Array(items.length);
-  let cursor = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (true) {
-      const idx = cursor++;
-      if (idx >= items.length) return;
-      try {
-        results[idx] = { status: "fulfilled", value: await fn(items[idx]) };
-      } catch (err) {
-        results[idx] = { status: "rejected", reason: err };
-      }
-    }
-  });
-  await Promise.all(workers);
-  return results;
-}
-
-function safeBearerEqual(provided: string, secret: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(`Bearer ${secret}`);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
 
 /**
  * Retry/backoff/dead-letter sweep for TD-014.
@@ -97,7 +68,10 @@ export async function GET(request: NextRequest) {
   const cronSecret = env.CRON_SECRET;
 
   if (!cronSecret) {
-    return NextResponse.json({ error: "cron_secret_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "cron_secret_not_configured" },
+      { status: 503 },
+    );
   }
 
   const authHeader = request.headers.get("authorization") ?? "";
@@ -118,7 +92,10 @@ export async function GET(request: NextRequest) {
     .limit(SWEEP_BATCH_LIMIT);
 
   if (error) {
-    console.error("[cron/retry-failed-syncs] Failed to list failed runs:", error);
+    console.error(
+      "[cron/retry-failed-syncs] Failed to list failed runs:",
+      error,
+    );
     return NextResponse.json({ error: "DB error" }, { status: 500 });
   }
 
@@ -130,109 +107,123 @@ export async function GET(request: NextRequest) {
   });
 
   if (eligible.length === 0) {
-    return NextResponse.json({ swept: 0, retried: 0, deadLettered: 0, stillFailed: 0 });
+    return NextResponse.json({
+      swept: 0,
+      retried: 0,
+      deadLettered: 0,
+      stillFailed: 0,
+    });
   }
 
-  const settled = await mapWithConcurrency(eligible, CONCURRENCY, async (row): Promise<SweepOutcome> => {
-    const target = resolveRetryTarget(row.job_type, row.payload);
-    const nextAttemptCount = row.attempt_count + 1;
-    const userId = row.user_id as string;
+  const settled = await mapWithConcurrency(
+    eligible,
+    CONCURRENCY,
+    async (row): Promise<SweepOutcome> => {
+      const target = resolveRetryTarget(row.job_type, row.payload);
+      const nextAttemptCount = row.attempt_count + 1;
+      const userId = row.user_id as string;
 
-    try {
-      if (target.kind === "cardio") {
-        const orchestrator =
-          target.provider === "peloton" ? createPelotonSyncOrchestrator() : createStravaSyncOrchestrator();
-        await orchestrator.syncRides({
-          userId,
-          provider: target.provider,
-          triggerType: "retry",
-        });
-      } else if (target.kind === "body_metric") {
-        const orchestrator = createWithingsSyncOrchestrator();
-        await orchestrator.syncBodyMetrics({
-          userId,
-          provider: "withings",
-          triggerType: "retry",
-        });
-      }
+      try {
+        if (target.kind === "cardio") {
+          const orchestrator =
+            target.provider === "peloton"
+              ? createPelotonSyncOrchestrator()
+              : createStravaSyncOrchestrator();
+          await orchestrator.syncRides({
+            userId,
+            provider: target.provider,
+            triggerType: "retry",
+          });
+        } else if (target.kind === "body_metric") {
+          const orchestrator = createWithingsSyncOrchestrator();
+          await orchestrator.syncBodyMetrics({
+            userId,
+            provider: "withings",
+            triggerType: "retry",
+          });
+        }
 
-      // The retry succeeded (the orchestrator's own new sync_job_runs row
-      // already records that). Close out the original failed row so the
-      // next sweep doesn't pick it up again.
-      const { error: updateError } = await client
-        .from("sync_job_runs")
-        .update({
-          status: "succeeded",
-          attempt_count: nextAttemptCount,
-          finished_at: new Date().toISOString(),
-          scheduled_for: null,
-          error_code: null,
-          error_message: null,
-          result: { retriedAt: new Date().toISOString() },
-        })
-        .eq("id", row.id);
-
-      if (updateError) {
-        console.error(
-          `[cron/retry-failed-syncs] Retry succeeded but failed to update queue row ${row.id}:`,
-          updateError,
-        );
-      }
-
-      return "retried";
-    } catch (retryError) {
-      const message = retryError instanceof Error ? retryError.message : "Unknown retry error";
-
-      if (isEligibleForDeadLetter(nextAttemptCount)) {
+        // The retry succeeded (the orchestrator's own new sync_job_runs row
+        // already records that). Close out the original failed row so the
+        // next sweep doesn't pick it up again.
         const { error: updateError } = await client
           .from("sync_job_runs")
           .update({
-            status: "dead_letter",
+            status: "succeeded",
             attempt_count: nextAttemptCount,
             finished_at: new Date().toISOString(),
             scheduled_for: null,
-            error_code: "retry_exhausted",
-            error_message: `Retry attempt ${nextAttemptCount}/${MAX_RETRY_ATTEMPTS} failed: ${message}`,
+            error_code: null,
+            error_message: null,
+            result: { retriedAt: new Date().toISOString() },
           })
           .eq("id", row.id);
 
         if (updateError) {
           console.error(
-            `[cron/retry-failed-syncs] Failed to dead-letter queue row ${row.id}:`,
+            `[cron/retry-failed-syncs] Retry succeeded but failed to update queue row ${row.id}:`,
             updateError,
           );
         }
 
-        console.error(
-          `[cron/retry-failed-syncs] Dead-lettered ${row.job_type} run ${row.id} for user ${userId} after ${nextAttemptCount} attempts:`,
-          message,
-        );
+        return "retried";
+      } catch (retryError) {
+        const message =
+          retryError instanceof Error
+            ? retryError.message
+            : "Unknown retry error";
 
-        return "dead_lettered";
+        if (isEligibleForDeadLetter(nextAttemptCount)) {
+          const { error: updateError } = await client
+            .from("sync_job_runs")
+            .update({
+              status: "dead_letter",
+              attempt_count: nextAttemptCount,
+              finished_at: new Date().toISOString(),
+              scheduled_for: null,
+              error_code: "retry_exhausted",
+              error_message: `Retry attempt ${nextAttemptCount}/${MAX_RETRY_ATTEMPTS} failed: ${message}`,
+            })
+            .eq("id", row.id);
+
+          if (updateError) {
+            console.error(
+              `[cron/retry-failed-syncs] Failed to dead-letter queue row ${row.id}:`,
+              updateError,
+            );
+          }
+
+          console.error(
+            `[cron/retry-failed-syncs] Dead-lettered ${row.job_type} run ${row.id} for user ${userId} after ${nextAttemptCount} attempts:`,
+            message,
+          );
+
+          return "dead_lettered";
+        }
+
+        const scheduledFor = computeRetryBackoff(nextAttemptCount);
+        const { error: updateError } = await client
+          .from("sync_job_runs")
+          .update({
+            status: "failed",
+            attempt_count: nextAttemptCount,
+            scheduled_for: scheduledFor.toISOString(),
+            error_code: "retry_failed",
+            error_message: message,
+          })
+          .eq("id", row.id);
+
+        if (updateError) {
+          console.error(
+            `[cron/retry-failed-syncs] Failed to reschedule queue row ${row.id}:`,
+            updateError,
+          );
+        }
+
+        return "still_failed";
       }
-
-      const scheduledFor = computeRetryBackoff(nextAttemptCount);
-      const { error: updateError } = await client
-        .from("sync_job_runs")
-        .update({
-          status: "failed",
-          attempt_count: nextAttemptCount,
-          scheduled_for: scheduledFor.toISOString(),
-          error_code: "retry_failed",
-          error_message: message,
-        })
-        .eq("id", row.id);
-
-      if (updateError) {
-        console.error(
-          `[cron/retry-failed-syncs] Failed to reschedule queue row ${row.id}:`,
-          updateError,
-        );
-      }
-
-      return "still_failed";
-    }
-  });
+    },
+  );
 
   let retried = 0;
   let deadLettered = 0;
@@ -246,7 +237,10 @@ export async function GET(request: NextRequest) {
     } else {
       // The mapping function itself should not throw (all paths are
       // try/caught), but guard defensively.
-      console.error("[cron/retry-failed-syncs] Unexpected sweep error:", result.reason);
+      console.error(
+        "[cron/retry-failed-syncs] Unexpected sweep error:",
+        result.reason,
+      );
       stillFailed += 1;
     }
   }

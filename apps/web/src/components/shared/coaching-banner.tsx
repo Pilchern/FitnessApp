@@ -41,12 +41,19 @@ export function CoachingBanner({ suggestion, today }: CoachingBannerProps) {
     <div className={containerClass}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <span className={`mt-0.5 text-xl leading-none ${iconClass}`} aria-hidden="true">
+          <span
+            className={`mt-0.5 text-xl leading-none ${iconClass}`}
+            aria-hidden="true"
+          >
             {isWarning ? "⚡" : "💡"}
           </span>
           <div>
-            <p className={`text-sm font-bold ${headlineClass}`}>{suggestion.headline}</p>
-            <p className="mt-1 text-sm leading-6 text-ink/75">{suggestion.detail}</p>
+            <p className={`text-sm font-bold ${headlineClass}`}>
+              {suggestion.headline}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-ink/75">
+              {suggestion.detail}
+            </p>
           </div>
         </div>
         <button type="button" onClick={dismiss} className={dismissClass}>

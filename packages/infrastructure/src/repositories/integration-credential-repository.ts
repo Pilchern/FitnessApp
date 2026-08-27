@@ -57,7 +57,11 @@ export class SupabaseIntegrationCredentialRepository {
     throwOnError(response.error, "Save integration credential");
   }
 
-  async getByConnectionId(connectionId: string, userId: string, encryptionKey: string) {
+  async getByConnectionId(
+    connectionId: string,
+    userId: string,
+    encryptionKey: string,
+  ) {
     const response = await this.client
       .from("integration_connection_credentials")
       .select("*")
@@ -108,7 +112,10 @@ export class SupabaseIntegrationCredentialRepository {
       .eq("provider", provider)
       .maybeSingle();
 
-    throwOnError(response.error, "Fetch integration credential by user and provider");
+    throwOnError(
+      response.error,
+      "Fetch integration credential by user and provider",
+    );
 
     if (!response.data) {
       return null;

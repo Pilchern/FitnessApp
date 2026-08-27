@@ -17,9 +17,7 @@ export function buildNutritionAdherenceSummary(
   const totalDays = logs.length;
 
   const proteinHitDays = logs.filter((log) => log.proteinHit === true).length;
-  const mealsOnPlanDays = logs.filter(
-    (log) => log.mealsOnPlan === true,
-  ).length;
+  const mealsOnPlanDays = logs.filter((log) => log.mealsOnPlan === true).length;
   const noPostDinnerSnackingDays = logs.filter(
     (log) => log.noPostDinnerSnacking === true,
   ).length;

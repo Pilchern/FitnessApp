@@ -1,6 +1,4 @@
-import type {
-  CardioSession,
-} from "@fitness-app/domain";
+import type { CardioSession } from "@fitness-app/domain";
 import type {
   CardioSessionRepository,
   CreateCardioSessionInput,
@@ -203,6 +201,30 @@ export class SupabaseCardioSessionRepository implements CardioSessionRepository 
       .maybeSingle();
 
     throwOnError(response.error, "Find cardio session by external id");
+
+    return response.data
+      ? mapCardioSessionRow(cardioSessionRowSchema.parse(response.data))
+      : null;
+  }
+
+  async findArchivedByExternalId(
+    userId: string,
+    sourceProvider: string,
+    sourceExternalId: string,
+  ) {
+    const response = await this.client
+      .from("cardio_sessions")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("source_provider", sourceProvider)
+      .eq("source_external_id", sourceExternalId)
+      .not("deleted_at", "is", null)
+      .maybeSingle();
+
+    throwOnError(
+      response.error,
+      "Find soft-deleted cardio session by external id",
+    );
 
     return response.data
       ? mapCardioSessionRow(cardioSessionRowSchema.parse(response.data))

@@ -12,8 +12,8 @@ const config: Config = {
         pine: "#466362",
       },
       fontFamily: {
-        display: ["Georgia", "Cambria", "\"Times New Roman\"", "serif"],
-        body: ["\"Trebuchet MS\"", "\"Segoe UI\"", "sans-serif"],
+        display: ["Georgia", "Cambria", '"Times New Roman"', "serif"],
+        body: ['"Trebuchet MS"', '"Segoe UI"', "sans-serif"],
       },
       boxShadow: {
         panel: "0 24px 60px -32px rgba(20, 33, 61, 0.35)",

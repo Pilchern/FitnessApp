@@ -34,7 +34,9 @@ export function BodyQuickForm({
   formError,
 }: BodyQuickFormProps) {
   const [state, formAction] = useActionState(action, initialState);
-  const [values, setValues] = useState<BodyFormValues>(() => toBodyFormValues(metric));
+  const [values, setValues] = useState<BodyFormValues>(() =>
+    toBodyFormValues(metric),
+  );
   const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
 
   useEffect(() => {
@@ -94,7 +96,9 @@ export function BodyQuickForm({
               }
             />
             {state.fieldErrors?.measuredOn ? (
-              <p className="text-xs text-ember">{state.fieldErrors.measuredOn}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.measuredOn}
+              </p>
             ) : null}
           </label>
 
@@ -137,7 +141,6 @@ export function BodyQuickForm({
               <p className="text-xs text-ember">{state.fieldErrors.waistIn}</p>
             ) : null}
           </label>
-
         </div>
 
         <div>
@@ -170,7 +173,9 @@ export function BodyQuickForm({
                 }
               />
               {state.fieldErrors?.waistHipIn ? (
-                <p className="text-xs text-ember">{state.fieldErrors.waistHipIn}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.waistHipIn}
+                </p>
               ) : null}
             </label>
 
@@ -190,7 +195,9 @@ export function BodyQuickForm({
                 }
               />
               {state.fieldErrors?.waistGutIn ? (
-                <p className="text-xs text-ember">{state.fieldErrors.waistGutIn}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.waistGutIn}
+                </p>
               ) : null}
             </label>
 
@@ -209,7 +216,9 @@ export function BodyQuickForm({
                 }
               />
               {state.fieldErrors?.bodyFatPct ? (
-                <p className="text-xs text-ember">{state.fieldErrors.bodyFatPct}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.bodyFatPct}
+                </p>
               ) : null}
             </label>
 
@@ -228,7 +237,9 @@ export function BodyQuickForm({
                 }
               />
               {state.fieldErrors?.muscleMassLb ? (
-                <p className="text-xs text-ember">{state.fieldErrors.muscleMassLb}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.muscleMassLb}
+                </p>
               ) : null}
             </label>
 
@@ -252,8 +263,14 @@ export function BodyQuickForm({
 
         <div className="flex justify-end">
           <AuthSubmitButton
-            idleLabel={mode === "edit" ? "Save body metrics" : "Save measurement"}
-            pendingLabel={mode === "edit" ? "Saving body metrics..." : "Saving measurement..."}
+            idleLabel={
+              mode === "edit" ? "Save body metrics" : "Save measurement"
+            }
+            pendingLabel={
+              mode === "edit"
+                ? "Saving body metrics..."
+                : "Saving measurement..."
+            }
           />
         </div>
       </form>

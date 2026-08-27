@@ -319,4 +319,140 @@ describe("AppleHealthWorkoutSyncOrchestrator", () => {
     });
     expect(importBatchStore.markProcessed).toHaveBeenCalled();
   });
+  it("records a cross-provider duplicate as skipped instead of mapped (TD-019)", async () => {
+    // The live TD-019 path: the same Peloton ride reaches the app once through
+    // the Strava relay and again through an Apple Health bridge. Apple Health
+    // is the lower-priority cardio source, so the service reports the ride as
+    // already stored and this orchestrator must not count it as processed.
+    const connection = createConnection();
+    const { connectionStore, syncJobRunStore, importBatchStore } =
+      createStores(connection);
+
+    const rawImportEventStore = {
+      createMany: vi.fn().mockResolvedValue([
+        {
+          id: "raw-dup",
+          providerExternalId: "workout-dup",
+          eventOccurredAt: "2026-07-25T14:00:00Z",
+          payload: {
+            workout_id: "workout-dup",
+            workout_type: "Cycling",
+            start: "2026-07-25T14:00:00Z",
+            end: "2026-07-25T14:45:00Z",
+          },
+        },
+      ]),
+      markMapped: vi.fn(),
+      markSkipped: vi.fn(),
+      markFailed: vi.fn(),
+    };
+
+    const cardioService = {
+      upsertImported: vi.fn().mockResolvedValue({
+        created: false,
+        session: { id: "existing-strava-session" },
+        crossProvider: {
+          outcome: "skip_incoming",
+          duplicateOf: "existing-strava-session",
+          reason: "already recorded from strava",
+        },
+      }),
+    };
+
+    const orchestrator = new AppleHealthWorkoutSyncOrchestrator(
+      cardioService as never,
+      connectionStore,
+      syncJobRunStore as never,
+      importBatchStore as never,
+      rawImportEventStore,
+    );
+
+    const result = await orchestrator.syncWorkouts({
+      userId: connection.userId,
+      triggerType: "webhook",
+      items: [
+        {
+          workout_id: "workout-dup",
+          workout_type: "Cycling",
+          start: "2026-07-25T14:00:00Z",
+          end: "2026-07-25T14:45:00Z",
+        },
+      ],
+    });
+
+    expect(rawImportEventStore.markSkipped).toHaveBeenCalledWith("raw-dup");
+    expect(rawImportEventStore.markMapped).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      processedItemCount: 0,
+      failedItemCount: 0,
+      skippedCrossProviderCount: 1,
+      supersededCrossProviderCount: 0,
+    });
+  });
+
+  it("counts a superseded record and still stores the incoming workout (TD-019)", async () => {
+    const connection = createConnection();
+    const { connectionStore, syncJobRunStore, importBatchStore } =
+      createStores(connection);
+
+    const rawImportEventStore = {
+      createMany: vi.fn().mockResolvedValue([
+        {
+          id: "raw-sup",
+          providerExternalId: "workout-sup",
+          eventOccurredAt: "2026-07-25T14:00:00Z",
+          payload: {
+            workout_id: "workout-sup",
+            workout_type: "Cycling",
+            start: "2026-07-25T14:00:00Z",
+          },
+        },
+      ]),
+      markMapped: vi.fn(),
+      markSkipped: vi.fn(),
+      markFailed: vi.fn(),
+    };
+
+    const cardioService = {
+      upsertImported: vi.fn().mockResolvedValue({
+        created: true,
+        session: { id: "session-sup" },
+        crossProvider: {
+          outcome: "supersede_existing",
+          duplicateOf: "older-row",
+          reason: "replaces a lower-fidelity record",
+        },
+      }),
+    };
+
+    const orchestrator = new AppleHealthWorkoutSyncOrchestrator(
+      cardioService as never,
+      connectionStore,
+      syncJobRunStore as never,
+      importBatchStore as never,
+      rawImportEventStore,
+    );
+
+    const result = await orchestrator.syncWorkouts({
+      userId: connection.userId,
+      triggerType: "webhook",
+      items: [
+        {
+          workout_id: "workout-sup",
+          workout_type: "Cycling",
+          start: "2026-07-25T14:00:00Z",
+        },
+      ],
+    });
+
+    expect(rawImportEventStore.markMapped).toHaveBeenCalledWith("raw-sup", {
+      canonicalTargetTable: "cardio_sessions",
+      canonicalTargetId: "session-sup",
+    });
+    expect(result).toMatchObject({
+      processedItemCount: 1,
+      skippedCrossProviderCount: 0,
+      supersededCrossProviderCount: 1,
+    });
+  });
 });

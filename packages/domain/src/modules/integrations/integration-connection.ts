@@ -1,6 +1,10 @@
 import type { EntityId, IsoDateTime, UserId } from "../../shared/ids";
 
-export type IntegrationProvider = "withings" | "peloton" | "strava" | "apple_health";
+export type IntegrationProvider =
+  | "withings"
+  | "peloton"
+  | "strava"
+  | "apple_health";
 
 export type IntegrationConnectionStatus =
   | "active"

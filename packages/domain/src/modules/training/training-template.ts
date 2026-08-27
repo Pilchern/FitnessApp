@@ -38,7 +38,10 @@ export type TrainingTemplate = {
   name: string;
   templateType: TrainingTemplateType;
   isArchived: boolean;
-  definition: CardioTrainingTemplateDefinition | StrengthTrainingTemplateDefinition | Record<string, unknown>;
+  definition:
+    | CardioTrainingTemplateDefinition
+    | StrengthTrainingTemplateDefinition
+    | Record<string, unknown>;
   /** Optional day this template is scheduled for (e.g. pin a strength template to Mon/Wed/Fri), so `/strength` can surface "today's plan" without the user re-picking it each session. */
   scheduledDayOfWeek: DayOfWeek | null;
   createdAt: IsoDateTime;

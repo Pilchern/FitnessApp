@@ -21,9 +21,12 @@ export function StrengthSessionList({ sessions }: StrengthSessionListProps) {
       <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/70 py-12 shadow-panel">
         <div className="max-w-sm mx-auto text-center">
           <div className="text-4xl">🏋️</div>
-          <h2 className="mt-4 font-display text-xl text-ink">No strength sessions yet</h2>
+          <h2 className="mt-4 font-display text-xl text-ink">
+            No strength sessions yet
+          </h2>
           <p className="mt-2 text-sm text-ink/60">
-            Start a session to begin tracking your lifts and building your history.
+            Start a session to begin tracking your lifts and building your
+            history.
           </p>
         </div>
       </section>
@@ -44,7 +47,9 @@ export function StrengthSessionList({ sessions }: StrengthSessionListProps) {
 
       <div className="mt-5 space-y-4">
         {visible.map((session) => {
-          const uniqueExercises = [...new Set(session.sets.map((set) => set.exerciseName))];
+          const uniqueExercises = [
+            ...new Set(session.sets.map((set) => set.exerciseName)),
+          ];
           const exerciseCount = uniqueExercises.length;
           const exercisePreview =
             uniqueExercises.length <= 4
@@ -75,8 +80,13 @@ export function StrengthSessionList({ sessions }: StrengthSessionListProps) {
 
                   <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
                     <span>{formatStrengthDate(session.sessionDate)}</span>
-                    <span>{exerciseCount} exercise{exerciseCount !== 1 ? "s" : ""}</span>
-                    <span>{session.sets.length} set{session.sets.length !== 1 ? "s" : ""}</span>
+                    <span>
+                      {exerciseCount} exercise{exerciseCount !== 1 ? "s" : ""}
+                    </span>
+                    <span>
+                      {session.sets.length} set
+                      {session.sets.length !== 1 ? "s" : ""}
+                    </span>
                     {session.durationMinutes != null ? (
                       <span>{session.durationMinutes} min</span>
                     ) : null}
@@ -90,7 +100,9 @@ export function StrengthSessionList({ sessions }: StrengthSessionListProps) {
                   ) : null}
 
                   {session.notes ? (
-                    <p className="text-sm leading-6 text-ink/75">{session.notes}</p>
+                    <p className="text-sm leading-6 text-ink/75">
+                      {session.notes}
+                    </p>
                   ) : null}
                 </div>
 

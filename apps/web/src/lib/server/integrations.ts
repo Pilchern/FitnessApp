@@ -1,7 +1,11 @@
 import "server-only";
 
 import { randomBytes } from "node:crypto";
-import { BodyMetricService, CardioSessionService, IntegrationStatusService } from "@fitness-app/application";
+import {
+  BodyMetricService,
+  CardioSessionService,
+  IntegrationStatusService,
+} from "@fitness-app/application";
 import {
   SupabaseBodyMetricRepository,
   SupabaseCardioSessionRepository,
@@ -14,7 +18,11 @@ import {
   SupabaseRecoveryCheckinRepository,
   SupabaseSyncJobRunRepository,
 } from "@fitness-app/infrastructure";
-import { PelotonCardioAdapter, StravaCardioAdapter, WithingsBodyMetricsAdapter } from "@fitness-app/integrations";
+import {
+  PelotonCardioAdapter,
+  StravaCardioAdapter,
+  WithingsBodyMetricsAdapter,
+} from "@fitness-app/integrations";
 import {
   AppleHealthDailyMetricsSyncOrchestrator,
   AppleHealthSleepSyncOrchestrator,
@@ -22,7 +30,13 @@ import {
   BodyMetricSyncOrchestrator,
   CardioSyncOrchestrator,
 } from "@fitness-app/jobs";
-import { getServerEnv, hasAppleHealthServerEnv, hasPelotonServerEnv, hasStravaServerEnv, hasWithingsServerEnv } from "./env";
+import {
+  getServerEnv,
+  hasAppleHealthServerEnv,
+  hasPelotonServerEnv,
+  hasStravaServerEnv,
+  hasWithingsServerEnv,
+} from "./env";
 import {
   createSupabaseAdminClient,
   createSupabaseRequestClient,
@@ -209,7 +223,9 @@ export function createAppleHealthWebhookSecretLookup() {
     }
 
     const client = createSupabaseAdminClient();
-    const credentialRepository = new SupabaseIntegrationCredentialRepository(client);
+    const credentialRepository = new SupabaseIntegrationCredentialRepository(
+      client,
+    );
     const credential = await credentialRepository.getByUserAndProvider(
       userId,
       "apple_health",
@@ -236,7 +252,9 @@ export function createAppleHealthWebhookSecretLookup() {
  * "generate = current token" model rather than a persistent secrets list,
  * to keep this simple.
  */
-export async function generateAppleHealthWebhookToken(userId: string): Promise<string> {
+export async function generateAppleHealthWebhookToken(
+  userId: string,
+): Promise<string> {
   const env = getServerEnv();
   if (!env.INTEGRATION_ENCRYPTION_KEY) {
     throw new Error(
@@ -245,10 +263,17 @@ export async function generateAppleHealthWebhookToken(userId: string): Promise<s
   }
 
   const client = createSupabaseAdminClient();
-  const connectionRepository = new SupabaseIntegrationConnectionRepository(client);
-  const credentialRepository = new SupabaseIntegrationCredentialRepository(client);
+  const connectionRepository = new SupabaseIntegrationConnectionRepository(
+    client,
+  );
+  const credentialRepository = new SupabaseIntegrationCredentialRepository(
+    client,
+  );
 
-  let connection = await connectionRepository.getByUserAndProvider(userId, "apple_health");
+  let connection = await connectionRepository.getByUserAndProvider(
+    userId,
+    "apple_health",
+  );
 
   if (!connection) {
     connection = await connectionRepository.saveConnection({
@@ -288,14 +313,18 @@ export async function generateAppleHealthWebhookToken(userId: string): Promise<s
  * token — used by the Integrations UI to show "generate" vs. "regenerate"
  * copy without revealing the token value itself.
  */
-export async function hasAppleHealthWebhookToken(userId: string): Promise<boolean> {
+export async function hasAppleHealthWebhookToken(
+  userId: string,
+): Promise<boolean> {
   const env = getServerEnv();
   if (!env.INTEGRATION_ENCRYPTION_KEY) {
     return false;
   }
 
   const client = createSupabaseAdminClient();
-  const credentialRepository = new SupabaseIntegrationCredentialRepository(client);
+  const credentialRepository = new SupabaseIntegrationCredentialRepository(
+    client,
+  );
   const credential = await credentialRepository.getByUserAndProvider(
     userId,
     "apple_health",
@@ -307,7 +336,9 @@ export async function hasAppleHealthWebhookToken(userId: string): Promise<boolea
 
 export async function createIntegrationStatusService() {
   const client = await createSupabaseRequestClient();
-  return new IntegrationStatusService(new SupabaseIntegrationStatusRepository(client));
+  return new IntegrationStatusService(
+    new SupabaseIntegrationStatusRepository(client),
+  );
 }
 
 export function createWithingsSyncOrchestrator() {

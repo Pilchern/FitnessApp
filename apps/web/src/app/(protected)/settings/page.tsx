@@ -6,5 +6,7 @@ type PageProps = {
 
 export default async function SettingsPage({ searchParams }: PageProps) {
   const params = (await searchParams) ?? {};
-  return <SettingsScreen saved={params.saved === "true"} error={params.error} />;
+  return (
+    <SettingsScreen saved={params.saved === "true"} error={params.error} />
+  );
 }

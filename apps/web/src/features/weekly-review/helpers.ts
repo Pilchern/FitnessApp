@@ -39,7 +39,8 @@ export function toWeeklyReviewFormValues(
     biggestMiss: review?.biggestMiss ?? aiPrefill?.biggestMiss ?? "",
     lesson: review?.lesson ?? "",
     nextWeekPriority: review?.nextWeekPriority ?? "",
-    strategicDecision: review?.strategicDecision ?? aiPrefill?.strategicDecision ?? "",
+    strategicDecision:
+      review?.strategicDecision ?? aiPrefill?.strategicDecision ?? "",
     riskForecast: review?.riskForecast ?? aiPrefill?.riskForecast ?? "",
     confidence: numberToInput(review?.confidence),
     manualOverrides: review?.manualOverrides ?? {},
@@ -54,7 +55,10 @@ export function formatWeeklyReviewDate(value: string) {
   }).format(new Date(`${value}T12:00:00`));
 }
 
-export function formatMetricValue(value: number | null | undefined, suffix = "") {
+export function formatMetricValue(
+  value: number | null | undefined,
+  suffix = "",
+) {
   if (value == null) {
     return "--";
   }

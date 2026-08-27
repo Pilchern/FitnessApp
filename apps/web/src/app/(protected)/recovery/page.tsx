@@ -6,7 +6,9 @@ type RecoveryPageProps = {
   }>;
 };
 
-export default async function RecoveryPage({ searchParams }: RecoveryPageProps) {
+export default async function RecoveryPage({
+  searchParams,
+}: RecoveryPageProps) {
   const params = (await searchParams) ?? {};
 
   return <RecoveryScreen editCheckinId={params.edit} />;

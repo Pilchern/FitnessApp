@@ -38,7 +38,9 @@ export function StrengthPageClient({
 
   function handleLoadTemplate(template: TrainingTemplate) {
     if (isStrengthTemplateDefinition(template.definition)) {
-      setLoadedTemplate(template.definition as StrengthTrainingTemplateDefinition);
+      setLoadedTemplate(
+        template.definition as StrengthTrainingTemplateDefinition,
+      );
     }
   }
 

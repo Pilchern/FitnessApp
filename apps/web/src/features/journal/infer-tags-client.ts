@@ -15,7 +15,10 @@ const TAG_RULES: Array<[RegExp, string]> = [
   [/\b(nutrition|diet|eating|macros)\b/, "nutrition"],
 ];
 
-export function inferTagsClient(body: string, existingTags: string[]): string[] {
+export function inferTagsClient(
+  body: string,
+  existingTags: string[],
+): string[] {
   const lower = body.toLowerCase();
   const tagSet = new Set(existingTags);
   for (const [pattern, tag] of TAG_RULES) {

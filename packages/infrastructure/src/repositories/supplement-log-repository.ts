@@ -6,7 +6,11 @@ import type {
 } from "@fitness-app/application";
 import { DEFAULT_DATE_RANGE_QUERY_LIMIT } from "@fitness-app/application";
 import { z } from "zod";
-import { type AppSupabaseClient, requireSingleResult, throwOnError } from "./shared";
+import {
+  type AppSupabaseClient,
+  requireSingleResult,
+  throwOnError,
+} from "./shared";
 
 const supplementLogRowSchema = z.object({
   id: z.string().uuid(),

@@ -6,7 +6,11 @@ import { RecoveryCheckinService } from "../recovery/recovery-checkin";
 import { StrengthSessionSummaryService } from "../strength/strength-session-summary";
 import type { AiWeeklyReviewService } from "./ai-weekly-review-service";
 import { WeeklyReviewService } from "./weekly-review";
-import { buildWeeklyReviewSummary, getLastCompletedWeekStart, getWeekRangeFromStart } from "./weekly-review-helpers";
+import {
+  buildWeeklyReviewSummary,
+  getLastCompletedWeekStart,
+  getWeekRangeFromStart,
+} from "./weekly-review-helpers";
 
 export type WeeklyReviewAutoFinalizeDependencies = {
   weeklyReviewService: WeeklyReviewService;
@@ -29,8 +33,18 @@ export type WeeklyReviewAutoFinalizeOutcome =
   | { status: "skipped"; aiDrafted: boolean };
 
 const monthAbbreviations = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 function formatDisplayDate(isoDate: string): string {
@@ -68,7 +82,10 @@ export class WeeklyReviewAutoFinalizeService {
     const draftResult = await this.draftReviewForUser(profile);
 
     if (draftResult.status === "skipped") {
-      const aiDrafted = await this.maybeGenerateAiDraft(profile.userId, draftResult.review);
+      const aiDrafted = await this.maybeGenerateAiDraft(
+        profile.userId,
+        draftResult.review,
+      );
       return { status: "skipped", aiDrafted };
     }
 
@@ -81,34 +98,53 @@ export class WeeklyReviewAutoFinalizeService {
       );
       journalDrafted = true;
     } catch (journalErr) {
-      const message = journalErr instanceof Error ? journalErr.message : "Unknown error";
+      const message =
+        journalErr instanceof Error ? journalErr.message : "Unknown error";
       console.error(
         `[WeeklyReviewAutoFinalizeService] Journal draft failed for user ${profile.userId}:`,
         message,
       );
     }
 
-    const aiDrafted = await this.maybeGenerateAiDraft(profile.userId, draftResult.review);
+    const aiDrafted = await this.maybeGenerateAiDraft(
+      profile.userId,
+      draftResult.review,
+    );
 
     return { status: "drafted", journalDrafted, aiDrafted };
   }
 
-  private async maybeGenerateAiDraft(userId: string, review: WeeklyReview): Promise<boolean> {
+  private async maybeGenerateAiDraft(
+    userId: string,
+    review: WeeklyReview,
+  ): Promise<boolean> {
     if (!this.deps.aiWeeklyReviewService) {
       return false;
     }
 
-    return this.generateAiDraftForUser(userId, review, this.deps.aiWeeklyReviewService);
+    return this.generateAiDraftForUser(
+      userId,
+      review,
+      this.deps.aiWeeklyReviewService,
+    );
   }
 
   private async draftReviewForUser(
     profile: WeeklyReviewAutoFinalizeProfile,
   ): Promise<
-    | { status: "drafted"; review: WeeklyReview; autoSummary: WeeklyReviewSummary; weekStart: string }
+    | {
+        status: "drafted";
+        review: WeeklyReview;
+        autoSummary: WeeklyReviewSummary;
+        weekStart: string;
+      }
     | { status: "skipped"; review: WeeklyReview }
   > {
     const weekStartsOn = (profile.weekStartsOn ?? 1) as 0 | 1;
-    const prevWeekStartIso = getLastCompletedWeekStart(new Date(), weekStartsOn);
+    const prevWeekStartIso = getLastCompletedWeekStart(
+      new Date(),
+      weekStartsOn,
+    );
     const { weekEnd: prevWeekEndIso } = getWeekRangeFromStart(prevWeekStartIso);
 
     const { weeklyReviewService } = this.deps;
@@ -128,12 +164,15 @@ export class WeeklyReviewAutoFinalizeService {
       endDate: prevWeekEndIso,
     };
 
-    const [bodyMetrics, cardioSessions, recoveryCheckins, liftsCompleted] = await Promise.all([
-      this.deps.bodyMetricService.listByDateRange(dateRangeQuery),
-      this.deps.cardioService.listByDateRange(dateRangeQuery),
-      this.deps.recoveryService.listByDateRange(dateRangeQuery),
-      this.deps.strengthSummaryService.countCompletedByDateRange(dateRangeQuery),
-    ]);
+    const [bodyMetrics, cardioSessions, recoveryCheckins, liftsCompleted] =
+      await Promise.all([
+        this.deps.bodyMetricService.listByDateRange(dateRangeQuery),
+        this.deps.cardioService.listByDateRange(dateRangeQuery),
+        this.deps.recoveryService.listByDateRange(dateRangeQuery),
+        this.deps.strengthSummaryService.countCompletedByDateRange(
+          dateRangeQuery,
+        ),
+      ]);
 
     const autoSummary = buildWeeklyReviewSummary({
       bodyMetrics,
@@ -162,7 +201,12 @@ export class WeeklyReviewAutoFinalizeService {
       completedAt: null,
     });
 
-    return { status: "drafted" as const, review, autoSummary, weekStart: prevWeekStartIso };
+    return {
+      status: "drafted" as const,
+      review,
+      autoSummary,
+      weekStart: prevWeekStartIso,
+    };
   }
 
   private async draftJournalEntryForUser(
@@ -185,9 +229,10 @@ export class WeeklyReviewAutoFinalizeService {
     const { weekEnd } = getWeekRangeFromStart(prevWeekStartIso);
     const lifts = autoSummary.liftsCompleted ?? 0;
     const cardio = autoSummary.ridesCompleted ?? 0;
-    const sleepAvg = autoSummary.sleepAverageHours != null
-      ? autoSummary.sleepAverageHours.toFixed(1)
-      : "—";
+    const sleepAvg =
+      autoSummary.sleepAverageHours != null
+        ? autoSummary.sleepAverageHours.toFixed(1)
+        : "—";
     const readinessAvg = "—";
 
     const body = `Weekly reflection — ${formatDisplayDate(prevWeekStartIso)} to ${formatDisplayDate(weekEnd)}

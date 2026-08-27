@@ -11,7 +11,13 @@ const integrationConnectionRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
   provider: z.enum(["withings", "peloton", "strava", "apple_health"]),
-  status: z.enum(["active", "reauth_required", "paused", "error", "disconnected"]),
+  status: z.enum([
+    "active",
+    "reauth_required",
+    "paused",
+    "error",
+    "disconnected",
+  ]),
   account_label: z.string().nullable(),
   provider_user_id: z.string().nullable(),
   scopes: z.array(z.string()).default([]),
@@ -33,7 +39,9 @@ const integrationConnectionRowSchema = z.object({
 
 type IntegrationConnectionRow = z.infer<typeof integrationConnectionRowSchema>;
 
-function mapIntegrationConnectionRow(row: IntegrationConnectionRow): IntegrationConnection {
+function mapIntegrationConnectionRow(
+  row: IntegrationConnectionRow,
+): IntegrationConnection {
   return {
     id: row.id,
     userId: row.user_id,
@@ -59,8 +67,7 @@ function mapIntegrationConnectionRow(row: IntegrationConnectionRow): Integration
   };
 }
 
-export class SupabaseIntegrationConnectionRepository
-{
+export class SupabaseIntegrationConnectionRepository {
   constructor(private readonly client: AppSupabaseClient) {}
 
   async listConnections(userId: string) {
@@ -79,7 +86,10 @@ export class SupabaseIntegrationConnectionRepository
       .map(mapIntegrationConnectionRow);
   }
 
-  async getByUserAndProvider(userId: string, provider: "withings" | "peloton" | "strava" | "apple_health") {
+  async getByUserAndProvider(
+    userId: string,
+    provider: "withings" | "peloton" | "strava" | "apple_health",
+  ) {
     const response = await this.client
       .from("integration_connections")
       .select("*")
@@ -91,23 +101,26 @@ export class SupabaseIntegrationConnectionRepository
     throwOnError(response.error, "Fetch integration connection");
 
     return response.data
-      ? mapIntegrationConnectionRow(integrationConnectionRowSchema.parse(response.data))
+      ? mapIntegrationConnectionRow(
+          integrationConnectionRowSchema.parse(response.data),
+        )
       : null;
   }
 
-  async saveConnection(
-    input: {
-      userId: string;
-      provider: "withings" | "peloton" | "strava" | "apple_health";
-      accountLabel: string | null;
-      providerUserId: string | null;
-      scopes: string[];
-      capabilities: string[];
-      metadata: Record<string, unknown>;
-      status: IntegrationConnection["status"];
-    },
-  ) {
-    const existing = await this.getByUserAndProvider(input.userId, input.provider);
+  async saveConnection(input: {
+    userId: string;
+    provider: "withings" | "peloton" | "strava" | "apple_health";
+    accountLabel: string | null;
+    providerUserId: string | null;
+    scopes: string[];
+    capabilities: string[];
+    metadata: Record<string, unknown>;
+    status: IntegrationConnection["status"];
+  }) {
+    const existing = await this.getByUserAndProvider(
+      input.userId,
+      input.provider,
+    );
     const payload = {
       user_id: input.userId,
       provider: input.provider,
@@ -212,7 +225,10 @@ export class SupabaseIntegrationConnectionRepository
     );
   }
 
-  async disconnect(userId: string, provider: "withings" | "peloton" | "strava" | "apple_health") {
+  async disconnect(
+    userId: string,
+    provider: "withings" | "peloton" | "strava" | "apple_health",
+  ) {
     const response = await this.client
       .from("integration_connections")
       .update({

@@ -8,7 +8,9 @@ export type StrengthSessionDateRangeQuery = z.infer<
 >;
 
 export interface StrengthSessionSummaryRepository {
-  countCompletedByDateRange(query: StrengthSessionDateRangeQuery): Promise<number>;
+  countCompletedByDateRange(
+    query: StrengthSessionDateRangeQuery,
+  ): Promise<number>;
 }
 
 export class StrengthSessionSummaryService {

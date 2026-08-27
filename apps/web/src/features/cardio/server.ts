@@ -20,7 +20,9 @@ export async function getCardioPageData(
   const [templates, sessions, editingSession] = await Promise.all([
     trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
     cardioService.listByDateRange({ userId: user.id }),
-    editSessionId ? cardioService.getById(user.id, editSessionId) : Promise.resolve(null),
+    editSessionId
+      ? cardioService.getById(user.id, editSessionId)
+      : Promise.resolve(null),
   ]);
 
   const currentWeekSessions = sessions.filter(

@@ -30,17 +30,32 @@ export function JournalFilterBar({
 
         <label className="grid gap-2 text-sm font-medium text-ink">
           Tag
-          <input className={fieldClassName()} name="tag" defaultValue={tag} placeholder="zone2" />
+          <input
+            className={fieldClassName()}
+            name="tag"
+            defaultValue={tag}
+            placeholder="zone2"
+          />
         </label>
 
         <label className="grid gap-2 text-sm font-medium text-ink">
           Start date
-          <input className={fieldClassName()} name="startDate" type="date" defaultValue={startDate} />
+          <input
+            className={fieldClassName()}
+            name="startDate"
+            type="date"
+            defaultValue={startDate}
+          />
         </label>
 
         <label className="grid gap-2 text-sm font-medium text-ink">
           End date
-          <input className={fieldClassName()} name="endDate" type="date" defaultValue={endDate} />
+          <input
+            className={fieldClassName()}
+            name="endDate"
+            type="date"
+            defaultValue={endDate}
+          />
         </label>
 
         <div className="flex items-end gap-3">

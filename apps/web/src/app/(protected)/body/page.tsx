@@ -10,5 +10,7 @@ type BodyPageProps = {
 export default async function BodyPage({ searchParams }: BodyPageProps) {
   const params = (await searchParams) ?? {};
 
-  return <BodyScreen editMetricId={params.edit} deleted={params.deleted === "1"} />;
+  return (
+    <BodyScreen editMetricId={params.edit} deleted={params.deleted === "1"} />
+  );
 }

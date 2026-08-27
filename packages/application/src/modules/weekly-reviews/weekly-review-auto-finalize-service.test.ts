@@ -79,7 +79,8 @@ class FakeWeeklyReviewRepository implements WeeklyReviewRepository {
   }
 
   async update(input: any): Promise<WeeklyReview> {
-    const base = this.existing ?? this.created[this.created.length - 1] ?? makeReview();
+    const base =
+      this.existing ?? this.created[this.created.length - 1] ?? makeReview();
     const updated = { ...base, ...input };
     this.updated.push(updated);
     return updated;
@@ -173,6 +174,10 @@ class EmptyCardioSessionRepository implements CardioSessionRepository {
   async findByExternalId(): Promise<CardioSession | null> {
     return null;
   }
+
+  async findArchivedByExternalId(): Promise<CardioSession | null> {
+    return null;
+  }
   async listByDateRange(): Promise<CardioSession[]> {
     return [];
   }
@@ -210,8 +215,10 @@ function buildDeps(overrides?: {
   journalRepo?: FakeJournalEntryRepository;
   aiWeeklyReviewService?: AiWeeklyReviewService | null;
 }) {
-  const weeklyReviewRepo = overrides?.weeklyReviewRepo ?? new FakeWeeklyReviewRepository();
-  const journalRepo = overrides?.journalRepo ?? new FakeJournalEntryRepository();
+  const weeklyReviewRepo =
+    overrides?.weeklyReviewRepo ?? new FakeWeeklyReviewRepository();
+  const journalRepo =
+    overrides?.journalRepo ?? new FakeJournalEntryRepository();
 
   return {
     weeklyReviewRepo,
@@ -220,8 +227,12 @@ function buildDeps(overrides?: {
       weeklyReviewService: new WeeklyReviewService(weeklyReviewRepo),
       journalService: new JournalEntryService(journalRepo),
       bodyMetricService: new BodyMetricService(new EmptyBodyMetricRepository()),
-      cardioService: new CardioSessionService(new EmptyCardioSessionRepository()),
-      recoveryService: new RecoveryCheckinService(new EmptyRecoveryCheckinRepository()),
+      cardioService: new CardioSessionService(
+        new EmptyCardioSessionRepository(),
+      ),
+      recoveryService: new RecoveryCheckinService(
+        new EmptyRecoveryCheckinRepository(),
+      ),
       strengthSummaryService: new StrengthSessionSummaryService(
         new FakeStrengthSessionSummaryRepository(2),
       ),
@@ -272,7 +283,9 @@ describe("WeeklyReviewAutoFinalizeService", () => {
       weekStartsOn: 1,
     });
     await probe;
-    const createdTitle = (journalRepo.created[0] as { title: string } | undefined)?.title;
+    const createdTitle = (
+      journalRepo.created[0] as { title: string } | undefined
+    )?.title;
     expect(createdTitle).toBeTruthy();
 
     const secondJournalRepo = new FakeJournalEntryRepository();
@@ -329,7 +342,9 @@ describe("WeeklyReviewAutoFinalizeService", () => {
       expect(result.aiDrafted).toBe(true);
     }
     expect(aiWeeklyReviewService.generateDraft).toHaveBeenCalledTimes(1);
-    expect(weeklyReviewRepo.updated.at(-1)?.aiDraftStatus).toBe("pending_review");
+    expect(weeklyReviewRepo.updated.at(-1)?.aiDraftStatus).toBe(
+      "pending_review",
+    );
   });
 
   it("fails soft (aiDrafted: false) when the AI service throws", async () => {

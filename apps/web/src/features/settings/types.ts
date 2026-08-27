@@ -29,4 +29,7 @@ export type SettingsFormValues = {
   dailyFiberGramsTarget: string;
   targetWeightLb: string;
   targetDate: string;
+  heightCm: string;
+  birthDate: string;
+  biologicalSex: string;
 };

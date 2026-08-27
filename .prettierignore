@@ -3,3 +3,8 @@ node_modules
 coverage
 dist
 pnpm-lock.yaml
+
+# Prose docs are hand-maintained and contain wide reference tables. Prettier
+# re-pads every cell in a table to its widest column, so a one-word edit
+# produces a whole-table diff. Formatting is enforced on code only.
+*.md

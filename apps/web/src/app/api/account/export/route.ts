@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createCoreServices } from "@/lib/server/services";
 import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import {
+  EXPORT_DATE_RANGE_LIMIT,
+  EXPORT_INSIGHT_LIMIT,
+  summarizeExportCompleteness,
+} from "./export-completeness";
 
 /**
  * Full personal-data export (Step 10: "Exporting user data"). Deliberately
@@ -10,6 +15,14 @@ import { createSupabaseRequestClient } from "@/lib/server/supabase";
  * sync_job_runs) — none of that is "your data" in the sense a user asking
  * for an export means, and the credentials table must never leave the
  * server under any circumstance.
+ *
+ * Every date-range query asks for `EXPORT_DATE_RANGE_LIMIT` rows explicitly:
+ * without a `limit` the repositories fall back to
+ * `DEFAULT_DATE_RANGE_QUERY_LIMIT` (500) and a "download all my data" file
+ * would silently stop at the 500 most recent rows per table. Where a cap
+ * still applies (the schema ceiling, or the insights repository's own hard
+ * limit), the payload's `completeness` block names the sections that reached
+ * it, so a short export is never silent.
  *
  * Uses the request-scoped (RLS-respecting) client, not the admin client —
  * this is a user-initiated export of their own data, not a background job.
@@ -51,6 +64,7 @@ export async function GET() {
     userId: user.id,
     startDate: EPOCH_START_DATE,
     endDate: todayIsoDate(),
+    limit: EXPORT_DATE_RANGE_LIMIT,
   };
 
   const [
@@ -74,7 +88,7 @@ export async function GET() {
     cardioService.listByDateRange(dateRange),
     recoveryService.listByDateRange(dateRange),
     strengthService.listByDateRange(dateRange),
-    weeklyReviewService.listRecent(user.id, 1000),
+    weeklyReviewService.listRecent(user.id, EXPORT_DATE_RANGE_LIMIT),
     nutritionService.listByDateRange(dateRange),
     journalService.listByDateRange(dateRange),
     trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
@@ -85,9 +99,38 @@ export async function GET() {
     insightRepository.listActive(user.id),
   ]);
 
+  // Only the capped sections are listed here. The remaining sections
+  // (profile, training templates, supplements) run unlimited queries, so
+  // there is no cap for them to hit. Keys match the payload keys below.
+  const rowLimitedSections = {
+    bodyMetrics,
+    cardioSessions,
+    recoveryCheckins,
+    strengthSessions,
+    weeklyReviews,
+    nutritionLogs,
+    journalEntries,
+    supplementLogs,
+    dailyActivityMetrics,
+  };
+
+  const completeness = summarizeExportCompleteness([
+    ...Object.entries(rowLimitedSections).map(([section, rows]) => ({
+      section,
+      rowCount: rows.length,
+      limit: EXPORT_DATE_RANGE_LIMIT,
+    })),
+    {
+      section: "insights",
+      rowCount: insights.length,
+      limit: EXPORT_INSIGHT_LIMIT,
+    },
+  ]);
+
   const exportPayload = {
     exportedAt: new Date().toISOString(),
     userEmail: user.email ?? null,
+    completeness,
     profile,
     bodyMetrics,
     cardioSessions,

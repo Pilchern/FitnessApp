@@ -76,13 +76,14 @@ Implemented now:
 - auth and protected app shell
 - cardio, recovery, body, weekly review, journal, insights, strength, nutrition, and settings modules
 - Supabase schema, seeds, and RLS
-- Four provider integrations with sync observability: Strava (live), Withings (OAuth, needs credentials), Peloton (needs a connected account), Apple Health (HMAC webhook, sleep only today, needs a configured secret)
+- Four provider integrations with sync observability: Withings (OAuth, live), Apple Health (per-user webhook token; sleep, daily metrics, and workouts), Strava (code live but paywalled by Strava), Peloton (code live but blocked by Peloton's API)
+- Cross-provider duplicate detection with an explicit source-priority order, so the same ride or weigh-in arriving from two providers isn't double-counted
 - Optional AI-generated insights via the Anthropic API (`AiInsightService`)
-- 4 basic Playwright e2e specs (auth, body, cardio, weekly review)
+- 6 Playwright e2e specs (auth, navigation, body, cardio, integrations, weekly review)
+- GitHub Actions CI running format, typecheck, lint, unit tests, and the production build on every pull request
 
 Still intentionally incomplete:
 
-- background job execution infrastructure (queue/retry/dead-letter — see TECH_DEBT.md TD-014)
-- Apple Health fields beyond sleep (steps, VO2 max, resting HR, exercise minutes, active energy)
-- AI-generated weekly review narrative (distinct from the existing AI insights)
-- broader browser-level e2e coverage (integration flows, strength, recovery, nutrition, journal, insights, settings)
+- nutrition targets personalized to age, height, and biological sex — `profiles` has no such columns, so the BMR formula substitutes population defaults behind a safety floor and an in-UI disclosure (see TECH_DEBT.md TD-030)
+- browser-level e2e coverage for strength, recovery, nutrition, journal, insights, and settings
+- a UI for inspecting or replaying failed sync runs (the retry queue and dead-letter path themselves exist)

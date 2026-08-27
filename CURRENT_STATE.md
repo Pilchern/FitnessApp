@@ -1,7 +1,7 @@
 # Current State — FitnessApp
 
-**Last updated:** 2026-08-02 (nutrition-target safety floor + estimate disclosure, strength-form accessibility labels)
-**Overall health:** Stable. TypeScript clean. 244 tests pass. Lint clean. Production build succeeds. **All migrations through `20260722180000` have been applied to the live Supabase project** (done directly via the Supabase MCP connector this session — no more manual `supabase db push` step outstanding for those). Withings and Apple Health are live and verified. **Strava now requires a paid subscription to keep API access** (a Strava policy change, not something fixable in this codebase) — the user has chosen not to subscribe, so Strava is being retired as the cardio path in favor of Apple Health (see below). Peloton's unofficial API auth endpoint is also confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not viable either way.
+**Last updated:** 2026-08-27 (TD-030 closed — tech-debt register now empty; CI, format normalization, TD-019, security fixes, coverage-audit bug fixes)
+**Overall health:** Stable. TypeScript clean. 493 tests pass. Lint clean. Production build succeeds. CI runs format/typecheck/lint/test/build on every PR. **All migrations through `20260827154823` have been applied to the live Supabase project** (done directly via the Supabase MCP connector this session — no more manual `supabase db push` step outstanding for those). Withings and Apple Health are live and verified. **Strava now requires a paid subscription to keep API access** (a Strava policy change, not something fixable in this codebase) — the user has chosen not to subscribe, so Strava is being retired as the cardio path in favor of Apple Health (see below). Peloton's unofficial API auth endpoint is also confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not viable either way.
 
 This session ran a full product/UX/security/fitness-safety audit (see "What Was Done in This Session (2026-08-02, fitness-safety audit)" below), using parallel research passes over (a) strength/cardio unit conversion and progression logic and (b) security/auth/accessibility. Four concrete fixes shipped:
 
@@ -22,9 +22,9 @@ This session's audit found the app's integration/data-integrity layer (auth, OAu
 | ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TypeScript   | CLEAN   | Zero errors across all 6 packages                                                                                                                                                                                                                                                                  |
 | Lint         | CLEAN   | No warnings                                                                                                                                                                                                                                                                                        |
-| Tests        | PASSING | 269/269 (47 web, 176 application, 14 integrations, 32 jobs)                                                                                                                                                                                                                                        |
+| Tests        | PASSING | 493/493 (116 web, 298 application, 21 infrastructure, 14 integrations, 44 jobs)                                                                                                                                                                                                                                        |
 | Build        | PASSING | `pnpm build` succeeds without a live `.env.local` — all data-dependent routes are dynamic, so no Supabase connectivity is needed at build time                                                                                                                                                     |
-| E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review)                                                                                                                                                                                                  |
+| E2E          | READY   | Playwright configured, 6 spec files (auth, navigation, body, cardio, integrations, weekly-review). Not run in CI — needs a live Supabase project.                                                                                                                                                                                                  |
 | Database     | LIVE    | Cloud Supabase project, credentials in .env.local                                                                                                                                                                                                                                                  |
 | Integrations | PARTIAL | Withings and Apple Health live and verified (Apple Health now also syncs individual workouts, not just sleep/daily-activity). Strava requires a paid subscription the user has declined — being retired as the cardio path. Peloton direct sync confirmed blocked by Peloton's own API as of 2026-07-16. Free path forward: Peloton (once the user's meniscus injury heals) writes rides to Apple Health, which syncs into `cardio_sessions` via the new `/api/integrations/apple-health/workouts` webhook. |
 
@@ -115,13 +115,14 @@ None of the four cron routes have retry logic, a queue, or a dead-letter path �
 
 1. **Strava broken** — app deactivated on Strava's side (`403: Application Status Inactive`), confirmed via a failed `sync_job_runs` row on 2026-07-16. User must reactivate at strava.com/settings/api. This blocks the recommended Peloton→Strava relay path too.
 2. **Peloton direct sync blocked by Peloton** — `POST https://api.onepeloton.com/auth/login` returns `403` for any credentials as of 2026-07-16. Not fixable without reverse-engineering around a deliberate access restriction. Recommended path is now Peloton's own "auto-export to Strava" setting, once Strava is reactivated.
-3. **No cross-provider duplicate detection** (TD-019) — see `TECH_DEBT.md` Priority 1.
-4. **Nutrition calorie/protein targets don't account for age, height, or sex** (TD-030) — see `TECH_DEBT.md` Priority 1. Partially mitigated this session (safety floor + UI disclosure); full fix needs a schema migration.
+3. **None.** TD-030 was the last Priority 1 item and closed 2026-08-27; the tech-debt register is currently empty.
+
+4. **Insight severity is computed, then thrown away at the storage boundary.** `buildInsights` ranks its output by severity (`warning > caution > info > positive`), but `PersistedInsight`, the `insights` table, and `UpsertInsightInput` have no severity column — `InsightOrchestrator` stashes it inside the `evidence` JSONB (`insight-orchestrator.ts:41` and `:55`). Nothing reads it back. `SupabaseInsightRepository.listActive` orders by `insight_date desc` limit 50, `features/insights/server.ts:74` does `insights.slice(0, 3)`, and `getTopInsights` (`insight-rules.ts:854`) is a bare `slice` with no sort. So the dashboard's "top 3 insights" is the three most recent, not the three most important: a `warning` from yesterday loses to three `positive` notes from today. Verified by reading all five call sites; **not fixed** — deciding whether severity should drive ordering, be surfaced in the UI, or get a real column is a product call, not a unilateral one. Fixing it properly wants a `severity` column plus a migration; ordering off the JSONB would work but bakes in the smuggling.
 
 ### Low
 
-4. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
-5. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale. (TD-016)
+3. **`metrics.slice(0, 12)` in body server.ts** — Verify sort direction returns the 12 most recent entries for charts.
+4. **`listByDateRange` capped at 500 rows** — This is intentional (was unbounded), but power users with >500 entries per date range will hit this cap. Acceptable for current scale. (TD-016)
 
 ### Resolved this session (2026-07-21)
 
@@ -165,16 +166,82 @@ See `TECH_DEBT.md` for full prioritized list.
 - **Cron + retry:** 5 cron routes scheduled via `vercel.json`/pg_cron (peloton-sync, strava-sync, withings-sync, weekly-review-auto-finalize, retry-failed-syncs every 15min); `sync_job_runs` now used as a real retry queue with exponential backoff and a `dead_letter` terminal status after 5 attempts (TD-014, resolved)
 - **Local Supabase:** Can be run locally with `supabase start && supabase db reset`
 - **Seed user (local only):** `dev@example.com` / `password1234`
-- **CI/CD:** None configured yet
+- **CI/CD:** GitHub Actions (`.github/workflows/ci.yml`) runs format, typecheck, lint, unit tests, and the production build on every PR and every push to `main`. No env vars are needed — the build succeeds without an `.env.local` because every data-dependent route is dynamic. E2E is excluded (needs a live Supabase project).
 
 ---
 
 ## Active Priorities (Recommended Next Sprint)
 
+See `docs/next-release-roadmap.md` for the full ranked list. The tech-debt register is now empty. In brief: browser e2e for the six uncovered modules, a decision on whether to keep the Strava/Peloton code paths at all, and the `trigger_cron_route` DB-permission finding below.
+
 1. User: set a target weight/date under Settings → Training Goals, and create/pin your M/W/F strength templates with a scheduled day under `/strength` (adjusted for your current meniscus injury as needed) — the underlying capability (TD-027) is built and the migration is live, but the actual numbers/templates are personal data this container has no way to enter on your behalf
 2. User: once you're back to riding, set up a bridge app (e.g. Health Auto Export) to POST workout data to `/api/integrations/apple-health/workouts` — see `docs/integrations/apple-health-bridge-setup.md` for the exact payload shape. This is now the recommended free cardio-sync path since Strava requires a paid subscription.
-3. Cross-provider duplicate detection + source-priority rules for cardio/body metrics (TD-019) — re-escalated to a real (if not currently active) risk now that Apple Health syncs cardio workouts too; prioritize this before ever reconnecting Strava/Peloton direct sync alongside Apple Health workout sync
-4. Consider whether to keep the Strava/Peloton-direct code paths at all now that neither is realistically usable (Strava paywalled, Peloton API blocked) — not urgent, but worth a decision at some point rather than carrying unused integration surface indefinitely
+3. Consider whether to keep the Strava/Peloton-direct code paths at all now that neither is realistically usable (Strava paywalled, Peloton API blocked) — not urgent, but worth a decision at some point rather than carrying unused integration surface indefinitely
+
+---
+
+## What Was Done in This Session (2026-08-26, CI + formatting + TD-019)
+
+Started from a verified baseline (typecheck/lint/test/build all clean, 269/269, matching the docs), then worked down the highest-value remaining items.
+
+1. **CI pipeline added.** This file had listed "CI/CD: None configured yet" for the project's whole life, and every session was re-running the four checks by hand with nothing enforcing them on a pull request. `.github/workflows/ci.yml` now runs format, typecheck, lint, unit tests, and the production build on every PR and every push to `main`, with per-ref concurrency and cancel-in-progress. Verified in a clean container with no `apps/web/.env.local` that `pnpm build` succeeds unaided, so the job needs no secrets. E2E stays out: Playwright's `webServer` needs a live Supabase project CI has no credentials for.
+
+2. **Repo-wide Prettier normalization.** `pnpm format` — a script the repo already ships — had been failing on the committed tree, with 179 files drifted from the repo's own `.prettierrc.json`. The 2026-08-02 session recorded this as a baseline finding and left it as out of scope; it has to be fixed for a format gate to exist at all. Done as an isolated mechanical commit with a `.git-blame-ignore-revs` entry so `git blame` skips it. Two decisions: markdown is now in `.prettierignore` (Prettier re-pads every table cell to its widest column, so a one-word edit to this file would produce a whole-table diff), and `printWidth` stays at the default 80 — measured the drift at 80/90/100/110/120 first and 80 was the minimum-churn choice, because the tree is unformatted in both directions rather than uniformly wide.
+
+3. **TD-019 resolved — cross-provider duplicate detection.** The last conditional Priority 1 item, and one reconnection away from live since Apple Health started syncing individual workouts. New pure decision module `packages/application/src/modules/integrations/cross-provider-dedup.ts`:
+   - Explicit source priority. Cardio: `manual > peloton > strava > apple_health`, ordered by how much of the event each path actually records. Body metrics: `manual > withings > apple_health`, since Withings *is* the scale. An unrecognized provider sorts below every known one.
+   - Manual entries always outrank every import — an import never overwrites something the user typed by hand.
+   - Conservative matching that abstains rather than guesses: a cardio match needs the same day, different sources, and every *shared* signal to agree (start times within 20 minutes, durations within 5). Two same-day records with neither signal comparable are treated as distinct, because a bare date match is not evidence and wrongly merging two real workouts is worse than leaving a visible duplicate.
+   - Wired into `CardioSessionService.upsertImported` and `BodyMetricService.upsertImported`, which covers Strava, Peloton, Apple Health workouts, and Withings at once without touching an orchestrator constructor or the composition root.
+   - The losing record is skipped (its raw import event marked *skipped*, not mapped) or archived — a soft delete, so no call the heuristic gets wrong is unrecoverable. All three affected orchestrators report `skippedCrossProviderCount`/`supersededCrossProviderCount` in the result and in `sync_job_runs`, which is the inspectability the debt item asked for.
+   - Deliberately not done: no schema change, and no merging of field values between winner and loser — both risk losing data on a heuristic.
+   - Known cost: one extra same-day query per imported item. Fine for a weekly cron over one user's rides; noted in the roadmap as something to batch before any bulk historical import.
+
+4. **Doc drift corrected again.** `docs/known-issues.md` and `docs/next-release-roadmap.md` still listed TD-018, TD-020, TD-021, and TD-022 as open — all four shipped between 2026-07-22 and 2026-07-25. Both files were rewritten against actual code state and now carry a "last verified against code" date.
+
+5. 39 new tests (308 total, up from 269) — 28 on the decision logic including every abstain case, 9 proving the services actually skip/archive against a repository, 2 on the Apple Health orchestrator's counters. format/typecheck/lint/test/build verified clean after every change.
+
+6. **Dependency patching.** `pnpm audit` reported 28 high + 1 critical. `next` was declared `^15.1.3` but the lockfile pinned 15.5.14, so 22 Next.js advisories were nothing but a stale lockfile — including a middleware/proxy bypass in App Router, which matters here because middleware does the auth redirects. (Blast radius checked: the `(protected)` layout and every feature `server.ts` also call `requireCurrentUser()`, so a bypass would have skipped the redirect, not exposed data.) Now on 15.5.24, plus `pnpm.overrides` for the fixable transitives. What remains is bundled inside Next itself or dev-only tooling.
+
+7. **Security and reliability fixes.** Session cookies were readable from JavaScript — neither `createServerClient` call passed `cookieOptions`, so `@supabase/ssr`'s defaults applied (`httpOnly: false`, no `secure`, 400-day `maxAge`) on cookies carrying the access *and* refresh token; the usual reason to leave `httpOnly` off is a browser-side Supabase client, and `createSupabaseBrowserClient` is defined and never called. An open redirect: `sanitizeRedirectTo`'s regex blocked `//evil.com` but passed a backslash-prefixed path, which browsers normalize to an absolute URL, fired straight into `redirect()` after a successful login. And Strava/Peloton auth failures recorded nothing at all — credential decryption and provider auth ran before the `sync_job_runs` row existed and outside the try, so a revoked token left the connection `active` with a null `last_error` and the retry sweep (which selects `status = 'failed'`) had nothing to find; rides stopped importing while `/integrations` showed healthy. Also added webhook body/array caps, a uuid guard on `X-User-Id` (a malformed value returned 500 and leaked an existence oracle), and the security headers `next.config.ts` had none of.
+
+8. **Four live bugs from a test-coverage audit**, all in code that had no tests: `computeJournalStreak` skipped a day at positive UTC offsets (a local-time cursor read back as UTC); the "Saturday long rides are slipping" rule judged the in-progress Saturday and fired on Saturday morning; the "last week has logged data but no review" nudge never checked whether data existed and fired on brand-new accounts; and three miscalculations in the dashboard's goal cards — a VO2 window counting its boundary day twice, a fat-loss pace divided by a hardcoded 4 weeks regardless of the real baseline span, and a UTC `today` fed into a user-local streak calculation, which showed a journal streak of 0 every evening after 7pm in America/Chicago. `computeGoalProgress` was unexported and untestable; it moved to `features/dashboard/helpers.ts`. Every fix is mutation-verified — reverted, watched the new test fail, restored.
+
+9. **Also fixed:** the Apple Health sleep sync rewrote a valid 1440-minute value as 24 minutes (a `>= 1440` seconds-heuristic against an inclusive `max(1440)` validator), and `/api/account/export` silently truncated at 500 rows per table — it now asks for the largest page the data layer allows and names any section that still hit a cap.
+
+10. **Method note.** The first TD-019 implementation passed 39 tests I wrote and still missed its own headline case; an adversarial review found six issues with reproducible proofs. Four were fixed, two documented. Treating any implementation — mine or an agent's — as a draft until mutation-verified is what caught that, and what every subsequent fix in this session was held to.
+
+**CI note — GitHub can delay run creation by hours, and `cancel-in-progress` then eats the backlog.** Mid-session, three consecutive pushes appeared to trigger no `pull_request` run at all; a manual `workflow_dispatch` on the same head ran fine. The runs were not missing, only late: GitHub created them ~16 hours after the pushes and fired them in one burst, at which point this workflow's `concurrency.cancel-in-progress` cancelled every superseded run and only the newest head completed. Two practical consequences:
+
+- A green PR can sit for hours with no run yet created, and querying during that window shows nothing. Don't read "no run" as "CI is broken" — or as "CI passed."
+- The `check_suite.completed` webhooks arriving during the gap were Vercel's, not this workflow's, so PR events alone read as "CI fine" while this CI had not run. Verify the workflow run itself on the head SHA.
+
+`cancel-in-progress: true` is still the right setting (it stops a queue of superseded runs burning minutes), but it means that after a burst of pushes only the final head is actually verified in CI. That is fine when every intermediate commit was validated locally, which is the convention here.
+
+11. **TD-030 closed — nutrition targets are personalized.** `height_cm`, `birth_date`, and `biological_sex` added to `profiles` (nullable, no default) and wired end to end. Both this migration and the TD-019 index re-predicate were applied to the live Supabase project on 2026-08-27 **with the user's explicit approval**, then verified: the repository's exact `PROFILE_SELECT` returns the new columns, the existing profile still reads back, and row counts were unchanged. `birth_date` rather than an age integer so the age can't drift stale. Unknown/declined sex uses the midpoint of the two Mifflin-St Jeor constants rather than the male one, since defaulting to male silently overestimates BMR for about half of users. The `notes[]` disclosure now names exactly which inputs fell back to a population average.
+
+### Resolved 2026-08-27 — `public.trigger_cron_route` was callable by `anon`
+
+Surfaced by `get_advisors` after the schema change; **pre-existing, not introduced by it**. Fixed 2026-08-27 with the user's approval.
+
+`trigger_cron_route(route_path text)` is `SECURITY DEFINER`, reads `cron_bearer_secret` and `cron_target_base_url` from Vault, and calls `net.http_post(url := v_base_url || route_path, headers := {Authorization: Bearer <secret>})`. Its ACL grants `EXECUTE` to `anon` and `authenticated`, so it is reachable unauthenticated via `POST /rest/v1/rpc/trigger_cron_route`.
+
+`route_path` is concatenated onto the base URL with no validation. Verified with Node's WHATWG URL parser that `"@evil.example/x"` turns `https://<app>` into `https://<app>@evil.example/x`, whose **host is `evil.example`** — so a caller can direct the request, with the real cron bearer secret in the Authorization header, at a server they control. That is unauthenticated exfiltration of `CRON_SECRET`, plus arbitrary triggering of the sync/insight jobs.
+
+Two changes, both applied and verified:
+
+1. `revoke execute ... from public, anon, authenticated` — the ACL is now `postgres` and `service_role` only. Safe because both `cron.job` entries run as `postgres` (verified) and no application code calls the RPC (verified by grep).
+2. `route_path` is now validated against `^/api/cron/[a-z0-9-]+$` inside the function, so even a caller that somehow regains EXECUTE cannot escape the configured base URL. Verified by probing: `@evil.example/x`, `.evil.example/x`, `https://evil.example/x`, `/api/cron/../../x`, and `/api/cron/withings-sync?x=1` all raise; both live cron paths still pass.
+
+To undo: `grant execute on function public.trigger_cron_route(text) to anon, authenticated;`
+
+### Open 2026-08-27 — insight severity never survives persistence
+
+Investigated at the end of this session and deliberately left unfixed; see "Active Known Issues → Medium 4" above for the full trace. Short version: severity is computed and ranked by the rule engine, written into the `evidence` JSONB because there is no column for it, and never read again. Every list the user sees is ordered by date. This needs a product decision (add a `severity` column and order by it? surface severity in the UI at all?) rather than a unilateral fix, so it is recorded rather than patched.
+
+### Also 2026-08-27 — cron auth extracted and tested
+
+`safeBearerEqual` and `mapWithConcurrency` existed as six byte-identical private copies, one per cron route, with no tests. `safeBearerEqual` is the *entire* authentication for those six endpoints, which run under `createSupabaseAdminClient()` and iterate every profile bypassing RLS — so a regression in one of six copies would be an unauthenticated trigger of an admin-scoped job, with nothing catching drift between them. Both now live in `apps/web/src/lib/server/cron-auth.ts` with 14 tests (198 lines of duplication removed). Mutation-verified: dropping the length guard fails 5, comparing without the `Bearer ` prefix fails 3, breaking index alignment fails 2.
 
 ---
 

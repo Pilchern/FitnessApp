@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import type { CardioSession } from "@fitness-app/domain";
-import type { CardioActionState, CardioFormValues, CardioTemplatePreset } from "../types";
+import type {
+  CardioActionState,
+  CardioFormValues,
+  CardioTemplatePreset,
+} from "../types";
 import { toCardioFormValues } from "../helpers";
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 
@@ -77,7 +81,9 @@ export function CardioQuickForm({
             Quick add
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">
-            {mode === "edit" ? "Edit workout" : "Log a workout in under 30 seconds"}
+            {mode === "edit"
+              ? "Edit workout"
+              : "Log a workout in under 30 seconds"}
           </h2>
           <p className="mt-2 text-sm leading-6 text-ink/75">
             Start with a template, confirm the basics, and expand details only
@@ -119,7 +125,9 @@ export function CardioQuickForm({
                   key={template.id}
                   type="button"
                   onClick={() =>
-                    setValues((current) => applyTemplateToValues(current, template))
+                    setValues((current) =>
+                      applyTemplateToValues(current, template),
+                    )
                   }
                   className={`rounded-[1.25rem] border px-4 py-3 text-left transition ${
                     isSelected
@@ -159,7 +167,9 @@ export function CardioQuickForm({
               }
             />
             {state.fieldErrors?.sessionDate ? (
-              <p className="text-xs text-ember">{state.fieldErrors.sessionDate}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.sessionDate}
+              </p>
             ) : null}
           </label>
 
@@ -172,7 +182,8 @@ export function CardioQuickForm({
               onChange={(event) =>
                 setValues((current) => ({
                   ...current,
-                  sessionKind: event.target.value as CardioSession["sessionKind"],
+                  sessionKind: event.target
+                    .value as CardioSession["sessionKind"],
                 }))
               }
             >
@@ -182,7 +193,9 @@ export function CardioQuickForm({
               <option value="other">Other</option>
             </select>
             {state.fieldErrors?.sessionKind ? (
-              <p className="text-xs text-ember">{state.fieldErrors.sessionKind}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.sessionKind}
+              </p>
             ) : null}
           </label>
 
@@ -202,7 +215,9 @@ export function CardioQuickForm({
               }
             />
             {state.fieldErrors?.durationMinutes ? (
-              <p className="text-xs text-ember">{state.fieldErrors.durationMinutes}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.durationMinutes}
+              </p>
             ) : null}
           </label>
 
@@ -222,7 +237,9 @@ export function CardioQuickForm({
               }
             />
             {state.fieldErrors?.avgHeartRate ? (
-              <p className="text-xs text-ember">{state.fieldErrors.avgHeartRate}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.avgHeartRate}
+              </p>
             ) : null}
           </label>
         </div>
@@ -288,7 +305,9 @@ export function CardioQuickForm({
                 }
               />
               {state.fieldErrors?.maxHeartRate ? (
-                <p className="text-xs text-ember">{state.fieldErrors.maxHeartRate}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.maxHeartRate}
+                </p>
               ) : null}
             </label>
 
@@ -307,7 +326,9 @@ export function CardioQuickForm({
                 }
               />
               {state.fieldErrors?.avgOutput ? (
-                <p className="text-xs text-ember">{state.fieldErrors.avgOutput}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.avgOutput}
+                </p>
               ) : null}
             </label>
 
@@ -345,7 +366,9 @@ export function CardioQuickForm({
                 }
               />
               {state.fieldErrors?.cadenceMin ? (
-                <p className="text-xs text-ember">{state.fieldErrors.cadenceMin}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.cadenceMin}
+                </p>
               ) : null}
             </label>
 
@@ -364,7 +387,9 @@ export function CardioQuickForm({
                 }
               />
               {state.fieldErrors?.cadenceMax ? (
-                <p className="text-xs text-ember">{state.fieldErrors.cadenceMax}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.cadenceMax}
+                </p>
               ) : null}
             </label>
 
@@ -383,7 +408,9 @@ export function CardioQuickForm({
                 }
               />
               {state.fieldErrors?.resistanceMin ? (
-                <p className="text-xs text-ember">{state.fieldErrors.resistanceMin}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.resistanceMin}
+                </p>
               ) : null}
             </label>
 
@@ -402,7 +429,9 @@ export function CardioQuickForm({
                 }
               />
               {state.fieldErrors?.resistanceMax ? (
-                <p className="text-xs text-ember">{state.fieldErrors.resistanceMax}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.resistanceMax}
+                </p>
               ) : null}
             </label>
 

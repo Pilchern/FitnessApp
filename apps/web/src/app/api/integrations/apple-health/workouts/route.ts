@@ -5,6 +5,10 @@ import {
   createAppleHealthWorkoutOrchestrator,
 } from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
+import {
+  MAX_WEBHOOK_ITEMS,
+  readBoundedWebhookBody,
+} from "../read-bounded-body";
 import { verifyAppleHealthRequest } from "../verify-request";
 
 /**
@@ -47,7 +51,7 @@ const appleHealthWorkoutPayloadSchema = z.object({
 });
 
 const appleHealthWorkoutBodySchema = z.union([
-  z.array(appleHealthWorkoutPayloadSchema),
+  z.array(appleHealthWorkoutPayloadSchema).max(MAX_WEBHOOK_ITEMS),
   appleHealthWorkoutPayloadSchema.transform((item) => [item]),
 ]);
 
@@ -59,7 +63,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rawBody = await request.text();
+  const bounded = await readBoundedWebhookBody(request);
+  if (!bounded.ok) {
+    return NextResponse.json(
+      { ok: false, error: bounded.error },
+      { status: bounded.status },
+    );
+  }
+  const rawBody = bounded.rawBody;
 
   const lookupSecret = createAppleHealthWebhookSecretLookup();
   const auth = await verifyAppleHealthRequest(request, rawBody, lookupSecret);

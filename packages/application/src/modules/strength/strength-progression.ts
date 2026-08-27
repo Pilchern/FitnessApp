@@ -220,6 +220,12 @@ export function buildTopSetProgression(
     .sort((left, right) => left.sessionDate.localeCompare(right.sessionDate));
 }
 
+/**
+ * How much a top set must move before it counts as a real change rather than
+ * rounding or day-to-day noise.
+ */
+const STALL_MEANINGFUL_DELTA = 0.5;
+
 export function detectRepeatedStall(
   topSets: TopSetPoint[],
 ): StallDetectionResult {
@@ -232,19 +238,34 @@ export function detectRepeatedStall(
   }
 
   const recent = topSets.slice(-3);
-  const baseline =
-    recent[0].estimatedOneRepMax ?? recent[0].weight ?? recent[0].reps ?? 0;
-  const bestRecent = Math.max(
-    ...recent.map(
-      (set) => set.estimatedOneRepMax ?? set.weight ?? set.reps ?? 0,
-    ),
-  );
+  const score = (set: TopSetPoint) =>
+    set.estimatedOneRepMax ?? set.weight ?? set.reps ?? 0;
 
-  if (bestRecent - baseline > 0.5) {
+  const baseline = score(recent[0]);
+  // Compare where the lifter is NOW against where the window started, not the
+  // window's peak. Using the peak (which included the baseline itself, so it
+  // was always >= baseline) meant a mid-window spike masked a subsequent
+  // regression: 200 -> 205 -> 180 reported "still show measurable
+  // improvement" even though the latest top set was 20 below the baseline.
+  const latest = score(recent[recent.length - 1]);
+  const delta = latest - baseline;
+
+  if (delta > STALL_MEANINGFUL_DELTA) {
     return {
       stalled: false,
       stagnantSessions: 0,
       explanation: "Recent top sets still show measurable improvement.",
+    };
+  }
+
+  // Not progressing either way, but a decline and a plateau are different
+  // things to tell someone, so don't describe a decline as "not improved".
+  if (delta < -STALL_MEANINGFUL_DELTA) {
+    return {
+      stalled: true,
+      stagnantSessions: recent.length,
+      explanation:
+        "The last 3 top sets have trended down rather than stalling flat — worth checking recovery, or whether the load was too aggressive.",
     };
   }
 

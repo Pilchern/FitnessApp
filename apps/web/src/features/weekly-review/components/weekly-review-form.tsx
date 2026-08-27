@@ -75,9 +75,7 @@ function AutoField({
           {manualOverride ? "Manual" : "Auto"}
         </div>
       </div>
-      <div className="mt-3">
-        {children}
-      </div>
+      <div className="mt-3">{children}</div>
       {fieldError ? (
         <p className="mt-2 text-xs text-ember">{fieldError}</p>
       ) : null}
@@ -168,7 +166,9 @@ function AutoPopulatedPanel({ autoPopulated }: AutoPopulatedPanelProps) {
   );
 }
 
-function buildSummaryFromValues(values: WeeklyReviewFormValues): WeeklyReviewSummary {
+function buildSummaryFromValues(
+  values: WeeklyReviewFormValues,
+): WeeklyReviewSummary {
   const parseNumber = (value: string) => {
     if (!value.trim()) {
       return null;
@@ -191,9 +191,17 @@ function buildSummaryFromValues(values: WeeklyReviewFormValues): WeeklyReviewSum
 }
 
 export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
-  const [state, formAction] = useActionState(saveWeeklyReviewAction, initialState);
+  const [state, formAction] = useActionState(
+    saveWeeklyReviewAction,
+    initialState,
+  );
   const [values, setValues] = useState(() =>
-    toWeeklyReviewFormValues(data.review, data.autoSummary, data.weekStart, data.weekEnd),
+    toWeeklyReviewFormValues(
+      data.review,
+      data.autoSummary,
+      data.weekStart,
+      data.weekEnd,
+    ),
   );
 
   const scoringPreview = useMemo(
@@ -246,23 +254,34 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
     setValues((current) => ({
       ...current,
       averageWeightLb:
-        autoSummary.averageWeightLb == null ? "" : `${autoSummary.averageWeightLb}`,
+        autoSummary.averageWeightLb == null
+          ? ""
+          : `${autoSummary.averageWeightLb}`,
       waistIn: autoSummary.waistIn == null ? "" : `${autoSummary.waistIn}`,
       liftsCompleted:
-        autoSummary.liftsCompleted == null ? "" : `${autoSummary.liftsCompleted}`,
+        autoSummary.liftsCompleted == null
+          ? ""
+          : `${autoSummary.liftsCompleted}`,
       ridesCompleted:
-        autoSummary.ridesCompleted == null ? "" : `${autoSummary.ridesCompleted}`,
-      zone2Minutes: autoSummary.zone2Minutes == null ? "" : `${autoSummary.zone2Minutes}`,
+        autoSummary.ridesCompleted == null
+          ? ""
+          : `${autoSummary.ridesCompleted}`,
+      zone2Minutes:
+        autoSummary.zone2Minutes == null ? "" : `${autoSummary.zone2Minutes}`,
       vo2Completed: autoSummary.vo2Completed === true ? "true" : "false",
       sleepAverageHours:
-        autoSummary.sleepAverageHours == null ? "" : `${autoSummary.sleepAverageHours}`,
-      alcoholTotal: autoSummary.alcoholTotal == null ? "" : `${autoSummary.alcoholTotal}`,
+        autoSummary.sleepAverageHours == null
+          ? ""
+          : `${autoSummary.sleepAverageHours}`,
+      alcoholTotal:
+        autoSummary.alcoholTotal == null ? "" : `${autoSummary.alcoholTotal}`,
       manualOverrides: {},
     }));
   };
 
   const showAiDraft =
-    data.review?.aiDraftStatus === "pending_review" && data.review.aiDraft != null;
+    data.review?.aiDraftStatus === "pending_review" &&
+    data.review.aiDraft != null;
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
@@ -283,11 +302,13 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
               Weekly review
             </p>
             <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
-              {formatWeeklyReviewDate(data.weekStart)} - {formatWeeklyReviewDate(data.weekEnd)}
+              {formatWeeklyReviewDate(data.weekStart)} -{" "}
+              {formatWeeklyReviewDate(data.weekEnd)}
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
               Your week, summarised. Numbers are pulled from your logs — adjust
-              any that don&apos;t look right, then add your reflections and save.
+              any that don&apos;t look right, then add your reflections and
+              save.
             </p>
           </div>
 
@@ -321,7 +342,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
         ) : null}
 
         <form action={formAction} className="space-y-6">
-          {values.id ? <input type="hidden" name="id" value={values.id} /> : null}
+          {values.id ? (
+            <input type="hidden" name="id" value={values.id} />
+          ) : null}
           <input type="hidden" name="weekStart" value={values.weekStart} />
           <input type="hidden" name="weekEnd" value={values.weekEnd} />
           <input
@@ -333,9 +356,12 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
           <div className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h2 className="font-display text-2xl text-ink">This week&apos;s numbers</h2>
+                <h2 className="font-display text-2xl text-ink">
+                  This week&apos;s numbers
+                </h2>
                 <p className="mt-2 text-sm leading-6 text-ink/70">
-                  Pulled from your logs. Edit any value that doesn&apos;t look right.
+                  Pulled from your logs. Edit any value that doesn&apos;t look
+                  right.
                 </p>
               </div>
               <button
@@ -376,7 +402,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 label="Waist (in)"
                 fieldKey="waistIn"
                 autoValueLabel={`Auto: ${
-                  data.autoSummary.waistIn != null ? `${data.autoSummary.waistIn} in` : "no data"
+                  data.autoSummary.waistIn != null
+                    ? `${data.autoSummary.waistIn} in`
+                    : "no data"
                 }`}
                 manualOverride={Boolean(values.manualOverrides.waistIn)}
                 onReset={() => resetAutoField("waistIn")}
@@ -388,7 +416,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                   className={fieldClassName()}
                   inputMode="decimal"
                   value={values.waistIn}
-                  onChange={(event) => setAutoFieldValue("waistIn", event.target.value)}
+                  onChange={(event) =>
+                    setAutoFieldValue("waistIn", event.target.value)
+                  }
                 />
               </AutoField>
 
@@ -446,7 +476,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                   className={fieldClassName()}
                   inputMode="numeric"
                   value={values.zone2Minutes}
-                  onChange={(event) => setAutoFieldValue("zone2Minutes", event.target.value)}
+                  onChange={(event) =>
+                    setAutoFieldValue("zone2Minutes", event.target.value)
+                  }
                 />
               </AutoField>
 
@@ -463,7 +495,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                   name="vo2Completed"
                   className={fieldClassName()}
                   value={values.vo2Completed}
-                  onChange={(event) => setAutoFieldValue("vo2Completed", event.target.value)}
+                  onChange={(event) =>
+                    setAutoFieldValue("vo2Completed", event.target.value)
+                  }
                 >
                   <option value="true">Yes</option>
                   <option value="false">No</option>
@@ -478,7 +512,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                     ? `${data.autoSummary.sleepAverageHours}h`
                     : "no data"
                 }`}
-                manualOverride={Boolean(values.manualOverrides.sleepAverageHours)}
+                manualOverride={Boolean(
+                  values.manualOverrides.sleepAverageHours,
+                )}
                 onReset={() => resetAutoField("sleepAverageHours")}
                 fieldError={state.fieldErrors?.sleepAverageHours}
               >
@@ -498,7 +534,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 label="Alcohol total"
                 fieldKey="alcoholTotal"
                 autoValueLabel={`Auto: ${
-                  data.autoSummary.alcoholTotal != null ? data.autoSummary.alcoholTotal : "no data"
+                  data.autoSummary.alcoholTotal != null
+                    ? data.autoSummary.alcoholTotal
+                    : "no data"
                 }`}
                 manualOverride={Boolean(values.manualOverrides.alcoholTotal)}
                 onReset={() => resetAutoField("alcoholTotal")}
@@ -510,7 +548,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                   className={fieldClassName()}
                   inputMode="numeric"
                   value={values.alcoholTotal}
-                  onChange={(event) => setAutoFieldValue("alcoholTotal", event.target.value)}
+                  onChange={(event) =>
+                    setAutoFieldValue("alcoholTotal", event.target.value)
+                  }
                 />
               </AutoField>
             </div>
@@ -520,7 +560,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
 
           <div className="space-y-4">
             <div>
-              <h2 className="font-display text-2xl text-ink">Your reflection</h2>
+              <h2 className="font-display text-2xl text-ink">
+                Your reflection
+              </h2>
               <p className="mt-2 text-sm leading-6 text-ink/70">
                 One win, one miss, one lesson, one priority. Keep it short.
               </p>
@@ -534,7 +576,10 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                   name="bestWin"
                   value={values.bestWin}
                   onChange={(event) =>
-                    setValues((current) => ({ ...current, bestWin: event.target.value }))
+                    setValues((current) => ({
+                      ...current,
+                      bestWin: event.target.value,
+                    }))
                   }
                 />
               </label>
@@ -561,7 +606,10 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                   name="lesson"
                   value={values.lesson}
                   onChange={(event) =>
-                    setValues((current) => ({ ...current, lesson: event.target.value }))
+                    setValues((current) => ({
+                      ...current,
+                      lesson: event.target.value,
+                    }))
                   }
                 />
               </label>
@@ -584,7 +632,8 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
               <label className="grid gap-2 text-sm font-medium text-ink">
                 Strategic decision
                 <span className="text-xs font-normal text-ink/50">
-                  Leave blank to use the auto-computed recommendation shown on the right.
+                  Leave blank to use the auto-computed recommendation shown on
+                  the right.
                 </span>
                 <textarea
                   className={textAreaClassName()}
@@ -602,7 +651,8 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
               <label className="grid gap-2 text-sm font-medium text-ink">
                 Risk forecast
                 <span className="text-xs font-normal text-ink/50">
-                  Leave blank to use the auto-computed forecast shown on the right.
+                  Leave blank to use the auto-computed forecast shown on the
+                  right.
                 </span>
                 <textarea
                   className={textAreaClassName()}
@@ -625,11 +675,16 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                   inputMode="numeric"
                   value={values.confidence}
                   onChange={(event) =>
-                    setValues((current) => ({ ...current, confidence: event.target.value }))
+                    setValues((current) => ({
+                      ...current,
+                      confidence: event.target.value,
+                    }))
                   }
                 />
                 {state.fieldErrors?.confidence ? (
-                  <p className="text-xs text-ember">{state.fieldErrors.confidence}</p>
+                  <p className="text-xs text-ember">
+                    {state.fieldErrors.confidence}
+                  </p>
                 ) : null}
               </label>
             </div>
@@ -637,8 +692,12 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
 
           <div className="flex justify-end">
             <AuthSubmitButton
-              idleLabel={values.id ? "Update weekly review" : "Save weekly review"}
-              pendingLabel={values.id ? "Updating review..." : "Saving review..."}
+              idleLabel={
+                values.id ? "Update weekly review" : "Save weekly review"
+              }
+              pendingLabel={
+                values.id ? "Updating review..." : "Saving review..."
+              }
             />
           </div>
         </form>
@@ -670,7 +729,9 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
                 className="rounded-[1.25rem] border border-ink/10 bg-sand/50 px-4 py-3"
               >
                 <div className="flex items-center justify-between gap-4">
-                  <div className="text-sm font-semibold text-ink">{component.label}</div>
+                  <div className="text-sm font-semibold text-ink">
+                    {component.label}
+                  </div>
                   <div className="text-sm font-semibold text-ink">
                     {component.score}/{component.maxScore}
                   </div>

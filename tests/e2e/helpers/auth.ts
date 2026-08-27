@@ -1,9 +1,14 @@
 import type { Page } from "@playwright/test";
 
 export const TEST_USER_EMAIL = process.env.E2E_TEST_EMAIL ?? "dev@example.com";
-export const TEST_USER_PASSWORD = process.env.E2E_TEST_PASSWORD ?? "password1234";
+export const TEST_USER_PASSWORD =
+  process.env.E2E_TEST_PASSWORD ?? "password1234";
 
-export async function loginAs(page: Page, email = TEST_USER_EMAIL, password = TEST_USER_PASSWORD) {
+export async function loginAs(
+  page: Page,
+  email = TEST_USER_EMAIL,
+  password = TEST_USER_PASSWORD,
+) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password/i).fill(password);

@@ -23,7 +23,9 @@ export class SupplementLogService {
    * re-submitting the same day's checklist just updates the existing row.
    */
   async logAdherence(input: unknown) {
-    return this.repository.logAdherence(logSupplementAdherenceSchema.parse(input));
+    return this.repository.logAdherence(
+      logSupplementAdherenceSchema.parse(input),
+    );
   }
 
   async listByDate(input: unknown): Promise<SupplementLog[]> {

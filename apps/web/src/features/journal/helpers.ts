@@ -10,7 +10,9 @@ function todayIsoDate() {
   return `${year}-${month}-${day}`;
 }
 
-export function toJournalFormValues(entry: JournalEntry | null): JournalFormValues {
+export function toJournalFormValues(
+  entry: JournalEntry | null,
+): JournalFormValues {
   if (!entry) {
     return {
       entryDate: todayIsoDate(),

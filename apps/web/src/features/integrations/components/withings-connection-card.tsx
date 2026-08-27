@@ -20,7 +20,9 @@ export function WithingsConnectionCard({
   connection,
 }: WithingsConnectionCardProps) {
   const isConnected =
-    connection && connection.status !== "disconnected" && connection.deletedAt == null;
+    connection &&
+    connection.status !== "disconnected" &&
+    connection.deletedAt == null;
   const guidance = getIntegrationStatusGuidance(connection);
 
   return (
@@ -82,9 +84,15 @@ export function WithingsConnectionCard({
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <SummaryStatCard
           label="Status"
-          value={connection ? formatIntegrationStatus(connection.status) : "Not connected"}
+          value={
+            connection
+              ? formatIntegrationStatus(connection.status)
+              : "Not connected"
+          }
           hint={connection?.accountLabel ?? "No Withings account linked yet."}
-          tone={connection ? integrationStatusTone(connection.status) : "default"}
+          tone={
+            connection ? integrationStatusTone(connection.status) : "default"
+          }
         />
         <SummaryStatCard
           label="Last synced"
@@ -110,8 +118,12 @@ export function WithingsConnectionCard({
         }`}
       >
         {guidance.text}{" "}
-        {connection?.status === "reauth_required" || connection?.status === "error" ? (
-          <Link href="/api/integrations/withings/connect" className="font-semibold underline-offset-4 hover:underline">
+        {connection?.status === "reauth_required" ||
+        connection?.status === "error" ? (
+          <Link
+            href="/api/integrations/withings/connect"
+            className="font-semibold underline-offset-4 hover:underline"
+          >
             Reconnect Withings
           </Link>
         ) : null}

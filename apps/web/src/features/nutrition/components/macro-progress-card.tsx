@@ -16,7 +16,13 @@ type ProgressBarProps = {
   unit: string;
 };
 
-function ProgressBar({ label, hitDays, totalDays, targetLabel, unit }: ProgressBarProps) {
+function ProgressBar({
+  label,
+  hitDays,
+  totalDays,
+  targetLabel,
+  unit,
+}: ProgressBarProps) {
   const pct = totalDays === 0 ? 0 : Math.round((hitDays / totalDays) * 100);
   const isOver = pct > 100;
   const cappedPct = Math.min(pct, 100);
@@ -30,14 +36,21 @@ function ProgressBar({ label, hitDays, totalDays, targetLabel, unit }: ProgressB
             <span className="text-ink/40">No data yet</span>
           ) : targetLabel !== null ? (
             <>
-              <span className={isOver ? "text-ember font-semibold" : "text-ink"}>
+              <span
+                className={isOver ? "text-ember font-semibold" : "text-ink"}
+              >
                 {hitDays}d
               </span>
-              <span className="text-ink/40"> / {totalDays}d {unit}</span>
+              <span className="text-ink/40">
+                {" "}
+                / {totalDays}d {unit}
+              </span>
               <span className="ml-2 text-xs text-ink/50">{pct}%</span>
             </>
           ) : (
-            <span className="text-ink/70">{hitDays} / {totalDays} days</span>
+            <span className="text-ink/70">
+              {hitDays} / {totalDays} days
+            </span>
           )}
         </span>
       </div>
@@ -71,7 +84,9 @@ export function MacroProgressCard({
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
             Today&apos;s progress
           </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">Macro adherence</h2>
+          <h2 className="mt-3 font-display text-2xl text-ink">
+            Macro adherence
+          </h2>
         </div>
         {noTargets && (
           <Link
@@ -111,7 +126,10 @@ export function MacroProgressCard({
       {noTargets && (
         <p className="mt-4 text-xs text-ink/50">
           Showing adherence rate only. Set protein and fiber targets in{" "}
-          <Link href="/settings" className="underline decoration-ink/20 underline-offset-2 hover:text-pine">
+          <Link
+            href="/settings"
+            className="underline decoration-ink/20 underline-offset-2 hover:text-pine"
+          >
             Settings
           </Link>{" "}
           to enable goal tracking.

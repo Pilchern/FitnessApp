@@ -45,7 +45,9 @@ function mapRow(row: InsightRow): PersistedInsight {
 export class SupabaseInsightRepository implements InsightRepository {
   constructor(private readonly client: AppSupabaseClient) {}
 
-  async upsertMany(insights: UpsertInsightInput[]): Promise<PersistedInsight[]> {
+  async upsertMany(
+    insights: UpsertInsightInput[],
+  ): Promise<PersistedInsight[]> {
     if (insights.length === 0) {
       return [];
     }

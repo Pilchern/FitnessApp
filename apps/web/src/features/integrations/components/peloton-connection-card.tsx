@@ -23,7 +23,9 @@ export function PelotonConnectionCard({
   connection,
 }: PelotonConnectionCardProps) {
   const isConnected =
-    connection && connection.status !== "disconnected" && connection.deletedAt == null;
+    connection &&
+    connection.status !== "disconnected" &&
+    connection.deletedAt == null;
   const guidance = getIntegrationStatusGuidance(connection);
 
   return (
@@ -37,9 +39,9 @@ export function PelotonConnectionCard({
           <p className="mt-2 text-sm leading-6 text-ink/75">
             Automatically import completed rides — including average watts,
             cadence, and resistance — using your Peloton account. There is no
-            public Peloton API, so this signs in with your Peloton username
-            and password directly; they&apos;re encrypted before storage and
-            never leave this app.
+            public Peloton API, so this signs in with your Peloton username and
+            password directly; they&apos;re encrypted before storage and never
+            leave this app.
           </p>
         </div>
 
@@ -79,13 +81,12 @@ export function PelotonConnectionCard({
       {configured && !isConnected ? (
         <div className="mt-5 rounded-[1.25rem] border border-amber-300/40 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-700">
           Peloton is currently blocking third-party sign-ins to this endpoint
-          (confirmed 2026-07-16) — connecting below will likely fail with a
-          403 regardless of your credentials. Peloton has a native
-          &quot;auto-export to Strava&quot; setting in its own Settings →
-          Connected Apps that syncs your rides through Strava instead
-          (reduced cadence/resistance detail, but working). Trying to connect
-          here won&apos;t hurt anything if you want to check whether Peloton
-          has re-opened access.
+          (confirmed 2026-07-16) — connecting below will likely fail with a 403
+          regardless of your credentials. Peloton has a native &quot;auto-export
+          to Strava&quot; setting in its own Settings → Connected Apps that
+          syncs your rides through Strava instead (reduced cadence/resistance
+          detail, but working). Trying to connect here won&apos;t hurt anything
+          if you want to check whether Peloton has re-opened access.
         </div>
       ) : null}
 
@@ -129,9 +130,15 @@ export function PelotonConnectionCard({
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <SummaryStatCard
           label="Status"
-          value={connection ? formatIntegrationStatus(connection.status) : "Not connected"}
+          value={
+            connection
+              ? formatIntegrationStatus(connection.status)
+              : "Not connected"
+          }
           hint={connection?.accountLabel ?? "No Peloton account linked yet."}
-          tone={connection ? integrationStatusTone(connection.status) : "default"}
+          tone={
+            connection ? integrationStatusTone(connection.status) : "default"
+          }
         />
         <SummaryStatCard
           label="Last synced"

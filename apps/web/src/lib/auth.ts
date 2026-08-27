@@ -7,19 +7,42 @@ export const authActionStateSchema = z.object({
 
 export type AuthActionState = z.infer<typeof authActionStateSchema>;
 
-const safeRedirectPattern = /^\/(?!\/)/;
 const MAX_REDIRECT_LENGTH = 512;
+const REDIRECT_RESOLUTION_BASE = "https://redirect-guard.invalid";
 
+/**
+ * Reduces a caller-supplied `redirectTo` to a same-origin path, or falls back
+ * to the dashboard.
+ *
+ * This used to be a `/^\/(?!\/)/` regex, which blocked `//evil.com` but not
+ * `/\evil.com` — browsers normalize a backslash to a forward slash when
+ * resolving a `Location` on an http(s) URL, so that form resolved to
+ * `https://evil.com/` and passed the check. Since the value reaches `redirect()`
+ * right after a successful login, the victim landed on an attacker's site
+ * immediately after authenticating on the real domain: a strong phishing
+ * primitive.
+ *
+ * Resolving against a throwaway base and comparing origins is checked by the
+ * same URL parser the browser uses, so it can't disagree with the browser
+ * about what a given string means.
+ */
 export function sanitizeRedirectTo(value: string | null | undefined) {
-  if (!value || !safeRedirectPattern.test(value)) {
+  if (!value || value.length > MAX_REDIRECT_LENGTH) {
     return "/dashboard";
   }
 
-  if (value.length > MAX_REDIRECT_LENGTH) {
+  let resolved: URL;
+  try {
+    resolved = new URL(value, REDIRECT_RESOLUTION_BASE);
+  } catch {
     return "/dashboard";
   }
 
-  return value;
+  if (resolved.origin !== REDIRECT_RESOLUTION_BASE) {
+    return "/dashboard";
+  }
+
+  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
 }
 
 export function mapAuthErrorMessage(message: string) {

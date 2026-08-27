@@ -47,14 +47,18 @@ function sleepHours(minutes: number | null): string {
   return `${Math.round((minutes / 60) * 10) / 10}h`;
 }
 
-export function RecoverySnapshotCard({ latestRecovery }: RecoverySnapshotCardProps) {
+export function RecoverySnapshotCard({
+  latestRecovery,
+}: RecoverySnapshotCardProps) {
   if (!latestRecovery) {
     return (
       <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/75 p-6 shadow-panel">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Recovery
         </p>
-        <h2 className="mt-3 font-display text-2xl text-ink">No check-in logged</h2>
+        <h2 className="mt-3 font-display text-2xl text-ink">
+          No check-in logged
+        </h2>
         <p className="mt-3 text-sm leading-6 text-ink/70">
           Log a daily recovery check-in to track readiness, sleep, and energy.
         </p>
@@ -68,8 +72,14 @@ export function RecoverySnapshotCard({ latestRecovery }: RecoverySnapshotCardPro
     );
   }
 
-  const { checkinDate, readinessLevel, sleepDurationMinutes, energyLevel, sorenessLevel, hrv } =
-    latestRecovery;
+  const {
+    checkinDate,
+    readinessLevel,
+    sleepDurationMinutes,
+    energyLevel,
+    sorenessLevel,
+    hrv,
+  } = latestRecovery;
 
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
@@ -78,8 +88,12 @@ export function RecoverySnapshotCard({ latestRecovery }: RecoverySnapshotCardPro
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
             Recovery
           </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">Latest check-in</h2>
-          <p className="mt-1 text-xs text-ink/50">Updated {relativeDate(checkinDate)}</p>
+          <h2 className="mt-3 font-display text-2xl text-ink">
+            Latest check-in
+          </h2>
+          <p className="mt-1 text-xs text-ink/50">
+            Updated {relativeDate(checkinDate)}
+          </p>
         </div>
         <div className="rounded-full border border-ink/10 bg-sand/60 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-ink/60">
           {relativeDate(checkinDate)}
@@ -87,32 +101,46 @@ export function RecoverySnapshotCard({ latestRecovery }: RecoverySnapshotCardPro
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <div className={`rounded-[1.25rem] border p-4 ${readinessBg(readinessLevel)}`}>
-          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Readiness</div>
-          <div className={`mt-2 text-3xl font-semibold ${readinessColor(readinessLevel)}`}>
+        <div
+          className={`rounded-[1.25rem] border p-4 ${readinessBg(readinessLevel)}`}
+        >
+          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+            Readiness
+          </div>
+          <div
+            className={`mt-2 text-3xl font-semibold ${readinessColor(readinessLevel)}`}
+          >
             {readinessLevel != null ? `${readinessLevel}/10` : "--"}
           </div>
           {hrv != null ? (
-            <div className="mt-1.5 text-sm text-ink/60">
-              HRV {hrv} ms
-            </div>
+            <div className="mt-1.5 text-sm text-ink/60">HRV {hrv} ms</div>
           ) : null}
         </div>
         <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Sleep</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+            Sleep
+          </div>
           <div className="mt-2 text-3xl font-semibold text-ink">
             {sleepHours(sleepDurationMinutes)}
           </div>
         </div>
         <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Energy</div>
-          <div className={`mt-2 text-3xl font-semibold ${scoreColor(energyLevel)}`}>
+          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+            Energy
+          </div>
+          <div
+            className={`mt-2 text-3xl font-semibold ${scoreColor(energyLevel)}`}
+          >
             {energyLevel != null ? `${energyLevel}/10` : "--"}
           </div>
         </div>
         <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Soreness</div>
-          <div className={`mt-2 text-3xl font-semibold ${scoreColor(sorenessLevel != null ? 10 - sorenessLevel : null)}`}>
+          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+            Soreness
+          </div>
+          <div
+            className={`mt-2 text-3xl font-semibold ${scoreColor(sorenessLevel != null ? 10 - sorenessLevel : null)}`}
+          >
             {sorenessLevel != null ? `${sorenessLevel}/10` : "--"}
           </div>
         </div>

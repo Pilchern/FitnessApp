@@ -8,7 +8,12 @@ export type SyncJobRunStatus =
   | "cancelled"
   | "dead_letter";
 
-export type SyncJobRunTriggerType = "scheduled" | "manual" | "retry" | "system" | "webhook";
+export type SyncJobRunTriggerType =
+  | "scheduled"
+  | "manual"
+  | "retry"
+  | "system"
+  | "webhook";
 
 export type SyncJobRun = {
   id: EntityId;

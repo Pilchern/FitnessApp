@@ -5,7 +5,9 @@ import { CardioSyncOrchestrator } from "./cardio-sync";
 
 const encryptionKey = Buffer.alloc(32).toString("base64");
 
-function createConnection(overrides: Partial<IntegrationConnection> = {}): IntegrationConnection {
+function createConnection(
+  overrides: Partial<IntegrationConnection> = {},
+): IntegrationConnection {
   return {
     id: "00000000-0000-0000-0000-000000000010",
     userId: "00000000-0000-0000-0000-000000000001",
@@ -128,29 +130,65 @@ describe("CardioSyncOrchestrator.syncRides", () => {
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: "2026-03-01T12:00:00.000Z", payload: {} },
-        { id: "raw-2", providerExternalId: "ext-2", eventOccurredAt: "2026-03-02T12:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: "2026-03-01T12:00:00.000Z",
+          payload: {},
+        },
+        {
+          id: "raw-2",
+          providerExternalId: "ext-2",
+          eventOccurredAt: "2026-03-02T12:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
       markFailed: vi.fn(),
     };
 
-    const cardioService = { upsertImported: vi.fn().mockResolvedValue({ created: true, session: { id: "session-1" } }) };
+    const cardioService = {
+      upsertImported: vi
+        .fn()
+        .mockResolvedValue({ created: true, session: { id: "session-1" } }),
+    };
 
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: "2026-03-01T12:00:00.000Z", payload: {} },
-          { providerEventType: "peloton_workout", providerExternalId: "ext-2", occurredAt: "2026-03-02T12:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: "2026-03-01T12:00:00.000Z",
+            payload: {},
+          },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-2",
+            occurredAt: "2026-03-02T12:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "1700000000",
         metadata: {},
       }),
       mapRawCardioItem: vi
         .fn()
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-01", durationMinutes: 30, providerExternalId: "ext-1" }))
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-02", durationMinutes: 45, providerExternalId: "ext-2" })),
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-01",
+            durationMinutes: 30,
+            providerExternalId: "ext-1",
+          }),
+        )
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-02",
+            durationMinutes: 45,
+            providerExternalId: "ext-2",
+          }),
+        ),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -196,31 +234,67 @@ describe("CardioSyncOrchestrator.syncRides", () => {
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: "2026-03-01T12:00:00.000Z", payload: {} },
-        { id: "raw-2", providerExternalId: "ext-2", eventOccurredAt: "2026-03-01T13:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: "2026-03-01T12:00:00.000Z",
+          payload: {},
+        },
+        {
+          id: "raw-2",
+          providerExternalId: "ext-2",
+          eventOccurredAt: "2026-03-01T13:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
       markFailed: vi.fn(),
     };
 
-    const cardioService = { upsertImported: vi.fn().mockResolvedValue({ created: true, session: { id: "session-1" } }) };
+    const cardioService = {
+      upsertImported: vi
+        .fn()
+        .mockResolvedValue({ created: true, session: { id: "session-1" } }),
+    };
 
     // Both items map to the SAME sessionDate + durationMinutes, so they
     // produce the same dedupeKey `${userId}|${sessionDate}|${round(durationMinutes)}`.
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: "2026-03-01T12:00:00.000Z", payload: {} },
-          { providerEventType: "peloton_workout", providerExternalId: "ext-2", occurredAt: "2026-03-01T13:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: "2026-03-01T12:00:00.000Z",
+            payload: {},
+          },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-2",
+            occurredAt: "2026-03-01T13:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "1700000100",
         metadata: {},
       }),
       mapRawCardioItem: vi
         .fn()
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-01", durationMinutes: 30, providerExternalId: "ext-1" }))
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-01", durationMinutes: 30, providerExternalId: "ext-2" })),
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-01",
+            durationMinutes: 30,
+            providerExternalId: "ext-1",
+          }),
+        )
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-01",
+            durationMinutes: 30,
+            providerExternalId: "ext-2",
+          }),
+        ),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -259,8 +333,18 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const successOccurredAt = "2026-03-05T00:00:00.000Z";
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: successOccurredAt, payload: {} },
-        { id: "raw-2", providerExternalId: "ext-2", eventOccurredAt: "2026-03-06T00:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: successOccurredAt,
+          payload: {},
+        },
+        {
+          id: "raw-2",
+          providerExternalId: "ext-2",
+          eventOccurredAt: "2026-03-06T00:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
@@ -280,16 +364,38 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: successOccurredAt, payload: {} },
-          { providerEventType: "peloton_workout", providerExternalId: "ext-2", occurredAt: "2026-03-06T00:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: successOccurredAt,
+            payload: {},
+          },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-2",
+            occurredAt: "2026-03-06T00:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "9999999999",
         metadata: {},
       }),
       mapRawCardioItem: vi
         .fn()
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-05", durationMinutes: 30, providerExternalId: "ext-1" }))
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-06", durationMinutes: 45, providerExternalId: "ext-2" })),
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-05",
+            durationMinutes: 30,
+            providerExternalId: "ext-1",
+          }),
+        )
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-06",
+            durationMinutes: 45,
+            providerExternalId: "ext-2",
+          }),
+        ),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -309,10 +415,15 @@ describe("CardioSyncOrchestrator.syncRides", () => {
       triggerType: "manual",
     });
 
-    const expectedCursor = String(Math.floor(new Date(successOccurredAt).getTime() / 1000));
+    const expectedCursor = String(
+      Math.floor(new Date(successOccurredAt).getTime() / 1000),
+    );
 
     expect(result).toMatchObject({ processedItemCount: 1, failedItemCount: 1 });
-    expect(rawImportEventStore.markFailed).toHaveBeenCalledWith("raw-2", "insert failed");
+    expect(rawImportEventStore.markFailed).toHaveBeenCalledWith(
+      "raw-2",
+      "insert failed",
+    );
     expect(connectionStore.recordSyncSuccess).toHaveBeenCalledWith(
       expect.objectContaining({ lastCursor: expectedCursor }),
     );
@@ -330,8 +441,18 @@ describe("CardioSyncOrchestrator.syncRides", () => {
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: "2026-03-05T00:00:00.000Z", payload: {} },
-        { id: "raw-2", providerExternalId: "ext-2", eventOccurredAt: "2026-03-06T00:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: "2026-03-05T00:00:00.000Z",
+          payload: {},
+        },
+        {
+          id: "raw-2",
+          providerExternalId: "ext-2",
+          eventOccurredAt: "2026-03-06T00:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
@@ -345,16 +466,38 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: "2026-03-05T00:00:00.000Z", payload: {} },
-          { providerEventType: "peloton_workout", providerExternalId: "ext-2", occurredAt: "2026-03-06T00:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: "2026-03-05T00:00:00.000Z",
+            payload: {},
+          },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-2",
+            occurredAt: "2026-03-06T00:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "2000000000",
         metadata: {},
       }),
       mapRawCardioItem: vi
         .fn()
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-05", durationMinutes: 30, providerExternalId: "ext-1" }))
-        .mockReturnValueOnce(baseMappedSession({ sessionDate: "2026-03-06", durationMinutes: 45, providerExternalId: "ext-2" })),
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-05",
+            durationMinutes: 30,
+            providerExternalId: "ext-1",
+          }),
+        )
+        .mockReturnValueOnce(
+          baseMappedSession({
+            sessionDate: "2026-03-06",
+            durationMinutes: 45,
+            providerExternalId: "ext-2",
+          }),
+        ),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -393,7 +536,12 @@ describe("CardioSyncOrchestrator.syncRides", () => {
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
-        { id: "raw-1", providerExternalId: "ext-1", eventOccurredAt: "2026-03-05T00:00:00.000Z", payload: {} },
+        {
+          id: "raw-1",
+          providerExternalId: "ext-1",
+          eventOccurredAt: "2026-03-05T00:00:00.000Z",
+          payload: {},
+        },
       ]),
       markMapped: vi.fn(),
       markSkipped: vi.fn(),
@@ -405,7 +553,12 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const adapter = createAdapter({
       fetchCardioSessions: vi.fn().mockResolvedValue({
         items: [
-          { providerEventType: "peloton_workout", providerExternalId: "ext-1", occurredAt: "2026-03-05T00:00:00.000Z", payload: {} },
+          {
+            providerEventType: "peloton_workout",
+            providerExternalId: "ext-1",
+            occurredAt: "2026-03-05T00:00:00.000Z",
+            payload: {},
+          },
         ],
         nextCursor: "1700000200",
         metadata: {},
@@ -501,7 +654,9 @@ describe("CardioSyncOrchestrator.syncRides", () => {
     const cardioService = { upsertImported: vi.fn() };
 
     const adapter = createAdapter({
-      fetchCardioSessions: vi.fn().mockRejectedValue(new Error("Peloton API error 500: boom")),
+      fetchCardioSessions: vi
+        .fn()
+        .mockRejectedValue(new Error("Peloton API error 500: boom")),
     });
 
     const orchestrator = new CardioSyncOrchestrator(
@@ -532,5 +687,100 @@ describe("CardioSyncOrchestrator.syncRides", () => {
       code: "sync_failed",
       message: "Peloton API error 500: boom",
     });
+  });
+  it("records a provider auth failure as a failed run instead of vanishing", async () => {
+    // Provider auth used to run before the sync_job_runs row existed and
+    // outside the try, so a revoked Strava token or a changed Peloton
+    // password threw with nothing recorded anywhere: no run row, so
+    // recordSyncFailure never fired, the connection stayed "active" with a
+    // null last_error, and the retry sweep (which selects status='failed')
+    // had nothing to find. Rides silently stopped importing while
+    // /integrations reported the integration as healthy.
+    const connection = createConnection({ lastCursor: "1000" });
+    const connectionStore = createConnectionStore(connection);
+    const credentialStore = createCredentialStore(connection);
+    const syncJobRunStore = createSyncJobRunStore();
+    const importBatchStore = createImportBatchStore();
+    const rawImportEventStore = {
+      createMany: vi.fn(),
+      markMapped: vi.fn(),
+      markSkipped: vi.fn(),
+      markFailed: vi.fn(),
+    };
+    const cardioService = { upsertImported: vi.fn() };
+
+    const adapter = createAdapter({
+      authenticate: vi
+        .fn()
+        .mockRejectedValue(new Error("Peloton login failed: 403")),
+    });
+
+    const orchestrator = new CardioSyncOrchestrator(
+      adapter as never,
+      cardioService as never,
+      connectionStore,
+      credentialStore,
+      syncJobRunStore as never,
+      importBatchStore as never,
+      rawImportEventStore,
+      encryptionKey,
+    );
+
+    await expect(
+      orchestrator.syncRides({
+        userId: connection.userId,
+        provider: "peloton",
+        triggerType: "scheduled",
+      }),
+    ).rejects.toThrow("Peloton login failed: 403");
+
+    expect(syncJobRunStore.create).toHaveBeenCalledTimes(1);
+    expect(syncJobRunStore.markFailed).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({ code: "sync_failed" }),
+    );
+    expect(connectionStore.recordSyncFailure).toHaveBeenCalledWith(
+      expect.objectContaining({ errorCode: "sync_failed" }),
+    );
+  });
+
+  it("records a missing-credential failure the same way", async () => {
+    const connection = createConnection({ lastCursor: "1000" });
+    const connectionStore = createConnectionStore(connection);
+    const credentialStore = {
+      save: vi.fn(),
+      getByConnectionId: vi.fn().mockResolvedValue(null),
+      deleteByConnectionId: vi.fn(),
+    };
+    const syncJobRunStore = createSyncJobRunStore();
+    const importBatchStore = createImportBatchStore();
+    const rawImportEventStore = {
+      createMany: vi.fn(),
+      markMapped: vi.fn(),
+      markSkipped: vi.fn(),
+      markFailed: vi.fn(),
+    };
+
+    const orchestrator = new CardioSyncOrchestrator(
+      createAdapter() as never,
+      { upsertImported: vi.fn() } as never,
+      connectionStore,
+      credentialStore,
+      syncJobRunStore as never,
+      importBatchStore as never,
+      rawImportEventStore,
+      encryptionKey,
+    );
+
+    await expect(
+      orchestrator.syncRides({
+        userId: connection.userId,
+        provider: "peloton",
+        triggerType: "scheduled",
+      }),
+    ).rejects.toThrow("No stored credentials");
+
+    expect(syncJobRunStore.markFailed).toHaveBeenCalled();
+    expect(connectionStore.recordSyncFailure).toHaveBeenCalled();
   });
 });

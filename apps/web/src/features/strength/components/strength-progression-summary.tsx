@@ -1,4 +1,8 @@
-import type { TopSetPoint, VolumeTrendPoint, StrengthProgressionSummary } from "@fitness-app/application";
+import type {
+  TopSetPoint,
+  VolumeTrendPoint,
+  StrengthProgressionSummary,
+} from "@fitness-app/application";
 import { formatTopSet } from "../helpers";
 
 type StrengthProgressionSummaryProps = {
@@ -36,10 +40,27 @@ function Sparkline({ values, strokeClass }: SparklineProps) {
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="h-12 w-full" aria-hidden>
-      <path d={d} fill="none" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={strokeClass} />
+      <path
+        d={d}
+        fill="none"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={strokeClass}
+      />
       {pts.map((pt, i) => {
         const [x, y] = pt.split(",").map(Number);
-        return <circle key={i} cx={x} cy={y} r="3" fill="white" strokeWidth="2" className={strokeClass} />;
+        return (
+          <circle
+            key={i}
+            cx={x}
+            cy={y}
+            r="3"
+            fill="white"
+            strokeWidth="2"
+            className={strokeClass}
+          />
+        );
       })}
     </svg>
   );
@@ -62,14 +83,22 @@ function TopSetChart({ history }: { history: TopSetPoint[] }) {
   return (
     <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-4">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Top set</div>
-        <div className={`text-xs font-semibold ${delta > 0.5 ? "text-pine" : delta < -0.5 ? "text-ember" : "text-ink/50"}`}>
-          {prefix}{delta}
+        <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+          Top set
+        </div>
+        <div
+          className={`text-xs font-semibold ${delta > 0.5 ? "text-pine" : delta < -0.5 ? "text-ember" : "text-ink/50"}`}
+        >
+          {prefix}
+          {delta}
         </div>
       </div>
       <div className="mt-2 text-xl font-semibold text-ink">{latest}</div>
       <div className="mt-3">
-        <Sparkline values={values} strokeClass={delta >= 0 ? "stroke-pine" : "stroke-ember"} />
+        <Sparkline
+          values={values}
+          strokeClass={delta >= 0 ? "stroke-pine" : "stroke-ember"}
+        />
       </div>
       <div className="mt-1 text-xs text-ink/50">{history.length} sessions</div>
     </div>
@@ -91,14 +120,22 @@ function VolumeChart({ history }: { history: VolumeTrendPoint[] }) {
   return (
     <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-4">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Volume</div>
-        <div className={`text-xs font-semibold ${delta > 1 ? "text-pine" : delta < -1 ? "text-ember" : "text-ink/50"}`}>
-          {prefix}{delta}
+        <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+          Volume
+        </div>
+        <div
+          className={`text-xs font-semibold ${delta > 1 ? "text-pine" : delta < -1 ? "text-ember" : "text-ink/50"}`}
+        >
+          {prefix}
+          {delta}
         </div>
       </div>
       <div className="mt-2 text-xl font-semibold text-ink">{latest}</div>
       <div className="mt-3">
-        <Sparkline values={values} strokeClass={delta >= 0 ? "stroke-pine" : "stroke-ember"} />
+        <Sparkline
+          values={values}
+          strokeClass={delta >= 0 ? "stroke-pine" : "stroke-ember"}
+        />
       </div>
       <div className="mt-1 text-xs text-ink/50">{history.length} sessions</div>
     </div>
@@ -124,13 +161,15 @@ export function StrengthProgressionSummarySection({
 
       {summaries.length === 0 ? (
         <p className="mt-5 text-sm leading-6 text-ink/75">
-          Log a few sessions with the same exercises and trends will appear here.
+          Log a few sessions with the same exercises and trends will appear
+          here.
         </p>
       ) : (
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
           {summaries.map((summary) => {
             const hasCharts =
-              summary.topSetHistory.length >= 2 || summary.volumeHistory.length >= 2;
+              summary.topSetHistory.length >= 2 ||
+              summary.volumeHistory.length >= 2;
 
             return (
               <article
@@ -150,13 +189,16 @@ export function StrengthProgressionSummarySection({
                       ) : null}
                     </div>
                     <p className="mt-1 text-sm text-ink/70">
-                      Latest: {formatTopSet(
+                      Latest:{" "}
+                      {formatTopSet(
                         summary.latestTopSet?.weight ?? null,
                         summary.latestTopSet?.reps ?? null,
                       )}
                       {summary.previousTopSet ? (
                         <span className="text-ink/45">
-                          {" "}· Prev: {formatTopSet(
+                          {" "}
+                          · Prev:{" "}
+                          {formatTopSet(
                             summary.previousTopSet.weight,
                             summary.previousTopSet.reps,
                           )}
@@ -183,13 +225,17 @@ export function StrengthProgressionSummarySection({
                 ) : (
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Top set trend</div>
+                      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+                        Top set trend
+                      </div>
                       <div className="mt-2 text-lg font-semibold capitalize text-ink">
                         {summary.topSetTrend}
                       </div>
                     </div>
                     <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Volume trend</div>
+                      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+                        Volume trend
+                      </div>
                       <div className="mt-2 text-lg font-semibold capitalize text-ink">
                         {summary.volumeTrend}
                       </div>

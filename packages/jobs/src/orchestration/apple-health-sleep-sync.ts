@@ -63,13 +63,21 @@ function dedupeKey(userId: UserId) {
 
 function toMinutes(value: number | undefined | null): number | null {
   if (value == null) return null;
-  // The route schema validates incoming sleep fields as minutes (0..1440).
-  // Defensive ceiling for any caller that bypasses the edge schema: values
-  // >= 1440 (24h * 60) almost certainly came in as seconds; convert and warn.
-  if (value >= 1440) {
+  // The route schema validates incoming sleep fields as minutes with an
+  // INCLUSIVE ceiling: z.number().min(0).max(1440). 1440 (a full 24h) is
+  // therefore a legitimate, accepted value and must pass through untouched —
+  // an exclusive `>= 1440` here silently rewrote it to 24 minutes.
+  //
+  // The boundary sits at `> 1440` so it is exactly the complement of what the
+  // edge schema accepts: nothing the validator lets through is ever
+  // reinterpreted, and anything above the 24h-in-minutes ceiling cannot be a
+  // minutes value at all, so treating it as seconds is the only sane reading.
+  // This branch only fires for callers that bypass the route schema (direct
+  // job invocation, backfills), hence the warn.
+  if (value > 1440) {
     // eslint-disable-next-line no-console
     console.warn(
-      `[apple-health-sleep-sync] sleep value ${value} >= 1440 — assuming seconds and converting to minutes`,
+      `[apple-health-sleep-sync] sleep value ${value} > 1440 — assuming seconds and converting to minutes`,
     );
     return Math.round(value / 60);
   }
@@ -85,7 +93,9 @@ export class AppleHealthSleepSyncOrchestrator {
     private readonly rawImportEventStore: RawImportEventStore,
   ) {}
 
-  async syncSleep(input: SyncAppleHealthSleepInput): Promise<SyncAppleHealthSleepResult> {
+  async syncSleep(
+    input: SyncAppleHealthSleepInput,
+  ): Promise<SyncAppleHealthSleepResult> {
     let connection = await this.connectionStore.getByUserAndProvider(
       input.userId,
       "apple_health",
@@ -168,28 +178,54 @@ export class AppleHealthSleepSyncOrchestrator {
               id: existing.id,
               userId: input.userId,
               sleepDurationMinutes:
-                toMinutes(payload.sleep_duration_minutes) ?? existing.sleepDurationMinutes ?? undefined,
+                toMinutes(payload.sleep_duration_minutes) ??
+                existing.sleepDurationMinutes ??
+                undefined,
               restingHeartRate:
-                (payload.resting_heart_rate != null ? Math.round(payload.resting_heart_rate) : null) ?? existing.restingHeartRate ?? undefined,
+                (payload.resting_heart_rate != null
+                  ? Math.round(payload.resting_heart_rate)
+                  : null) ??
+                existing.restingHeartRate ??
+                undefined,
               hrv: payload.hrv ?? existing.hrv ?? undefined,
               timeInBedMinutes:
-                toMinutes(payload.time_in_bed_minutes) ?? existing.timeInBedMinutes ?? undefined,
+                toMinutes(payload.time_in_bed_minutes) ??
+                existing.timeInBedMinutes ??
+                undefined,
               sleepEfficiencyPct:
-                payload.sleep_efficiency_pct ?? existing.sleepEfficiencyPct ?? undefined,
+                payload.sleep_efficiency_pct ??
+                existing.sleepEfficiencyPct ??
+                undefined,
               deepSleepMinutes:
-                toMinutes(payload.deep_sleep_minutes) ?? existing.deepSleepMinutes ?? undefined,
+                toMinutes(payload.deep_sleep_minutes) ??
+                existing.deepSleepMinutes ??
+                undefined,
               remSleepMinutes:
-                toMinutes(payload.rem_sleep_minutes) ?? existing.remSleepMinutes ?? undefined,
+                toMinutes(payload.rem_sleep_minutes) ??
+                existing.remSleepMinutes ??
+                undefined,
               coreSleepMinutes:
-                toMinutes(payload.core_sleep_minutes) ?? existing.coreSleepMinutes ?? undefined,
-              awakeMinutes: toMinutes(payload.awake_minutes) ?? existing.awakeMinutes ?? undefined,
+                toMinutes(payload.core_sleep_minutes) ??
+                existing.coreSleepMinutes ??
+                undefined,
+              awakeMinutes:
+                toMinutes(payload.awake_minutes) ??
+                existing.awakeMinutes ??
+                undefined,
               sleepRespiratoryRate:
-                payload.sleep_respiratory_rate ?? existing.sleepRespiratoryRate ?? undefined,
+                payload.sleep_respiratory_rate ??
+                existing.sleepRespiratoryRate ??
+                undefined,
               sleepSpo2AvgPct:
-                payload.sleep_spo2_avg_pct ?? existing.sleepSpo2AvgPct ?? undefined,
-              sleepHrvAvg: payload.sleep_hrv_avg ?? existing.sleepHrvAvg ?? undefined,
+                payload.sleep_spo2_avg_pct ??
+                existing.sleepSpo2AvgPct ??
+                undefined,
+              sleepHrvAvg:
+                payload.sleep_hrv_avg ?? existing.sleepHrvAvg ?? undefined,
               sleepAvgHeartRate:
-                payload.sleep_avg_heart_rate ?? existing.sleepAvgHeartRate ?? undefined,
+                payload.sleep_avg_heart_rate ??
+                existing.sleepAvgHeartRate ??
+                undefined,
               source: {
                 sourceType: "mixed",
                 sourceProvider: "apple_health",
@@ -212,7 +248,10 @@ export class AppleHealthSleepSyncOrchestrator {
               userId: input.userId,
               checkinDate,
               sleepDurationMinutes: toMinutes(payload.sleep_duration_minutes),
-              restingHeartRate: payload.resting_heart_rate != null ? Math.round(payload.resting_heart_rate) : null,
+              restingHeartRate:
+                payload.resting_heart_rate != null
+                  ? Math.round(payload.resting_heart_rate)
+                  : null,
               hrv: payload.hrv ?? null,
               sleepQuality: null,
               energyLevel: null,
@@ -240,7 +279,8 @@ export class AppleHealthSleepSyncOrchestrator {
               },
             };
 
-            const created = await this.recoveryCheckinRepository.create(createInput);
+            const created =
+              await this.recoveryCheckinRepository.create(createInput);
 
             processedItemCount += 1;
 
@@ -251,7 +291,10 @@ export class AppleHealthSleepSyncOrchestrator {
           }
         } catch (error) {
           failedItemCount += 1;
-          await this.rawImportEventStore.markFailed(event.id, toError(error).message);
+          await this.rawImportEventStore.markFailed(
+            event.id,
+            toError(error).message,
+          );
         }
       }
 
@@ -289,11 +332,15 @@ export class AppleHealthSleepSyncOrchestrator {
       const syncError = toError(error);
 
       if (importBatch) {
-        await this.importBatchStore.markFailed(importBatch.id, syncError.message, {
-          rawItemCount,
-          processedItemCount,
-          failedItemCount,
-        });
+        await this.importBatchStore.markFailed(
+          importBatch.id,
+          syncError.message,
+          {
+            rawItemCount,
+            processedItemCount,
+            failedItemCount,
+          },
+        );
       }
 
       await this.connectionStore.recordSyncFailure({

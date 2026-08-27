@@ -12,13 +12,20 @@ import { createCoreServices } from "@/lib/server/services";
 import { strengthSessionFormSchema } from "./form-schema";
 import type { StrengthActionState } from "./types";
 
-const templateExercisesSchema = z.array(strengthTemplateExerciseSchema).min(1).max(50);
+const templateExercisesSchema = z
+  .array(strengthTemplateExerciseSchema)
+  .min(1)
+  .max(50);
 
-function parseScheduledDayOfWeek(formData: FormData): 0 | 1 | 2 | 3 | 4 | 5 | 6 | null {
+function parseScheduledDayOfWeek(
+  formData: FormData,
+): 0 | 1 | 2 | 3 | 4 | 5 | 6 | null {
   const raw = formData.get("scheduledDayOfWeek");
   if (typeof raw !== "string" || raw === "") return null;
   const parsed = Number(raw);
-  return parsed >= 0 && parsed <= 6 ? (parsed as 0 | 1 | 2 | 3 | 4 | 5 | 6) : null;
+  return parsed >= 0 && parsed <= 6
+    ? (parsed as 0 | 1 | 2 | 3 | 4 | 5 | 6)
+    : null;
 }
 
 function buildStrengthPayload(userId: string, formData: FormData) {
@@ -72,7 +79,8 @@ export async function createStrengthSessionAction(
 ): Promise<StrengthActionState> {
   try {
     const user = await requireCurrentUser();
-    const { strengthService: service, insightRepository } = await createCoreServices();
+    const { strengthService: service, insightRepository } =
+      await createCoreServices();
     const payload = buildStrengthPayload(user.id, formData);
     const session = await service.create(payload);
 
@@ -93,7 +101,11 @@ export async function createStrengthSessionAction(
       );
       const historicalSets = historical
         .filter((s) => s.id !== session.id)
-        .flatMap((s) => s.sets.filter((set) => set.exerciseName === exerciseName && !set.isWarmup));
+        .flatMap((s) =>
+          s.sets.filter(
+            (set) => set.exerciseName === exerciseName && !set.isWarmup,
+          ),
+        );
       return detectPersonalRecords(exerciseName, newSets, historicalSets);
     });
 

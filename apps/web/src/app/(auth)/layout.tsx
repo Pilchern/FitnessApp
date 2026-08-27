@@ -14,8 +14,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             Training, recovery, and body — tracked together.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-ink/80">
-            Log every workout, measure progress, and review your week.
-            Connect Strava and Withings to pull in data automatically.
+            Log every workout, measure progress, and review your week. Connect
+            Strava and Withings to pull in data automatically.
           </p>
         </section>
 

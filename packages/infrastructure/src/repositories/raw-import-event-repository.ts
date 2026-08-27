@@ -39,7 +39,9 @@ function payloadHash(payload: Record<string, unknown>) {
 export class SupabaseRawImportEventRepository {
   constructor(private readonly client: AppSupabaseClient) {}
 
-  async createMany(inputs: CreateRawImportEventInput[]): Promise<StoredRawImportEvent[]> {
+  async createMany(
+    inputs: CreateRawImportEventInput[],
+  ): Promise<StoredRawImportEvent[]> {
     const created: RawImportEventRow[] = [];
 
     for (const input of inputs) {
@@ -74,7 +76,10 @@ export class SupabaseRawImportEventRepository {
 
         created.push(
           rawImportEventRowSchema.parse(
-            requireSingleResult(existingResponse, "Fetch existing raw import event"),
+            requireSingleResult(
+              existingResponse,
+              "Fetch existing raw import event",
+            ),
           ),
         );
 

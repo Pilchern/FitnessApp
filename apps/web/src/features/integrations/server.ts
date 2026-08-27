@@ -15,7 +15,8 @@ import type { IntegrationsPageData } from "./types";
 async function getAppUrl(): Promise<string> {
   const headersList = await headers();
   const host = headersList.get("host") ?? "localhost:3000";
-  const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
+  const proto =
+    host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
   return `${proto}://${host}`;
 }
 

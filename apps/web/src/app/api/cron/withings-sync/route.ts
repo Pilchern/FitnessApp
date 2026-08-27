@@ -1,39 +1,10 @@
-import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { mapWithConcurrency, safeBearerEqual } from "@/lib/server/cron-auth";
 import { createWithingsSyncOrchestrator } from "@/lib/server/integrations";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { getServerEnv, hasWithingsServerEnv } from "@/lib/server/env";
 
 const CONCURRENCY = 3;
-
-async function mapWithConcurrency<T, R>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<R>,
-): Promise<PromiseSettledResult<R>[]> {
-  const results: PromiseSettledResult<R>[] = new Array(items.length);
-  let cursor = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (true) {
-      const idx = cursor++;
-      if (idx >= items.length) return;
-      try {
-        results[idx] = { status: "fulfilled", value: await fn(items[idx]) };
-      } catch (err) {
-        results[idx] = { status: "rejected", reason: err };
-      }
-    }
-  });
-  await Promise.all(workers);
-  return results;
-}
-
-function safeBearerEqual(provided: string, secret: string): boolean {
-  const a = Buffer.from(provided);
-  const b = Buffer.from(`Bearer ${secret}`);
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
 
 /**
  * Weekly cron endpoint — syncs Withings body metrics for all active
@@ -54,7 +25,10 @@ export async function GET(request: NextRequest) {
   const cronSecret = env.CRON_SECRET;
 
   if (!cronSecret) {
-    return NextResponse.json({ error: "cron_secret_not_configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "cron_secret_not_configured" },
+      { status: 503 },
+    );
   }
 
   const authHeader = request.headers.get("authorization") ?? "";
@@ -63,7 +37,10 @@ export async function GET(request: NextRequest) {
   }
 
   if (!hasWithingsServerEnv()) {
-    return NextResponse.json({ skipped: true, reason: "Withings not configured" });
+    return NextResponse.json({
+      skipped: true,
+      reason: "Withings not configured",
+    });
   }
 
   const client = createSupabaseAdminClient();
@@ -83,7 +60,10 @@ export async function GET(request: NextRequest) {
   const rows = connections ?? [];
 
   if (rows.length === 0) {
-    return NextResponse.json({ synced: 0, message: "No active Withings connections." });
+    return NextResponse.json({
+      synced: 0,
+      message: "No active Withings connections.",
+    });
   }
 
   const orchestrator = createWithingsSyncOrchestrator();
@@ -101,8 +81,12 @@ export async function GET(request: NextRequest) {
     if (res.status === "fulfilled") {
       return { userId: rows[i].user_id, status: "ok" };
     }
-    const message = res.reason instanceof Error ? res.reason.message : "Unknown error";
-    console.error(`[cron/withings-sync] Failed for user ${rows[i].user_id}:`, message);
+    const message =
+      res.reason instanceof Error ? res.reason.message : "Unknown error";
+    console.error(
+      `[cron/withings-sync] Failed for user ${rows[i].user_id}:`,
+      message,
+    );
     return { userId: rows[i].user_id, status: "error", error: message };
   });
 

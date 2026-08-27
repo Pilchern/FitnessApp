@@ -18,10 +18,10 @@ export function SummaryStatCard({
   tone = "default",
 }: SummaryStatCardProps) {
   return (
-    <div
-      className={`rounded-[1.25rem] border p-4 ${toneClasses[tone]}`}
-    >
-      <div className="text-xs uppercase tracking-[0.2em] opacity-70">{label}</div>
+    <div className={`rounded-[1.25rem] border p-4 ${toneClasses[tone]}`}>
+      <div className="text-xs uppercase tracking-[0.2em] opacity-70">
+        {label}
+      </div>
       <div className="mt-2 text-3xl font-semibold">{value}</div>
       {hint ? <div className="mt-2 text-sm opacity-80">{hint}</div> : null}
     </div>

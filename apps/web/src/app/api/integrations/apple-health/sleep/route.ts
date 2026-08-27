@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { createAppleHealthSleepOrchestrator, createAppleHealthWebhookSecretLookup } from "@/lib/server/integrations";
+import {
+  createAppleHealthSleepOrchestrator,
+  createAppleHealthWebhookSecretLookup,
+} from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
+import {
+  MAX_WEBHOOK_ITEMS,
+  readBoundedWebhookBody,
+} from "../read-bounded-body";
 import { verifyAppleHealthRequest } from "../verify-request";
 
 /**
@@ -37,7 +44,7 @@ const appleHealthSleepPayloadSchema = z.object({
 });
 
 const appleHealthSleepBodySchema = z.union([
-  z.array(appleHealthSleepPayloadSchema),
+  z.array(appleHealthSleepPayloadSchema).max(MAX_WEBHOOK_ITEMS),
   appleHealthSleepPayloadSchema.transform((item) => [item]),
 ]);
 
@@ -49,12 +56,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const rawBody = await request.text();
+  const bounded = await readBoundedWebhookBody(request);
+  if (!bounded.ok) {
+    return NextResponse.json(
+      { ok: false, error: bounded.error },
+      { status: bounded.status },
+    );
+  }
+  const rawBody = bounded.rawBody;
 
   const lookupSecret = createAppleHealthWebhookSecretLookup();
   const auth = await verifyAppleHealthRequest(request, rawBody, lookupSecret);
   if (!auth.ok) {
-    return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    return NextResponse.json(
+      { ok: false, error: auth.error },
+      { status: auth.status },
+    );
   }
   const userId = auth.userId;
 
@@ -62,7 +79,10 @@ export async function POST(request: NextRequest) {
   try {
     body = JSON.parse(rawBody);
   } catch {
-    return NextResponse.json({ ok: false, error: "Invalid JSON body." }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "Invalid JSON body." },
+      { status: 400 },
+    );
   }
 
   const parsed = appleHealthSleepBodySchema.safeParse(body);
@@ -70,8 +90,14 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     // Don't leak Zod internals to clients; log server-side.
     // eslint-disable-next-line no-console
-    console.warn("[apple-health/sleep] invalid payload", parsed.error.flatten());
-    return NextResponse.json({ ok: false, error: "invalid_payload" }, { status: 400 });
+    console.warn(
+      "[apple-health/sleep] invalid payload",
+      parsed.error.flatten(),
+    );
+    return NextResponse.json(
+      { ok: false, error: "invalid_payload" },
+      { status: 400 },
+    );
   }
 
   try {
@@ -89,6 +115,9 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("[apple-health/sleep] Sync failed:", error);
-    return NextResponse.json({ ok: false, error: "sync_failed" }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: "sync_failed" },
+      { status: 500 },
+    );
   }
 }

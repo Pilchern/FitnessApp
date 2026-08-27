@@ -6,15 +6,31 @@ type GoalProgressCardProps = {
 
 function TrendArrow({ trend }: { trend: GoalProgress["trend"] }) {
   if (trend === "improving") {
-    return <span className="text-pine" aria-label="improving">↑</span>;
+    return (
+      <span className="text-pine" aria-label="improving">
+        ↑
+      </span>
+    );
   }
   if (trend === "declining") {
-    return <span className="text-ember" aria-label="declining">↓</span>;
+    return (
+      <span className="text-ember" aria-label="declining">
+        ↓
+      </span>
+    );
   }
   if (trend === "maintaining") {
-    return <span className="text-ink/40" aria-label="maintaining">→</span>;
+    return (
+      <span className="text-ink/40" aria-label="maintaining">
+        →
+      </span>
+    );
   }
-  return <span className="text-ink/30" aria-label="insufficient data">—</span>;
+  return (
+    <span className="text-ink/30" aria-label="insufficient data">
+      —
+    </span>
+  );
 }
 
 export function GoalProgressCard({ goalProgress }: GoalProgressCardProps) {
@@ -32,7 +48,10 @@ export function GoalProgressCard({ goalProgress }: GoalProgressCardProps) {
 
       <div className="mt-5 divide-y divide-ink/8">
         {goalProgress.map((goal) => (
-          <div key={goal.label} className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0">
+          <div
+            key={goal.label}
+            className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0"
+          >
             <div className="min-w-0">
               <p className="text-sm font-semibold text-ink">{goal.label}</p>
               <p className="mt-0.5 text-xs text-ink/55 leading-5">

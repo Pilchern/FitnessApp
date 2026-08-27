@@ -16,6 +16,20 @@ import {
   optionalTrimmedStringSchema,
   uuidSchema,
 } from "../../shared/primitives";
+import {
+  type CrossProviderDecision,
+  decideCardioCrossProvider,
+} from "../integrations/cross-provider-dedup";
+
+/**
+ * Shifts a `YYYY-MM-DD` string by whole days. Anchored at midday UTC so a
+ * daylight-saving transition can't push the result onto the wrong date.
+ */
+function shiftIsoDate(isoDate: string, days: number): string {
+  const anchored = new Date(`${isoDate}T12:00:00.000Z`);
+  anchored.setUTCDate(anchored.getUTCDate() + days);
+  return anchored.toISOString().slice(0, 10);
+}
 
 const cardioSessionKindSchema = z.enum(["zone2", "vo2", "recovery", "other"]);
 const cardioSessionCompletionSchema = z.enum([
@@ -191,6 +205,21 @@ export interface CardioSessionRepository {
     sourceProvider: string,
     sourceExternalId: string,
   ): Promise<CardioSession | null>;
+  /**
+   * Same lookup as `findByExternalId`, but for soft-deleted rows only.
+   *
+   * Needed because `cardio_sessions_external_id_dedup_idx` is NOT predicated
+   * on `deleted_at is null` (unlike its sibling
+   * `cardio_sessions_provider_external_unique_idx`), so a tombstone still
+   * occupies its slot in that index. Without this check, re-importing an
+   * external id that cross-provider dedup previously archived would fall
+   * through to `create` and hit a unique-constraint violation on every sync.
+   */
+  findArchivedByExternalId(
+    userId: UserId,
+    sourceProvider: string,
+    sourceExternalId: string,
+  ): Promise<CardioSession | null>;
   listByDateRange(query: CardioSessionDateRangeQuery): Promise<CardioSession[]>;
 }
 
@@ -220,14 +249,32 @@ export class CardioSessionService {
   }
 
   /**
-   * Inserts an imported cardio session only if a row with the same
-   * (userId, sourceProvider, sourceExternalId) does not already exist.
-   * Returns the existing row if found, or the newly created one.
+   * Inserts an imported cardio session, skipping it when the same real-world
+   * workout is already stored.
+   *
+   * Two checks run, in order:
+   *
+   * 1. **Same provider** — a row with the same
+   *    `(userId, sourceProvider, sourceExternalId)` is a straight re-import;
+   *    the existing row is returned untouched.
+   * 2. **Cross-provider (TD-019)** — the same ride can arrive from two
+   *    different providers with different external ids, so neither the unique
+   *    index nor check 1 catches it. Every session already stored for that
+   *    calendar day is compared against the incoming one; on a match the
+   *    higher-priority source wins. See `cross-provider-dedup.ts` for the
+   *    matching rules and the priority order.
+   *
+   * When the incoming session wins, the superseded row is archived — a soft
+   * delete, so nothing is unrecoverable if the heuristic ever gets it wrong.
    */
   async upsertImported(
     userId: string,
     session: Omit<CreateCardioSessionInput, "userId">,
-  ): Promise<{ created: boolean; session: CardioSession }> {
+  ): Promise<{
+    created: boolean;
+    session: CardioSession;
+    crossProvider?: CrossProviderDecision;
+  }> {
     const source = session.source as
       | { sourceProvider?: string; sourceExternalId?: string }
       | undefined;
@@ -243,12 +290,66 @@ export class CardioSessionService {
       if (existing) {
         return { created: false, session: existing };
       }
+
+      // A tombstone for this external id still occupies a slot in
+      // `cardio_sessions_external_id_dedup_idx`, which has no `deleted_at`
+      // predicate. Falling through to `create` here would violate that
+      // constraint on every sync, forever. Returning the tombstone also
+      // preserves the user's intent when they deleted the row themselves,
+      // matching how the body-metric repository already behaves.
+      const archived = await this.repository.findArchivedByExternalId(
+        userId,
+        sourceProvider,
+        sourceExternalId,
+      );
+      if (archived) {
+        return { created: false, session: archived };
+      }
     }
 
-    const created = await this.repository.create(
-      createCardioSessionSchema.parse({ userId, ...session }),
+    const parsed = createCardioSessionSchema.parse({ userId, ...session });
+
+    // Deliberately +/- one day rather than the session's own date. The three
+    // cardio importers derive sessionDate in different timezones (Strava and
+    // Peloton from UTC, the Apple Health bridge from a local timestamp), so
+    // the same ride can be filed under two adjacent dates -- and a workout
+    // that straddles midnight lands on two dates for any single provider.
+    // Matching then happens on `startedAt`, which is an absolute instant.
+    const nearbyExisting = await this.repository.listByDateRange({
+      userId,
+      startDate: shiftIsoDate(parsed.sessionDate, -1),
+      endDate: shiftIsoDate(parsed.sessionDate, 1),
+    });
+    const decision = decideCardioCrossProvider(
+      {
+        sessionDate: parsed.sessionDate,
+        startedAt: parsed.startedAt ?? null,
+        durationMinutes: parsed.durationMinutes ?? null,
+        sportType: parsed.sportType ?? null,
+        source: parsed.source,
+      },
+      nearbyExisting,
     );
-    return { created: true, session: created };
+
+    if (decision.outcome === "skip_incoming") {
+      const winner = nearbyExisting.find(
+        (candidate) => candidate.id === decision.duplicateOf,
+      );
+      // `duplicateOf` always names a member of the list the decision was made
+      // from, so this fallback is unreachable in practice — it exists so a
+      // future refactor of the lookup can't turn a miss into a crash.
+      if (winner) {
+        return { created: false, session: winner, crossProvider: decision };
+      }
+    }
+
+    const created = await this.repository.create(parsed);
+
+    if (decision.outcome === "supersede_existing") {
+      await this.repository.archive(userId, decision.duplicateOf);
+    }
+
+    return { created: true, session: created, crossProvider: decision };
   }
 
   async listListItemsByDateRange(

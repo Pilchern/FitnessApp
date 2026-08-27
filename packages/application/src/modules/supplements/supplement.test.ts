@@ -52,7 +52,9 @@ describe("supplement validation", () => {
   });
 
   it("validates list query userId as a uuid", () => {
-    expect(() => listSupplementsQuerySchema.parse({ userId: "not-a-uuid" })).toThrow();
+    expect(() =>
+      listSupplementsQuerySchema.parse({ userId: "not-a-uuid" }),
+    ).toThrow();
   });
 });
 

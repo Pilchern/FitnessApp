@@ -57,7 +57,11 @@ export function RecoverySummaryCards({ summary }: RecoverySummaryCardsProps) {
         />
         <SummaryStatCard
           label="HRV avg"
-          value={summary.averageHrv != null ? `${Math.round(summary.averageHrv)} ms` : "--"}
+          value={
+            summary.averageHrv != null
+              ? `${Math.round(summary.averageHrv)} ms`
+              : "--"
+          }
           hint="Higher is better. Syncs from Apple Health."
           tone={
             summary.averageHrv == null

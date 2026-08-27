@@ -41,9 +41,18 @@ type ScoreButtonRowProps = {
   ariaLabel: string;
 };
 
-function ScoreButtonRow({ name, value, onChange, ariaLabel }: ScoreButtonRowProps) {
+function ScoreButtonRow({
+  name,
+  value,
+  onChange,
+  ariaLabel,
+}: ScoreButtonRowProps) {
   return (
-    <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={ariaLabel}>
+    <div
+      className="flex flex-wrap gap-1.5"
+      role="radiogroup"
+      aria-label={ariaLabel}
+    >
       <input type="hidden" name={name} value={value} />
       {scoreOptions.map((option) => {
         const isSelected = value === option;
@@ -137,7 +146,9 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.checkinDate ? (
-              <p className="text-xs text-ember">{state.fieldErrors.checkinDate}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.checkinDate}
+              </p>
             ) : null}
           </label>
 
@@ -157,7 +168,9 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.sleepHours ? (
-              <p className="text-xs text-ember">{state.fieldErrors.sleepHours}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.sleepHours}
+              </p>
             ) : null}
           </label>
 
@@ -176,7 +189,9 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.bedtimeLocal ? (
-              <p className="text-xs text-ember">{state.fieldErrors.bedtimeLocal}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.bedtimeLocal}
+              </p>
             ) : null}
           </label>
 
@@ -195,7 +210,9 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.wakeTimeLocal ? (
-              <p className="text-xs text-ember">{state.fieldErrors.wakeTimeLocal}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.wakeTimeLocal}
+              </p>
             ) : null}
           </label>
 
@@ -214,7 +231,9 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.alcoholCount ? (
-              <p className="text-xs text-ember">{state.fieldErrors.alcoholCount}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.alcoholCount}
+              </p>
             ) : null}
           </label>
         </div>
@@ -241,14 +260,18 @@ export function RecoveryQuickForm({
               ))}
             </select>
             {state.fieldErrors?.sleepQuality ? (
-              <p className="text-xs text-ember">{state.fieldErrors.sleepQuality}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.sleepQuality}
+              </p>
             ) : null}
           </label>
         </div>
 
         <div className="grid gap-4">
           <div className="grid gap-2">
-            <span className="text-sm font-medium text-ink">Readiness (1-10)</span>
+            <span className="text-sm font-medium text-ink">
+              Readiness (1-10)
+            </span>
             <ScoreButtonRow
               name="readinessLevel"
               value={values.readinessLevel}
@@ -258,7 +281,9 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.readinessLevel ? (
-              <p className="text-xs text-ember">{state.fieldErrors.readinessLevel}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.readinessLevel}
+              </p>
             ) : null}
           </div>
 
@@ -273,7 +298,9 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.energyLevel ? (
-              <p className="text-xs text-ember">{state.fieldErrors.energyLevel}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.energyLevel}
+              </p>
             ) : null}
           </div>
 
@@ -288,12 +315,16 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.stressLevel ? (
-              <p className="text-xs text-ember">{state.fieldErrors.stressLevel}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.stressLevel}
+              </p>
             ) : null}
           </div>
 
           <div className="grid gap-2">
-            <span className="text-sm font-medium text-ink">Soreness (1-10)</span>
+            <span className="text-sm font-medium text-ink">
+              Soreness (1-10)
+            </span>
             <ScoreButtonRow
               name="sorenessLevel"
               value={values.sorenessLevel}
@@ -303,7 +334,9 @@ export function RecoveryQuickForm({
               }
             />
             {state.fieldErrors?.sorenessLevel ? (
-              <p className="text-xs text-ember">{state.fieldErrors.sorenessLevel}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.sorenessLevel}
+              </p>
             ) : null}
           </div>
         </div>
@@ -314,7 +347,9 @@ export function RecoveryQuickForm({
             onClick={() => setShowAdvanced((value) => !value)}
             className="text-sm font-semibold text-pine underline-offset-4 hover:underline"
           >
-            {showAdvanced ? "Hide optional metrics" : "Add optional recovery metrics"}
+            {showAdvanced
+              ? "Hide optional metrics"
+              : "Add optional recovery metrics"}
           </button>
         </div>
 
@@ -335,7 +370,9 @@ export function RecoveryQuickForm({
                 }
               />
               {state.fieldErrors?.restingHeartRate ? (
-                <p className="text-xs text-ember">{state.fieldErrors.restingHeartRate}</p>
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.restingHeartRate}
+                </p>
               ) : null}
             </label>
 
@@ -394,8 +431,12 @@ export function RecoveryQuickForm({
 
         <div className="flex justify-end">
           <AuthSubmitButton
-            idleLabel={mode === "edit" ? "Save recovery check-in" : "Save check-in"}
-            pendingLabel={mode === "edit" ? "Saving recovery..." : "Saving check-in..."}
+            idleLabel={
+              mode === "edit" ? "Save recovery check-in" : "Save check-in"
+            }
+            pendingLabel={
+              mode === "edit" ? "Saving recovery..." : "Saving check-in..."
+            }
           />
         </div>
       </form>

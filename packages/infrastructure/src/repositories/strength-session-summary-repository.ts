@@ -4,9 +4,7 @@ import type {
 } from "@fitness-app/application";
 import { type AppSupabaseClient, throwOnError } from "./shared";
 
-export class SupabaseStrengthSessionSummaryRepository
-  implements StrengthSessionSummaryRepository
-{
+export class SupabaseStrengthSessionSummaryRepository implements StrengthSessionSummaryRepository {
   constructor(private readonly client: AppSupabaseClient) {}
 
   async countCompletedByDateRange(query: StrengthSessionDateRangeQuery) {

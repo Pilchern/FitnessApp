@@ -21,7 +21,9 @@ export function StravaConnectionCard({
   connection,
 }: StravaConnectionCardProps) {
   const isConnected =
-    connection && connection.status !== "disconnected" && connection.deletedAt == null;
+    connection &&
+    connection.status !== "disconnected" &&
+    connection.deletedAt == null;
   const guidance = getIntegrationStatusGuidance(connection);
 
   return (
@@ -81,9 +83,15 @@ export function StravaConnectionCard({
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <SummaryStatCard
           label="Status"
-          value={connection ? formatIntegrationStatus(connection.status) : "Not connected"}
+          value={
+            connection
+              ? formatIntegrationStatus(connection.status)
+              : "Not connected"
+          }
           hint={connection?.accountLabel ?? "No Strava account linked yet."}
-          tone={connection ? integrationStatusTone(connection.status) : "default"}
+          tone={
+            connection ? integrationStatusTone(connection.status) : "default"
+          }
         />
         <SummaryStatCard
           label="Last synced"

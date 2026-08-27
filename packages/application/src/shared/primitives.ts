@@ -12,7 +12,9 @@ export const isoDateTimeSchema = z
   .datetime({ offset: true })
   .or(z.string().datetime());
 
-export const optionalIsoDateTimeSchema = isoDateTimeSchema.nullable().optional();
+export const optionalIsoDateTimeSchema = isoDateTimeSchema
+  .nullable()
+  .optional();
 
 export const trimmedStringSchema = z.string().trim().min(1);
 
@@ -87,7 +89,8 @@ export const dateRangeQuerySchema = z
     limit: z.number().int().positive().max(2000).optional(),
   })
   .refine(
-    (value) => !value.startDate || !value.endDate || value.startDate <= value.endDate,
+    (value) =>
+      !value.startDate || !value.endDate || value.startDate <= value.endDate,
     {
       message: "startDate must be less than or equal to endDate",
       path: ["endDate"],

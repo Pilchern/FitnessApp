@@ -35,7 +35,9 @@ function AdherenceGoalCard({
 
   return (
     <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4 text-ink">
-      <div className="text-xs uppercase tracking-[0.2em] opacity-70">{label}</div>
+      <div className="text-xs uppercase tracking-[0.2em] opacity-70">
+        {label}
+      </div>
 
       <div className="mt-2 text-3xl font-semibold">
         {hitDays}

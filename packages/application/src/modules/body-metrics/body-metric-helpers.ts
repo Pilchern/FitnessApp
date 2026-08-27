@@ -37,12 +37,18 @@ function findEarliestValue(
     .find((metric) => getValue(metric) != null);
 }
 
-export function buildBodyMetricSummary(metrics: BodyMetric[]): BodyMetricSummary {
-  const latest = [...metrics].sort((left, right) =>
-    right.measuredOn.localeCompare(left.measuredOn),
-  )[0] ?? null;
+export function buildBodyMetricSummary(
+  metrics: BodyMetric[],
+): BodyMetricSummary {
+  const latest =
+    [...metrics].sort((left, right) =>
+      right.measuredOn.localeCompare(left.measuredOn),
+    )[0] ?? null;
   const latestWeight = findLatestValue(metrics, (metric) => metric.weightLb);
-  const earliestWeight = findEarliestValue(metrics, (metric) => metric.weightLb);
+  const earliestWeight = findEarliestValue(
+    metrics,
+    (metric) => metric.weightLb,
+  );
   const latestWaist = findLatestValue(metrics, (metric) => metric.waistIn);
   const earliestWaist = findEarliestValue(metrics, (metric) => metric.waistIn);
   const latestBodyFat = findLatestValue(metrics, (metric) => metric.bodyFatPct);
@@ -50,12 +56,18 @@ export function buildBodyMetricSummary(metrics: BodyMetric[]): BodyMetricSummary
     metrics,
     (metric) => metric.muscleMassLb,
   );
-  const latestBoneMass = findLatestValue(metrics, (metric) => metric.boneMassLb);
+  const latestBoneMass = findLatestValue(
+    metrics,
+    (metric) => metric.boneMassLb,
+  );
   const latestFatFreeMass = findLatestValue(
     metrics,
     (metric) => metric.fatFreeMassLb,
   );
-  const latestHydration = findLatestValue(metrics, (metric) => metric.hydrationPct);
+  const latestHydration = findLatestValue(
+    metrics,
+    (metric) => metric.hydrationPct,
+  );
   const latestVisceralFat = findLatestValue(
     metrics,
     (metric) => metric.visceralFatIndex,

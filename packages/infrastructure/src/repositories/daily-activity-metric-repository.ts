@@ -84,9 +84,7 @@ function toDailyActivityMetricUpdate(input: UpdateDailyActivityMetricInput) {
   });
 }
 
-export class SupabaseDailyActivityMetricRepository
-  implements DailyActivityMetricRepository
-{
+export class SupabaseDailyActivityMetricRepository implements DailyActivityMetricRepository {
   constructor(private readonly client: AppSupabaseClient) {}
 
   async create(input: CreateDailyActivityMetricInput) {
@@ -131,7 +129,9 @@ export class SupabaseDailyActivityMetricRepository
     throwOnError(response.error, "Fetch daily activity metric by date");
 
     return response.data
-      ? mapDailyActivityMetricRow(dailyActivityMetricRowSchema.parse(response.data))
+      ? mapDailyActivityMetricRow(
+          dailyActivityMetricRowSchema.parse(response.data),
+        )
       : null;
   }
 
@@ -147,7 +147,9 @@ export class SupabaseDailyActivityMetricRepository
     throwOnError(response.error, "Fetch daily activity metric");
 
     return response.data
-      ? mapDailyActivityMetricRow(dailyActivityMetricRowSchema.parse(response.data))
+      ? mapDailyActivityMetricRow(
+          dailyActivityMetricRowSchema.parse(response.data),
+        )
       : null;
   }
 

@@ -21,11 +21,17 @@ function AdherenceStat({
 
   return (
     <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">{label}</div>
-      <div className={`mt-2 text-3xl font-semibold ${isGood ? "text-pine" : "text-ink"}`}>
+      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+        {label}
+      </div>
+      <div
+        className={`mt-2 text-3xl font-semibold ${isGood ? "text-pine" : "text-ink"}`}
+      >
         {hitDays}
         <span className="text-xl font-normal opacity-60">d</span>
-        <span className="ml-1 text-base font-normal opacity-50">/ {totalDays}</span>
+        <span className="ml-1 text-base font-normal opacity-50">
+          / {totalDays}
+        </span>
       </div>
       <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-pine/15">
         <div
@@ -48,9 +54,12 @@ export function NutritionSnapshotCard({
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Nutrition
         </p>
-        <h2 className="mt-3 font-display text-2xl text-ink">Nothing logged this week</h2>
+        <h2 className="mt-3 font-display text-2xl text-ink">
+          Nothing logged this week
+        </h2>
         <p className="mt-3 text-sm leading-6 text-ink/70">
-          Log your daily nutrition checks to track protein and fiber consistency.
+          Log your daily nutrition checks to track protein and fiber
+          consistency.
         </p>
         <Link
           href="/nutrition"

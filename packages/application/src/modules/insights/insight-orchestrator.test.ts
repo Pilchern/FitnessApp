@@ -2,8 +2,15 @@ import { describe, expect, it, vi } from "vitest";
 import type { Insight } from "@fitness-app/domain";
 import type { AiInsightService, GeneratedInsight } from "./ai-insight-service";
 import type { InsightEngineInput } from "./insight-rules";
-import type { InsightRepository, PersistedInsight, UpsertInsightInput } from "./insight-repository";
-import { AI_INSIGHT_STALENESS_MS, InsightOrchestrator } from "./insight-orchestrator";
+import type {
+  InsightRepository,
+  PersistedInsight,
+  UpsertInsightInput,
+} from "./insight-repository";
+import {
+  AI_INSIGHT_STALENESS_MS,
+  InsightOrchestrator,
+} from "./insight-orchestrator";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 
@@ -16,7 +23,9 @@ const baseEngineInput: InsightEngineInput = {
   liftsCompletedByWeek: {},
 };
 
-function makePersistedInsight(overrides: Partial<PersistedInsight> = {}): PersistedInsight {
+function makePersistedInsight(
+  overrides: Partial<PersistedInsight> = {},
+): PersistedInsight {
   return {
     id: "insight-1",
     userId,
@@ -39,9 +48,16 @@ class FakeInsightRepository implements InsightRepository {
   public activeInsights: PersistedInsight[] = [];
   public upsertCalls: UpsertInsightInput[][] = [];
 
-  async upsertMany(insights: UpsertInsightInput[]): Promise<PersistedInsight[]> {
+  async upsertMany(
+    insights: UpsertInsightInput[],
+  ): Promise<PersistedInsight[]> {
     this.upsertCalls.push(insights);
-    return insights.map((i) => makePersistedInsight({ insightType: i.insightType, sourceKind: i.sourceKind }));
+    return insights.map((i) =>
+      makePersistedInsight({
+        insightType: i.insightType,
+        sourceKind: i.sourceKind,
+      }),
+    );
   }
 
   async listActive(): Promise<PersistedInsight[]> {
@@ -69,12 +85,22 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
     const aiService = makeAiService([
       { insightType: "trend", title: "Title", body: "Body", severity: "info" },
     ]);
-    const orchestrator = new InsightOrchestrator(repository, aiService, noRuleInsights);
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
 
-    await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now: new Date("2026-07-16T12:00:00.000Z") });
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: new Date("2026-07-16T12:00:00.000Z"),
+    });
 
     expect(aiService.generateInsights).toHaveBeenCalledTimes(1);
-    expect(repository.upsertCalls[0]?.some((u) => u.sourceKind === "ai")).toBe(true);
+    expect(repository.upsertCalls[0]?.some((u) => u.sourceKind === "ai")).toBe(
+      true,
+    );
   });
 
   it("does NOT call the AI service when a recent (< 1hr old) AI insight already exists", async () => {
@@ -87,7 +113,11 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
       }),
     ];
     const aiService = makeAiService();
-    const orchestrator = new InsightOrchestrator(repository, aiService, noRuleInsights);
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
 
     await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
 
@@ -101,13 +131,19 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
     repository.activeInsights = [
       makePersistedInsight({
         sourceKind: "ai",
-        createdAt: new Date(now.getTime() - AI_INSIGHT_STALENESS_MS - 1000).toISOString(),
+        createdAt: new Date(
+          now.getTime() - AI_INSIGHT_STALENESS_MS - 1000,
+        ).toISOString(),
       }),
     ];
     const aiService = makeAiService([
       { insightType: "trend", title: "Title", body: "Body", severity: "info" },
     ]);
-    const orchestrator = new InsightOrchestrator(repository, aiService, noRuleInsights);
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
 
     await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
 
@@ -118,12 +154,19 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
     const now = new Date("2026-07-16T12:00:00.000Z");
     const repository = new FakeInsightRepository();
     repository.activeInsights = [
-      makePersistedInsight({ sourceKind: "rule", createdAt: now.toISOString() }),
+      makePersistedInsight({
+        sourceKind: "rule",
+        createdAt: now.toISOString(),
+      }),
     ];
     const aiService = makeAiService([
       { insightType: "trend", title: "Title", body: "Body", severity: "info" },
     ]);
-    const orchestrator = new InsightOrchestrator(repository, aiService, noRuleInsights);
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
 
     await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
 
@@ -133,9 +176,16 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
 
   it("never calls the AI service when none is configured (aiService: null)", async () => {
     const repository = new FakeInsightRepository();
-    const orchestrator = new InsightOrchestrator(repository, null, noRuleInsights);
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      null,
+      noRuleInsights,
+    );
 
-    const result = await orchestrator.generateAndPersist({ ...baseEngineInput, userId });
+    const result = await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+    });
 
     expect(result).toEqual([]);
   });
@@ -158,7 +208,9 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
       insightDate: "2026-07-16",
       sourceKind: "rule",
     };
-    const orchestrator = new InsightOrchestrator(repository, aiService, () => [insight]);
+    const orchestrator = new InsightOrchestrator(repository, aiService, () => [
+      insight,
+    ]);
 
     await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
 

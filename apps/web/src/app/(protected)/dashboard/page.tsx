@@ -26,7 +26,9 @@ export default async function DashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
               This week
             </p>
-            <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">Dashboard</h1>
+            <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
+              Dashboard
+            </h1>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
               Your training, recovery, and body at a glance.
             </p>
@@ -39,7 +41,10 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <TrainingWeekCard data={data.trainingWeek} muscleGroupVolume={data.muscleGroupVolume} />
+      <TrainingWeekCard
+        data={data.trainingWeek}
+        muscleGroupVolume={data.muscleGroupVolume}
+      />
 
       <div className="grid gap-4 lg:gap-6 lg:grid-cols-2">
         <RecoverySnapshotCard latestRecovery={data.latestRecovery} />
@@ -90,7 +95,8 @@ export default async function DashboardPage() {
 
         {data.topInsights.length === 0 ? (
           <p className="mt-5 text-sm leading-6 text-ink/75">
-            No insights yet. Keep logging your workouts and recovery — they&apos;ll appear here as patterns emerge.
+            No insights yet. Keep logging your workouts and recovery —
+            they&apos;ll appear here as patterns emerge.
           </p>
         ) : (
           <div className="mt-5 space-y-4">

@@ -2,7 +2,10 @@ import type {
   CardioAdherenceSummary,
   CardioWeeklyTotals,
 } from "@fitness-app/application";
-import type { CardioSession, CardioSessionCompletion } from "@fitness-app/domain";
+import type {
+  CardioSession,
+  CardioSessionCompletion,
+} from "@fitness-app/domain";
 
 export type CardioTemplatePreset = {
   id: string;

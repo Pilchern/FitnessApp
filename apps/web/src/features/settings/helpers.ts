@@ -10,11 +10,24 @@ export function toSettingsFormValues(profile: UserProfile): SettingsFormValues {
     goalFatLoss: profile.goalFatLoss,
     goalPreserveMuscle: profile.goalPreserveMuscle,
     goalImproveVo2: profile.goalImproveVo2,
-    dailyProteinGramsTarget: profile.dailyProteinGramsTarget != null ? String(profile.dailyProteinGramsTarget) : "",
-    dailyCaloriesTarget: profile.dailyCaloriesTarget != null ? String(profile.dailyCaloriesTarget) : "",
-    dailyFiberGramsTarget: profile.dailyFiberGramsTarget != null ? String(profile.dailyFiberGramsTarget) : "",
-    targetWeightLb: profile.targetWeightLb != null ? String(profile.targetWeightLb) : "",
+    dailyProteinGramsTarget:
+      profile.dailyProteinGramsTarget != null
+        ? String(profile.dailyProteinGramsTarget)
+        : "",
+    dailyCaloriesTarget:
+      profile.dailyCaloriesTarget != null
+        ? String(profile.dailyCaloriesTarget)
+        : "",
+    dailyFiberGramsTarget:
+      profile.dailyFiberGramsTarget != null
+        ? String(profile.dailyFiberGramsTarget)
+        : "",
+    targetWeightLb:
+      profile.targetWeightLb != null ? String(profile.targetWeightLb) : "",
     targetDate: profile.targetDate ?? "",
+    heightCm: profile.heightCm != null ? String(profile.heightCm) : "",
+    birthDate: profile.birthDate ?? "",
+    biologicalSex: profile.biologicalSex ?? "",
   };
 }
 

@@ -80,9 +80,7 @@ export function NutritionQuickForm({
       ) : null}
 
       <form action={formAction} className="mt-5 space-y-5">
-        {values.id ? (
-          <input type="hidden" name="id" value={values.id} />
-        ) : null}
+        {values.id ? <input type="hidden" name="id" value={values.id} /> : null}
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className="grid gap-2 text-sm font-medium text-ink">
@@ -120,7 +118,9 @@ export function NutritionQuickForm({
               }
             />
             {state.fieldErrors?.alcoholCount ? (
-              <p className="text-xs text-ember">{state.fieldErrors.alcoholCount}</p>
+              <p className="text-xs text-ember">
+                {state.fieldErrors.alcoholCount}
+              </p>
             ) : null}
           </label>
         </div>
@@ -245,9 +245,7 @@ export function NutritionQuickForm({
             adherence.
           </p>
           <AuthSubmitButton
-            idleLabel={
-              mode === "edit" ? "Save nutrition log" : "Save log"
-            }
+            idleLabel={mode === "edit" ? "Save nutrition log" : "Save log"}
             pendingLabel={
               mode === "edit" ? "Saving nutrition..." : "Saving log..."
             }

@@ -7,10 +7,7 @@ import { createCoreServices } from "@/lib/server/services";
 import { cardioSessionFormSchema } from "./form-schema";
 import type { CardioActionState } from "./types";
 
-function buildCardioPayload(
-  userId: string,
-  formData: FormData,
-) {
+function buildCardioPayload(userId: string, formData: FormData) {
   const parsed = cardioSessionFormSchema.parse({
     id: formData.get("id"),
     trainingTemplateId: formData.get("trainingTemplateId"),
@@ -31,7 +28,7 @@ function buildCardioPayload(
   });
 
   const zone2Minutes =
-    parsed.sessionKind === "zone2" ? parsed.durationMinutes ?? null : null;
+    parsed.sessionKind === "zone2" ? (parsed.durationMinutes ?? null) : null;
 
   return {
     id: parsed.id || undefined,

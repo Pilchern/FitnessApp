@@ -33,11 +33,16 @@ export const RETRY_BACKOFF_UNIT_MINUTES = 5;
  * failed webhook delivery is retried by the sender (Apple Health Auto
  * Export), not by us.
  */
-export const RETRYABLE_JOB_TYPES = ["cardio_session_sync", "body_metric_sync"] as const;
+export const RETRYABLE_JOB_TYPES = [
+  "cardio_session_sync",
+  "body_metric_sync",
+] as const;
 
 export type RetryableJobType = (typeof RETRYABLE_JOB_TYPES)[number];
 
-export function isRetryableJobType(jobType: string): jobType is RetryableJobType {
+export function isRetryableJobType(
+  jobType: string,
+): jobType is RetryableJobType {
   return (RETRYABLE_JOB_TYPES as readonly string[]).includes(jobType);
 }
 
@@ -58,9 +63,13 @@ export function resolveRetryTarget(
   jobType: string,
   payload: Record<string, unknown> | null | undefined,
 ): RetryTarget {
-  const provider = typeof payload?.provider === "string" ? payload.provider : null;
+  const provider =
+    typeof payload?.provider === "string" ? payload.provider : null;
 
-  if (jobType === "cardio_session_sync" && (provider === "peloton" || provider === "strava")) {
+  if (
+    jobType === "cardio_session_sync" &&
+    (provider === "peloton" || provider === "strava")
+  ) {
     return { kind: "cardio", provider };
   }
 
@@ -87,7 +96,11 @@ export function isEligibleForDeadLetter(nextAttemptCount: number): boolean {
  * attempt 5 -> would be 125m but attempt 5 is dead-lettered instead (see
  * `isEligibleForDeadLetter`) so it never actually gets scheduled.
  */
-export function computeRetryBackoff(nextAttemptCount: number, now: Date = new Date()): Date {
-  const minutes = nextAttemptCount * nextAttemptCount * RETRY_BACKOFF_UNIT_MINUTES;
+export function computeRetryBackoff(
+  nextAttemptCount: number,
+  now: Date = new Date(),
+): Date {
+  const minutes =
+    nextAttemptCount * nextAttemptCount * RETRY_BACKOFF_UNIT_MINUTES;
   return new Date(now.getTime() + minutes * 60_000);
 }

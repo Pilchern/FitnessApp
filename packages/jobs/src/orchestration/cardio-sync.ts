@@ -43,7 +43,14 @@ export type SyncCardioSessionsResult = {
   rawItemCount: number;
   processedItemCount: number;
   failedItemCount: number;
+  /** Duplicates of another item in the same page, from the same provider. */
   skippedDuplicateCount: number;
+  /** Items the provider adapter declined to map (e.g. an incomplete workout). */
+  skippedUnmappableCount: number;
+  /** Incoming sessions dropped because a higher-priority provider already had them (TD-019). */
+  skippedCrossProviderCount: number;
+  /** Stored sessions archived because this provider outranks the source that wrote them (TD-019). */
+  supersededCrossProviderCount: number;
 };
 
 function dedupeKey(input: SyncCardioSessionsInput): string {
@@ -61,7 +68,9 @@ function isOAuthAdapter(
 
 export class CardioSyncOrchestrator {
   constructor(
-    private readonly adapter: CardioProviderAdapter | OAuthCardioProviderAdapter,
+    private readonly adapter:
+      | CardioProviderAdapter
+      | OAuthCardioProviderAdapter,
     private readonly cardioService: CardioSessionService,
     private readonly connectionStore: IntegrationConnectionStore,
     private readonly credentialStore: IntegrationCredentialStore,
@@ -106,7 +115,9 @@ export class CardioSyncOrchestrator {
    * change here; `sourceCredentialKind` below is just to make the intent
    * legible at the call site.
    */
-  async connect(input: ConnectCardioProviderInput): Promise<IntegrationConnection> {
+  async connect(
+    input: ConnectCardioProviderInput,
+  ): Promise<IntegrationConnection> {
     if (isOAuthAdapter(this.adapter)) {
       throw new Error("Use finalizeOAuthConnection for OAuth providers.");
     }
@@ -139,7 +150,8 @@ export class CardioSyncOrchestrator {
         refreshToken: input.password,
         accessTokenExpiresAt: null,
         refreshTokenExpiresAt: null,
-        tokenType: sourceCredentialKind === "password" ? "credential" : "bearer",
+        tokenType:
+          sourceCredentialKind === "password" ? "credential" : "bearer",
         scopes: ["workouts"],
       },
       this.encryptionKey,
@@ -148,8 +160,14 @@ export class CardioSyncOrchestrator {
     return connection;
   }
 
-  async disconnect(userId: UserId, provider: IntegrationProvider): Promise<void> {
-    const connection = await this.connectionStore.getByUserAndProvider(userId, provider);
+  async disconnect(
+    userId: UserId,
+    provider: IntegrationProvider,
+  ): Promise<void> {
+    const connection = await this.connectionStore.getByUserAndProvider(
+      userId,
+      provider,
+    );
     if (!connection) return;
 
     await this.credentialStore.deleteByConnectionId(connection.id, userId);
@@ -176,7 +194,9 @@ export class CardioSyncOrchestrator {
     return updated;
   }
 
-  async syncRides(input: SyncCardioSessionsInput): Promise<SyncCardioSessionsResult> {
+  async syncRides(
+    input: SyncCardioSessionsInput,
+  ): Promise<SyncCardioSessionsResult> {
     const connection = await this.connectionStore.getByUserAndProvider(
       input.userId,
       input.provider,
@@ -186,39 +206,21 @@ export class CardioSyncOrchestrator {
       throw new Error("No active connection was found.");
     }
 
-    const credential = await this.credentialStore.getByConnectionId(
-      connection.id,
-      input.userId,
-      this.encryptionKey,
-    );
-
-    if (!credential) {
-      throw new Error("No stored credentials were found for this connection.");
-    }
-
-    let sessionToken: string | null = null;
-    let accessToken: string | null = null;
-    let providerUserId: string;
-
-    if (isOAuthAdapter(this.adapter)) {
-      const refreshed = await this.refreshCredentialIfNeeded(credential);
-      accessToken = refreshed.accessToken;
-      providerUserId = connection.providerUserId ?? "";
-    } else {
-      const username = decryptSecret(credential.accessToken, this.encryptionKey);
-      const password = credential.refreshToken
-        ? decryptSecret(credential.refreshToken, this.encryptionKey)
-        : null;
-
-      if (!password) {
-        throw new Error("Stored password is missing — reconnect to fix this.");
-      }
-
-      const authResult = await this.adapter.authenticate({ username, password });
-      sessionToken = authResult.sessionToken;
-      providerUserId = authResult.providerUserId;
-    }
-
+    // The sync-run row is created BEFORE any credential work, and everything
+    // that can talk to the provider happens inside the try below.
+    //
+    // This used to run the other way round: credential decryption, an OAuth
+    // token refresh, and the Peloton login all happened before the run row
+    // existed and outside the try. So when a user revoked the app at Strava,
+    // the Monday cron threw at the token refresh and *nothing recorded it* --
+    // no sync_job_runs row, so `recordSyncFailure` never ran and the
+    // connection stayed `status: 'active'` with `last_error: null`; the retry
+    // sweep selects on `status = 'failed'`, so there was nothing for it to
+    // pick up, ever. Rides silently stopped importing while /integrations
+    // kept reporting the integration as healthy. The same window covered a
+    // rotated INTEGRATION_ENCRYPTION_KEY and a changed Peloton password.
+    //
+    // body-metric-sync.ts already had this ordering; cardio was the outlier.
     const syncRun = await this.syncJobRunStore.create({
       userId: input.userId,
       integrationConnectionId: connection.id,
@@ -239,8 +241,54 @@ export class CardioSyncOrchestrator {
     let processedItemCount = 0;
     let failedItemCount = 0;
     let skippedDuplicateCount = 0;
+    let skippedUnmappableCount = 0;
+    let skippedCrossProviderCount = 0;
+    let supersededCrossProviderCount = 0;
 
     try {
+      const credential = await this.credentialStore.getByConnectionId(
+        connection.id,
+        input.userId,
+        this.encryptionKey,
+      );
+
+      if (!credential) {
+        throw new Error(
+          "No stored credentials were found for this connection.",
+        );
+      }
+
+      let sessionToken: string | null = null;
+      let accessToken: string | null = null;
+      let providerUserId: string;
+
+      if (isOAuthAdapter(this.adapter)) {
+        const refreshed = await this.refreshCredentialIfNeeded(credential);
+        accessToken = refreshed.accessToken;
+        providerUserId = connection.providerUserId ?? "";
+      } else {
+        const username = decryptSecret(
+          credential.accessToken,
+          this.encryptionKey,
+        );
+        const password = credential.refreshToken
+          ? decryptSecret(credential.refreshToken, this.encryptionKey)
+          : null;
+
+        if (!password) {
+          throw new Error(
+            "Stored password is missing — reconnect to fix this.",
+          );
+        }
+
+        const authResult = await this.adapter.authenticate({
+          username,
+          password,
+        });
+        sessionToken = authResult.sessionToken;
+        providerUserId = authResult.providerUserId;
+      }
+
       const lastCursor = input.forceFullResync ? null : connection.lastCursor;
 
       const page = isOAuthAdapter(this.adapter)
@@ -300,7 +348,11 @@ export class CardioSyncOrchestrator {
             });
 
             if (!mapped) {
+              // Peloton's adapter returns null for non-COMPLETE workouts, so
+              // this bucket is non-empty in practice. Counting it keeps
+              // rawItemCount reconcilable against the other four counters.
               await this.rawImportEventStore.markSkipped(rawEvent.id);
+              skippedUnmappableCount += 1;
               continue;
             }
 
@@ -314,20 +366,41 @@ export class CardioSyncOrchestrator {
 
             const { providerExternalId, ...sessionFields } = mapped;
 
-            await this.cardioService.upsertImported(input.userId, {
-              ...sessionFields,
-              source: {
-                sourceType: "imported",
-                sourceProvider: input.provider,
-                sourceExternalId: providerExternalId,
-                importBatchId: importBatch.id,
-                rawImportEventId: rawEvent.id,
-              },
-            });
+            const { session, crossProvider } =
+              await this.cardioService.upsertImported(input.userId, {
+                ...sessionFields,
+                source: {
+                  sourceType: "imported",
+                  sourceProvider: input.provider,
+                  sourceExternalId: providerExternalId,
+                  importBatchId: importBatch.id,
+                  rawImportEventId: rawEvent.id,
+                },
+              });
 
+            // A cross-provider duplicate (TD-019): this workout is already
+            // recorded from a higher-priority source, so nothing was written.
+            // Mark the raw event skipped rather than mapped, so the import log
+            // shows what happened instead of pointing at a row this event
+            // didn't produce. The cursor is still advanced for it below — the
+            // item was handled, just not stored.
+            if (crossProvider?.outcome === "skip_incoming") {
+              await this.rawImportEventStore.markSkipped(rawEvent.id);
+              skippedCrossProviderCount += 1;
+              if (item.occurredAt) successOccurredAts.push(item.occurredAt);
+              continue;
+            }
+
+            if (crossProvider?.outcome === "supersede_existing") {
+              supersededCrossProviderCount += 1;
+            }
+
+            // Was `rawEvent.id` -- the raw event's own id, not the row it
+            // produced -- so the import log pointed nowhere useful. The other
+            // two orchestrators already used the created row's id.
             await this.rawImportEventStore.markMapped(rawEvent.id, {
               canonicalTargetTable: "cardio_sessions",
-              canonicalTargetId: rawEvent.id,
+              canonicalTargetId: session.id,
             });
 
             processedItemCount += 1;
@@ -358,7 +431,7 @@ export class CardioSyncOrchestrator {
               .map((d) => Math.floor(new Date(d).getTime() / 1000))
               .reduce((a, b) => (b > a ? b : a), 0);
             connectionCursorToPersist =
-              maxEpoch > 0 ? String(maxEpoch) : connection.lastCursor ?? null;
+              maxEpoch > 0 ? String(maxEpoch) : (connection.lastCursor ?? null);
           }
         } else {
           connectionCursorToPersist = page.nextCursor ?? null;
@@ -396,6 +469,9 @@ export class CardioSyncOrchestrator {
         processedItemCount,
         failedItemCount,
         skippedDuplicateCount,
+        skippedUnmappableCount,
+        skippedCrossProviderCount,
+        supersededCrossProviderCount,
       });
     } catch (error) {
       const message =
@@ -423,6 +499,9 @@ export class CardioSyncOrchestrator {
       processedItemCount,
       failedItemCount,
       skippedDuplicateCount,
+      skippedUnmappableCount,
+      skippedCrossProviderCount,
+      supersededCrossProviderCount,
     };
   }
 }

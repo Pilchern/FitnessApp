@@ -55,7 +55,8 @@ function createStores(connection: IntegrationConnection) {
 describe("AppleHealthDailyMetricsSyncOrchestrator", () => {
   it("creates a new daily activity metric row when none exists for the date", async () => {
     const connection = createConnection();
-    const { connectionStore, syncJobRunStore, importBatchStore } = createStores(connection);
+    const { connectionStore, syncJobRunStore, importBatchStore } =
+      createStores(connection);
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
@@ -147,7 +148,8 @@ describe("AppleHealthDailyMetricsSyncOrchestrator", () => {
 
   it("updates the existing row and preserves fields absent from the payload", async () => {
     const connection = createConnection();
-    const { connectionStore, syncJobRunStore, importBatchStore } = createStores(connection);
+    const { connectionStore, syncJobRunStore, importBatchStore } =
+      createStores(connection);
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
@@ -226,7 +228,8 @@ describe("AppleHealthDailyMetricsSyncOrchestrator", () => {
 
   it("records failures per item and continues processing", async () => {
     const connection = createConnection();
-    const { connectionStore, syncJobRunStore, importBatchStore } = createStores(connection);
+    const { connectionStore, syncJobRunStore, importBatchStore } =
+      createStores(connection);
 
     const rawImportEventStore = {
       createMany: vi.fn().mockResolvedValue([
@@ -265,7 +268,10 @@ describe("AppleHealthDailyMetricsSyncOrchestrator", () => {
       items: [{ date: "2026-07-15", steps: 100 }],
     });
 
-    expect(rawImportEventStore.markFailed).toHaveBeenCalledWith("raw-3", "db unavailable");
+    expect(rawImportEventStore.markFailed).toHaveBeenCalledWith(
+      "raw-3",
+      "db unavailable",
+    );
     expect(result).toMatchObject({
       processedItemCount: 0,
       failedItemCount: 1,

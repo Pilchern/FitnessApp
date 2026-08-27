@@ -32,8 +32,16 @@ export async function StrengthDetailScreen({
               {session.sessionName ?? "Strength session"}
             </h1>
             <p className="mt-3 text-sm leading-7 text-ink/80">
-              {formatStrengthDate(session.sessionDate)}. {session.sets.length} sets across{" "}
-              {new Set(session.sets.map((set: StrengthExerciseSet) => set.exerciseName)).size} exercises.
+              {formatStrengthDate(session.sessionDate)}. {session.sets.length}{" "}
+              sets across{" "}
+              {
+                new Set(
+                  session.sets.map(
+                    (set: StrengthExerciseSet) => set.exerciseName,
+                  ),
+                ).size
+              }{" "}
+              exercises.
             </p>
           </div>
 
@@ -55,25 +63,37 @@ export async function StrengthDetailScreen({
 
         <div className="mt-5 grid gap-4 md:grid-cols-4">
           <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Duration</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+              Duration
+            </div>
             <div className="mt-2 text-2xl font-semibold text-ink">
-              {session.durationMinutes != null ? `${session.durationMinutes} min` : "--"}
+              {session.durationMinutes != null
+                ? `${session.durationMinutes} min`
+                : "--"}
             </div>
           </div>
           <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Readiness</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+              Readiness
+            </div>
             <div className="mt-2 text-2xl font-semibold text-ink">
-              {session.readinessPre != null ? `${session.readinessPre}/10` : "--"}
+              {session.readinessPre != null
+                ? `${session.readinessPre}/10`
+                : "--"}
             </div>
           </div>
           <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Energy after</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+              Energy after
+            </div>
             <div className="mt-2 text-2xl font-semibold text-ink">
               {session.energyPost != null ? `${session.energyPost}/10` : "--"}
             </div>
           </div>
           <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">Plan match</div>
+            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+              Plan match
+            </div>
             <div className="mt-2 text-2xl font-semibold text-ink">
               {session.completedAsPlanned ? "Yes" : "Adjusted"}
             </div>
@@ -106,7 +126,9 @@ export async function StrengthDetailScreen({
             <tbody>
               {session.sets.map((set: StrengthExerciseSet) => (
                 <tr key={set.id} className="border-t border-ink/10">
-                  <td className="py-3 pr-4 font-semibold text-ink">{set.exerciseName}</td>
+                  <td className="py-3 pr-4 font-semibold text-ink">
+                    {set.exerciseName}
+                  </td>
                   <td className="py-3 pr-4">{set.setNumber}</td>
                   <td className="py-3 pr-4">{set.reps ?? "--"}</td>
                   <td className="py-3 pr-4">{set.weight ?? "--"}</td>

@@ -56,6 +56,24 @@ function parseOptionalIsoDate(fieldName: string) {
     });
 }
 
+/**
+ * Optional select: an empty string means "not answered" and maps to null,
+ * which is distinct from the storable "unspecified" choice (declining to say).
+ * Nothing like this existed yet — every other enum on this form is required.
+ */
+function parseOptionalEnum<const T extends readonly [string, ...string[]]>(
+  values: T,
+  label: string,
+) {
+  return z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((value) => (value == null || value === "" ? null : value))
+    .refine((value) => value === null || values.includes(value as T[number]), {
+      message: `${label} must be one of: ${values.join(", ")}`,
+    })
+    .transform((value) => value as T[number] | null);
+}
+
 export const settingsFormSchema = z.object({
   displayName: z
     .string()
@@ -67,7 +85,9 @@ export const settingsFormSchema = z.object({
     message: "Units system must be imperial or metric",
   }),
   weekStartsOn: z
-    .enum(["0", "1"], { message: "Week start must be 0 (Sunday) or 1 (Monday)" })
+    .enum(["0", "1"], {
+      message: "Week start must be 0 (Sunday) or 1 (Monday)",
+    })
     .transform((value) => Number(value) as 0 | 1),
   goalFatLoss: z.boolean(),
   goalPreserveMuscle: z.boolean(),
@@ -77,6 +97,12 @@ export const settingsFormSchema = z.object({
   dailyFiberGramsTarget: parseOptionalPositiveInt("Daily fiber target"),
   targetWeightLb: parseOptionalPositiveNumber("Target weight"),
   targetDate: parseOptionalIsoDate("Target date"),
+  heightCm: parseOptionalPositiveNumber("Height"),
+  birthDate: parseOptionalIsoDate("Date of birth"),
+  biologicalSex: parseOptionalEnum(
+    ["male", "female", "unspecified"],
+    "Biological sex",
+  ),
 });
 
 export type SettingsFormInput = z.infer<typeof settingsFormSchema>;

@@ -1,6 +1,7 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { moduleNavigationItems } from "@/lib/navigation";
+import { AUTH_COOKIE_OPTIONS } from "@/lib/auth-cookie-options";
 
 const protectedPrefixes = moduleNavigationItems.map((item) => item.href);
 
@@ -55,6 +56,7 @@ export async function middleware(request: NextRequest) {
           });
         },
       },
+      cookieOptions: AUTH_COOKIE_OPTIONS,
     },
   );
 

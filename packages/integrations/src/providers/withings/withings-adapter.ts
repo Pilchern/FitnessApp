@@ -196,7 +196,9 @@ export class WithingsBodyMetricsAdapter implements BodyMetricsProviderAdapter {
         occurredAt: epochSecondsToIso(group.date),
         payload: group,
       })),
-      nextCursor: parsed.body.updatetime ? String(parsed.body.updatetime) : null,
+      nextCursor: parsed.body.updatetime
+        ? String(parsed.body.updatetime)
+        : null,
       metadata: {
         fetchedItemCount: parsed.body.measuregrps.length,
       },
@@ -275,7 +277,9 @@ export class WithingsBodyMetricsAdapter implements BodyMetricsProviderAdapter {
     };
   }
 
-  private mapTokenSet(body: z.infer<typeof withingsTokenResponseSchema>["body"]): OAuthTokenSet {
+  private mapTokenSet(
+    body: z.infer<typeof withingsTokenResponseSchema>["body"],
+  ): OAuthTokenSet {
     return {
       accessToken: body.access_token,
       refreshToken: body.refresh_token ?? null,
