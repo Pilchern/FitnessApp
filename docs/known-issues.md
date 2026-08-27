@@ -2,6 +2,13 @@
 
 **Last verified against code:** 2026-08-26.
 
+## Fixed 2026-08-26 (see CURRENT_STATE.md session log)
+
+- Session cookies were readable from JavaScript (`httpOnly` unset); open redirect via a backslash-prefixed `redirectTo`; Strava/Peloton sync failures that recorded nothing and were never retried; Apple Health webhooks with no body-size or array-length bound; no security headers.
+- `computeJournalStreak` skipped a day at positive UTC offsets; the Saturday-missed rule fired on an in-progress Saturday; the missing-weekly-review nudge fired on empty accounts; three dashboard goal-progress miscalculations (VO2 boundary double-count, fat-loss pace divided by a fixed 4 weeks, UTC `today` in a user-local streak).
+- The Apple Health sleep sync rewrote a valid 1440-minute value as 24 minutes.
+- `/api/account/export` silently truncated at 500 rows per table.
+
 ## Current weak spots
 
 - Playwright E2E covers auth, navigation, body, cardio, integrations connect flow, and weekly-review (6 specs); the remaining modules (strength, recovery, nutrition, journal, insights, settings) have no browser coverage yet.
