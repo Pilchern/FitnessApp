@@ -178,8 +178,6 @@ See `docs/next-release-roadmap.md` for the full ranked list. In brief: TD-030 (p
 
 ---
 
----
-
 ## What Was Done in This Session (2026-08-26, CI + formatting + TD-019)
 
 Started from a verified baseline (typecheck/lint/test/build all clean, 269/269, matching the docs), then worked down the highest-value remaining items.
