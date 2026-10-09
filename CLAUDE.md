@@ -4,9 +4,10 @@ Single-user fitness tracker. Next.js 15 App Router + Supabase, pnpm monorepo. Ow
 
 ## Read first, in this order
 1. `CURRENT_STATE.md`, the "Start Here" section: what changed most recently, what is in the live database, open items.
-2. `AGENTS.md`: layer rules and per-role guardrails (domain/application/infrastructure/web boundaries, server action patterns, migration rules).
-3. `TECH_DEBT.md` and `docs/known-issues.md` before proposing new work.
-4. `FitnessAppContext.md` for module status and the dated session log. Add a row when you finish a session.
+2. `docs/fitness-health-plan.md`: the full training, rehab-gate, nutrition and health plan this app is built to support. Check it before changing templates, targets or schedules.
+3. `AGENTS.md`: layer rules and per-role guardrails (domain/application/infrastructure/web boundaries, server action patterns, migration rules).
+4. `TECH_DEBT.md` and `docs/known-issues.md` before proposing new work.
+5. `FitnessAppContext.md` for module status and the dated session log. Add a row when you finish a session.
 
 ## Commands
 - `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm format`, `pnpm build`. CI runs all five on every PR; run them locally first.
