@@ -1,14 +1,6 @@
 {
   "crons": [
     {
-      "path": "/api/cron/peloton-sync",
-      "schedule": "0 8 * * 1"
-    },
-    {
-      "path": "/api/cron/strava-sync",
-      "schedule": "0 8 * * 1"
-    },
-    {
       "path": "/api/cron/weekly-review-auto-finalize",
       "schedule": "0 8 * * 1"
     },
