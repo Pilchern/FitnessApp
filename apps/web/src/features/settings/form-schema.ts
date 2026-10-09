@@ -117,9 +117,3 @@ export const supplementFormSchema = z.object({
 });
 
 export type SupplementFormInput = z.infer<typeof supplementFormSchema>;
-
-export const deleteAccountFormSchema = z.object({
-  confirmation: z.literal("DELETE", {
-    message: 'Type "DELETE" (all caps) to confirm.',
-  }),
-});

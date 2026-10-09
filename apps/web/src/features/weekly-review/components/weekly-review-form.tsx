@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useActionState, useMemo, useState } from "react";
 import { calculateWeeklyReviewScore } from "@fitness-app/application";
 import type { WeeklyReviewSummary } from "@fitness-app/domain";
-import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
 import { formatWeeklyReviewDate, toWeeklyReviewFormValues } from "../helpers";
 import { saveWeeklyReviewAction } from "../actions";

@@ -9,7 +9,7 @@ import type {
   CardioTemplatePreset,
 } from "../types";
 import { toCardioFormValues } from "../helpers";
-import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 
 type CardioQuickFormProps = {
   mode: "create" | "edit";

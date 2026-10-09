@@ -31,3 +31,23 @@ body {
 a {
   color: inherit;
 }
+
+/* Mobile: 16px+ inputs stop iOS Safari zooming on focus; no tap flash/delay. */
+@media (max-width: 1023px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a,
+summary {
+  touch-action: manipulation;
+}

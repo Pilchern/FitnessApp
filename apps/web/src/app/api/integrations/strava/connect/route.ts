@@ -5,24 +5,20 @@ import {
   createStravaAdapter,
   getStravaIntegrationConfig,
 } from "@/lib/server/integrations";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { getCurrentUser } from "@/lib/server/auth";
 
 const OAUTH_STATE_COOKIE = "strava_oauth_state";
 const OAUTH_USER_COOKIE = "strava_oauth_user_id";
 
 async function requireRouteUser() {
-  const supabase = await createSupabaseRequestClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user ?? null;
+  return getCurrentUser();
 }
 
 export async function GET(request: NextRequest) {
   const user = await requireRouteUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/integrations", request.url));
   }
 
   if (!getStravaIntegrationConfig()) {

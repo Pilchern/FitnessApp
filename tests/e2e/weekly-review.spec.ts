@@ -1,30 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { loginAs, TEST_USER_EMAIL, TEST_USER_PASSWORD } from "./helpers/auth";
-
-let loginAvailable = true;
-
-test.beforeAll(async ({ browser }) => {
-  const page = await browser.newPage();
-  try {
-    await loginAs(page, TEST_USER_EMAIL, TEST_USER_PASSWORD);
-    loginAvailable = true;
-  } catch {
-    loginAvailable = false;
-    console.warn(
-      `[E2E] Login probe failed — weekly-review tests will be skipped. ` +
-        `Ensure the test user ${TEST_USER_EMAIL} exists in your Supabase project.`,
-    );
-  } finally {
-    await page.close();
-  }
-});
-
-test.beforeEach(async ({ page }) => {
-  if (!loginAvailable) {
-    test.skip(true, "Test user not available in this Supabase environment");
-  }
-  await loginAs(page);
-});
 
 test("authenticated user can view /weekly-review page", async ({ page }) => {
   await page.goto("/weekly-review");
@@ -115,10 +89,4 @@ test("weekly-review page renders auto-filled metric fields", async ({
   await expect(page.getByLabel("Waist (in)")).toBeVisible();
   await expect(page.getByLabel("Rides completed")).toBeVisible();
   await expect(page.getByLabel("Zone 2 minutes")).toBeVisible();
-});
-
-test("unauthenticated /weekly-review redirects to /login", async ({ page }) => {
-  await page.context().clearCookies();
-  await page.goto("/weekly-review");
-  await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
 });

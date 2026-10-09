@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createCoreServices } from "@/lib/server/services";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { getCurrentUser } from "@/lib/server/auth";
 import {
   EXPORT_DATE_RANGE_LIMIT,
   EXPORT_INSIGHT_LIMIT,
@@ -35,10 +35,7 @@ function todayIsoDate() {
 }
 
 export async function GET() {
-  const supabase = await createSupabaseRequestClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getCurrentUser();
 
   if (!user) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

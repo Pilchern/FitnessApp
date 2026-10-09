@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import type { StrengthSession } from "@fitness-app/domain";
 import type { StrengthTrainingTemplateDefinition } from "@fitness-app/application";
-import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import {
   createEmptyStrengthSet,
   exerciseKey,
