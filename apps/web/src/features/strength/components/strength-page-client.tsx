@@ -10,6 +10,7 @@ import {
   updateStrengthSessionAction,
 } from "../actions";
 import type { StrengthActionState } from "../types";
+import type { LastExercisePerformance } from "../helpers";
 import { StrengthQuickForm } from "./strength-quick-form";
 import { StrengthTemplateSection } from "./strength-template-section";
 import { TodaysPlanCallout } from "./todays-plan-callout";
@@ -22,6 +23,7 @@ type StrengthPageClientProps = {
   lastSession: StrengthSession | null;
   strengthTemplates: TrainingTemplate[];
   todaysScheduledTemplate: TrainingTemplate | null;
+  lastByExercise: Record<string, LastExercisePerformance>;
 };
 
 export function StrengthPageClient({
@@ -32,6 +34,7 @@ export function StrengthPageClient({
   lastSession,
   strengthTemplates,
   todaysScheduledTemplate,
+  lastByExercise,
 }: StrengthPageClientProps) {
   const [loadedTemplate, setLoadedTemplate] =
     useState<StrengthTrainingTemplateDefinition | null>(null);
@@ -73,6 +76,7 @@ export function StrengthPageClient({
         knownExercises={knownExercises}
         lastSession={lastSession}
         loadedTemplate={loadedTemplate}
+        lastByExercise={lastByExercise}
       />
     </>
   );

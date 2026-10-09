@@ -113,6 +113,7 @@ export const supplementFormSchema = z.object({
     .trim()
     .min(1, "Supplement name is required")
     .max(100, "Supplement name must be 100 characters or fewer"),
+  kind: z.enum(["supplement", "habit"]).default("supplement"),
 });
 
 export type SupplementFormInput = z.infer<typeof supplementFormSchema>;

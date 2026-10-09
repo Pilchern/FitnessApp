@@ -17,7 +17,12 @@ import {
   getCachedUserProfile,
 } from "@/lib/server/services";
 import { getInsightsData } from "@/features/insights/server";
-import { computeGoalProgress, formatZonedIsoDate } from "./helpers";
+import {
+  addDaysIsoDate,
+  buildWeekPlan,
+  computeGoalProgress,
+  formatZonedIsoDate,
+} from "./helpers";
 import type {
   DashboardData,
   TodayNutrition,
@@ -50,6 +55,9 @@ export async function getDashboardData(): Promise<DashboardData> {
     nutritionService,
     journalService,
     exerciseOverrideService,
+    trainingTemplateService,
+    supplementService,
+    supplementLogService,
   } = await createCoreServices();
 
   const profile = await getCachedUserProfile(user.id);
@@ -78,6 +86,10 @@ export async function getDashboardData(): Promise<DashboardData> {
     strengthSessionsResult,
     cardioLast8WeeksResult,
     exerciseOverridesResult,
+    strengthTemplatesResult,
+    cardioTemplatesResult,
+    habitDefsResult,
+    habitLogsResult,
   ] = await Promise.allSettled([
     cardioService.listByDateRange({
       userId: user.id,
@@ -116,6 +128,14 @@ export async function getDashboardData(): Promise<DashboardData> {
       startDate: daysAgoIsoDate(56),
     }),
     exerciseOverrideService.listActive({ userId: user.id }),
+    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
+    trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
+    supplementService.listActive({ userId: user.id }),
+    supplementLogService.listByDateRange({
+      userId: user.id,
+      startDate: addDaysIsoDate(today, -6),
+      endDate: today,
+    }),
   ]);
 
   const cardioThisWeek = settledOrNull(cardioThisWeekResult) ?? [];
@@ -129,6 +149,14 @@ export async function getDashboardData(): Promise<DashboardData> {
   const strengthSessions = settledOrNull(strengthSessionsResult) ?? [];
   const cardioLast8Weeks = settledOrNull(cardioLast8WeeksResult) ?? [];
   const exerciseOverrides = settledOrNull(exerciseOverridesResult) ?? [];
+  const habitItems = (settledOrNull(habitDefsResult) ?? []).filter(
+    (s) => s.kind === "habit",
+  );
+  const habitLogs = settledOrNull(habitLogsResult) ?? [];
+  const planTemplates = [
+    ...(settledOrNull(strengthTemplatesResult) ?? []),
+    ...(settledOrNull(cardioTemplatesResult) ?? []),
+  ];
   const exerciseOverridesLookup = buildOverridesLookup(exerciseOverrides);
   const journalStreak = computeJournalStreak(journalEntries, today);
   const topInsights = insightData?.topInsights ?? [];
@@ -214,5 +242,25 @@ export async function getDashboardData(): Promise<DashboardData> {
     todayNutrition,
     nutritionTargets,
     muscleGroupVolume,
+    habits: {
+      items: habitItems,
+      takenTodayIds: habitLogs
+        .filter((l) => l.taken && l.logDate === today)
+        .map((l) => l.supplementId),
+      weekCounts: Object.fromEntries(
+        habitItems.map((h) => [
+          h.id,
+          habitLogs.filter((l) => l.taken && l.supplementId === h.id).length,
+        ]),
+      ),
+      logDate: today,
+    },
+    weekPlan: buildWeekPlan({
+      weekStart,
+      today,
+      templates: planTemplates,
+      strengthSessions,
+      cardioSessions: cardioThisWeek,
+    }),
   };
 }

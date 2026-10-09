@@ -8,6 +8,8 @@ import type {
   TrainingTemplate,
 } from "@fitness-app/domain";
 
+import type { LastExercisePerformance } from "./helpers";
+
 export type StrengthPageData = {
   sessions: StrengthSession[];
   progressionSummaries: StrengthProgressionSummary[];
@@ -20,6 +22,7 @@ export type StrengthPageData = {
   exerciseOverrides: ExerciseMuscleGroupOverride[];
   unclassifiedExerciseNames: string[];
   todaysScheduledTemplate: TrainingTemplate | null;
+  lastByExercise: Record<string, LastExercisePerformance>;
 };
 
 export type StrengthDetailData = {

@@ -1,13 +1,19 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-08-27 (nutrition-target personalization — TD-030 resolved; register now empty)
+**Last updated:** 2026-10-09 (TD-039 added: habits stored in the supplements tables)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
 
 ## Priority 1 — Active Debt
 
-_No active debt. Items are added here as they are found._
+### TD-039 — Habits live in the `supplements` tables (low)
+
+Daily habits reuse `supplements` / `supplement_logs` through a `kind` column (`supplement` | `habit`) added 2026-10-09 to avoid duplicating two tables, a repository, a service and the adherence summary for an identical shape. The cost is naming: code that handles habits says "supplement" (`SupplementChecklist`, `logSupplementsAction`, `supplementService`). If habits grow their own behavior (targets, streaks, schedules per day), split them into real `habits` tables then. Not worth doing before that.
+
+### TD-040 — `profiles.baseline_schedule` is dead config (low)
+
+Seeded with a pre-injury weekly plan, written by `profile-bootstrap.ts`, read by nothing. The real schedule is `training_templates.scheduled_day_of_week`. Either delete the column or make the dashboard plan card read it; do not add a third source of truth.
 
 ---
 

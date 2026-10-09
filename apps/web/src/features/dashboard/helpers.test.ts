@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 // This is the exact helper server.ts uses to build the zoned clock.
 import { getZonedDate } from "../../../../../packages/application/src/shared/timezone";
 import {
+  buildWeekPlan,
   computeGoalProgress,
   formatZonedIsoDate,
   type GoalProgressBodyMetric,
@@ -530,5 +531,128 @@ describe("user-local today (timezone consistency)", () => {
     expect(
       fatLoss(body, {}, getZonedDate("UTC", eveningInChicago)),
     ).toMatchObject({ trend: "improving" });
+  });
+});
+
+describe("buildWeekPlan", () => {
+  const templates = [
+    {
+      id: "push",
+      name: "Mon Push",
+      templateType: "strength" as const,
+      scheduledDayOfWeek: 1,
+      definition: {},
+    },
+    {
+      id: "z2-tue",
+      name: "Tue Bike Z2",
+      templateType: "cardio" as const,
+      scheduledDayOfWeek: 2,
+      definition: { targetZone2Minutes: 30 },
+    },
+    {
+      id: "z2-sat",
+      name: "Sat Bike Z2",
+      templateType: "cardio" as const,
+      scheduledDayOfWeek: 6,
+      definition: { targetZone2Minutes: 45 },
+    },
+    {
+      id: "unscheduled",
+      name: "No day",
+      templateType: "strength" as const,
+      scheduledDayOfWeek: null,
+      definition: {},
+    },
+  ];
+  // 2026-10-05 is a Monday.
+  const base = {
+    weekStart: "2026-10-05",
+    today: "2026-10-07",
+    templates,
+    strengthSessions: [],
+    cardioSessions: [],
+  };
+
+  it("lays templates on the right dates and sums the Z2 target", () => {
+    const plan = buildWeekPlan(base);
+    expect(plan.days).toHaveLength(7);
+    expect(plan.days[0]?.date).toBe("2026-10-05");
+    expect(plan.days[0]?.items.map((i) => i.templateId)).toEqual(["push"]);
+    expect(plan.days[1]?.items.map((i) => i.templateId)).toEqual(["z2-tue"]);
+    expect(plan.days[5]?.items.map((i) => i.templateId)).toEqual(["z2-sat"]);
+    expect(plan.zone2TargetMinutes).toBe(75);
+  });
+
+  it("ignores templates with no scheduled day", () => {
+    const all = buildWeekPlan(base).days.flatMap((d) => d.items);
+    expect(all.some((i) => i.templateId === "unscheduled")).toBe(false);
+  });
+
+  it("flags today and past days", () => {
+    const plan = buildWeekPlan(base);
+    expect(plan.days[2]?.isToday).toBe(true);
+    expect(plan.days[1]?.isPast).toBe(true);
+    expect(plan.days[3]?.isPast).toBe(false);
+  });
+
+  it("marks strength done by template id or by date when untemplated", () => {
+    const byTemplate = buildWeekPlan({
+      ...base,
+      strengthSessions: [
+        { sessionDate: "2026-10-05", trainingTemplateId: "push" },
+      ],
+    });
+    expect(byTemplate.days[0]?.items[0]?.done).toBe(true);
+
+    const byDate = buildWeekPlan({
+      ...base,
+      strengthSessions: [
+        { sessionDate: "2026-10-05", trainingTemplateId: null },
+      ],
+    });
+    expect(byDate.days[0]?.items[0]?.done).toBe(true);
+
+    const otherTemplate = buildWeekPlan({
+      ...base,
+      strengthSessions: [
+        { sessionDate: "2026-10-05", trainingTemplateId: "other" },
+      ],
+    });
+    expect(otherTemplate.days[0]?.items[0]?.done).toBe(false);
+  });
+
+  it("does not count planned-only or non-cardio rows as done", () => {
+    const plan = buildWeekPlan({
+      ...base,
+      cardioSessions: [
+        {
+          sessionDate: "2026-10-06",
+          trainingTemplateId: null,
+          plannedVsCompleted: "planned",
+          sessionKind: "zone2",
+        },
+        {
+          sessionDate: "2026-10-06",
+          trainingTemplateId: null,
+          plannedVsCompleted: "completed",
+          sessionKind: "other",
+        },
+      ],
+    });
+    expect(plan.days[1]?.items[0]?.done).toBe(false);
+
+    const done = buildWeekPlan({
+      ...base,
+      cardioSessions: [
+        {
+          sessionDate: "2026-10-06",
+          trainingTemplateId: "z2-tue",
+          plannedVsCompleted: "completed",
+          sessionKind: "zone2",
+        },
+      ],
+    });
+    expect(done.days[1]?.items[0]?.done).toBe(true);
   });
 });

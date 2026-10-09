@@ -7,6 +7,7 @@ import { ActionSubmitButton } from "@/components/shared/action-submit-button";
 import type { SupplementActionState } from "../types";
 
 type SupplementsManagerProps = {
+  kind: "supplement" | "habit";
   supplements: Supplement[];
   createAction: (
     state: SupplementActionState,
@@ -45,25 +46,31 @@ function SectionHeader({
 }
 
 export function SupplementsManager({
+  kind,
   supplements,
   createAction,
   deactivateAction,
   reactivateAction,
 }: SupplementsManagerProps) {
   const [state, formAction] = useActionState(createAction, initialState);
-  const activeSupplements = supplements.filter(
-    (supplement) => supplement.isActive,
-  );
-  const inactiveSupplements = supplements.filter(
+  const isHabit = kind === "habit";
+  const noun = isHabit ? "habit" : "supplement";
+  const ofKind = supplements.filter((supplement) => supplement.kind === kind);
+  const activeSupplements = ofKind.filter((supplement) => supplement.isActive);
+  const inactiveSupplements = ofKind.filter(
     (supplement) => !supplement.isActive,
   );
 
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
       <SectionHeader
-        eyebrow="Supplements"
-        title="What you're tracking"
-        description="Add supplements here, then check them off daily from the Recovery check-in. Deactivate a supplement to stop tracking it without losing its history."
+        eyebrow={isHabit ? "Daily habits" : "Supplements"}
+        title={isHabit ? "Habits you're building" : "What you're tracking"}
+        description={
+          isHabit
+            ? "Add habits here, then check them off daily from the Dashboard. Deactivate a habit to stop tracking it without losing its history."
+            : "Add supplements here, then check them off daily from the Recovery check-in. Deactivate a supplement to stop tracking it without losing its history."
+        }
       />
 
       {state.error ? (
@@ -76,19 +83,20 @@ export function SupplementsManager({
         action={formAction}
         className="flex flex-col gap-3 sm:flex-row sm:items-end"
       >
+        <input type="hidden" name="kind" value={kind} />
         <label className="grid flex-1 gap-2 text-sm font-medium text-ink">
-          Supplement name
+          {isHabit ? "Habit name" : "Supplement name"}
           <input
             className={fieldClassName()}
             name="name"
             type="text"
-            placeholder="e.g. Creatine"
+            placeholder={isHabit ? "e.g. Foundation Training" : "e.g. Creatine"}
           />
           {state.fieldErrors?.name ? (
             <p className="text-xs text-ember">{state.fieldErrors.name}</p>
           ) : null}
         </label>
-        <AuthSubmitButton idleLabel="Add supplement" pendingLabel="Adding..." />
+        <AuthSubmitButton idleLabel={`Add ${noun}`} pendingLabel="Adding..." />
       </form>
 
       {activeSupplements.length > 0 ? (
@@ -114,7 +122,7 @@ export function SupplementsManager({
         </div>
       ) : (
         <p className="mt-5 text-sm text-ink/60">
-          No supplements yet. Add your first one above.
+          No {noun}s yet. Add your first one above.
         </p>
       )}
 

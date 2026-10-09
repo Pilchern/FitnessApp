@@ -265,3 +265,121 @@ export function computeGoalProgress(
 
   return progress;
 }
+
+export type WeekPlanTemplate = {
+  id: string;
+  name: string;
+  templateType: "strength" | "cardio";
+  scheduledDayOfWeek: number | null;
+  definition: unknown;
+};
+
+export type WeekPlanSession = {
+  sessionDate: string;
+  trainingTemplateId: string | null;
+};
+
+export type WeekPlanCardioSession = WeekPlanSession & {
+  plannedVsCompleted: string;
+  sessionKind: string;
+};
+
+export type WeekPlanItem = {
+  templateId: string;
+  name: string;
+  kind: "strength" | "cardio";
+  targetZone2Minutes: number | null;
+  done: boolean;
+};
+
+export type WeekPlanDay = {
+  date: string;
+  dayOfWeek: number;
+  isToday: boolean;
+  isPast: boolean;
+  items: WeekPlanItem[];
+};
+
+export type WeekPlan = {
+  days: WeekPlanDay[];
+  /** Sum of targetZone2Minutes over the cardio templates scheduled this week. */
+  zone2TargetMinutes: number;
+};
+
+function readTargetZone2Minutes(definition: unknown): number | null {
+  if (typeof definition !== "object" || definition === null) return null;
+  const value = (definition as { targetZone2Minutes?: unknown })
+    .targetZone2Minutes;
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Lays scheduled templates over the 7 calendar days starting at `weekStart`
+ * and marks each done when a matching session exists. A session matches by
+ * template id, or by date alone when it was logged without a template.
+ * Planned-only cardio rows never count as done.
+ */
+export function buildWeekPlan(input: {
+  weekStart: string;
+  today: string;
+  templates: WeekPlanTemplate[];
+  strengthSessions: WeekPlanSession[];
+  cardioSessions: WeekPlanCardioSession[];
+}): WeekPlan {
+  const days: WeekPlanDay[] = [];
+  let zone2TargetMinutes = 0;
+
+  for (let i = 0; i < 7; i += 1) {
+    const date = new Date(isoDateAtNoonUtc(input.weekStart) + i * MS_PER_DAY)
+      .toISOString()
+      .slice(0, 10);
+    const dayOfWeek = new Date(isoDateAtNoonUtc(date)).getUTCDay();
+    const items: WeekPlanItem[] = input.templates
+      .filter((t) => t.scheduledDayOfWeek === dayOfWeek)
+      .map((t) => {
+        const kind = t.templateType;
+        const done =
+          kind === "strength"
+            ? input.strengthSessions.some(
+                (s) =>
+                  s.sessionDate === date &&
+                  (s.trainingTemplateId === t.id ||
+                    s.trainingTemplateId === null),
+              )
+            : input.cardioSessions.some(
+                (s) =>
+                  s.sessionDate === date &&
+                  s.plannedVsCompleted === "completed" &&
+                  s.sessionKind !== "other" &&
+                  (s.trainingTemplateId === t.id ||
+                    s.trainingTemplateId === null),
+              );
+        const targetZone2Minutes =
+          kind === "cardio" ? readTargetZone2Minutes(t.definition) : null;
+        if (targetZone2Minutes) zone2TargetMinutes += targetZone2Minutes;
+        return {
+          templateId: t.id,
+          name: t.name,
+          kind,
+          targetZone2Minutes,
+          done,
+        };
+      });
+    days.push({
+      date,
+      dayOfWeek,
+      isToday: date === input.today,
+      isPast: date < input.today,
+      items,
+    });
+  }
+
+  return { days, zone2TargetMinutes };
+}
+
+/** Calendar-date arithmetic on YYYY-MM-DD strings, immune to DST and timezone. */
+export function addDaysIsoDate(isoDate: string, days: number) {
+  return new Date(isoDateAtNoonUtc(isoDate) + days * MS_PER_DAY)
+    .toISOString()
+    .slice(0, 10);
+}

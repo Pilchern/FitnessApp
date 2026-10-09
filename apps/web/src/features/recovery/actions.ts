@@ -65,7 +65,8 @@ export async function createRecoveryCheckinAction(
     const user = await requireCurrentUser();
     const { recoveryService } = await createCoreServices();
     await recoveryService.create(buildRecoveryPayload(user.id, formData));
-    redirect("/recovery");
+    const returnTo = formData.get("returnTo");
+    redirect(returnTo === "/dashboard" ? "/dashboard" : "/recovery");
   } catch (error) {
     return parseActionError(error);
   }
