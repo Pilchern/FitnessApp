@@ -86,7 +86,7 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 
 1. Foundation Training 8-10 min (Eric Goodman: founder hold, decompression breathing). Evidence is promotional only; treated as a posture/warm-up habit, not part of the strength budget.
 2. Morning sunlight 10-20 min after waking.
-3. 7,000 steps (manual checkbox until Apple Health syncs).
+3. 7,000 steps (auto-ticked from synced Apple Health steps once the bridge is on; manual checkbox until then).
 4. Mobility 15 min (static stretching; no knee-loaded stretches while rehabbing).
 
 Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery check-in; M-F first thing in the morning, 55F, 5 min, then sunlight), wake and bed time (recovery check-in), protein hit, fiber and alcohol (nutrition log), supplements (kind = supplement).

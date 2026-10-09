@@ -383,3 +383,28 @@ export function addDaysIsoDate(isoDate: string, days: number) {
     .toISOString()
     .slice(0, 10);
 }
+
+/** Today's synced steps and the most recent VO2 max reading, with its date. */
+export function summarizeDailyActivity(
+  metrics: {
+    metricDate: string;
+    steps: number | null;
+    vo2Max: number | null;
+  }[],
+  today: string,
+): {
+  stepsToday: number | null;
+  vo2Max: { value: number; date: string } | null;
+} {
+  const stepsToday = metrics.find((m) => m.metricDate === today)?.steps ?? null;
+  const latestVo2 = metrics
+    .filter((m) => m.vo2Max != null && m.metricDate <= today)
+    .sort((a, b) => b.metricDate.localeCompare(a.metricDate))[0];
+  return {
+    stepsToday,
+    vo2Max:
+      latestVo2?.vo2Max != null
+        ? { value: latestVo2.vo2Max, date: latestVo2.metricDate }
+        : null,
+  };
+}
