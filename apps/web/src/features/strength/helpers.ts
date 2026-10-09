@@ -173,3 +173,58 @@ export function startingWeight(
   const value = fromLast ?? templateTarget;
   return value != null ? String(value) : "";
 }
+
+const TIMED_EXERCISE_PATTERN = /hang|plank|carry|hold|wall sit/i;
+
+/** Timed movements log seconds instead of reps. */
+export function isTimedSet(set: {
+  exerciseName: string;
+  durationSeconds: string;
+}) {
+  return (
+    set.durationSeconds !== "" || TIMED_EXERCISE_PATTERN.test(set.exerciseName)
+  );
+}
+
+export type ExerciseGroup = {
+  key: string;
+  name: string;
+  indexes: number[];
+};
+
+/** Groups consecutive sets of the same exercise, preserving flat indexes. */
+export function groupSetsByExercise(
+  sets: { exerciseName: string }[],
+): ExerciseGroup[] {
+  const groups: ExerciseGroup[] = [];
+  sets.forEach((set, index) => {
+    const key = exerciseKey(set.exerciseName);
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) {
+      last.indexes.push(index);
+    } else {
+      groups.push({ key, name: set.exerciseName, indexes: [index] });
+    }
+  });
+  return groups;
+}
+
+/** Sets to persist: ticked ones if any were ticked, otherwise everything. */
+export function selectSetsToSave<T extends { done?: boolean }>(sets: T[]) {
+  return sets.some((set) => set.done) ? sets.filter((set) => set.done) : sets;
+}
+
+/** Renumbers sets 1..n within each consecutive exercise group. */
+export function renumberSets<
+  T extends { exerciseName: string; setNumber: number },
+>(sets: T[]): T[] {
+  const counts = new Map<string, number>();
+  let previous = "";
+  return sets.map((set) => {
+    const key = exerciseKey(set.exerciseName);
+    const next = key === previous ? (counts.get(key) ?? 0) + 1 : 1;
+    counts.set(key, next);
+    previous = key;
+    return { ...set, setNumber: next };
+  });
+}

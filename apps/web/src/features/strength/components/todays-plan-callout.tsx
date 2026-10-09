@@ -18,7 +18,7 @@ export function TodaysPlanCallout({
   const exerciseNames = def?.exercises.map((ex) => ex.exerciseName).join(" · ");
 
   return (
-    <section className="rounded-[1.75rem] border border-pine/30 bg-pine/5 p-6 shadow-panel">
+    <section className="rounded-[1.75rem] border border-pine/30 bg-pine/5 p-4 shadow-panel sm:p-6">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
         Today&apos;s plan
       </p>
@@ -32,9 +32,9 @@ export function TodaysPlanCallout({
         <button
           type="button"
           onClick={() => onLoad(template)}
-          className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-pine px-5 text-sm font-semibold text-white transition hover:bg-pine/90"
+          className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-pine px-5 text-sm font-semibold text-white transition hover:bg-pine/90"
         >
-          Load today&apos;s plan
+          Start workout
         </button>
       </div>
     </section>

@@ -44,6 +44,8 @@ export type StrengthSetFormValue = {
   durationSeconds: string;
   distanceMeters: string;
   notes: string;
+  /** Local logging state; unticked sets are dropped on save once any is ticked. */
+  done?: boolean;
 };
 
 export type StrengthFormValues = {

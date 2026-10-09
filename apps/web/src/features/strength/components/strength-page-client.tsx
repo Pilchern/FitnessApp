@@ -38,9 +38,13 @@ export function StrengthPageClient({
 }: StrengthPageClientProps) {
   const [loadedTemplate, setLoadedTemplate] =
     useState<StrengthTrainingTemplateDefinition | null>(null);
+  const [loadedTemplateName, setLoadedTemplateName] = useState<string | null>(
+    null,
+  );
 
   function handleLoadTemplate(template: TrainingTemplate) {
     if (isStrengthTemplateDefinition(template.definition)) {
+      setLoadedTemplateName(template.name);
       setLoadedTemplate(
         template.definition as StrengthTrainingTemplateDefinition,
       );
@@ -76,6 +80,7 @@ export function StrengthPageClient({
         knownExercises={knownExercises}
         lastSession={lastSession}
         loadedTemplate={loadedTemplate}
+        loadedTemplateName={loadedTemplateName}
         lastByExercise={lastByExercise}
       />
     </>
