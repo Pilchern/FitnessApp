@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { TrendChart } from "@/components/shared/trend-chart";
-import type { SparseTrendPoint } from "@fitness-app/application";
+import type {
+  SparseTrendPoint,
+  WeeklyWeightTrend,
+} from "@fitness-app/application";
 
 type BodySnapshotCardProps = {
   latestWeightLb: number | null;
@@ -11,6 +14,9 @@ type BodySnapshotCardProps = {
   latestBodyDate: string | null;
   weightTrend: SparseTrendPoint[];
   vo2Max?: { value: number; date: string } | null;
+  weeklyWeight?: WeeklyWeightTrend | null;
+  /** Protein-hit days over the last 7; null when nothing is logged, so the line hides. */
+  proteinHit?: { days: number; of: number } | null;
 };
 
 function bodyRelativeDate(isoDate: string): string {
@@ -52,6 +58,8 @@ export function BodySnapshotCard({
   latestBodyDate,
   weightTrend,
   vo2Max = null,
+  weeklyWeight = null,
+  proteinHit = null,
 }: BodySnapshotCardProps) {
   const hasAnyData = latestWeightLb != null || latestWaistIn != null;
 
@@ -99,19 +107,47 @@ export function BodySnapshotCard({
         </Link>
       </div>
 
+      {weeklyWeight?.surplusThrottle ? (
+        <p className="mt-4 rounded-2xl border border-ember/25 bg-ember/10 px-4 py-3 text-sm font-medium text-ember">
+          Surplus throttle: the 7-day average is up more than 0.5 lb/week two
+          weeks running. Review the surplus; keep protein at target.
+        </p>
+      ) : null}
+      {proteinHit ? (
+        <p className="mt-3 text-sm text-ink/70">
+          Protein hit {proteinHit.days}/{proteinHit.of} logged days this week
+        </p>
+      ) : null}
+
       <div className="mt-5 grid grid-cols-2 gap-4">
         <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
           <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-            Weight
+            {weeklyWeight?.sevenDayAvgLb != null
+              ? "Weight, 7-day avg"
+              : "Weight"}
           </div>
-          <div className="mt-2 text-3xl font-semibold text-ink">
-            {latestWeightLb != null ? `${latestWeightLb} lb` : "--"}
+          <div className="mt-2 whitespace-nowrap text-2xl font-semibold text-ink sm:text-3xl">
+            {weeklyWeight?.sevenDayAvgLb != null
+              ? `${weeklyWeight.sevenDayAvgLb} lb`
+              : latestWeightLb != null
+                ? `${latestWeightLb} lb`
+                : "--"}
           </div>
-          {weightChangeLb != null ? (
+          {weeklyWeight?.weekOverWeekLb != null ? (
+            <div className="mt-1.5 text-sm font-medium text-ink/70">
+              {weeklyWeight.weekOverWeekLb > 0 ? "+" : ""}
+              {weeklyWeight.weekOverWeekLb} lb vs prior 7 days
+            </div>
+          ) : weightChangeLb != null ? (
             <div
               className={`mt-1.5 text-sm font-medium ${changeTone(weightChangeLb)}`}
             >
               {formatChange(weightChangeLb, "lb")}
+            </div>
+          ) : null}
+          {weeklyWeight?.sevenDayAvgLb != null && latestWeightLb != null ? (
+            <div className="mt-1 text-xs text-ink/50">
+              Last weigh-in {latestWeightLb} lb
             </div>
           ) : null}
         </div>

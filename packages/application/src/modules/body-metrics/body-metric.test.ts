@@ -3,6 +3,7 @@ import {
   buildBodyMetricSummary,
   buildBodyWaistTrend,
   buildBodyWeightTrend,
+  buildWeeklyWeightTrend,
   createBodyMetricSchema,
   updateBodyMetricSchema,
 } from "../../index";
@@ -209,5 +210,70 @@ describe("body metric helpers", () => {
       { date: "2026-03-08", value: 35 },
       { date: "2026-03-29", value: 34.3 },
     ]);
+  });
+});
+
+describe("buildWeeklyWeightTrend", () => {
+  // 2026-10-11 is a Sunday; windows end 10-11, 10-04, 09-27.
+  const w = (measuredOn: string, weightLb: number | null) => ({
+    measuredOn,
+    weightLb,
+  });
+
+  it("averages the trailing 7 days and flags two weeks over +0.5", () => {
+    const out = buildWeeklyWeightTrend(
+      [
+        w("2026-09-21", 179.8),
+        w("2026-09-27", 180.2),
+        w("2026-10-04", 180.6),
+        w("2026-10-05", 181.0),
+        w("2026-10-11", 181.4),
+        w("2026-10-08", null),
+      ],
+      "2026-10-11",
+    );
+    expect(out).toEqual({
+      sevenDayAvgLb: 181.2,
+      weekOverWeekLb: 0.6,
+      surplusThrottle: true,
+    });
+  });
+
+  it("does not flag when only one week is over, or a week is exactly 0.5", () => {
+    expect(
+      buildWeeklyWeightTrend(
+        [
+          w("2026-09-27", 180.0),
+          w("2026-10-04", 180.3),
+          w("2026-10-11", 181.0),
+        ],
+        "2026-10-11",
+      ).surplusThrottle,
+    ).toBe(false);
+    expect(
+      buildWeeklyWeightTrend(
+        [
+          w("2026-09-27", 180.0),
+          w("2026-10-04", 180.5),
+          w("2026-10-11", 181.0),
+        ],
+        "2026-10-11",
+      ).surplusThrottle,
+    ).toBe(false);
+  });
+
+  it("returns nulls and no flag without enough weigh-ins", () => {
+    expect(
+      buildWeeklyWeightTrend([w("2026-10-11", 181)], "2026-10-11"),
+    ).toEqual({
+      sevenDayAvgLb: 181,
+      weekOverWeekLb: null,
+      surplusThrottle: false,
+    });
+    expect(buildWeeklyWeightTrend([], "2026-10-11")).toEqual({
+      sevenDayAvgLb: null,
+      weekOverWeekLb: null,
+      surplusThrottle: false,
+    });
   });
 });

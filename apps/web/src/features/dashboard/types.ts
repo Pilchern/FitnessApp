@@ -1,3 +1,4 @@
+import type { WeeklyWeightTrend } from "@fitness-app/application";
 import type {
   MuscleGroupVolumeSummary,
   PersistedInsight,
@@ -69,6 +70,7 @@ export type DashboardData = {
   weekPlan: WeekPlan;
   habits: HabitsToday;
   activity: ActivitySnapshot;
+  weeklyWeight: WeeklyWeightTrend;
 };
 
 /** Apple Health daily metrics for the dashboard; nulls until the bridge syncs. */
