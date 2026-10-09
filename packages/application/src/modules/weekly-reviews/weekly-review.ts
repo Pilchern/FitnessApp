@@ -29,6 +29,10 @@ const weeklyReviewSummarySchema = z.object({
   vo2Completed: z.boolean().nullable().optional(),
   sleepAverageHours: z.number().min(0).max(24).nullable().optional(),
   alcoholTotal: z.number().int().min(0).max(99).nullable().optional(),
+  liftsScheduled: z.number().int().min(0).max(14).nullable().optional(),
+  cardioScheduled: z.number().int().min(0).max(14).nullable().optional(),
+  zone2TargetMinutes: z.number().int().min(0).max(2000).nullable().optional(),
+  habitCompletionPct: z.number().min(0).max(100).nullable().optional(),
 });
 
 const weeklyReviewScoreComponentSchema = z.object({

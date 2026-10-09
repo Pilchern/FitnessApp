@@ -4,6 +4,10 @@ import { CardioSessionService } from "../cardio/cardio-session";
 import { JournalEntryService } from "../journal/journal-entry";
 import { RecoveryCheckinService } from "../recovery/recovery-checkin";
 import { StrengthSessionSummaryService } from "../strength/strength-session-summary";
+import type { SupplementLogService } from "../supplements/supplement-log-repository";
+import type { SupplementService } from "../supplements/supplement-repository";
+import type { TrainingTemplateService } from "../training/training-template";
+import { buildPlanAdherence, type PlanAdherence } from "./plan-adherence";
 import type { AiWeeklyReviewService } from "./ai-weekly-review-service";
 import { WeeklyReviewService } from "./weekly-review";
 import {
@@ -19,6 +23,10 @@ export type WeeklyReviewAutoFinalizeDependencies = {
   cardioService: CardioSessionService;
   recoveryService: RecoveryCheckinService;
   strengthSummaryService: StrengthSessionSummaryService;
+  /** Optional: when present the draft summary carries plan adherence. */
+  trainingTemplateService?: TrainingTemplateService;
+  supplementService?: SupplementService;
+  supplementLogService?: SupplementLogService;
   /** null when ANTHROPIC_API_KEY isn't configured — AI drafting is skipped entirely. */
   aiWeeklyReviewService: AiWeeklyReviewService | null;
 };
@@ -179,6 +187,7 @@ export class WeeklyReviewAutoFinalizeService {
       cardioSessions,
       recoveryCheckins,
       liftsCompleted,
+      adherence: await this.loadPlanAdherence(dateRangeQuery),
     });
 
     const review = await weeklyReviewService.create({
@@ -207,6 +216,42 @@ export class WeeklyReviewAutoFinalizeService {
       autoSummary,
       weekStart: prevWeekStartIso,
     };
+  }
+
+  private async loadPlanAdherence(query: {
+    userId: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<PlanAdherence | undefined> {
+    const { trainingTemplateService, supplementService, supplementLogService } =
+      this.deps;
+    if (!trainingTemplateService || !supplementService || !supplementLogService)
+      return undefined;
+    try {
+      const [strength, cardio, supplements, habitLogs] = await Promise.all([
+        trainingTemplateService.listActiveStrengthTemplates({
+          userId: query.userId,
+        }),
+        trainingTemplateService.listActiveCardioTemplates({
+          userId: query.userId,
+        }),
+        supplementService.listActive({ userId: query.userId }),
+        supplementLogService.listByDateRange(query),
+      ]);
+      return buildPlanAdherence({
+        templates: [...strength, ...cardio],
+        habitIds: supplements
+          .filter((s) => s.kind === "habit")
+          .map((s) => s.id),
+        habitLogs,
+      });
+    } catch (error) {
+      console.error(
+        "[WeeklyReviewAutoFinalizeService] plan adherence unavailable:",
+        error instanceof Error ? error.message : error,
+      );
+      return undefined;
+    }
   }
 
   private async draftJournalEntryForUser(
