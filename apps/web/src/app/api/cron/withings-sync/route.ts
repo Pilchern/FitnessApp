@@ -10,13 +10,11 @@ const CONCURRENCY = 3;
  * Weekly cron endpoint — syncs Withings body metrics for all active
  * connections. Mirrors apps/web/src/app/api/cron/peloton-sync/route.ts.
  *
- * Scheduled two ways (both point here, either is sufficient on its own):
- *   1. vercel.json Vercel Cron (weekly-only, no retry semantics).
- *   2. Supabase pg_cron -> pg_net (see
- *      supabase/migrations/20260715160000_add_dead_letter_status_and_retry_sweep.sql),
- *      which also drives the `/api/cron/retry-failed-syncs` sweep every 15
- *      minutes for any run — including ones started from either scheduler —
- *      that ends up `failed`.
+ * Scheduled only by Supabase pg_cron -> pg_net (job `withings-weekly-sync`,
+ * Mondays 08:00 UTC; see
+ * supabase/migrations/20260715160000_add_dead_letter_status_and_retry_sweep.sql),
+ * which POSTs. The same pg_cron setup drives the `/api/cron/retry-failed-syncs`
+ * sweep every 15 minutes for any run that ends up `failed`.
  *
  * Auth: Bearer token must match CRON_SECRET env var. CRON_SECRET is REQUIRED.
  */
@@ -92,3 +90,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({ synced: results.length, results });
 }
+
+// Supabase pg_cron (trigger_cron_route) calls this with POST; it is the only
+// scheduler for this route, so without POST every weekly run returned 405.
+export const POST = GET;
