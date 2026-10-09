@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
 import { useActionState, useMemo, useState } from "react";
 import { calculateWeeklyReviewScore } from "@fitness-app/application";
 import type { WeeklyReviewSummary } from "@fitness-app/domain";
@@ -209,6 +210,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
       calculateWeeklyReviewScore({
         summary: buildSummaryFromValues(values),
         confidence: values.confidence ? Number(values.confidence) : null,
+        plan: NICK_TRAINING_PLAN,
       }),
     [values],
   );

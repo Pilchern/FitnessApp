@@ -146,6 +146,10 @@ export function StrengthQuickForm({
       : initial;
   });
   const [showDetails, setShowDetails] = useState(mode === "edit");
+  const [exerciseNotes, setExerciseNotes] = useState<Record<string, string>>(
+    {},
+  );
+  const [planNotes, setPlanNotes] = useState<string | null>(null);
   const [newExercise, setNewExercise] = useState("");
   const [restSeconds, setRestSeconds] = useState(90);
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
@@ -164,6 +168,14 @@ export function StrengthQuickForm({
 
   useEffect(() => {
     if (!loadedTemplate) return;
+    setPlanNotes(loadedTemplate.notes ?? null);
+    setExerciseNotes(
+      Object.fromEntries(
+        loadedTemplate.exercises
+          .filter((ex) => ex.notes)
+          .map((ex) => [exerciseKey(ex.exerciseName), ex.notes as string]),
+      ),
+    );
     setValues((current) => ({
       ...current,
       sessionName: loadedTemplateName ?? current.sessionName,
@@ -377,6 +389,15 @@ export function StrengthQuickForm({
         ) : null}
       </div>
 
+      {planNotes ? (
+        <details className="rounded-2xl border border-ember/25 bg-ember/5 px-4 py-3 text-sm text-ink">
+          <summary className="cursor-pointer font-semibold text-ember">
+            Plan rules
+          </summary>
+          <p className="mt-2 leading-6 text-ink/80">{planNotes}</p>
+        </details>
+      ) : null}
+
       {formError || state.error ? (
         <div className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember">
           {formError ?? state.error}
@@ -437,6 +458,11 @@ export function StrengthQuickForm({
                   <h3 className="text-base font-semibold text-ink">
                     {group.name}
                   </h3>
+                  {exerciseNotes[group.key] ? (
+                    <p className="mt-0.5 text-xs font-medium text-ember">
+                      {exerciseNotes[group.key]}
+                    </p>
+                  ) : null}
                   {last ? (
                     <p className="mt-0.5 text-xs text-ink/60">
                       Last ({formatStrengthDate(last.sessionDate)}):{" "}

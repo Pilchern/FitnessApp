@@ -8,6 +8,8 @@ export type AiWeeklyReviewConfig = {
   apiKey: string;
   model: string;
   enabled: boolean;
+  /** Standing context about the athlete (e.g. injury limits) appended to the prompt. */
+  planContext?: string;
 };
 
 export type AiWeeklyReviewInput = {
@@ -67,8 +69,7 @@ export class AiWeeklyReviewService {
 
     const prompt = `You are a personal fitness coach writing a weekly review for an athlete, based on their logged training, body, sleep, and recovery data.
 
-Data for the week:
-${context}
+${this.config.planContext ? `Athlete context (treat as fact; do not suggest anything that conflicts with it):\n${this.config.planContext}\n\n` : ""}Data for the week:\n${context}
 
 Respond with a JSON object only (no markdown, no prose) in exactly this shape:
 {"score": number, "scoreRationale": "string", "whatWorked": "string", "whatNeedsAttention": "string", "strategicDecision": "string", "riskForecast": "string", "nextBestAction": "string"}

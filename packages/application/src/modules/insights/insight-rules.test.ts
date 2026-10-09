@@ -1,3 +1,4 @@
+import { GENERIC_TRAINING_PLAN } from "../training/training-plan";
 import { describe, expect, it } from "vitest";
 import type {
   BodyMetric,
@@ -1083,6 +1084,45 @@ describe("insight rules", () => {
       );
       expect(insight).toBeDefined();
       expect(insight?.title).toMatch(/back skipped/i);
+    });
+
+    it("skips lower-body groups when the plan excludes them", () => {
+      const sessions = [
+        makeStrengthSession("2026-04-01", [
+          ...[1, 2, 3].map((n) =>
+            makeStrengthSet({
+              exerciseName: "Barbell Bench Press",
+              setNumber: n,
+            }),
+          ),
+          ...[1, 2, 3].map((n) =>
+            makeStrengthSet({ exerciseName: "Barbell Row", setNumber: n }),
+          ),
+          ...[1, 2, 3].map((n) =>
+            makeStrengthSet({ exerciseName: "Overhead Press", setNumber: n }),
+          ),
+        ]),
+      ];
+      const withDefault = buildInsights(
+        emptyInput({ strengthSessions: sessions, now: TEST_NOW }),
+      );
+      expect(
+        withDefault.some((i) => i.insightType === "muscle_group_neglected"),
+      ).toBe(true);
+
+      const withPlan = buildInsights(
+        emptyInput({
+          strengthSessions: sessions,
+          now: TEST_NOW,
+          plan: {
+            ...GENERIC_TRAINING_PLAN,
+            excludedMuscleGroups: ["quads", "hamstrings", "glutes", "calves"],
+          },
+        }),
+      );
+      expect(
+        withPlan.some((i) => i.insightType === "muscle_group_neglected"),
+      ).toBe(false);
     });
 
     it("does not fire when there isn't enough weekly training volume to judge", () => {

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
 import {
   buildNutritionAdherenceSummary,
   buildWeeklyReviewSummary,
@@ -95,6 +96,7 @@ export async function getWeeklyReviewPageData(
   const scoring = calculateWeeklyReviewScore({
     summary: review?.summary ?? autoSummary,
     confidence: review?.confidence ?? null,
+    plan: NICK_TRAINING_PLAN,
   });
 
   return {
