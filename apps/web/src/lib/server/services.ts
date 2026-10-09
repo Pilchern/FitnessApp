@@ -149,6 +149,9 @@ export const createCoreServices = cache(async function createCoreServices(
     cardioService,
     recoveryService,
     strengthSummaryService,
+    trainingTemplateService,
+    supplementService,
+    supplementLogService,
     aiWeeklyReviewService,
   });
 

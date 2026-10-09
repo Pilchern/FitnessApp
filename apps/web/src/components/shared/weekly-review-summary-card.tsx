@@ -19,6 +19,32 @@ function formatWeekRange(weekStart: string, weekEnd: string) {
   )}`;
 }
 
+/** "Lifts 2/3 · Cardio 3/3 · Z2 100/105 min · Habits 64%", or null before adherence existed. */
+export function formatPlanAdherence(
+  summary: WeeklyReview["summary"],
+): string | null {
+  const parts: string[] = [];
+  if (summary.liftsScheduled) {
+    parts.push(
+      `Lifts ${summary.liftsCompleted ?? 0}/${summary.liftsScheduled}`,
+    );
+  }
+  if (summary.cardioScheduled) {
+    parts.push(
+      `Cardio ${summary.ridesCompleted ?? 0}/${summary.cardioScheduled}`,
+    );
+  }
+  if (summary.zone2TargetMinutes) {
+    parts.push(
+      `Z2 ${summary.zone2Minutes ?? 0}/${summary.zone2TargetMinutes} min`,
+    );
+  }
+  if (summary.habitCompletionPct != null) {
+    parts.push(`Habits ${summary.habitCompletionPct}%`);
+  }
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
 function scoreTone(totalScore: number | null) {
   if (totalScore == null) {
     return "border-ink/10 bg-white text-ink/70";
@@ -105,6 +131,12 @@ export function WeeklyReviewSummaryCard({
           </div>
         </div>
       </div>
+
+      {formatPlanAdherence(review.summary) ? (
+        <p className="mt-5 text-sm font-semibold text-ink">
+          Plan: {formatPlanAdherence(review.summary)}
+        </p>
+      ) : null}
 
       {review.strategicDecision ? (
         <p className="mt-5 text-sm leading-6 text-ink/75">

@@ -656,6 +656,50 @@ describe("buildWeekPlan", () => {
     });
     expect(done.days[1]?.items[0]?.done).toBe(true);
   });
+
+  it("counts a moved session toward the earliest missed slot before it", () => {
+    const plan = buildWeekPlan({
+      ...base,
+      today: "2026-10-11",
+      // Monday's lift done Tuesday; Tuesday's ride done Wednesday.
+      strengthSessions: [
+        { sessionDate: "2026-10-06", trainingTemplateId: null },
+      ],
+      cardioSessions: [
+        {
+          sessionDate: "2026-10-07",
+          trainingTemplateId: null,
+          plannedVsCompleted: "completed",
+          sessionKind: "zone2",
+        },
+      ],
+    });
+    expect(plan.days[0]?.items[0]?.done).toBe(true);
+    expect(plan.days[1]?.items[0]?.done).toBe(true);
+    expect(plan.days[5]?.items[0]?.done).toBe(false);
+  });
+
+  it("never credits a slot later than the session or outside the week", () => {
+    const plan = buildWeekPlan({
+      ...base,
+      cardioSessions: [
+        {
+          sessionDate: "2026-10-05",
+          trainingTemplateId: null,
+          plannedVsCompleted: "completed",
+          sessionKind: "zone2",
+        },
+        {
+          sessionDate: "2026-10-12",
+          trainingTemplateId: null,
+          plannedVsCompleted: "completed",
+          sessionKind: "zone2",
+        },
+      ],
+    });
+    expect(plan.days[1]?.items[0]?.done).toBe(false);
+    expect(plan.days[5]?.items[0]?.done).toBe(false);
+  });
 });
 
 describe("summarizeDailyActivity", () => {

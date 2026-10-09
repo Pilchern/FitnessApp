@@ -35,6 +35,7 @@ export * from "./modules/weekly-reviews/ai-weekly-review-service";
 export * from "./modules/weekly-reviews/weekly-review";
 export * from "./modules/weekly-reviews/weekly-review-auto-finalize-service";
 export * from "./modules/weekly-reviews/weekly-review-helpers";
+export * from "./modules/weekly-reviews/plan-adherence";
 export * from "./modules/profiles/nutrition-target";
 export * from "./modules/profiles/user-profile";
 export * from "./shared/primitives";

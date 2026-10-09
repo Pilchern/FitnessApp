@@ -14,12 +14,15 @@ import type {
   WeeklyReviewSummary,
 } from "@fitness-app/domain";
 import { getZonedDate } from "../../shared/timezone";
+import type { PlanAdherence } from "./plan-adherence";
 
 export type WeeklyReviewAggregateInput = {
   bodyMetrics: BodyMetric[];
   cardioSessions: CardioSession[];
   recoveryCheckins: RecoveryCheckin[];
   liftsCompleted: number;
+  /** What the week's templates and habits asked for; omitted by callers without them. */
+  adherence?: PlanAdherence;
 };
 
 export type WeeklyReviewScoreInput = {
@@ -118,6 +121,7 @@ export function buildWeeklyReviewSummary({
   cardioSessions,
   recoveryCheckins,
   liftsCompleted,
+  adherence,
 }: WeeklyReviewAggregateInput): WeeklyReviewSummary {
   const averageWeightLb = average(
     bodyMetrics
@@ -190,6 +194,7 @@ export function buildWeeklyReviewSummary({
             0,
           )
         : null,
+    ...(adherence ?? {}),
   };
 }
 
@@ -247,7 +252,12 @@ export function calculateWeeklyReviewScore({
   const liftsCompleted = summary.liftsCompleted ?? 0;
   const ridesCompleted = summary.ridesCompleted ?? 0;
   const zone2Minutes = summary.zone2Minutes ?? 0;
-  const zone2Target = plan.weeklyZone2TargetMinutes;
+  // Targets come from the week's scheduled templates when the summary carries
+  // them (the same source as the dashboard Plan card), else the plan defaults.
+  const zone2Target =
+    summary.zone2TargetMinutes || plan.weeklyZone2TargetMinutes;
+  const liftsTarget = summary.liftsScheduled || 3;
+  const ridesTarget = summary.cardioScheduled || 3;
   const vo2Completed = summary.vo2Completed === true;
   const vo2Met = vo2Completed || !plan.vo2Required;
   const sleepAverageHours = summary.sleepAverageHours;
@@ -257,16 +267,22 @@ export function calculateWeeklyReviewScore({
     {
       key: "lifts",
       label: "Lifts completed",
-      score: clampScore(roundWhole((Math.min(liftsCompleted, 3) / 3) * 25), 25),
+      score: clampScore(
+        roundWhole((Math.min(liftsCompleted, liftsTarget) / liftsTarget) * 25),
+        25,
+      ),
       maxScore: 25,
-      detail: `${liftsCompleted}/3 target lifts logged`,
+      detail: `${liftsCompleted}/${liftsTarget} target lifts logged`,
     },
     {
       key: "rides",
       label: "Rides completed",
-      score: clampScore(roundWhole((Math.min(ridesCompleted, 3) / 3) * 20), 20),
+      score: clampScore(
+        roundWhole((Math.min(ridesCompleted, ridesTarget) / ridesTarget) * 20),
+        20,
+      ),
       maxScore: 20,
-      detail: `${ridesCompleted}/3 target rides completed`,
+      detail: `${ridesCompleted}/${ridesTarget} target rides completed`,
     },
     {
       key: "zone2",
@@ -359,11 +375,14 @@ export function calculateWeeklyReviewScore({
     (confidence ?? 7) <= 4
   ) {
     strategicDecision = "Protect recovery before adding more intensity.";
-  } else if (liftsCompleted < 2 || ridesCompleted < 2) {
+  } else if (
+    liftsCompleted < liftsTarget - 1 ||
+    ridesCompleted < ridesTarget - 1
+  ) {
     strategicDecision = "Reduce friction and reestablish baseline consistency.";
   } else if (
-    liftsCompleted >= 3 &&
-    ridesCompleted >= 3 &&
+    liftsCompleted >= liftsTarget &&
+    ridesCompleted >= ridesTarget &&
     zone2Minutes >= zone2Target &&
     vo2Met &&
     (confidence ?? 0) >= 7
@@ -383,8 +402,8 @@ export function calculateWeeklyReviewScore({
       ? "High risk: under-recovery could compromise lift quality and make the next VO2 session harder than planned."
       : "High risk: under-recovery could compromise lift quality and slow recovery from the knee.";
   } else if (
-    liftsCompleted < 3 ||
-    ridesCompleted < 3 ||
+    liftsCompleted < liftsTarget ||
+    ridesCompleted < ridesTarget ||
     zone2Minutes < zone2Target
   ) {
     riskForecast =
