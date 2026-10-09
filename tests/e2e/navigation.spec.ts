@@ -1,30 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { loginAs, TEST_USER_EMAIL, TEST_USER_PASSWORD } from "./helpers/auth";
-
-let loginAvailable = true;
-
-test.beforeAll(async ({ browser }) => {
-  const page = await browser.newPage();
-  try {
-    await loginAs(page, TEST_USER_EMAIL, TEST_USER_PASSWORD);
-    loginAvailable = true;
-  } catch {
-    loginAvailable = false;
-    console.warn(
-      `[E2E] Login probe failed — navigation tests will be skipped. ` +
-        `Ensure the test user ${TEST_USER_EMAIL} exists in your Supabase project.`,
-    );
-  } finally {
-    await page.close();
-  }
-});
-
-test.beforeEach(async ({ page }) => {
-  if (!loginAvailable) {
-    test.skip(true, "Test user not available in this Supabase environment");
-  }
-  await loginAs(page);
-});
 
 // All nav items from moduleNavigationItems in navigation.ts
 const navItems = [

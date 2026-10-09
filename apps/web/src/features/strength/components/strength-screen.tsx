@@ -14,18 +14,7 @@ export async function StrengthScreen({ editSessionId }: StrengthScreenProps) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          This week
-        </p>
-        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
-          Strength
-        </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          Log your lifts, track your sets, and see how your key movements are
-          trending over time.
-        </p>
-      </section>
+      <h1 className="font-display text-2xl text-ink md:text-4xl">Strength</h1>
 
       <StrengthPageClient
         mode={data.editingSession ? "edit" : "create"}

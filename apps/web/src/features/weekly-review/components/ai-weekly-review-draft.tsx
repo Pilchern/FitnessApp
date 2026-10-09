@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { WeeklyReviewAiDraft } from "@fitness-app/domain";
-import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import { ActionSubmitButton } from "@/components/shared/action-submit-button";
 import {
   dismissAiWeeklyReviewDraftAction,

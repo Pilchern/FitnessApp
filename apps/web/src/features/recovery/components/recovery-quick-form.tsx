@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import type { RecoveryCheckin } from "@fitness-app/domain";
-import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import { toRecoveryFormValues } from "../helpers";
 import type { RecoveryActionState, RecoveryFormValues } from "../types";
 

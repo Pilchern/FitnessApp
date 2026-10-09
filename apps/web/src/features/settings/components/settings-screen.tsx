@@ -1,7 +1,6 @@
 import {
   createSupplementAction,
   deactivateSupplementAction,
-  deleteAccountAction,
   reactivateSupplementAction,
   recomputeNutritionTargetsAction,
   updateSettingsAction,
@@ -72,7 +71,7 @@ export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
         reactivateAction={reactivateSupplementAction}
       />
 
-      <DangerZone deleteAccountAction={deleteAccountAction} />
+      <DangerZone />
     </div>
   );
 }

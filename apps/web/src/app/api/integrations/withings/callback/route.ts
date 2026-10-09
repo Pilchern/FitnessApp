@@ -4,22 +4,13 @@ import {
   createWithingsAdapter,
   createWithingsSyncOrchestrator,
 } from "@/lib/server/integrations";
-import { createSupabaseRequestClient } from "@/lib/server/supabase";
+import { getCurrentUser } from "@/lib/server/auth";
 
 const OAUTH_STATE_COOKIE = "withings_oauth_state";
 const OAUTH_USER_COOKIE = "withings_oauth_user_id";
 
 async function requireRouteUser() {
-  const supabase = await createSupabaseRequestClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
-
-  return user;
+  return getCurrentUser();
 }
 
 function redirectWithMessage(request: NextRequest, search: string) {

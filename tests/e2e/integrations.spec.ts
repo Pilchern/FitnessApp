@@ -1,5 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { loginAs, TEST_USER_EMAIL, TEST_USER_PASSWORD } from "./helpers/auth";
 
 // Covers the Withings connect/sync entry point on /integrations.
 //
@@ -11,31 +10,6 @@ import { loginAs, TEST_USER_EMAIL, TEST_USER_PASSWORD } from "./helpers/auth";
 // configured / configured-but-disconnected / connected), the page never
 // crashes and the "Connect Withings" link (when present) points at the
 // correct same-origin OAuth kickoff route rather than being clicked through.
-let loginAvailable = true;
-
-test.beforeAll(async ({ browser }) => {
-  const page = await browser.newPage();
-  try {
-    await loginAs(page, TEST_USER_EMAIL, TEST_USER_PASSWORD);
-    loginAvailable = true;
-  } catch {
-    loginAvailable = false;
-    console.warn(
-      `[E2E] Login probe failed — integrations tests will be skipped. ` +
-        `Ensure the test user ${TEST_USER_EMAIL} exists in your Supabase project.`,
-    );
-  } finally {
-    await page.close();
-  }
-});
-
-test.beforeEach(async ({ page }) => {
-  if (!loginAvailable) {
-    test.skip(true, "Test user not available in this Supabase environment");
-  }
-  await loginAs(page);
-});
-
 test("authenticated user can view /integrations page", async ({ page }) => {
   const response = await page.goto("/integrations");
   await expect(page).toHaveURL("/integrations");
@@ -104,10 +78,4 @@ test("integrations page does not show an error boundary or leak undefined values
 
   await expect(page.getByText(/application error/i)).toHaveCount(0);
   await expect(page.getByText(/^undefined$/)).toHaveCount(0);
-});
-
-test("unauthenticated /integrations redirects to /login", async ({ page }) => {
-  await page.context().clearCookies();
-  await page.goto("/integrations");
-  await expect(page).toHaveURL(/\/login/, { timeout: 8000 });
 });

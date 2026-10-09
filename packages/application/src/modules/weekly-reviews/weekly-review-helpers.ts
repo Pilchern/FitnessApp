@@ -1,3 +1,7 @@
+import {
+  GENERIC_TRAINING_PLAN,
+  type TrainingPlan,
+} from "../training/training-plan";
 import type {
   BodyMetric,
   CardioSession,
@@ -21,6 +25,7 @@ export type WeeklyReviewAggregateInput = {
 export type WeeklyReviewScoreInput = {
   summary: WeeklyReviewSummary;
   confidence: number | null;
+  plan?: TrainingPlan;
 };
 
 export type WeeklyReviewScoringResult = {
@@ -237,11 +242,14 @@ function bandForScore(score: number): WeeklyReviewScoreBand {
 export function calculateWeeklyReviewScore({
   summary,
   confidence,
+  plan = GENERIC_TRAINING_PLAN,
 }: WeeklyReviewScoreInput): WeeklyReviewScoringResult {
   const liftsCompleted = summary.liftsCompleted ?? 0;
   const ridesCompleted = summary.ridesCompleted ?? 0;
   const zone2Minutes = summary.zone2Minutes ?? 0;
+  const zone2Target = plan.weeklyZone2TargetMinutes;
   const vo2Completed = summary.vo2Completed === true;
+  const vo2Met = vo2Completed || !plan.vo2Required;
   const sleepAverageHours = summary.sleepAverageHours;
   const alcoholTotal = summary.alcoholTotal;
 
@@ -263,9 +271,12 @@ export function calculateWeeklyReviewScore({
     {
       key: "zone2",
       label: "Zone 2 minutes",
-      score: clampScore(roundWhole((Math.min(zone2Minutes, 90) / 90) * 10), 10),
+      score: clampScore(
+        roundWhole((Math.min(zone2Minutes, zone2Target) / zone2Target) * 10),
+        10,
+      ),
       maxScore: 10,
-      detail: `${zone2Minutes} / 90 target Zone 2 minutes`,
+      detail: `${zone2Minutes} / ${zone2Target} target Zone 2 minutes`,
     },
     {
       key: "vo2",
@@ -329,10 +340,16 @@ export function calculateWeeklyReviewScore({
     },
   ];
 
-  const totalScore = components.reduce(
-    (sum, component) => sum + component.score,
+  // A parked VO2 session drops out of the score; rescale so 100 stays the max.
+  const scored = plan.vo2Required
+    ? components
+    : components.filter((component) => component.key !== "vo2");
+  const maxTotal = scored.reduce(
+    (sum, component) => sum + component.maxScore,
     0,
   );
+  const rawTotal = scored.reduce((sum, component) => sum + component.score, 0);
+  const totalScore = roundWhole((rawTotal / maxTotal) * 100);
   const band = bandForScore(totalScore);
 
   let strategicDecision = "Stay steady and close the biggest gap next week.";
@@ -347,8 +364,8 @@ export function calculateWeeklyReviewScore({
   } else if (
     liftsCompleted >= 3 &&
     ridesCompleted >= 3 &&
-    zone2Minutes >= 90 &&
-    vo2Completed &&
+    zone2Minutes >= zone2Target &&
+    vo2Met &&
     (confidence ?? 0) >= 7
   ) {
     strategicDecision =
@@ -362,9 +379,14 @@ export function calculateWeeklyReviewScore({
     (alcoholTotal ?? 0) > 6 ||
     (confidence ?? 7) <= 3
   ) {
-    riskForecast =
-      "High risk: under-recovery could compromise lift quality and make the next VO2 session harder than planned.";
-  } else if (liftsCompleted < 3 || ridesCompleted < 3 || zone2Minutes < 90) {
+    riskForecast = plan.vo2Required
+      ? "High risk: under-recovery could compromise lift quality and make the next VO2 session harder than planned."
+      : "High risk: under-recovery could compromise lift quality and slow recovery from the knee.";
+  } else if (
+    liftsCompleted < 3 ||
+    ridesCompleted < 3 ||
+    zone2Minutes < zone2Target
+  ) {
     riskForecast =
       "Moderate risk: missing baseline sessions could slow progress unless next week starts with a cleaner routine.";
   }
@@ -374,7 +396,7 @@ export function calculateWeeklyReviewScore({
       version: "v1",
       totalScore,
       band,
-      components,
+      components: scored,
     },
     strategicDecision,
     riskForecast,

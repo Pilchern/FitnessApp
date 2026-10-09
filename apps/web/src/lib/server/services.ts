@@ -43,6 +43,7 @@ import {
 } from "@fitness-app/infrastructure";
 import { getServerEnv } from "./env";
 import { createSupabaseRequestClient } from "./supabase";
+import { NICK_AI_PLAN_CONTEXT, NICK_TRAINING_PLAN } from "../training-plan";
 
 /**
  * THE composition root for the app (per AGENTS.md's Architecture Agent
@@ -84,6 +85,7 @@ export const createCoreServices = cache(async function createCoreServices(
         apiKey: env.ANTHROPIC_API_KEY,
         model: env.INSIGHT_AI_MODEL ?? "claude-haiku-4-5-20251001",
         enabled: env.WEEKLY_REVIEW_AI_ENABLED,
+        planContext: NICK_AI_PLAN_CONTEXT,
       })
     : null;
 
@@ -91,7 +93,7 @@ export const createCoreServices = cache(async function createCoreServices(
   const insightOrchestrator = new InsightOrchestrator(
     insightRepository,
     aiInsightService,
-    buildInsights,
+    (input) => buildInsights({ ...input, plan: NICK_TRAINING_PLAN }),
   );
 
   const profileRepository = new SupabaseUserProfileRepository(resolvedClient);

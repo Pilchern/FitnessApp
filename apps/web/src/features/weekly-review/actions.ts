@@ -1,5 +1,6 @@
 "use server";
 
+import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
 import { calculateWeeklyReviewScore } from "@fitness-app/application";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
@@ -45,6 +46,7 @@ function buildWeeklyReviewPayload(userId: string, formData: FormData) {
   const scoring = calculateWeeklyReviewScore({
     summary,
     confidence: parsed.confidence,
+    plan: NICK_TRAINING_PLAN,
   });
 
   return {

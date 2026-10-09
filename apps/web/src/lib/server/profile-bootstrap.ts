@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import type { User } from "@supabase/supabase-js";
+import type { OwnerUser } from "./auth";
 import { createSupabaseRequestClient } from "./supabase";
 
 const defaultBaselineSchedule = {
@@ -13,7 +13,7 @@ const defaultBaselineSchedule = {
   sunday: ["recovery"],
 };
 
-function fallbackDisplayName(user: User) {
+function fallbackDisplayName(user: OwnerUser) {
   const explicitName =
     typeof user.user_metadata?.display_name === "string"
       ? user.user_metadata.display_name.trim()
@@ -33,7 +33,7 @@ function fallbackDisplayName(user: User) {
 // cache() deduplicates this per request — layout.tsx calls this on every
 // protected render, so caching avoids a redundant SELECT per page navigation.
 export const ensureProfileForUser = cache(async function ensureProfileForUser(
-  user: User,
+  user: OwnerUser,
   timezone?: string,
 ) {
   const supabase = await createSupabaseRequestClient();

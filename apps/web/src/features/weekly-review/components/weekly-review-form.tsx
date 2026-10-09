@@ -1,10 +1,11 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
 import { useActionState, useMemo, useState } from "react";
 import { calculateWeeklyReviewScore } from "@fitness-app/application";
 import type { WeeklyReviewSummary } from "@fitness-app/domain";
-import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
 import { formatWeeklyReviewDate, toWeeklyReviewFormValues } from "../helpers";
 import { saveWeeklyReviewAction } from "../actions";
@@ -209,6 +210,7 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
       calculateWeeklyReviewScore({
         summary: buildSummaryFromValues(values),
         confidence: values.confidence ? Number(values.confidence) : null,
+        plan: NICK_TRAINING_PLAN,
       }),
     [values],
   );

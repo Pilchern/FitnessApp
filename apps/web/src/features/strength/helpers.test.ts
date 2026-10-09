@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildLastByExercise,
   formatLastPerformance,
+  groupSetsByExercise,
+  isTimedSet,
+  renumberSets,
+  selectSetsToSave,
   startingWeight,
 } from "./helpers";
 
@@ -124,5 +128,44 @@ describe("startingWeight", () => {
         10,
       ),
     ).toBe("10");
+  });
+});
+
+describe("logger helpers", () => {
+  it("groups consecutive sets by exercise, case-insensitively", () => {
+    const groups = groupSetsByExercise([
+      { exerciseName: "Pull-Up" },
+      { exerciseName: "pull-up " },
+      { exerciseName: "Dead Hang" },
+    ]);
+    expect(groups.map((g) => g.indexes)).toEqual([[0, 1], [2]]);
+  });
+
+  it("treats hangs as timed and detects explicit durations", () => {
+    expect(isTimedSet({ exerciseName: "Dead Hang", durationSeconds: "" })).toBe(
+      true,
+    );
+    expect(isTimedSet({ exerciseName: "Row", durationSeconds: "30" })).toBe(
+      true,
+    );
+    expect(isTimedSet({ exerciseName: "Row", durationSeconds: "" })).toBe(
+      false,
+    );
+  });
+
+  it("saves only ticked sets once any is ticked, otherwise all", () => {
+    expect(
+      selectSetsToSave([{ done: true }, { done: false }, { done: true }]),
+    ).toHaveLength(2);
+    expect(selectSetsToSave([{ done: false }, {}])).toHaveLength(2);
+  });
+
+  it("renumbers sets within each exercise group", () => {
+    const out = renumberSets([
+      { exerciseName: "A", setNumber: 3 },
+      { exerciseName: "a", setNumber: 9 },
+      { exerciseName: "B", setNumber: 2 },
+    ]);
+    expect(out.map((x) => x.setNumber)).toEqual([1, 2, 1]);
   });
 });

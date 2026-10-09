@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import { createStrengthTemplateAction } from "../actions";
 import { DAY_OF_WEEK_OPTIONS } from "../day-of-week";
 import type { StrengthActionState } from "../types";

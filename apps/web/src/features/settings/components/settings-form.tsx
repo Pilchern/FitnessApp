@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
+import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import { COMMON_TIMEZONES, toSettingsFormValues } from "../helpers";
 import type { SettingsActionState, SettingsFormValues } from "../types";
 import type { NutritionTargets } from "@fitness-app/application";

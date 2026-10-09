@@ -30,6 +30,7 @@ export * from "./modules/supplements/supplement-repository";
 export * from "./modules/supplements/supplement-log-repository";
 export * from "./modules/supplements/supplement-helpers";
 export * from "./modules/training/training-template";
+export * from "./modules/training/training-plan";
 export * from "./modules/weekly-reviews/ai-weekly-review-service";
 export * from "./modules/weekly-reviews/weekly-review";
 export * from "./modules/weekly-reviews/weekly-review-auto-finalize-service";

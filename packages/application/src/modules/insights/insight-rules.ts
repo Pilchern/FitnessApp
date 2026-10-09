@@ -1,3 +1,7 @@
+import {
+  GENERIC_TRAINING_PLAN,
+  type TrainingPlan,
+} from "../training/training-plan";
 import type {
   BodyMetric,
   CardioSession,
@@ -27,6 +31,7 @@ export type InsightEngineInput = {
   exerciseOverrides?: ReadonlyMap<string, ExerciseCatalogEntry>;
   now?: Date;
   timezone?: string;
+  plan?: TrainingPlan;
 };
 
 const MAJOR_MUSCLE_GROUP_LABELS: Record<string, string> = {
@@ -149,7 +154,7 @@ function evaluateCardioBelowTarget(input: InsightEngineInput) {
     ridesCompleted <= 1 ? "warning" : "caution",
     "Cardio sessions fell short last week",
     `Only ${ridesCompleted} cardio session${ridesCompleted === 1 ? "" : "s"} completed in the week starting ${weekStart}. The target is 3 cardio sessions per week.`,
-    "Protect the Tuesday, Thursday, and Saturday slots first before adding anything extra.",
+    `Protect the ${(input.plan ?? GENERIC_TRAINING_PLAN).cardioDaysLabel} slots first before adding anything extra.`,
     {
       weekStart,
       ridesCompleted,
@@ -159,6 +164,9 @@ function evaluateCardioBelowTarget(input: InsightEngineInput) {
 }
 
 function evaluateRepeatedMissedSaturday(input: InsightEngineInput) {
+  if ((input.plan ?? GENERIC_TRAINING_PLAN).longZone2Weekday === null) {
+    return null;
+  }
   const now = input.now ?? new Date();
   const tz = input.timezone || "UTC";
   const current = getZonedDate(tz, now);
@@ -420,8 +428,10 @@ function evaluateZone2BelowTarget(input: InsightEngineInput) {
   const review = getReviewForWeek(input.weeklyReviews, weekStart);
   const summary = review?.summary ?? buildWeekSummary(weekStart, input);
   const zone2Minutes = summary.zone2Minutes ?? 0;
+  const zone2Target = (input.plan ?? GENERIC_TRAINING_PLAN)
+    .weeklyZone2TargetMinutes;
 
-  if (zone2Minutes >= 90) {
+  if (zone2Minutes >= zone2Target) {
     return null;
   }
 
@@ -433,12 +443,12 @@ function evaluateZone2BelowTarget(input: InsightEngineInput) {
     "zone2_below_target",
     severity,
     "Zone 2 time fell short",
-    `${zone2Minutes} min logged vs. 90 min weekly target.`,
-    "Aim for 3 sessions of 30+ minutes at a conversational pace to hit the 90-minute baseline.",
+    `${zone2Minutes} min logged vs. ${zone2Target} min weekly target.`,
+    `Aim for your planned sessions at a conversational pace to reach ${zone2Target} minutes.`,
     {
       weekStart,
       zone2Minutes,
-      targetMinutes: 90,
+      targetMinutes: zone2Target,
     },
   );
 }
@@ -585,7 +595,12 @@ function evaluateStrongWeek(input: InsightEngineInput) {
   const ridesCompleted = summary.ridesCompleted ?? 0;
   const zone2Minutes = summary.zone2Minutes ?? 0;
 
-  if (liftsCompleted < 3 || ridesCompleted < 3 || zone2Minutes < 90) {
+  if (
+    liftsCompleted < 3 ||
+    ridesCompleted < 3 ||
+    zone2Minutes <
+      (input.plan ?? GENERIC_TRAINING_PLAN).weeklyZone2TargetMinutes
+  ) {
     return null;
   }
 
@@ -616,8 +631,11 @@ function evaluateMuscleGroupNeglected(input: InsightEngineInput) {
     input.exerciseOverrides,
   );
 
-  const majorGroups = summary.byMuscleGroup.filter((g) =>
-    MAJOR_MUSCLE_GROUPS.includes(g.muscleGroup),
+  const excluded = (input.plan ?? GENERIC_TRAINING_PLAN).excludedMuscleGroups;
+  const majorGroups = summary.byMuscleGroup.filter(
+    (g) =>
+      MAJOR_MUSCLE_GROUPS.includes(g.muscleGroup) &&
+      !excluded.includes(g.muscleGroup),
   );
   const trainedMajor = majorGroups.filter((g) => g.workingSetCount > 0);
   const neglectedMajor = majorGroups.filter((g) => g.workingSetCount === 0);
