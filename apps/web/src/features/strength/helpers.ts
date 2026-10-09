@@ -98,7 +98,11 @@ export function formatTopSet(weight: number | null, reps: number | null) {
 export type LastExercisePerformance = {
   sessionDate: string;
   /** Working sets only (warm-ups excluded), in set order. */
-  sets: { weight: number | null; reps: number | null }[];
+  sets: {
+    weight: number | null;
+    reps: number | null;
+    durationSeconds: number | null;
+  }[];
 };
 
 export function exerciseKey(name: string) {
@@ -132,7 +136,11 @@ export function buildLastByExercise(
         sessionDate: session.sessionDate,
         sets: [...sets]
           .sort((a, b) => a.setNumber - b.setNumber)
-          .map((s) => ({ weight: s.weight, reps: s.reps })),
+          .map((s) => ({
+            weight: s.weight,
+            reps: s.reps,
+            durationSeconds: s.durationSeconds ?? null,
+          })),
       };
     }
   }
@@ -140,11 +148,15 @@ export function buildLastByExercise(
   return result;
 }
 
-/** "165 x 8, 8, 7" (weight repeated only when it changes). */
+/** "165 x 8, 8, 7" (weight repeated only when it changes); "30s, 25s" for timed sets. */
 export function formatLastPerformance(last: LastExercisePerformance) {
   const parts: string[] = [];
   let previousWeight: number | null | undefined;
   for (const set of last.sets) {
+    if (set.reps == null && set.durationSeconds != null) {
+      parts.push(`${set.durationSeconds}s`);
+      continue;
+    }
     if (set.reps == null && set.weight == null) continue;
     if (set.weight != null && set.weight !== previousWeight) {
       parts.push(
@@ -227,4 +239,16 @@ export function renumberSets<
     previous = key;
     return { ...set, setNumber: next };
   });
+}
+
+/** Starting seconds for a timed set: same set last time, else the last set. */
+export function startingDuration(
+  last: LastExercisePerformance | undefined,
+  index: number,
+): string {
+  const fromLast = last
+    ? (last.sets[index]?.durationSeconds ??
+      last.sets[last.sets.length - 1]?.durationSeconds)
+    : null;
+  return fromLast != null ? String(fromLast) : "";
 }

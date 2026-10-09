@@ -14,6 +14,7 @@ import {
   isTimedSet,
   renumberSets,
   selectSetsToSave,
+  startingDuration,
   startingWeight,
   toStrengthFormValues,
   type LastExercisePerformance,
@@ -191,7 +192,10 @@ export function StrengthQuickForm({
           ),
           rir: ex.targetRir != null ? String(ex.targetRir) : "",
           isWarmup: false,
-          durationSeconds: "",
+          durationSeconds: startingDuration(
+            lastByExercise[exerciseKey(ex.exerciseName)],
+            i,
+          ),
           distanceMeters: "",
           notes: "",
           done: false,
@@ -293,6 +297,7 @@ export function StrengthQuickForm({
         ...createEmptyStrengthSet({
           exerciseName: name,
           weight: startingWeight(last, 0, null),
+          durationSeconds: startingDuration(last, 0),
         }),
         done: false,
       };
@@ -367,7 +372,12 @@ export function StrengthQuickForm({
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
             {mode === "edit" ? "Edit session" : "Workout"}
           </p>
-          <h2 className="truncate font-display text-xl text-ink">
+          {/* The server renders in UTC; after 7 PM Central the client's date
+              is a day behind, which is correct, so skip the mismatch error. */}
+          <h2
+            suppressHydrationWarning
+            className="truncate font-display text-xl text-ink"
+          >
             {values.sessionName || formatStrengthDate(values.sessionDate)}
           </h2>
         </div>
