@@ -5,14 +5,15 @@ import {
   buildRecoveryRestingHeartRateTrend,
   buildRecoverySleepTrend,
   buildRecoverySummary,
+  getZonedDate,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createCoreServices } from "@/lib/server/services";
+import {
+  createCoreServices,
+  getCachedUserProfile,
+} from "@/lib/server/services";
+import { formatZonedIsoDate } from "@/features/dashboard/helpers";
 import type { RecoveryPageData } from "./types";
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export async function getRecoveryPageData(
   editCheckinId?: string,
@@ -27,7 +28,10 @@ export async function getRecoveryPageData(
     ? await recoveryService.getById(user.id, editCheckinId)
     : null;
 
-  const today = todayIsoDate();
+  // The owner's local date, not UTC: dinner and bedtime supplements are ticked
+  // after 7 PM Central, when the UTC date is already tomorrow.
+  const profile = await getCachedUserProfile(user.id);
+  const today = formatZonedIsoDate(getZonedDate(profile?.timezone || "UTC"));
   const [activeSupplements, todaysLogs] = await Promise.all([
     supplementService.listActive({ userId: user.id }),
     supplementLogService.listByDate({ userId: user.id, logDate: today }),
