@@ -18,6 +18,9 @@
 
 ## Current weak spots
 
+- **Production is public with no auth (open, owner decision).** As of 2026-10-09 the production domain returns the full app to anonymous requests: Vercel Authentication is set to Standard (`all_except_custom_domains`), which protects deployment URLs but not the production domain, and login was removed the same day. Anyone with the URL can read and change data, generate an Apple Health webhook token, and download `/api/account/export`. The URL is also the homepage field of the public GitHub repo.
+- The Playwright suite predates the login removal; `tests/e2e/strength.spec.ts` (2026-10-09) is read-only and safe against the live database, the others create rows.
+
 - Playwright E2E covers auth, navigation, body, cardio, integrations connect flow, and weekly-review (6 specs); the remaining modules (strength, recovery, nutrition, journal, insights, settings) have no browser coverage yet.
 - E2E does not run in CI — Playwright's `webServer` needs a live Supabase project, and CI has no credentials for one. The GitHub Actions workflow (`.github/workflows/ci.yml`) runs format, typecheck, lint, unit tests, and the production build only.
 - OAuth callback and sync behavior are covered by unit tests, not live-provider integration tests.
