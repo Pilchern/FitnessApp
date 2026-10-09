@@ -5,6 +5,8 @@ import {
   createSupplementSchema,
   listSupplementsQuerySchema,
   logSupplementAdherenceSchema,
+  stepHabitCompletions,
+  stepHabitThreshold,
   supplementLogDateRangeQuerySchema,
   updateSupplementSchema,
 } from "../../index";
@@ -195,5 +197,30 @@ describe("supplement adherence summary", () => {
         adherencePct: null,
       },
     ]);
+  });
+});
+
+describe("step habit auto-complete", () => {
+  it("reads the step target from the habit name", () => {
+    expect(stepHabitThreshold("7,000 steps")).toBe(7000);
+    expect(stepHabitThreshold("Walk 8000 steps")).toBe(8000);
+    expect(stepHabitThreshold("10k steps")).toBe(10000);
+    expect(stepHabitThreshold("Mobility")).toBeNull();
+    expect(stepHabitThreshold("Morning sunlight")).toBeNull();
+  });
+
+  it("completes only step habits on days at or over target", () => {
+    const habits = [
+      { id: "h1", name: "7,000 steps", kind: "habit" as const },
+      { id: "h2", name: "Mobility", kind: "habit" as const },
+      { id: "s1", name: "5000 steps vitamin", kind: "supplement" as const },
+    ];
+    expect(
+      stepHabitCompletions(habits, [
+        { date: "2026-10-08", steps: 7000 },
+        { date: "2026-10-09", steps: 6999 },
+        { date: "2026-10-10" },
+      ]),
+    ).toEqual([{ supplementId: "h1", logDate: "2026-10-08" }]);
   });
 });

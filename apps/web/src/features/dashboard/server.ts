@@ -22,6 +22,7 @@ import {
   buildWeekPlan,
   computeGoalProgress,
   formatZonedIsoDate,
+  summarizeDailyActivity,
 } from "./helpers";
 import type {
   DashboardData,
@@ -58,6 +59,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     trainingTemplateService,
     supplementService,
     supplementLogService,
+    dailyActivityService,
   } = await createCoreServices();
 
   const profile = await getCachedUserProfile(user.id);
@@ -90,6 +92,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     cardioTemplatesResult,
     habitDefsResult,
     habitLogsResult,
+    dailyActivityResult,
   ] = await Promise.allSettled([
     cardioService.listByDateRange({
       userId: user.id,
@@ -136,6 +139,12 @@ export async function getDashboardData(): Promise<DashboardData> {
       startDate: addDaysIsoDate(today, -6),
       endDate: today,
     }),
+    // A year, so the latest VO2 max estimate is found even when it is old.
+    dailyActivityService.listByDateRange({
+      userId: user.id,
+      startDate: addDaysIsoDate(today, -365),
+      endDate: today,
+    }),
   ]);
 
   const cardioThisWeek = settledOrNull(cardioThisWeekResult) ?? [];
@@ -153,6 +162,10 @@ export async function getDashboardData(): Promise<DashboardData> {
     (s) => s.kind === "habit",
   );
   const habitLogs = settledOrNull(habitLogsResult) ?? [];
+  const activity = summarizeDailyActivity(
+    settledOrNull(dailyActivityResult) ?? [],
+    today,
+  );
   const planTemplates = [
     ...(settledOrNull(strengthTemplatesResult) ?? []),
     ...(settledOrNull(cardioTemplatesResult) ?? []),
@@ -255,6 +268,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       ),
       logDate: today,
     },
+    activity,
     weekPlan: buildWeekPlan({
       weekStart,
       today,

@@ -68,4 +68,11 @@ export type DashboardData = {
   muscleGroupVolume: MuscleGroupVolumeSummary;
   weekPlan: WeekPlan;
   habits: HabitsToday;
+  activity: ActivitySnapshot;
+};
+
+/** Apple Health daily metrics for the dashboard; nulls until the bridge syncs. */
+export type ActivitySnapshot = {
+  stepsToday: number | null;
+  vo2Max: { value: number; date: string } | null;
 };

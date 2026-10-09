@@ -1,6 +1,12 @@
 # Known Issues
 
-**Last verified against code:** 2026-08-27.
+**Last verified against code:** 2026-10-09.
+
+## Fixed 2026-10-09
+
+- pg_cron POSTs to `/api/cron/withings-sync` and `/api/cron/retry-failed-syncs`, but both exported only GET, so every scheduled run since they were added returned 405. Withings only synced on manual button presses (last body metric before the fix: 2026-07-23). Both now accept POST; a production run synced 19 new rows.
+- The app shell's `<main>` had `backdrop-filter`, which pinned the lift logger's fixed Finish bar and rest timer to the bottom of the page instead of the screen.
+- `/recovery` keyed today on UTC, so evening supplements logged to tomorrow.
 
 ## Fixed 2026-08-26 (see CURRENT_STATE.md session log)
 
@@ -15,7 +21,7 @@
 - Playwright E2E covers auth, navigation, body, cardio, integrations connect flow, and weekly-review (6 specs); the remaining modules (strength, recovery, nutrition, journal, insights, settings) have no browser coverage yet.
 - E2E does not run in CI — Playwright's `webServer` needs a live Supabase project, and CI has no credentials for one. The GitHub Actions workflow (`.github/workflows/ci.yml`) runs format, typecheck, lint, unit tests, and the production build only.
 - OAuth callback and sync behavior are covered by unit tests, not live-provider integration tests.
-- Withings and Apple Health are live and verified. Strava's app registration is deactivated on Strava's side and its API now requires a paid subscription the user has declined; Peloton's unofficial auth endpoint returns `403` for any credentials as of 2026-07-16 and is not fixable from this codebase. Apple Health is the only active cardio-import path today.
+- Withings is live and, since 2026-10-09, actually scheduled (see above). The Apple Health webhooks work but no bridge is configured and no webhook token exists, so nothing is flowing yet. Strava's app registration is deactivated on Strava's side and its API now requires a paid subscription the user has declined; Peloton's unofficial auth endpoint returns `403` for any credentials as of 2026-07-16 and is not fixable from this codebase. Apple Health is the only active cardio-import path today.
 - Integration credentials are intentionally server-only and require correct service-role usage in deployment.
 - Insight severity is computed by the rule engine and then dropped at the storage boundary: there is no `severity` column, so `InsightOrchestrator` hides it in the `evidence` JSONB and nothing reads it back. `listActive` orders by `insight_date desc`, and both "top 3" call sites are a bare `slice`, so the dashboard shows the three most recent insights rather than the three most important. Open and unfixed as of 2026-08-27 — it needs a product decision, not just a patch. See CURRENT_STATE.md.
 - Nutrition targets are personalized as of 2026-08-27 (TD-030 closed): `height_cm`/`birth_date`/`biological_sex` are on `profiles` and used in the BMR formula, falling back to population averages per-field and disclosing exactly which ones fell back.

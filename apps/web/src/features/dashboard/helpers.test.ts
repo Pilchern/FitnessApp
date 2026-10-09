@@ -7,6 +7,7 @@ import {
   buildWeekPlan,
   computeGoalProgress,
   formatZonedIsoDate,
+  summarizeDailyActivity,
   type GoalProgressBodyMetric,
   type GoalProgressCardioSession,
   type GoalProgressProfile,
@@ -698,5 +699,40 @@ describe("buildWeekPlan", () => {
     });
     expect(plan.days[1]?.items[0]?.done).toBe(false);
     expect(plan.days[5]?.items[0]?.done).toBe(false);
+  });
+});
+
+describe("summarizeDailyActivity", () => {
+  const metric = (
+    metricDate: string,
+    steps: number | null,
+    vo2Max: number | null,
+  ) => ({
+    metricDate,
+    steps,
+    vo2Max,
+  });
+
+  it("returns today's steps and the latest VO2 max with its date", () => {
+    expect(
+      summarizeDailyActivity(
+        [
+          metric("2026-10-09", 5400, null),
+          metric("2026-10-01", 9100, 40.2),
+          metric("2026-06-01", 8000, 39.7),
+        ],
+        "2026-10-09",
+      ),
+    ).toEqual({
+      stepsToday: 5400,
+      vo2Max: { value: 40.2, date: "2026-10-01" },
+    });
+  });
+
+  it("is null before anything syncs", () => {
+    expect(summarizeDailyActivity([], "2026-10-09")).toEqual({
+      stepsToday: null,
+      vo2Max: null,
+    });
   });
 });
