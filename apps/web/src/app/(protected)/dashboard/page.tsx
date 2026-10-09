@@ -92,6 +92,15 @@ export default async function DashboardPage() {
           latestBodyDate={data.latestBodyDate}
           weightTrend={data.weightTrend}
           vo2Max={data.activity.vo2Max}
+          weeklyWeight={data.weeklyWeight}
+          proteinHit={
+            data.todayNutrition
+              ? {
+                  days: data.todayNutrition.proteinHitDays,
+                  of: data.todayNutrition.totalDays,
+                }
+              : null
+          }
         />
       </div>
 

@@ -4,6 +4,7 @@ import {
   buildBodyMetricSummary,
   buildBodyWeightTrend,
   buildCardioWeeklyTotals,
+  buildWeeklyWeightTrend,
   buildOverridesLookup,
   computeJournalStreak,
   computeMuscleGroupVolume,
@@ -269,6 +270,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       logDate: today,
     },
     activity,
+    weeklyWeight: buildWeeklyWeightTrend(recentBody, today),
     weekPlan: buildWeekPlan({
       weekStart,
       today,

@@ -117,3 +117,62 @@ export function buildBodyFatTrend(metrics: BodyMetric[]) {
     (metric) => metric.bodyFatPct,
   );
 }
+
+/** Plan doc, nutrition: flag when the 7-day average climbs faster than this two weeks running. */
+export const SURPLUS_THROTTLE_LB_PER_WEEK = 0.5;
+
+export type WeeklyWeightTrend = {
+  /** Mean of weigh-ins in the 7 days ending today. */
+  sevenDayAvgLb: number | null;
+  /** This 7-day average minus the previous 7 days' average. */
+  weekOverWeekLb: number | null;
+  /** Up more than SURPLUS_THROTTLE_LB_PER_WEEK in each of the last two weeks. */
+  surplusThrottle: boolean;
+};
+
+function shiftIsoDate(isoDate: string, days: number) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
+}
+
+/**
+ * Rolling 7-day weight averages for the rehab-phase surplus: the 7-day
+ * average is the number that matters, and two consecutive weeks of gaining
+ * more than 0.5 lb/week trips the throttle flag (the fix is trimming the
+ * surplus, never protein). Windows are calendar days in the user's timezone,
+ * so pass the zoned `today`.
+ */
+export function buildWeeklyWeightTrend(
+  metrics: Pick<BodyMetric, "measuredOn" | "weightLb">[],
+  today: string,
+): WeeklyWeightTrend {
+  const windowAverage = (weeksBack: number) => {
+    const end = shiftIsoDate(today, -7 * weeksBack);
+    const start = shiftIsoDate(end, -6);
+    const values = metrics
+      .filter(
+        (m) =>
+          m.weightLb != null && m.measuredOn >= start && m.measuredOn <= end,
+      )
+      .map((m) => m.weightLb as number);
+    return values.length > 0
+      ? values.reduce((sum, v) => sum + v, 0) / values.length
+      : null;
+  };
+
+  const [thisWeek, lastWeek, twoWeeksAgo] = [0, 1, 2].map(windowAverage);
+  const delta = (a: number | null | undefined, b: number | null | undefined) =>
+    a != null && b != null ? a - b : null;
+  const recent = delta(thisWeek, lastWeek);
+  const prior = delta(lastWeek, twoWeeksAgo);
+
+  return {
+    sevenDayAvgLb: thisWeek != null ? roundOneDecimal(thisWeek) : null,
+    weekOverWeekLb: recent != null ? roundOneDecimal(recent) : null,
+    surplusThrottle:
+      recent != null &&
+      prior != null &&
+      recent > SURPLUS_THROTTLE_LB_PER_WEEK &&
+      prior > SURPLUS_THROTTLE_LB_PER_WEEK,
+  };
+}
