@@ -252,3 +252,7 @@ export async function GET(request: NextRequest) {
     stillFailed,
   });
 }
+
+// Supabase pg_cron (trigger_cron_route) calls this with POST; without it every
+// 15-minute sweep returned 405.
+export const POST = GET;
