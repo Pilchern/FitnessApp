@@ -5,6 +5,7 @@ import type {
   SparseTrendPoint,
 } from "@fitness-app/application";
 import type { RecoveryCheckin, WeeklyReview } from "@fitness-app/domain";
+import type { WeekPlan } from "./helpers";
 
 export type TrainingWeekData = {
   weekStart: string;
@@ -53,4 +54,5 @@ export type DashboardData = {
   todayNutrition: TodayNutrition | null;
   nutritionTargets: NutritionTargetsSnapshot;
   muscleGroupVolume: MuscleGroupVolumeSummary;
+  weekPlan: WeekPlan;
 };

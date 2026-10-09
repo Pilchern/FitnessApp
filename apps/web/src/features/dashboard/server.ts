@@ -17,7 +17,11 @@ import {
   getCachedUserProfile,
 } from "@/lib/server/services";
 import { getInsightsData } from "@/features/insights/server";
-import { computeGoalProgress, formatZonedIsoDate } from "./helpers";
+import {
+  buildWeekPlan,
+  computeGoalProgress,
+  formatZonedIsoDate,
+} from "./helpers";
 import type {
   DashboardData,
   TodayNutrition,
@@ -50,6 +54,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     nutritionService,
     journalService,
     exerciseOverrideService,
+    trainingTemplateService,
   } = await createCoreServices();
 
   const profile = await getCachedUserProfile(user.id);
@@ -78,6 +83,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     strengthSessionsResult,
     cardioLast8WeeksResult,
     exerciseOverridesResult,
+    strengthTemplatesResult,
+    cardioTemplatesResult,
   ] = await Promise.allSettled([
     cardioService.listByDateRange({
       userId: user.id,
@@ -116,6 +123,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       startDate: daysAgoIsoDate(56),
     }),
     exerciseOverrideService.listActive({ userId: user.id }),
+    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
+    trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
   ]);
 
   const cardioThisWeek = settledOrNull(cardioThisWeekResult) ?? [];
@@ -129,6 +138,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   const strengthSessions = settledOrNull(strengthSessionsResult) ?? [];
   const cardioLast8Weeks = settledOrNull(cardioLast8WeeksResult) ?? [];
   const exerciseOverrides = settledOrNull(exerciseOverridesResult) ?? [];
+  const planTemplates = [
+    ...(settledOrNull(strengthTemplatesResult) ?? []),
+    ...(settledOrNull(cardioTemplatesResult) ?? []),
+  ];
   const exerciseOverridesLookup = buildOverridesLookup(exerciseOverrides);
   const journalStreak = computeJournalStreak(journalEntries, today);
   const topInsights = insightData?.topInsights ?? [];
@@ -214,5 +227,12 @@ export async function getDashboardData(): Promise<DashboardData> {
     todayNutrition,
     nutritionTargets,
     muscleGroupVolume,
+    weekPlan: buildWeekPlan({
+      weekStart,
+      today,
+      templates: planTemplates,
+      strengthSessions,
+      cardioSessions: cardioThisWeek,
+    }),
   };
 }

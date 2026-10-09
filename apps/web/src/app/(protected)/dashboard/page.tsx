@@ -3,6 +3,7 @@ import { CoachingBanner } from "@/components/shared/coaching-banner";
 import { InsightCard } from "@/components/shared/insight-card";
 import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
 import { getDashboardData } from "@/features/dashboard/server";
+import { WeekPlanCard } from "@/features/dashboard/components/week-plan-card";
 import { TrainingWeekCard } from "@/features/dashboard/components/training-week-card";
 import { RecoverySnapshotCard } from "@/features/dashboard/components/recovery-snapshot-card";
 import { BodySnapshotCard } from "@/features/dashboard/components/body-snapshot-card";
@@ -40,6 +41,11 @@ export default async function DashboardPage() {
           ) : null}
         </div>
       </section>
+
+      <WeekPlanCard
+        plan={data.weekPlan}
+        zone2Minutes={data.trainingWeek.zone2Minutes}
+      />
 
       <TrainingWeekCard
         data={data.trainingWeek}
