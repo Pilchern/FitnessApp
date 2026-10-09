@@ -11,6 +11,12 @@ export type WeeklyReviewSummary = {
   vo2Completed?: boolean | null;
   sleepAverageHours?: number | null;
   alcoholTotal?: number | null;
+  /** Plan adherence, from the templates scheduled that week. */
+  liftsScheduled?: number | null;
+  cardioScheduled?: number | null;
+  zone2TargetMinutes?: number | null;
+  /** Share of habit-days ticked across active habits, 0-100. */
+  habitCompletionPct?: number | null;
 };
 
 export type WeeklyReviewScoreComponent = {

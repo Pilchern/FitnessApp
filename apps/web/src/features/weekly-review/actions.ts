@@ -1,13 +1,34 @@
 "use server";
 
 import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
-import { calculateWeeklyReviewScore } from "@fitness-app/application";
+import {
+  calculateWeeklyReviewScore,
+  pickPlanAdherence,
+} from "@fitness-app/application";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
 import { weeklyReviewFormSchema } from "./form-schema";
 import type { WeeklyReviewActionState } from "./types";
+
+const planAdherenceSchema = z.object({
+  liftsScheduled: z.number().int().min(0).max(14).optional(),
+  cardioScheduled: z.number().int().min(0).max(14).optional(),
+  zone2TargetMinutes: z.number().int().min(0).max(2000).optional(),
+  habitCompletionPct: z.number().min(0).max(100).optional(),
+});
+
+/** Hidden, non-editable field; anything malformed is dropped, not an error. */
+function parsePlanAdherence(raw: FormDataEntryValue | null) {
+  try {
+    const parsed = planAdherenceSchema.safeParse(JSON.parse(String(raw)));
+    return parsed.success ? pickPlanAdherence(parsed.data) : {};
+  } catch {
+    return {};
+  }
+}
 
 function buildWeeklyReviewPayload(userId: string, formData: FormData) {
   const parsed = weeklyReviewFormSchema.parse({
@@ -41,6 +62,7 @@ function buildWeeklyReviewPayload(userId: string, formData: FormData) {
     vo2Completed: parsed.vo2Completed === "true",
     sleepAverageHours: parsed.sleepAverageHours,
     alcoholTotal: parsed.alcoholTotal,
+    ...parsePlanAdherence(formData.get("planAdherence")),
   };
 
   const scoring = calculateWeeklyReviewScore({

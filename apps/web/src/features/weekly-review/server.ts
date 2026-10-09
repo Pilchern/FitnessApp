@@ -3,6 +3,7 @@ import "server-only";
 import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
 import {
   buildNutritionAdherenceSummary,
+  buildPlanAdherence,
   buildWeeklyReviewSummary,
   calculateWeeklyReviewScore,
   getLastCompletedWeekStart,
@@ -24,6 +25,9 @@ export async function getWeeklyReviewPageData(
     strengthSummaryService,
     weeklyReviewService,
     nutritionService,
+    trainingTemplateService,
+    supplementService,
+    supplementLogService,
   } = await createCoreServices();
 
   const profile = await profileService.getByUserId(user.id);
@@ -46,6 +50,10 @@ export async function getWeeklyReviewPageData(
     nutritionLogs,
     review,
     latestReview,
+    strengthTemplates,
+    cardioTemplates,
+    supplements,
+    habitLogs,
   ] = await Promise.all([
     bodyMetricService.listByDateRange(dateRangeQuery),
     cardioService.listByDateRange(dateRangeQuery),
@@ -57,6 +65,10 @@ export async function getWeeklyReviewPageData(
       weekStart,
     }),
     weeklyReviewService.getLatest(user.id),
+    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
+    trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
+    supplementService.listActive({ userId: user.id }),
+    supplementLogService.listByDateRange(dateRangeQuery),
   ]);
 
   const autoSummary = buildWeeklyReviewSummary({
@@ -64,6 +76,11 @@ export async function getWeeklyReviewPageData(
     cardioSessions,
     recoveryCheckins,
     liftsCompleted,
+    adherence: buildPlanAdherence({
+      templates: [...strengthTemplates, ...cardioTemplates],
+      habitIds: supplements.filter((s) => s.kind === "habit").map((s) => s.id),
+      habitLogs,
+    }),
   });
 
   const nutritionSummary =

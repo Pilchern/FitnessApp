@@ -3,10 +3,16 @@
 import type { ReactNode } from "react";
 import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
 import { useActionState, useMemo, useState } from "react";
-import { calculateWeeklyReviewScore } from "@fitness-app/application";
+import {
+  calculateWeeklyReviewScore,
+  pickPlanAdherence,
+} from "@fitness-app/application";
 import type { WeeklyReviewSummary } from "@fitness-app/domain";
 import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
-import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
+import {
+  WeeklyReviewSummaryCard,
+  formatPlanAdherence,
+} from "@/components/shared/weekly-review-summary-card";
 import { formatWeeklyReviewDate, toWeeklyReviewFormValues } from "../helpers";
 import { saveWeeklyReviewAction } from "../actions";
 import { AiWeeklyReviewDraft } from "./ai-weekly-review-draft";
@@ -196,6 +202,11 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
     saveWeeklyReviewAction,
     initialState,
   );
+  // Plan adherence is not editable; it rides along from the stored or auto
+  // summary so the preview, the saved score and the AI draft use one target.
+  const planAdherence = pickPlanAdherence(
+    data.review?.summary ?? data.autoSummary,
+  );
   const [values, setValues] = useState(() =>
     toWeeklyReviewFormValues(
       data.review,
@@ -208,10 +219,12 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
   const scoringPreview = useMemo(
     () =>
       calculateWeeklyReviewScore({
-        summary: buildSummaryFromValues(values),
+        summary: { ...buildSummaryFromValues(values), ...planAdherence },
         confidence: values.confidence ? Number(values.confidence) : null,
         plan: NICK_TRAINING_PLAN,
       }),
+    // planAdherence is derived from props that do not change on this page.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [values],
   );
 
@@ -353,6 +366,11 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
             type="hidden"
             name="manualOverrides"
             value={JSON.stringify(values.manualOverrides)}
+          />
+          <input
+            type="hidden"
+            name="planAdherence"
+            value={JSON.stringify(planAdherence)}
           />
 
           <div className="space-y-4">
@@ -558,6 +576,18 @@ export function WeeklyReviewForm({ data }: WeeklyReviewFormProps) {
             </div>
           </div>
 
+          {formatPlanAdherence({
+            ...buildSummaryFromValues(values),
+            ...planAdherence,
+          }) ? (
+            <p className="rounded-2xl border border-pine/20 bg-pine/5 px-4 py-3 text-sm font-semibold text-ink">
+              Plan:{" "}
+              {formatPlanAdherence({
+                ...buildSummaryFromValues(values),
+                ...planAdherence,
+              })}
+            </p>
+          ) : null}
           <AutoPopulatedPanel autoPopulated={data.autoPopulated} />
 
           <div className="space-y-4">

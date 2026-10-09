@@ -374,6 +374,37 @@ export function buildWeekPlan(input: {
     });
   }
 
+  // A session on a day with nothing of its kind scheduled (a moved lift or
+  // ride) completes the earliest missed slot of that kind on or before it.
+  // This matches the weekly score, which counts sessions in the week.
+  const weekDates = new Set(days.map((d) => d.date));
+  const moved = [
+    ...input.strengthSessions.map((s) => ({ ...s, kind: "strength" })),
+    ...input.cardioSessions
+      .filter(
+        (s) =>
+          s.plannedVsCompleted === "completed" && s.sessionKind !== "other",
+      )
+      .map((s) => ({ ...s, kind: "cardio" })),
+  ]
+    .filter(
+      (s) =>
+        weekDates.has(s.sessionDate) &&
+        !days.some(
+          (d) =>
+            d.date === s.sessionDate &&
+            d.items.some((item) => item.kind === s.kind),
+        ),
+    )
+    .sort((a, b) => a.sessionDate.localeCompare(b.sessionDate));
+  for (const session of moved) {
+    const slot = days
+      .filter((d) => d.date <= session.sessionDate)
+      .flatMap((d) => d.items)
+      .find((item) => item.kind === session.kind && !item.done);
+    if (slot) slot.done = true;
+  }
+
   return { days, zone2TargetMinutes };
 }
 

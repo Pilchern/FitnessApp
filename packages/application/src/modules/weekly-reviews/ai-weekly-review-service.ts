@@ -37,9 +37,20 @@ function buildContext(input: AiWeeklyReviewInput): string {
   const lines: string[] = [];
 
   lines.push(`Week: ${input.weekStart} to ${input.weekEnd}`);
-  lines.push(`Lifts completed: ${s.liftsCompleted ?? 0}`);
-  lines.push(`Cardio sessions completed: ${s.ridesCompleted ?? 0}`);
-  lines.push(`Zone 2 minutes: ${s.zone2Minutes ?? 0}`);
+  const ofPlan = (scheduled: number | null | undefined) =>
+    scheduled ? ` of ${scheduled} scheduled` : "";
+  lines.push(
+    `Lifts completed: ${s.liftsCompleted ?? 0}${ofPlan(s.liftsScheduled)}`,
+  );
+  lines.push(
+    `Cardio sessions completed: ${s.ridesCompleted ?? 0}${ofPlan(s.cardioScheduled)}`,
+  );
+  lines.push(
+    `Zone 2 minutes: ${s.zone2Minutes ?? 0}${s.zone2TargetMinutes ? ` of a ${s.zone2TargetMinutes} min target` : ""}`,
+  );
+  if (s.habitCompletionPct != null) {
+    lines.push(`Daily habit completion: ${s.habitCompletionPct}%`);
+  }
   lines.push(`VO2 session completed: ${s.vo2Completed ? "yes" : "no"}`);
   lines.push(
     `Average sleep: ${s.sleepAverageHours != null ? `${s.sleepAverageHours}h` : "no data"}`,
