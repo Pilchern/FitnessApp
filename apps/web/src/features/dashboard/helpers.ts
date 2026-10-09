@@ -376,3 +376,10 @@ export function buildWeekPlan(input: {
 
   return { days, zone2TargetMinutes };
 }
+
+/** Calendar-date arithmetic on YYYY-MM-DD strings, immune to DST and timezone. */
+export function addDaysIsoDate(isoDate: string, days: number) {
+  return new Date(isoDateAtNoonUtc(isoDate) + days * MS_PER_DAY)
+    .toISOString()
+    .slice(0, 10);
+}

@@ -44,7 +44,7 @@ export async function getRecoveryPageData(
       editCheckinId && !editingCheckin
         ? "The recovery check-in you tried to edit could not be found."
         : undefined,
-    activeSupplements,
+    activeSupplements: activeSupplements.filter((s) => s.kind === "supplement"),
     supplementsTakenToday: todaysLogs
       .filter((log) => log.taken)
       .map((log) => log.supplementId),

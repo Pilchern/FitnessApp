@@ -7,8 +7,12 @@ import type { StrengthTrainingTemplateDefinition } from "@fitness-app/applicatio
 import { AuthSubmitButton } from "@/components/auth/auth-submit-button";
 import {
   createEmptyStrengthSet,
+  exerciseKey,
+  formatLastPerformance,
   formatStrengthDate,
+  startingWeight,
   toStrengthFormValues,
+  type LastExercisePerformance,
 } from "../helpers";
 import type {
   StrengthActionState,
@@ -27,6 +31,7 @@ type StrengthQuickFormProps = {
   knownExercises: string[];
   lastSession: StrengthSession | null;
   loadedTemplate?: StrengthTrainingTemplateDefinition | null;
+  lastByExercise?: Record<string, LastExercisePerformance>;
 };
 
 const initialState: StrengthActionState = {};
@@ -57,6 +62,7 @@ export function StrengthQuickForm({
   knownExercises,
   lastSession,
   loadedTemplate,
+  lastByExercise = {},
 }: StrengthQuickFormProps) {
   const [state, formAction] = useActionState(action, initialState);
   const [values, setValues] = useState<StrengthFormValues>(() =>
@@ -78,7 +84,11 @@ export function StrengthQuickForm({
             exerciseName: ex.exerciseName,
             setNumber: i + 1,
             reps: ex.targetReps != null ? String(ex.targetReps) : "",
-            weight: ex.targetWeight != null ? String(ex.targetWeight) : "",
+            weight: startingWeight(
+              lastByExercise[exerciseKey(ex.exerciseName)],
+              i,
+              ex.targetWeight,
+            ),
             rir: ex.targetRir != null ? String(ex.targetRir) : "",
             isWarmup: false,
             durationSeconds: "",
@@ -88,6 +98,8 @@ export function StrengthQuickForm({
         ),
       }));
     }
+    // Only re-run when a plan is loaded; lastByExercise is stable page data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedTemplate]);
 
   return (
@@ -319,6 +331,19 @@ export function StrengthQuickForm({
                 key={`${index}-${set.setNumber}`}
                 className="grid gap-3 rounded-[1.5rem] border border-ink/10 bg-sand/45 p-4 md:grid-cols-[1.5fr_0.7fr_0.8fr_0.8fr_0.8fr_auto_auto]"
               >
+                {(() => {
+                  const last = lastByExercise[exerciseKey(set.exerciseName)];
+                  const isFirstOfExercise =
+                    index === 0 ||
+                    exerciseKey(values.sets[index - 1]?.exerciseName ?? "") !==
+                      exerciseKey(set.exerciseName);
+                  return last && isFirstOfExercise ? (
+                    <p className="text-xs text-ink/60 md:col-span-full">
+                      Last ({formatStrengthDate(last.sessionDate)}):{" "}
+                      {formatLastPerformance(last)}
+                    </p>
+                  ) : null;
+                })()}
                 <input
                   className={fieldClassName()}
                   list="strength-exercise-names"

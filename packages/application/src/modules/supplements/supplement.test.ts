@@ -22,6 +22,22 @@ describe("supplement validation", () => {
     expect(parsed.name).toBe("Creatine");
   });
 
+  it("defaults kind to supplement and accepts habit", () => {
+    expect(
+      createSupplementSchema.parse({ userId, name: "Creatine" }).kind,
+    ).toBe("supplement");
+    expect(
+      createSupplementSchema.parse({
+        userId,
+        name: "Foundation Training",
+        kind: "habit",
+      }).kind,
+    ).toBe("habit");
+    expect(() =>
+      createSupplementSchema.parse({ userId, name: "X", kind: "other" }),
+    ).toThrow();
+  });
+
   it("rejects a blank supplement name", () => {
     expect(() =>
       createSupplementSchema.parse({
@@ -109,6 +125,7 @@ describe("supplement adherence summary", () => {
       id: "supp-1",
       userId,
       name: "Creatine",
+      kind: "supplement",
       isActive: true,
       createdAt: "2026-07-01T00:00:00.000Z",
       updatedAt: "2026-07-01T00:00:00.000Z",
@@ -118,6 +135,7 @@ describe("supplement adherence summary", () => {
       id: "supp-2",
       userId,
       name: "Vitamin D",
+      kind: "supplement",
       isActive: true,
       createdAt: "2026-07-01T00:00:00.000Z",
       updatedAt: "2026-07-01T00:00:00.000Z",

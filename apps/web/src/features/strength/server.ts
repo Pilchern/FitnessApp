@@ -1,3 +1,4 @@
+import { buildLastByExercise } from "./helpers";
 import "server-only";
 
 import {
@@ -90,6 +91,7 @@ export async function getStrengthPageData(
     exerciseOverrides,
     unclassifiedExerciseNames,
     todaysScheduledTemplate,
+    lastByExercise: buildLastByExercise(sessions),
   };
 }
 

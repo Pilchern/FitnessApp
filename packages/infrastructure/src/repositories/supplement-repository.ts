@@ -16,6 +16,9 @@ const supplementRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
   name: z.string(),
+  // Defaults so reads keep working against a database that has not yet had
+  // the add_kind_to_supplements migration applied.
+  kind: z.enum(["supplement", "habit"]).default("supplement"),
   is_active: z.boolean(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -29,6 +32,7 @@ export function mapSupplementRow(row: SupplementRow): Supplement {
     id: row.id,
     userId: row.user_id,
     name: row.name,
+    kind: row.kind,
     isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -40,6 +44,7 @@ function toSupplementInsert(input: CreateSupplementInput) {
   return {
     user_id: input.userId,
     name: input.name,
+    kind: input.kind,
     is_active: true,
   };
 }

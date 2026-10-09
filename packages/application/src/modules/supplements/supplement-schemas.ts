@@ -10,6 +10,7 @@ import {
 export const createSupplementSchema = z.object({
   userId: uuidSchema,
   name: trimmedStringSchema.max(100),
+  kind: z.enum(["supplement", "habit"]).default("supplement"),
 });
 
 export const updateSupplementSchema = z

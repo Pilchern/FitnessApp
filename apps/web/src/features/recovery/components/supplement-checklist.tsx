@@ -10,10 +10,31 @@ type SupplementChecklistProps = {
   supplements: Supplement[];
   takenSupplementIds: string[];
   logDate: string;
+  /** Where to land after saving; the action only honors /recovery and /dashboard. */
+  returnTo?: "/recovery" | "/dashboard";
+  /** Days taken in the last 7, keyed by supplement id, shown as "n/7". */
+  weekCounts?: Record<string, number>;
+  labels?: ChecklistLabels;
   action: (
     state: SupplementChecklistActionState,
     formData: FormData,
   ) => Promise<SupplementChecklistActionState>;
+};
+
+type ChecklistLabels = {
+  eyebrow: string;
+  title: string;
+  empty: string;
+  hint: string;
+  save: string;
+};
+
+const SUPPLEMENT_LABELS: ChecklistLabels = {
+  eyebrow: "Supplements",
+  title: "Today's supplements",
+  empty: "You haven't added any supplements yet.",
+  hint: "Check off what you took today. Unchecked items are saved as not taken.",
+  save: "Save supplements",
 };
 
 const initialState: SupplementChecklistActionState = {};
@@ -26,6 +47,9 @@ export function SupplementChecklist({
   supplements,
   takenSupplementIds,
   logDate,
+  returnTo = "/recovery",
+  weekCounts,
+  labels = SUPPLEMENT_LABELS,
   action,
 }: SupplementChecklistProps) {
   const [state, formAction] = useActionState(action, initialState);
@@ -42,13 +66,11 @@ export function SupplementChecklist({
     return (
       <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          Supplements
+          {labels.eyebrow}
         </p>
-        <h2 className="mt-3 font-display text-2xl text-ink">
-          Today&apos;s supplements
-        </h2>
+        <h2 className="mt-3 font-display text-2xl text-ink">{labels.title}</h2>
         <p className="mt-2 text-sm leading-6 text-ink/75">
-          You haven&apos;t added any supplements yet.{" "}
+          {labels.empty}{" "}
           <Link
             href="/settings"
             className="font-semibold text-pine underline-offset-4 hover:underline"
@@ -64,14 +86,10 @@ export function SupplementChecklist({
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-        Supplements
+        {labels.eyebrow}
       </p>
-      <h2 className="mt-3 font-display text-2xl text-ink">
-        Today&apos;s supplements
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-ink/75">
-        Check off what you took today. Unchecked items are saved as not taken.
-      </p>
+      <h2 className="mt-3 font-display text-2xl text-ink">{labels.title}</h2>
+      <p className="mt-2 text-sm leading-6 text-ink/75">{labels.hint}</p>
 
       {state.error ? (
         <div className="mt-4 rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember">
@@ -81,6 +99,7 @@ export function SupplementChecklist({
 
       <form action={formAction} className="mt-5 space-y-3">
         <input type="hidden" name="logDate" value={logDate} />
+        <input type="hidden" name="returnTo" value={returnTo} />
         {supplements.map((supplement) => (
           <div key={supplement.id}>
             <input type="hidden" name="supplementIds" value={supplement.id} />
@@ -97,16 +116,18 @@ export function SupplementChecklist({
                   }))
                 }
               />
-              {supplement.name}
+              <span className="flex-1">{supplement.name}</span>
+              {weekCounts ? (
+                <span className="text-xs font-normal text-ink/50">
+                  {weekCounts[supplement.id] ?? 0}/7
+                </span>
+              ) : null}
             </label>
           </div>
         ))}
 
         <div className="flex justify-end pt-2">
-          <AuthSubmitButton
-            idleLabel="Save supplements"
-            pendingLabel="Saving..."
-          />
+          <AuthSubmitButton idleLabel={labels.save} pendingLabel="Saving..." />
         </div>
       </form>
     </section>

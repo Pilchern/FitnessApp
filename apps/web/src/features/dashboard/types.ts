@@ -4,7 +4,11 @@ import type {
   RecoveryCoachingSuggestion,
   SparseTrendPoint,
 } from "@fitness-app/application";
-import type { RecoveryCheckin, WeeklyReview } from "@fitness-app/domain";
+import type {
+  RecoveryCheckin,
+  Supplement,
+  WeeklyReview,
+} from "@fitness-app/domain";
 import type { WeekPlan } from "./helpers";
 
 export type TrainingWeekData = {
@@ -14,6 +18,14 @@ export type TrainingWeekData = {
   ridesCompleted: number;
   zone2Minutes: number;
   totalMinutes: number;
+};
+
+export type HabitsToday = {
+  items: Supplement[];
+  takenTodayIds: string[];
+  /** Days taken in the trailing 7 (including today), keyed by habit id. */
+  weekCounts: Record<string, number>;
+  logDate: string;
 };
 
 export type GoalProgress = {
@@ -55,4 +67,5 @@ export type DashboardData = {
   nutritionTargets: NutritionTargetsSnapshot;
   muscleGroupVolume: MuscleGroupVolumeSummary;
   weekPlan: WeekPlan;
+  habits: HabitsToday;
 };

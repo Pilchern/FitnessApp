@@ -3,6 +3,8 @@ import { CoachingBanner } from "@/components/shared/coaching-banner";
 import { InsightCard } from "@/components/shared/insight-card";
 import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
 import { getDashboardData } from "@/features/dashboard/server";
+import { SupplementChecklist } from "@/features/recovery/components/supplement-checklist";
+import { logSupplementsAction } from "@/features/recovery/actions";
 import { WeekPlanCard } from "@/features/dashboard/components/week-plan-card";
 import { TrainingWeekCard } from "@/features/dashboard/components/training-week-card";
 import { RecoverySnapshotCard } from "@/features/dashboard/components/recovery-snapshot-card";
@@ -45,6 +47,22 @@ export default async function DashboardPage() {
       <WeekPlanCard
         plan={data.weekPlan}
         zone2Minutes={data.trainingWeek.zone2Minutes}
+      />
+
+      <SupplementChecklist
+        supplements={data.habits.items}
+        takenSupplementIds={data.habits.takenTodayIds}
+        logDate={data.habits.logDate}
+        returnTo="/dashboard"
+        weekCounts={data.habits.weekCounts}
+        labels={{
+          eyebrow: "Daily habits",
+          title: "Today's habits",
+          empty: "No habits yet.",
+          hint: "Check off what you did today. The count is days done in the last 7.",
+          save: "Save habits",
+        }}
+        action={logSupplementsAction}
       />
 
       <TrainingWeekCard

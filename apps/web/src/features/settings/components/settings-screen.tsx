@@ -57,6 +57,15 @@ export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
       />
 
       <SupplementsManager
+        kind="habit"
+        supplements={data.supplements}
+        createAction={createSupplementAction}
+        deactivateAction={deactivateSupplementAction}
+        reactivateAction={reactivateSupplementAction}
+      />
+
+      <SupplementsManager
+        kind="supplement"
         supplements={data.supplements}
         createAction={createSupplementAction}
         deactivateAction={deactivateSupplementAction}

@@ -101,9 +101,16 @@ export async function createSupplementAction(
 ): Promise<SupplementActionState> {
   try {
     const user = await requireCurrentUser();
-    const parsed = supplementFormSchema.parse({ name: formData.get("name") });
+    const parsed = supplementFormSchema.parse({
+      name: formData.get("name"),
+      kind: formData.get("kind") ?? undefined,
+    });
     const { supplementService } = await createCoreServices();
-    await supplementService.create({ userId: user.id, name: parsed.name });
+    await supplementService.create({
+      userId: user.id,
+      name: parsed.name,
+      kind: parsed.kind,
+    });
     redirect("/settings?saved=true");
   } catch (error) {
     return parseActionError(error);
