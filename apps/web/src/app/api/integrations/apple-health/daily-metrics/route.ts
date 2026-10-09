@@ -5,6 +5,7 @@ import {
   createAppleHealthWebhookSecretLookup,
 } from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
+import { completeStepHabits } from "@/lib/server/step-habits";
 import {
   MAX_WEBHOOK_ITEMS,
   readBoundedWebhookBody,
@@ -108,9 +109,12 @@ export async function POST(request: NextRequest) {
       items: parsed.data,
     });
 
+    const habitsCompleted = await completeStepHabits(userId, parsed.data);
+
     return NextResponse.json({
       ok: true,
       processed: result.processedItemCount,
+      habitsCompleted,
     });
   } catch (error) {
     console.error("[apple-health/daily-metrics] Sync failed:", error);

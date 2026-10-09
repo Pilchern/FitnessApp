@@ -1,71 +1,121 @@
-# Apple Health bridge setup (Health Auto Export or similar)
+# Apple Health bridge setup
 
-The app ingests Apple Health data via three webhooks. There is no Apple
-Health API integration in the app itself — a phone-side "bridge" app (e.g.
-[Health Auto Export](https://www.healthyapps.dev/)) reads HealthKit data and
-POSTs it to these endpoints on a schedule or automation you configure on the
-device. This doc specifies exactly what that bridge app needs to send.
+The app has no Apple Health API of its own. A phone-side bridge reads
+HealthKit and POSTs JSON to the webhooks below. The Apple Watch writes steps,
+sleep, resting HR, HRV and VO2 max to Health; the Peloton app writes rides to
+Health (Peloton app > Settings > Apple Health > allow write). Withings syncs
+directly (OAuth, weekly pg_cron) and is not read from Apple Health.
 
-Both endpoints share the same auth scheme, are excluded from the app's
-session-auth middleware (see `apps/web/src/middleware.ts` matcher), and are
-gated server-side by `INTEGRATION_ENCRYPTION_KEY` being configured — if that
-variable isn't set, both return `503`.
+## Quick setup (about five minutes)
 
-## Auth model: a token scoped to YOUR account, not a shared app secret
+### 0. Once, in the app
 
-**This changed from an earlier version of this doc.** The webhook used to be
-gated by a single `APPLE_HEALTH_WEBHOOK_SECRET` environment variable shared
-by every user of the app. That was a real vulnerability: since `X-User-Id`
-on the request is fully client-supplied and used verbatim as the write
-target, anyone who knew that one shared secret — including any other person
-who simply signed up for the app, since signup is open — could write into
-*any* user's sleep/activity data just by sending a request with someone
-else's user id and the shared secret. There was no check that the secret
-"belonged" to the user id on the request.
+1. Open `/integrations` on the production URL, Apple Health card, tap
+   **Generate webhook token**. Copy it into your password manager; it is shown
+   once. As of 2026-10-09 no token exists yet.
+2. Copy the **X-User-Id** shown on the same card.
 
-The fix: each user now generates their own webhook token from the
-**Integrations** page (`/integrations` → Apple Health card → "Generate
-webhook token"). That token is stored server-side, encrypted at rest with
-`INTEGRATION_ENCRYPTION_KEY` (the same key used for Withings/Strava/Peloton
-credentials), in `integration_connection_credentials`. Both auth modes below
-are now checked against *your* token specifically — the server looks up the
-token for whichever `X-User-Id` is on the incoming request and compares
-against that, not a single global value. Knowing someone's user id is no
-longer enough on its own; you'd also need their personal token.
+Every request below sends these headers:
 
-**If you configured a bridge app before this change**, its `Authorization`
-header still has the old shared secret in it, and it will start getting
-`401 Unauthorized` responses. This is a one-time breaking change (deliberate
-— see "Why a clean break" below): go to `/integrations`, click "Generate
-webhook token" under the Apple Health card, and update your Shortcut's
-`Authorization` header with the new value. Everything else (webhook URL,
-`X-User-Id`, payload shape) is unchanged.
+| Header | Value |
+|---|---|
+| `Authorization` | `Bearer <webhook token>` |
+| `X-User-Id` | `<user id from the card>` |
+| `Content-Type` | `application/json` |
 
-### Why a clean break instead of a grace period
+If production is ever put behind Vercel Authentication, also send
+`x-vercel-protection-bypass: <Protection Bypass for Automation secret>`
+(Vercel > Project > Settings > Deployment Protection). Today the production
+domain is not behind it.
 
-This is pre-launch, single-primary-user software (see `CURRENT_STATE.md` /
-`FitnessAppContext.md`) — Apple Health is "live and verified" for exactly
-one real user today, not a base of bridge apps already deployed across many
-people. A grace period that accepted both the old shared secret and new
-per-user tokens would mean re-introducing the exact vulnerability this
-change closes, just temporarily. Given the actual blast radius (one person,
-one Shortcut, one header value to update), a clean break is the safer and
-simpler trade — see the migration step above.
+### Option A (free): two Apple Shortcuts automations
+
+Covers steps (auto-ticks the steps habit), resting HR, VO2 max, sleep and
+HRV. Does not cover rides: log those with the cardio quick log (tap the
+template, save). HealthKit is unreadable while the phone is locked, so both
+automations run at times the phone is normally in hand.
+
+Shortcut 1, "Fitness evening" (Shortcuts > Automation > Time of Day > 8:35 PM
+daily > Run Immediately, notifications off):
+
+1. Find Health Samples: Type **Steps**, Start Date **is today**. Then
+   Calculate Statistics: **Sum**. Name the result `Steps`.
+2. Find Health Samples: Type **Resting Heart Rate**, Start Date **is in the
+   last 1 days**, Sort by **End Date**, Latest First, Limit **1**. Name it `RHR`.
+3. Find Health Samples: Type **VO2 Max**, Start Date **is in the last 30
+   days**, Sort by End Date, Latest First, Limit 1. Name it `VO2`.
+4. Format Date: Current Date, custom format `yyyy-MM-dd`. Name it `Today`.
+5. Get Contents of URL: `https://<production URL>/api/integrations/apple-health/daily-metrics`,
+   Method **POST**, the three headers above, Request Body **JSON**:
+   `date` (Text) = `Today`, `steps` (Number) = `Steps`,
+   `resting_heart_rate` (Number) = `RHR`. Add `vo2_max` (Number) = `VO2` only
+   inside an **If VO2 has any value** block (send the request twice, with and
+   without it, is simplest); an empty VO2 is rejected.
+
+Shortcut 2, "Fitness morning" (Time of Day, 7:00 AM daily, Run Immediately):
+
+1. Find Health Samples: Type **Sleep Analysis**, Start Date **is in the last
+   1 days**. Filter to values Core, Deep, REM (or Asleep on older watches).
+   Get Details of Health Sample: **Duration**, then Calculate Statistics:
+   **Sum**. Convert to minutes. Name it `Sleep`.
+2. Find Health Samples: **Heart Rate Variability**, last 1 days, Calculate
+   Statistics **Average**. Name it `HRV`.
+3. Resting HR and `Today` as in Shortcut 1.
+4. Get Contents of URL: `.../api/integrations/apple-health/sleep`, POST, same
+   headers, JSON: `date` = `Today`, `sleep_duration_minutes` = `Sleep`,
+   `hrv` = `HRV`, `resting_heart_rate` = `RHR`.
+
+Test each by tapping Run once: the response should be `{"ok":true,...}`; a
+`401` means the token or user id is wrong. The sleep step is the fiddly one;
+if it fights you, ship Shortcut 1 alone first. It is what ticks the habit.
+
+### Option B (paid, $24.99 one-time): Health Auto Export
+
+Covers everything in Option A plus rides with heart rate, with no shortcut
+building. Its REST automation needs the Premium tier: $24.99 lifetime, or a
+subscription (App Store listing and the vendor FAQ disagree on the monthly
+and annual price as of 2026-10-09; lifetime is the same in both). A 7-day
+trial exists. Decision for Nick; not set up.
+
+Point both automations at one endpoint, which takes the app's native JSON:
+`POST https://<production URL>/api/integrations/apple-health/health-auto-export`
+with the three headers above.
+
+1. Automation "Health Metrics": metrics **Step Count, Resting Heart Rate,
+   Heart Rate Variability, VO2 Max, Apple Exercise Time, Active Energy, Sleep
+   Analysis**. Format JSON, **Aggregate Data on, by Day**, Date Range
+   **Since Last Sync**, Batch Requests on, every 1 hour.
+2. Automation "Workouts": Workouts, **Export Version 2**, Include Workout
+   Metrics **off**, Include Route **off**, Since Last Sync, every 1 hour.
+
+What the endpoint does with it (`apps/web/src/app/api/integrations/apple-health/health-auto-export.ts`):
+only rides become cardio sessions (Zone 2); walks and Watch strength workouts
+are dropped so they do not inflate Zone 2 or double-count lifts; when Peloton
+and the Watch both record the same ride, the one with heart rate is kept;
+weight and body fat are ignored because Withings is the direct source; kJ is
+converted to kcal; sleep hours become minutes; daily resting HR and HRV also
+land on the recovery check-in so `/recovery` charts them.
+
+### Steps habit
+
+Any active habit whose name contains a step count ("7,000 steps", "8000
+steps", "8k steps") is ticked automatically for each synced day at or over
+that number. Rename the habit to move the target. A day under target is left
+alone, so a manual tick is never undone. The dashboard shows synced steps next
+to the habit and the latest VO2 max, with its date, on the Body card.
 
 ## Endpoints
 
 | Data | Endpoint | Orchestrator | Target table |
 |---|---|---|---|
-| Sleep (overnight sleep stages + in-sleep vitals) | `POST /api/integrations/apple-health/sleep` | `AppleHealthSleepSyncOrchestrator` | `recovery_checkins` |
+| Sleep, in-sleep vitals, HRV | `POST /api/integrations/apple-health/sleep` | `AppleHealthSleepSyncOrchestrator` | `recovery_checkins` |
 | Daily activity (steps, VO2 max, resting HR, exercise minutes, active energy) | `POST /api/integrations/apple-health/daily-metrics` | `AppleHealthDailyMetricsSyncOrchestrator` | `daily_activity_metrics` |
-| Workouts (individual completed exercise sessions — cycling, running, etc.) | `POST /api/integrations/apple-health/workouts` | `AppleHealthWorkoutSyncOrchestrator` | `cardio_sessions` |
+| Workouts | `POST /api/integrations/apple-health/workouts` | `AppleHealthWorkoutSyncOrchestrator` | `cardio_sessions` |
+| Health Auto Export native JSON (all of the above) | `POST /api/integrations/apple-health/health-auto-export` | all three | all three |
 
-Use `https://<your-deployed-domain>/api/integrations/apple-health/sleep`,
-`https://<your-deployed-domain>/api/integrations/apple-health/daily-metrics`,
-and `https://<your-deployed-domain>/api/integrations/apple-health/workouts`
-— substitute your actual deployed domain (e.g. your Vercel production URL).
-Do not point the bridge app at a preview deployment; preview URLs change and
-preview environments may not have `INTEGRATION_ENCRYPTION_KEY` configured.
+All four are gated by `INTEGRATION_ENCRYPTION_KEY` (503 if unset) and the
+per-user token (401 if wrong). Bodies are capped at 256 KB and 500 items per
+type. Do not point a bridge at a preview deployment.
 
 ## Why separate endpoints instead of one
 
@@ -85,7 +135,7 @@ cleanly separated at the domain-model level.
 
 ## Getting your webhook token
 
-1. Sign in and go to `/integrations`.
+1. Go to `/integrations` (no login since 2026-10-09).
 2. Find the Apple Health card and click **Generate webhook token**.
 3. Copy the token shown — it is only displayed once. It's not stored in
    plaintext anywhere, so if you lose it, click "Regenerate webhook token"

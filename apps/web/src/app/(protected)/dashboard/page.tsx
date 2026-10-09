@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { stepHabitThreshold } from "@fitness-app/application";
 import { CoachingBanner } from "@/components/shared/coaching-banner";
 import { InsightCard } from "@/components/shared/insight-card";
 import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
@@ -16,6 +17,15 @@ import { GoalProgressCard } from "@/features/dashboard/components/goal-progress-
 export default async function DashboardPage() {
   const data = await getDashboardData();
   const today = new Date().toISOString().slice(0, 10);
+  const stepsToday = data.activity.stepsToday;
+  const stepHabitNotes: Record<string, string> =
+    stepsToday != null
+      ? Object.fromEntries(
+          data.habits.items
+            .filter((h) => stepHabitThreshold(h.name) != null)
+            .map((h) => [h.id, `${stepsToday.toLocaleString("en-US")} today`]),
+        )
+      : {};
 
   return (
     <div className="space-y-6">
@@ -55,6 +65,7 @@ export default async function DashboardPage() {
         logDate={data.habits.logDate}
         returnTo="/dashboard"
         weekCounts={data.habits.weekCounts}
+        itemNotes={stepHabitNotes}
         labels={{
           eyebrow: "Daily habits",
           title: "Today's habits",
@@ -80,6 +91,7 @@ export default async function DashboardPage() {
           latestBodyFatPct={data.latestBodyFatPct}
           latestBodyDate={data.latestBodyDate}
           weightTrend={data.weightTrend}
+          vo2Max={data.activity.vo2Max}
         />
       </div>
 

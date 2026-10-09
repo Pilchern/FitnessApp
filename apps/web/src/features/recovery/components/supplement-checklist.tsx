@@ -14,6 +14,8 @@ type SupplementChecklistProps = {
   returnTo?: "/recovery" | "/dashboard";
   /** Days taken in the last 7, keyed by supplement id, shown as "n/7". */
   weekCounts?: Record<string, number>;
+  /** Extra text after an item's name, e.g. synced steps on the steps habit. */
+  itemNotes?: Record<string, string>;
   labels?: ChecklistLabels;
   action: (
     state: SupplementChecklistActionState,
@@ -49,6 +51,7 @@ export function SupplementChecklist({
   logDate,
   returnTo = "/recovery",
   weekCounts,
+  itemNotes,
   labels = SUPPLEMENT_LABELS,
   action,
 }: SupplementChecklistProps) {
@@ -116,7 +119,14 @@ export function SupplementChecklist({
                   }))
                 }
               />
-              <span className="flex-1">{supplement.name}</span>
+              <span className="flex-1">
+                {supplement.name}
+                {itemNotes?.[supplement.id] ? (
+                  <span className="ml-2 text-xs font-normal text-ink/50">
+                    {itemNotes[supplement.id]}
+                  </span>
+                ) : null}
+              </span>
               {weekCounts ? (
                 <span className="text-xs font-normal text-ink/50">
                   {weekCounts[supplement.id] ?? 0}/7

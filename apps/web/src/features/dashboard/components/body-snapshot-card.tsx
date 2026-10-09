@@ -10,6 +10,7 @@ type BodySnapshotCardProps = {
   latestBodyFatPct: number | null;
   latestBodyDate: string | null;
   weightTrend: SparseTrendPoint[];
+  vo2Max?: { value: number; date: string } | null;
 };
 
 function bodyRelativeDate(isoDate: string): string {
@@ -50,6 +51,7 @@ export function BodySnapshotCard({
   latestBodyFatPct,
   latestBodyDate,
   weightTrend,
+  vo2Max = null,
 }: BodySnapshotCardProps) {
   const hasAnyData = latestWeightLb != null || latestWaistIn != null;
 
@@ -137,6 +139,20 @@ export function BodySnapshotCard({
             </div>
             <div className="mt-2 text-3xl font-semibold text-ink">
               {`${latestBodyFatPct.toFixed(1)} %`}
+            </div>
+          </div>
+        ) : null}
+
+        {vo2Max ? (
+          <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
+            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
+              VO2 max
+            </div>
+            <div className="mt-2 text-3xl font-semibold text-ink">
+              {vo2Max.value.toFixed(1)}
+            </div>
+            <div className="mt-1.5 text-xs text-ink/50">
+              Apple Health, {vo2Max.date}
             </div>
           </div>
         ) : null}
