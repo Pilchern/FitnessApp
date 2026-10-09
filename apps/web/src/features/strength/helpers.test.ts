@@ -6,6 +6,7 @@ import {
   isTimedSet,
   renumberSets,
   selectSetsToSave,
+  startingDuration,
   startingWeight,
 } from "./helpers";
 
@@ -15,8 +16,16 @@ function set(
   weight: number | null,
   reps: number | null,
   isWarmup = false,
+  durationSeconds: number | null = null,
 ) {
-  return { exerciseName, setNumber, weight, reps, isWarmup } as never;
+  return {
+    exerciseName,
+    setNumber,
+    weight,
+    reps,
+    isWarmup,
+    durationSeconds,
+  } as never;
 }
 
 describe("buildLastByExercise", () => {
@@ -40,9 +49,9 @@ describe("buildLastByExercise", () => {
     const last = buildLastByExercise(sessions);
     expect(last["barbell bench press"]?.sessionDate).toBe("2026-10-06");
     expect(last["barbell bench press"]?.sets).toEqual([
-      { weight: 165, reps: 8 },
-      { weight: 165, reps: 8 },
-      { weight: 165, reps: 7 },
+      { weight: 165, reps: 8, durationSeconds: null },
+      { weight: 165, reps: 8, durationSeconds: null },
+      { weight: 165, reps: 7, durationSeconds: null },
     ]);
   });
 
@@ -73,9 +82,9 @@ describe("formatLastPerformance", () => {
       formatLastPerformance({
         sessionDate: "2026-10-06",
         sets: [
-          { weight: 165, reps: 8 },
-          { weight: 165, reps: 8 },
-          { weight: 165, reps: 7 },
+          { weight: 165, reps: 8, durationSeconds: null },
+          { weight: 165, reps: 8, durationSeconds: null },
+          { weight: 165, reps: 7, durationSeconds: null },
         ],
       }),
     ).toBe("165 x 8, 8, 7");
@@ -86,8 +95,8 @@ describe("formatLastPerformance", () => {
       formatLastPerformance({
         sessionDate: "2026-10-06",
         sets: [
-          { weight: 165, reps: 8 },
-          { weight: 155, reps: 10 },
+          { weight: 165, reps: 8, durationSeconds: null },
+          { weight: 155, reps: 10, durationSeconds: null },
         ],
       }),
     ).toBe("165 x 8, 155 x 10");
@@ -95,8 +104,8 @@ describe("formatLastPerformance", () => {
       formatLastPerformance({
         sessionDate: "2026-10-06",
         sets: [
-          { weight: null, reps: 4 },
-          { weight: null, reps: 3 },
+          { weight: null, reps: 4, durationSeconds: null },
+          { weight: null, reps: 3, durationSeconds: null },
         ],
       }),
     ).toBe("4, 3");
@@ -107,8 +116,8 @@ describe("startingWeight", () => {
   const last = {
     sessionDate: "2026-10-06",
     sets: [
-      { weight: 165, reps: 8 },
-      { weight: 160, reps: 8 },
+      { weight: 165, reps: 8, durationSeconds: null },
+      { weight: 160, reps: 8, durationSeconds: null },
     ],
   };
 
@@ -123,7 +132,10 @@ describe("startingWeight", () => {
   it("falls back to the template for a bodyweight last time", () => {
     expect(
       startingWeight(
-        { sessionDate: "2026-10-06", sets: [{ weight: null, reps: 3 }] },
+        {
+          sessionDate: "2026-10-06",
+          sets: [{ weight: null, reps: 3, durationSeconds: null }],
+        },
         0,
         10,
       ),
@@ -167,5 +179,28 @@ describe("logger helpers", () => {
       { exerciseName: "B", setNumber: 2 },
     ]);
     expect(out.map((x) => x.setNumber)).toEqual([1, 2, 1]);
+  });
+});
+
+describe("timed sets", () => {
+  const last = buildLastByExercise([
+    {
+      sessionDate: "2026-10-08",
+      sets: [
+        set("Dead Hang", 1, null, null, false, 30),
+        set("Dead Hang", 2, null, null, false, 25),
+      ],
+    },
+  ])["dead hang"];
+
+  it("formats seconds for the Last line", () => {
+    expect(last && formatLastPerformance(last)).toBe("30s, 25s");
+  });
+
+  it("starts each set at last time's seconds, else the last set's", () => {
+    expect(startingDuration(last, 0)).toBe("30");
+    expect(startingDuration(last, 1)).toBe("25");
+    expect(startingDuration(last, 2)).toBe("25");
+    expect(startingDuration(undefined, 0)).toBe("");
   });
 });

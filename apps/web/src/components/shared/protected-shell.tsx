@@ -77,7 +77,10 @@ export function ProtectedShell({
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 rounded-[1.5rem] border border-ink/10 bg-white/55 p-3 shadow-panel backdrop-blur sm:rounded-[2rem] sm:p-6">
+        {/* No backdrop-filter here: it makes <main> the containing block for
+            position:fixed children, which pins the lift logger's Finish bar and
+            rest timer to the bottom of the page instead of the screen. */}
+        <main className="min-w-0 flex-1 rounded-[1.5rem] border border-ink/10 bg-white/55 p-3 shadow-panel sm:rounded-[2rem] sm:p-6">
           {children}
         </main>
       </div>
