@@ -12,6 +12,7 @@ import {
   formatStrengthDate,
   groupSetsByExercise,
   isTimedSet,
+  showsTimedWeight,
   renumberSets,
   selectSetsToSave,
   startingDuration,
@@ -454,6 +455,7 @@ export function StrengthQuickForm({
           if (!first || !group.name.trim()) return null;
           const last = lastByExercise[group.key];
           const timed = isTimedSet(first);
+          const timedWeight = timed && showsTimedWeight(first);
           const groupDone = group.indexes.filter(
             (i) => values.sets[i]?.done,
           ).length;
@@ -503,7 +505,7 @@ export function StrengthQuickForm({
                     <div
                       key={index}
                       className={`grid items-center gap-1.5 rounded-2xl p-1 ${
-                        timed
+                        timed && !timedWeight
                           ? "grid-cols-[1.75rem_1fr_3rem]"
                           : "grid-cols-[1.75rem_1fr_1fr_3rem]"
                       } ${set.done ? "bg-pine/10" : ""}`}
@@ -521,14 +523,27 @@ export function StrengthQuickForm({
                         {set.isWarmup ? "W" : set.setNumber}
                       </button>
                       {timed ? (
-                        <Stepper
-                          label={`Seconds for set ${set.setNumber}`}
-                          value={set.durationSeconds}
-                          step={5}
-                          onChange={(next) =>
-                            updateSet(index, { durationSeconds: next })
-                          }
-                        />
+                        <>
+                          {timedWeight ? (
+                            <Stepper
+                              decimal
+                              label={`Weight for set ${set.setNumber}`}
+                              value={set.weight}
+                              step={Number(set.weight) >= 45 ? 5 : 2.5}
+                              onChange={(next) =>
+                                updateSet(index, { weight: next })
+                              }
+                            />
+                          ) : null}
+                          <Stepper
+                            label={`Seconds for set ${set.setNumber}`}
+                            value={set.durationSeconds}
+                            step={5}
+                            onChange={(next) =>
+                              updateSet(index, { durationSeconds: next })
+                            }
+                          />
+                        </>
                       ) : (
                         <>
                           <Stepper
