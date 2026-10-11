@@ -154,7 +154,11 @@ export function formatLastPerformance(last: LastExercisePerformance) {
   let previousWeight: number | null | undefined;
   for (const set of last.sets) {
     if (set.reps == null && set.durationSeconds != null) {
-      parts.push(`${set.durationSeconds}s`);
+      parts.push(
+        set.weight != null
+          ? `${set.weight} x ${set.durationSeconds}s`
+          : `${set.durationSeconds}s`,
+      );
       continue;
     }
     if (set.reps == null && set.weight == null) continue;
@@ -186,7 +190,8 @@ export function startingWeight(
   return value != null ? String(value) : "";
 }
 
-const TIMED_EXERCISE_PATTERN = /hang|plank|carry|hold|wall sit/i;
+const TIMED_EXERCISE_PATTERN = /hang|plank|carry|hold|wall sit|balance/i;
+const LOADED_TIMED_PATTERN = /carry/i;
 
 /** Timed movements log seconds instead of reps. */
 export function isTimedSet(set: {
@@ -251,4 +256,15 @@ export function startingDuration(
       last.sets[last.sets.length - 1]?.durationSeconds)
     : null;
   return fromLast != null ? String(fromLast) : "";
+}
+
+/**
+ * Timed sets that carry a load (farmer carry, weighted hang) also show the
+ * weight stepper, so a "half bodyweight per hand for 1 min" carry logs both.
+ */
+export function showsTimedWeight(set: {
+  exerciseName: string;
+  weight: string;
+}) {
+  return set.weight !== "" || LOADED_TIMED_PATTERN.test(set.exerciseName);
 }

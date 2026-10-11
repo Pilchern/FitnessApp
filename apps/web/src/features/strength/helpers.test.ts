@@ -6,6 +6,7 @@ import {
   isTimedSet,
   renumberSets,
   selectSetsToSave,
+  showsTimedWeight,
   startingDuration,
   startingWeight,
 } from "./helpers";
@@ -163,6 +164,21 @@ describe("logger helpers", () => {
     expect(isTimedSet({ exerciseName: "Row", durationSeconds: "" })).toBe(
       false,
     );
+    expect(
+      isTimedSet({ exerciseName: "Single-Leg Balance", durationSeconds: "" }),
+    ).toBe(true);
+  });
+
+  it("shows weight on timed sets only when loaded", () => {
+    expect(showsTimedWeight({ exerciseName: "Farmer Carry", weight: "" })).toBe(
+      true,
+    );
+    expect(showsTimedWeight({ exerciseName: "Dead Hang", weight: "" })).toBe(
+      false,
+    );
+    expect(showsTimedWeight({ exerciseName: "Dead Hang", weight: "10" })).toBe(
+      true,
+    );
   });
 
   it("saves only ticked sets once any is ticked, otherwise all", () => {
@@ -195,6 +211,16 @@ describe("timed sets", () => {
 
   it("formats seconds for the Last line", () => {
     expect(last && formatLastPerformance(last)).toBe("30s, 25s");
+  });
+
+  it("shows the load on loaded timed sets", () => {
+    const carry = buildLastByExercise([
+      {
+        sessionDate: "2026-10-08",
+        sets: [set("Farmer Carry", 1, 95, null, false, 60)],
+      },
+    ])["farmer carry"];
+    expect(carry && formatLastPerformance(carry)).toBe("95 x 60s");
   });
 
   it("starts each set at last time's seconds, else the last set's", () => {
