@@ -28,46 +28,41 @@ If production is ever put behind Vercel Authentication, also send
 (Vercel > Project > Settings > Deployment Protection). Today the production
 domain is not behind it.
 
-### Option A (free): two Apple Shortcuts automations
+### Option A (free): one Shortcut, run every evening
 
-Covers steps (auto-ticks the steps habit), resting HR, VO2 max, sleep and
-HRV. Does not cover rides: log those with the cardio quick log (tap the
-template, save). HealthKit is unreadable while the phone is locked, so both
-automations run at times the phone is normally in hand.
+Covers steps (auto-ticks the steps habit), resting HR, HRV, VO2 max, last
+night's sleep, and rides (Peloton writes them to Apple Health). Needs the free
+**Actions** app by Sindre Sorhus for its Find Workout action (iOS 26); open it
+once and restart the phone so its actions appear in Shortcuts. The same
+recipe is on the Apple Health card at `/integrations`.
 
-Shortcut 1, "Fitness evening" (Shortcuts > Automation > Time of Day > 8:35 PM
-daily > Run Immediately, notifications off):
+Endpoint: `POST https://<production URL>/api/integrations/apple-health/shortcut`
+with the three headers above. One JSON dictionary per run:
 
-1. Find Health Samples: Type **Steps**, Start Date **is today**. Then
-   Calculate Statistics: **Sum**. Name the result `Steps`.
-2. Find Health Samples: Type **Resting Heart Rate**, Start Date **is in the
-   last 1 days**, Sort by **End Date**, Latest First, Limit **1**. Name it `RHR`.
-3. Find Health Samples: Type **VO2 Max**, Start Date **is in the last 30
-   days**, Sort by End Date, Latest First, Limit 1. Name it `VO2`.
-4. Format Date: Current Date, custom format `yyyy-MM-dd`. Name it `Today`.
-5. Get Contents of URL: `https://<production URL>/api/integrations/apple-health/daily-metrics`,
-   Method **POST**, the three headers above, Request Body **JSON**:
-   `date` (Text) = `Today`, `steps` (Number) = `Steps`,
-   `resting_heart_rate` (Number) = `RHR`. Add `vo2_max` (Number) = `VO2` only
-   inside an **If VO2 has any value** block (send the request twice, with and
-   without it, is simplest); an empty VO2 is rejected.
+| Field | Type | Notes |
+|---|---|---|
+| `date` | text `YYYY-MM-DD` | optional; defaults to today in the profile timezone |
+| `steps` | number | today so far; ticks any habit named with a step count |
+| `resting_heart_rate` | number | stored on daily metrics and the recovery check-in |
+| `hrv` | number | recovery check-in |
+| `vo2_max` | number | dashboard Body card shows the latest with its date |
+| `exercise_minutes`, `active_energy_kcal` | number | optional |
+| `sleep_minutes` | number | last night, asleep only; hours (up to 24) or seconds (over 1440) are also understood; `sleep_hours` works too |
+| `workouts` | array of dictionaries (or one dictionary) | `type`, `start`, `end` (ISO 8601 with offset: Format Date > ISO 8601), `duration_minutes` or `duration_seconds`, `avg_heart_rate`, `max_heart_rate`, `distance_meters`/`distance_km`/`distance_miles`, optional `id` |
 
-Shortcut 2, "Fitness morning" (Time of Day, 7:00 AM daily, Run Immediately):
+Numbers may arrive as text or with units ("58 count/min", "7,210"); blanks are
+skipped. Only rides become cardio sessions (Zone 2); walks and strength
+workouts are dropped, and a Peloton ride the Watch also recorded is kept once
+(the copy with heart rate wins). The response lists what was saved, how many
+workouts were skipped, whether the steps habit was ticked, and any warnings,
+so tapping Run in Shortcuts shows whether setup works. The Apple Health card
+on `/integrations` shows when each stream (activity, sleep, rides) last
+arrived.
 
-1. Find Health Samples: Type **Sleep Analysis**, Start Date **is in the last
-   1 days**. Filter to values Core, Deep, REM (or Asleep on older watches).
-   Get Details of Health Sample: **Duration**, then Calculate Statistics:
-   **Sum**. Convert to minutes. Name it `Sleep`.
-2. Find Health Samples: **Heart Rate Variability**, last 1 days, Calculate
-   Statistics **Average**. Name it `HRV`.
-3. Resting HR and `Today` as in Shortcut 1.
-4. Get Contents of URL: `.../api/integrations/apple-health/sleep`, POST, same
-   headers, JSON: `date` = `Today`, `sleep_duration_minutes` = `Sleep`,
-   `hrv` = `HRV`, `resting_heart_rate` = `RHR`.
-
-Test each by tapping Run once: the response should be `{"ok":true,...}`; a
-`401` means the token or user id is wrong. The sleep step is the fiddly one;
-if it fights you, ship Shortcut 1 alone first. It is what ticks the habit.
+Schedule: Shortcuts > Automation > Time of Day > 9:00 PM daily > Run
+Immediately. HealthKit is unreadable once the phone has been locked a while,
+so pick a time it is usually in hand. Steps logged after the run (9 PM to
+midnight) are not sent; the habit is usually decided by then.
 
 ### Option B (paid, $24.99 one-time): Health Auto Export
 
@@ -112,8 +107,9 @@ to the habit and the latest VO2 max, with its date, on the Body card.
 | Daily activity (steps, VO2 max, resting HR, exercise minutes, active energy) | `POST /api/integrations/apple-health/daily-metrics` | `AppleHealthDailyMetricsSyncOrchestrator` | `daily_activity_metrics` |
 | Workouts | `POST /api/integrations/apple-health/workouts` | `AppleHealthWorkoutSyncOrchestrator` | `cardio_sessions` |
 | Health Auto Export native JSON (all of the above) | `POST /api/integrations/apple-health/health-auto-export` | all three | all three |
+| One Shortcut, one dictionary (all of the above) | `POST /api/integrations/apple-health/shortcut` | all three | all three |
 
-All four are gated by `INTEGRATION_ENCRYPTION_KEY` (503 if unset) and the
+All five are gated by `INTEGRATION_ENCRYPTION_KEY` (503 if unset) and the
 per-user token (401 if wrong). Bodies are capped at 256 KB and 500 items per
 type. Do not point a bridge at a preview deployment.
 

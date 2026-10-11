@@ -13,6 +13,11 @@ type AppleHealthConnectionCardProps = {
   hasWebhookToken: boolean;
   userId: string;
   appUrl: string;
+  lastReceived: {
+    daily: string | null;
+    sleep: string | null;
+    workouts: string | null;
+  };
 };
 
 const initialTokenState: AppleHealthWebhookTokenActionState = {};
@@ -114,8 +119,9 @@ export function AppleHealthConnectionCard({
   hasWebhookToken,
   userId,
   appUrl,
+  lastReceived,
 }: AppleHealthConnectionCardProps) {
-  const webhookUrl = `${appUrl}/api/integrations/apple-health/sleep`;
+  const webhookUrl = `${appUrl}/api/integrations/apple-health/shortcut`;
   const lastSyncedAt = connection?.lastSyncedAt ?? null;
 
   return (
@@ -127,10 +133,10 @@ export function AppleHealthConnectionCard({
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">Apple Health</h2>
           <p className="mt-2 text-sm leading-6 text-ink/75">
-            Push sleep and recovery data from Apple Health using an iPhone
-            Shortcut. Once set up, the Shortcut runs automatically each morning
-            and syncs last night&apos;s sleep, heart rate, and HRV into your
-            recovery log.
+            One iPhone Shortcut, run automatically every evening, sends
+            today&apos;s steps, resting heart rate, HRV and VO2 max, last
+            night&apos;s sleep, and your Peloton rides (Peloton writes them to
+            Apple Health). Steps tick the steps habit on their own.
           </p>
         </div>
 
@@ -155,110 +161,112 @@ export function AppleHealthConnectionCard({
 
       {configured ? (
         <>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
             <SummaryStatCard
-              label="Last synced"
-              value={formatIntegrationDateTime(lastSyncedAt)}
-              hint="Most recent successful sleep data push."
-              tone={lastSyncedAt ? "accent" : "default"}
+              label="Steps and activity"
+              value={formatIntegrationDateTime(lastReceived.daily)}
+              hint="Last time steps, resting HR or VO2 arrived."
+              tone={lastReceived.daily ? "accent" : "default"}
             />
             <SummaryStatCard
-              label="Status"
-              value={lastSyncedAt ? "Receiving data" : "Not yet synced"}
-              hint="Data arrives when you run the Shortcut."
-              tone={lastSyncedAt ? "accent" : "default"}
+              label="Sleep and HRV"
+              value={formatIntegrationDateTime(lastReceived.sleep)}
+              hint="Shows on Recovery."
+              tone={lastReceived.sleep ? "accent" : "default"}
+            />
+            <SummaryStatCard
+              label="Rides"
+              value={formatIntegrationDateTime(lastReceived.workouts)}
+              hint="Only rides are imported; walks and lifts are skipped."
+              tone={lastReceived.workouts ? "accent" : "default"}
             />
           </div>
 
           <div className="mt-6 space-y-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pine">
-                Shortcut setup
-              </p>
-              <p className="mt-2 text-sm leading-6 text-ink/75">
-                Create an iPhone Shortcut that runs each morning and posts your
-                Apple Health data to the webhook below. Follow these steps:
-              </p>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pine">
+              Setup (once, about 15 minutes)
+            </p>
 
             <ol className="space-y-4 text-sm leading-6 text-ink/80">
-              <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pine/10 text-xs font-bold text-pine">
-                  1
-                </span>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <p>
-                    <strong>Webhook URL</strong> — the endpoint your Shortcut
-                    posts to:
-                  </p>
-                  <CodeLine value={webhookUrl} />
-                </div>
-              </li>
-
-              <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pine/10 text-xs font-bold text-pine">
-                  2
-                </span>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <p>
-                    <strong>Your user ID</strong> — add this as the{" "}
-                    <code className="rounded bg-ink/5 px-1 font-mono text-xs">
-                      X-User-Id
-                    </code>{" "}
-                    header:
-                  </p>
-                  <CodeLine value={userId} />
-                </div>
-              </li>
-
-              <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pine/10 text-xs font-bold text-pine">
-                  3
-                </span>
+              <Step n={1}>
+                <p>
+                  <strong>Token.</strong> Generate it and save it to your
+                  password manager.
+                </p>
                 <GenerateWebhookTokenForm hasWebhookToken={hasWebhookToken} />
-              </li>
-
-              <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pine/10 text-xs font-bold text-pine">
-                  4
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p>
-                    <strong>JSON body</strong> — post an array with one object
-                    per night. Supported fields:
-                  </p>
-                  <div className="mt-2 overflow-x-auto rounded-xl border border-ink/10 bg-ink/5 px-3 py-2">
-                    <pre className="font-mono text-xs leading-5 text-ink/80">
-                      {`[{
-  "date": "2026-04-06",
-  "sleep_duration_minutes": 450,
-  "deep_sleep_minutes": 90,
-  "rem_sleep_minutes": 110,
-  "core_sleep_minutes": 240,
-  "awake_minutes": 10,
-  "sleep_efficiency_pct": 95.0,
-  "resting_heart_rate": 52,
-  "hrv": 68
-}]`}
-                    </pre>
-                  </div>
-                  <p className="mt-2 text-xs text-ink/60">
-                    All fields except <code className="font-mono">date</code>{" "}
-                    are optional. The Shortcut can query each metric from Health
-                    and only include what is available.
-                  </p>
-                </div>
-              </li>
+              </Step>
+              <Step n={2}>
+                <p>
+                  <strong>Apps.</strong> In the Peloton app turn on Settings
+                  &gt; Apple Health &gt; allow writing workouts. Install the
+                  free <strong>Actions</strong> app (by Sindre Sorhus), open it
+                  once, then restart the phone so its actions show up in
+                  Shortcuts.
+                </p>
+              </Step>
+              <Step n={3}>
+                <p>
+                  <strong>Shortcut &ldquo;Fitness sync&rdquo;</strong>, actions
+                  in this order:
+                </p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>
+                    Find Health Samples: <em>Steps</em>, Start Date is today,
+                    then Calculate Statistics: <em>Sum</em>.
+                  </li>
+                  <li>
+                    Find Health Samples: <em>Resting Heart Rate</em>, last 1
+                    day, sort latest first, limit 1.
+                  </li>
+                  <li>
+                    Find Health Samples: <em>Heart Rate Variability</em>, last 1
+                    day, then Calculate Statistics: <em>Average</em>.
+                  </li>
+                  <li>
+                    Find Health Samples: <em>VO2 Max</em>, last 30 days, latest
+                    first, limit 1.
+                  </li>
+                  <li>
+                    Find Health Samples: <em>Sleep Analysis</em>, last 1 day,
+                    value is Core, Deep or REM. Get Details: Duration, then
+                    Calculate Statistics: <em>Sum</em> (minutes).
+                  </li>
+                  <li>
+                    Actions app <em>Find Workout</em>, last 2 days. Repeat with
+                    each: a Dictionary with <code>type</code>,{" "}
+                    <code>start</code> and <code>end</code> (Format Date &gt;
+                    ISO 8601), <code>duration_minutes</code>,{" "}
+                    <code>avg_heart_rate</code>; add it to a list.
+                  </li>
+                  <li>
+                    Get Contents of URL (below), Method <em>POST</em>, headers{" "}
+                    <code>Authorization: Bearer &lt;token&gt;</code> and{" "}
+                    <code>X-User-Id</code>, Request Body <em>JSON</em> with{" "}
+                    <code>steps</code>, <code>resting_heart_rate</code>,{" "}
+                    <code>hrv</code>, <code>vo2_max</code>,{" "}
+                    <code>sleep_minutes</code> (Number) and{" "}
+                    <code>workouts</code> (Array). Then Show Result.
+                  </li>
+                </ul>
+                <CodeLine value={webhookUrl} />
+                <p>Your X-User-Id:</p>
+                <CodeLine value={userId} />
+              </Step>
+              <Step n={4}>
+                <p>
+                  <strong>Test.</strong> Tap Run. The result lists what was
+                  saved and any warnings; the cards above update.
+                </p>
+              </Step>
+              <Step n={5}>
+                <p>
+                  <strong>Automate.</strong> Automation &gt; Time of Day &gt;
+                  9:00 PM daily &gt; Run Immediately, notifications off. Health
+                  data is unreadable while the phone has been locked a while, so
+                  pick a time it is usually in hand.
+                </p>
+              </Step>
             </ol>
-
-            <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 px-4 py-3 text-sm leading-6 text-ink/75">
-              <strong className="font-semibold text-ink">Tip:</strong> In the
-              Shortcuts app, use a &ldquo;Get Health Samples&rdquo; action for
-              each metric, then build the JSON dictionary, and finish with a
-              &ldquo;Get Contents of URL&rdquo; action set to{" "}
-              <strong>POST</strong> with the JSON body and the headers above.
-              Automate it to run each morning after you wake up.
-            </div>
           </div>
         </>
       ) : (
@@ -273,5 +281,16 @@ export function AppleHealthConnectionCard({
         </div>
       )}
     </section>
+  );
+}
+
+function Step({ n, children }: { n: number; children: React.ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-pine/10 text-xs font-bold text-pine">
+        {n}
+      </span>
+      <div className="min-w-0 flex-1 space-y-2">{children}</div>
+    </li>
   );
 }

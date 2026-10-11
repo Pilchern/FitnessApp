@@ -11,6 +11,12 @@ export type IntegrationsPageData = {
   appleHealthConfigured: boolean;
   appleHealthConnection: IntegrationConnection | null;
   appleHealthHasWebhookToken: boolean;
+  /** Finish time of the latest successful run per Apple Health stream. */
+  appleHealthLastReceived: {
+    daily: string | null;
+    sleep: string | null;
+    workouts: string | null;
+  };
   userId: string;
   appUrl: string;
   snapshot: IntegrationStatusSnapshot;
