@@ -37,11 +37,12 @@ export function PelotonConnectionCard({
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">Peloton</h2>
           <p className="mt-2 text-sm leading-6 text-ink/75">
-            Automatically import completed rides — including average watts,
-            cadence, and resistance — using your Peloton account. There is no
-            public Peloton API, so this signs in with your Peloton username and
-            password directly; they&apos;re encrypted before storage and never
-            leave this app.
+            Peloton has blocked third-party sign-in since July 2026, so this
+            direct connection no longer works. Rides reach this app through
+            Apple Health instead: turn on Apple Health in the Peloton app and
+            set up the Shortcut on the Apple Health card below. Watts, cadence
+            and resistance are not carried over that way; heart rate, duration
+            and distance are.
           </p>
         </div>
 

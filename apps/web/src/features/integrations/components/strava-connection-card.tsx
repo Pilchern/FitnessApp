@@ -35,9 +35,10 @@ export function StravaConnectionCard({
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">Strava</h2>
           <p className="mt-2 text-sm leading-6 text-ink/75">
-            Automatically import your rides and outdoor activities from Strava.
-            New workouts sync into your cardio log every week, and you can
-            trigger a manual sync any time.
+            Off. Strava&apos;s API needs a paid Strava subscription since June
+            2026, and rides already arrive through Apple Health, so Strava adds
+            nothing here. This works again if you subscribe and register a new
+            Strava API app.
           </p>
         </div>
 
