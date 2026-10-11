@@ -11,7 +11,7 @@ const CONCURRENCY = 3;
  * connections. Mirrors apps/web/src/app/api/cron/peloton-sync/route.ts.
  *
  * Scheduled only by Supabase pg_cron -> pg_net (job `withings-weekly-sync`,
- * Mondays 08:00 UTC; see
+ * daily at 13:30 UTC since 20261011140000_withings_sync_daily.sql; see
  * supabase/migrations/20260715160000_add_dead_letter_status_and_retry_sweep.sql),
  * which POSTs. The same pg_cron setup drives the `/api/cron/retry-failed-syncs`
  * sweep every 15 minutes for any run that ends up `failed`.
