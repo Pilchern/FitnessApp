@@ -220,14 +220,20 @@ describe("buildWeeklyWeightTrend", () => {
     weightLb,
   });
 
+  // Three weigh-ins at `lb` inside the window ending `end`.
+  const three = (end: string, lb: number) => {
+    const day = Number(end.slice(8));
+    return [0, 2, 4].map((back) =>
+      w(`${end.slice(0, 8)}${String(day - back).padStart(2, "0")}`, lb),
+    );
+  };
+
   it("averages the trailing 7 days and flags two weeks over +0.5", () => {
     const out = buildWeeklyWeightTrend(
       [
-        w("2026-09-21", 179.8),
-        w("2026-09-27", 180.2),
-        w("2026-10-04", 180.6),
-        w("2026-10-05", 181.0),
-        w("2026-10-11", 181.4),
+        ...three("2026-09-27", 180.0),
+        ...three("2026-10-04", 180.6),
+        ...three("2026-10-11", 181.2),
         w("2026-10-08", null),
       ],
       "2026-10-11",
@@ -239,13 +245,30 @@ describe("buildWeeklyWeightTrend", () => {
     });
   });
 
+  it("does not flag with fewer than 3 weigh-ins in any window", () => {
+    const out = buildWeeklyWeightTrend(
+      [
+        w("2026-09-21", 179.8),
+        w("2026-09-27", 180.2),
+        ...three("2026-10-04", 180.6),
+        ...three("2026-10-11", 181.2),
+      ],
+      "2026-10-11",
+    );
+    expect(out).toEqual({
+      sevenDayAvgLb: 181.2,
+      weekOverWeekLb: 0.6,
+      surplusThrottle: false,
+    });
+  });
+
   it("does not flag when only one week is over, or a week is exactly 0.5", () => {
     expect(
       buildWeeklyWeightTrend(
         [
-          w("2026-09-27", 180.0),
-          w("2026-10-04", 180.3),
-          w("2026-10-11", 181.0),
+          ...three("2026-09-27", 180.0),
+          ...three("2026-10-04", 180.3),
+          ...three("2026-10-11", 181.0),
         ],
         "2026-10-11",
       ).surplusThrottle,
@@ -253,9 +276,9 @@ describe("buildWeeklyWeightTrend", () => {
     expect(
       buildWeeklyWeightTrend(
         [
-          w("2026-09-27", 180.0),
-          w("2026-10-04", 180.5),
-          w("2026-10-11", 181.0),
+          ...three("2026-09-27", 180.0),
+          ...three("2026-10-04", 180.5),
+          ...three("2026-10-11", 181.0),
         ],
         "2026-10-11",
       ).surplusThrottle,

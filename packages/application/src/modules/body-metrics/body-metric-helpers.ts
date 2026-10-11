@@ -121,12 +121,21 @@ export function buildBodyFatTrend(metrics: BodyMetric[]) {
 /** Plan doc, nutrition: flag when the 7-day average climbs faster than this two weeks running. */
 export const SURPLUS_THROTTLE_LB_PER_WEEK = 0.5;
 
+/**
+ * Weigh-ins each 7-day window needs before the throttle can fire. Single
+ * readings swing 2-4 lb day to day, so one or two per week is noise.
+ */
+export const SURPLUS_THROTTLE_MIN_WEIGH_INS = 3;
+
 export type WeeklyWeightTrend = {
   /** Mean of weigh-ins in the 7 days ending today. */
   sevenDayAvgLb: number | null;
   /** This 7-day average minus the previous 7 days' average. */
   weekOverWeekLb: number | null;
-  /** Up more than SURPLUS_THROTTLE_LB_PER_WEEK in each of the last two weeks. */
+  /**
+   * Up more than SURPLUS_THROTTLE_LB_PER_WEEK in each of the last two weeks,
+   * with at least SURPLUS_THROTTLE_MIN_WEIGH_INS weigh-ins in all three windows.
+   */
   surplusThrottle: boolean;
 };
 
@@ -155,12 +164,20 @@ export function buildWeeklyWeightTrend(
           m.weightLb != null && m.measuredOn >= start && m.measuredOn <= end,
       )
       .map((m) => m.weightLb as number);
-    return values.length > 0
-      ? values.reduce((sum, v) => sum + v, 0) / values.length
-      : null;
+    return {
+      avg:
+        values.length > 0
+          ? values.reduce((sum, v) => sum + v, 0) / values.length
+          : null,
+      count: values.length,
+    };
   };
 
-  const [thisWeek, lastWeek, twoWeeksAgo] = [0, 1, 2].map(windowAverage);
+  const windows = [0, 1, 2].map(windowAverage);
+  const [thisWeek, lastWeek, twoWeeksAgo] = windows.map((w) => w.avg);
+  const enoughWeighIns = windows.every(
+    (w) => w.count >= SURPLUS_THROTTLE_MIN_WEIGH_INS,
+  );
   const delta = (a: number | null | undefined, b: number | null | undefined) =>
     a != null && b != null ? a - b : null;
   const recent = delta(thisWeek, lastWeek);
@@ -170,6 +187,7 @@ export function buildWeeklyWeightTrend(
     sevenDayAvgLb: thisWeek != null ? roundOneDecimal(thisWeek) : null,
     weekOverWeekLb: recent != null ? roundOneDecimal(recent) : null,
     surplusThrottle:
+      enoughWeighIns &&
       recent != null &&
       prior != null &&
       recent > SURPLUS_THROTTLE_LB_PER_WEEK &&
