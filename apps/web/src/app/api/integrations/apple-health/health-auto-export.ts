@@ -62,7 +62,7 @@ export type MappedHealthAutoExport = {
   workouts: AppleHealthWorkoutPayload[];
 };
 
-const RIDE_PATTERN = /cycl|bike|biking|ride|peloton|spin/i;
+export const RIDE_PATTERN = /cycl|bike|biking|ride|peloton|spin/i;
 const KJ_PER_KCAL = 4.184;
 const METERS = { km: 1000, mi: 1609.344, m: 1 } as const;
 

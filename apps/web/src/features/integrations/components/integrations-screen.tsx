@@ -66,6 +66,7 @@ export async function IntegrationsScreen({
         configured={data.appleHealthConfigured}
         connection={data.appleHealthConnection}
         hasWebhookToken={data.appleHealthHasWebhookToken}
+        lastReceived={data.appleHealthLastReceived}
         userId={data.userId}
         appUrl={data.appUrl}
       />
