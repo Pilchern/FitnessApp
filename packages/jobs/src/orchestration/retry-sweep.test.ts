@@ -3,6 +3,7 @@ import {
   MAX_RETRY_ATTEMPTS,
   computeRetryBackoff,
   isEligibleForDeadLetter,
+  isQueueEntry,
   isRetryableJobType,
   resolveRetryTarget,
 } from "./retry-sweep";
@@ -124,5 +125,18 @@ describe("computeRetryBackoff", () => {
     expect(second).toBeGreaterThan(first);
     expect(third).toBeGreaterThan(second);
     expect(second / first).toBeCloseTo(4, 5);
+  });
+});
+
+describe("isQueueEntry", () => {
+  it("treats rows the sweep spawned as records, not queue entries", () => {
+    expect(isQueueEntry("retry")).toBe(false);
+  });
+
+  it("keeps scheduled, manual and webhook rows in the queue", () => {
+    expect(isQueueEntry("scheduled")).toBe(true);
+    expect(isQueueEntry("manual")).toBe(true);
+    expect(isQueueEntry("webhook")).toBe(true);
+    expect(isQueueEntry(null)).toBe(true);
   });
 });

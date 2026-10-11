@@ -46,6 +46,20 @@ export function isRetryableJobType(
   return (RETRYABLE_JOB_TYPES as readonly string[]).includes(jobType);
 }
 
+/**
+ * Every retry re-invokes the orchestrator, which writes its own fresh
+ * `sync_job_runs` row with `trigger_type = 'retry'`. That row is a record of
+ * the attempt, not a new queue entry: the original row carries the attempt
+ * count. Sweeping retry-spawned rows too made every failure fork a new one
+ * at attempt 0, so a dead provider (Strava) produced up to 100 new failed
+ * rows per 15-minute tick and never reached dead-letter.
+ */
+export const RETRY_SPAWNED_TRIGGER_TYPE = "retry";
+
+export function isQueueEntry(triggerType: string | null | undefined): boolean {
+  return triggerType !== RETRY_SPAWNED_TRIGGER_TYPE;
+}
+
 export type RetryTarget =
   | { kind: "cardio"; provider: "peloton" | "strava" }
   | { kind: "body_metric"; provider: "withings" }
