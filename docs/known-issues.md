@@ -1,6 +1,10 @@
 # Known Issues
 
-**Last verified against code:** 2026-10-09.
+**Last verified against code:** 2026-10-11.
+
+## Fixed 2026-10-11
+
+- Retry storm in `/api/cron/retry-failed-syncs`. Once the 10/9 POST fix let the 15-minute sweep run, every failed retry wrote a fresh `failed` row (`trigger_type = 'retry'`, attempt 0) that the next sweep picked up as a new queue entry. A dead Strava connection grew it to about 9,100 failed rows a day (about 19,600 in `sync_job_runs` by 10/11), each one a Strava token refresh. The sweep now skips retry-spawned rows (`isQueueEntry`); the original row still walks its 5 attempts to dead-letter. The junk rows are left in place (no hard deletes).
 
 ## Fixed 2026-10-09
 
