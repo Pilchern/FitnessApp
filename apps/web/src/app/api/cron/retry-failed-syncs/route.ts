@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { mapWithConcurrency, safeBearerEqual } from "@/lib/server/cron-auth";
 import {
   MAX_RETRY_ATTEMPTS,
+  RETRY_SPAWNED_TRIGGER_TYPE,
   computeRetryBackoff,
   isEligibleForDeadLetter,
+  isQueueEntry,
   resolveRetryTarget,
 } from "@fitness-app/jobs";
 import {
@@ -23,6 +25,7 @@ type FailedSyncRow = {
   id: string;
   user_id: string | null;
   job_type: string;
+  trigger_type: string | null;
   attempt_count: number;
   payload: Record<string, unknown> | null;
 };
@@ -42,9 +45,10 @@ type SweepOutcome = "retried" | "dead_lettered" | "still_failed";
  * status/attempt_count/scheduled_for/error_* to record whether the retry
  * worked, should be retried again later, or has exhausted its attempts.
  *
- * Eligibility: status = 'failed', attempt_count < MAX_RETRY_ATTEMPTS, and
- * scheduled_for is null or in the past (immediately eligible / backoff has
- * elapsed).
+ * Eligibility: status = 'failed', trigger_type is not 'retry' (rows the
+ * orchestrator writes for a retry attempt are records, not queue entries; see
+ * isQueueEntry), attempt_count < MAX_RETRY_ATTEMPTS, and scheduled_for is
+ * null or in the past (immediately eligible / backoff has elapsed).
  *
  * Backoff: scheduled_for = now + (nextAttemptCount^2) * 5 minutes (see
  * packages/jobs/src/orchestration/retry-sweep.ts for the exact formula and
@@ -84,8 +88,9 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await client
     .from("sync_job_runs")
-    .select("id, user_id, job_type, attempt_count, payload")
+    .select("id, user_id, job_type, trigger_type, attempt_count, payload")
     .eq("status", "failed")
+    .neq("trigger_type", RETRY_SPAWNED_TRIGGER_TYPE)
     .lt("attempt_count", MAX_RETRY_ATTEMPTS)
     .or(`scheduled_for.is.null,scheduled_for.lte.${nowIso}`)
     .order("created_at", { ascending: true })
@@ -102,7 +107,7 @@ export async function GET(request: NextRequest) {
   const rows = (data ?? []) as FailedSyncRow[];
 
   const eligible = rows.filter((row) => {
-    if (!row.user_id) return false;
+    if (!row.user_id || !isQueueEntry(row.trigger_type)) return false;
     return resolveRetryTarget(row.job_type, row.payload).kind !== "unsupported";
   });
 

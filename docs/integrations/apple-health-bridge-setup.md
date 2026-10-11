@@ -4,7 +4,7 @@ The app has no Apple Health API of its own. A phone-side bridge reads
 HealthKit and POSTs JSON to the webhooks below. The Apple Watch writes steps,
 sleep, resting HR, HRV and VO2 max to Health; the Peloton app writes rides to
 Health (Peloton app > Settings > Apple Health > allow write). Withings syncs
-directly (OAuth, weekly pg_cron) and is not read from Apple Health.
+directly (OAuth, daily pg_cron at 13:30 UTC) and is not read from Apple Health.
 
 ## Quick setup (about five minutes)
 
@@ -25,8 +25,10 @@ Every request below sends these headers:
 
 If production is ever put behind Vercel Authentication, also send
 `x-vercel-protection-bypass: <Protection Bypass for Automation secret>`
-(Vercel > Project > Settings > Deployment Protection). Today the production
-domain is not behind it.
+(Vercel > Project > Settings > Deployment Protection). As of 2026-10-11 the
+project uses Standard Protection (`all_except_custom_domains`): previews are
+behind Vercel login, the production domain is not (pg_net calls reach it
+unauthenticated).
 
 ### Option A (free): one Shortcut, run every evening
 
