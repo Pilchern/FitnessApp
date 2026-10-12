@@ -21,6 +21,8 @@ type SupplementChecklistProps = {
   weekCounts?: Record<string, number>;
   /** Extra text after an item's name, e.g. synced steps on the steps habit. */
   itemNotes?: Record<string, string>;
+  /** A link shown at the end of an item's row, e.g. a habit's guided routine. */
+  itemLinks?: Record<string, { href: string; label: string }>;
   labels?: ChecklistLabels;
   action: (
     state: SupplementChecklistActionState,
@@ -57,6 +59,7 @@ export function SupplementChecklist({
   returnTo = "/recovery",
   weekCounts,
   itemNotes,
+  itemLinks,
   labels = SUPPLEMENT_LABELS,
   action,
 }: SupplementChecklistProps) {
@@ -124,9 +127,9 @@ export function SupplementChecklist({
         <input type="hidden" name="logDate" value={logDate} />
         <input type="hidden" name="returnTo" value={returnTo} />
         {supplements.map((supplement) => (
-          <div key={supplement.id}>
+          <div key={supplement.id} className="flex items-center gap-3">
             <input type="hidden" name="supplementIds" value={supplement.id} />
-            <label className="flex min-h-11 cursor-pointer items-center gap-3 py-1 text-sm font-medium text-ink">
+            <label className="flex min-h-11 flex-1 cursor-pointer items-center gap-3 py-1 text-sm font-medium text-ink">
               <input
                 type="checkbox"
                 className={checkboxClassName()}
@@ -155,6 +158,14 @@ export function SupplementChecklist({
                 </span>
               ) : null}
             </label>
+            {itemLinks?.[supplement.id] ? (
+              <Link
+                href={itemLinks[supplement.id]!.href}
+                className="inline-flex h-9 shrink-0 items-center rounded-full border border-pine/30 px-3 text-xs font-semibold text-pine hover:bg-pine/5"
+              >
+                {itemLinks[supplement.id]!.label}
+              </Link>
+            ) : null}
           </div>
         ))}
 

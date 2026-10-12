@@ -84,10 +84,10 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 
 ## 6. Daily habits (FitnessApp, supplements.kind = habit)
 
-1. Foundation Training 8-10 min (Eric Goodman: founder hold, decompression breathing). Evidence is promotional only; treated as a posture/warm-up habit, not part of the strength budget.
+1. Foundation Training 8-10 min (Eric Goodman: founder hold, decompression breathing). Evidence is promotional only; treated as a posture/warm-up habit, not part of the strength budget. Guided routine in the app (`/routines/foundation`, about 8 min, all standing: decompression breathing and two rounds of founder holds, arms back/forward/overhead).
 2. Morning sunlight 10-20 min after waking.
 3. 7,000 steps (auto-ticked from synced Apple Health steps; the bridge is live via Health Auto Export since 2026-10-12). Ladder to 8,000 by 10/26 [stated 2026-10-12]; edit the habit name to move the threshold.
-4. Mobility 15 min (static stretching; no knee-loaded stretches while rehabbing).
+4. Mobility 15 min (static stretching; no knee-loaded stretches while rehabbing). Guided routine in the app (`/routines/mobility`, about 14 min: neck, doorway chest, lat, cross-body shoulder, seated thoracic rotation and extension, wrists, strap hamstrings and wall calves both sides, then left-hip-flexor and right figure-4 only). Content lives in `apps/web/src/lib/routines.ts`; each habit's Guide link and the end-of-routine "Mark done" tick the habit.
 
 Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery check-in; M-F first thing in the morning, 55F, 5 min, then sunlight), wake and bed time (recovery check-in), protein hit, fiber and alcohol (nutrition log), supplements (kind = supplement).
 
@@ -126,6 +126,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 - Does the 10/9 sheet replace the 9/1 home program?
 - Single-leg press and Y-balance criteria; jog and plyo criteria.
 - Confirm the bike ramp (40/40/60 then 45/45/60) and standing carries.
+- Routines: OK to add the left-leg-forward split-stance stretch (right hip flexor), seated figure-4 on the left, the woodpecker, and floor work (8-point plank, prone extension)? Until then they are left out of the mobility and Foundation routines.
 - Book the surgeon follow-up for the week of 10/26.
 
 ## 11. Health admin (time-sensitive)
