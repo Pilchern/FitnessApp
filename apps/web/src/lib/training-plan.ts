@@ -15,7 +15,7 @@ export const NICK_TRAINING_PLAN: TrainingPlan = {
   weeklyZone2TargetMinutes: 105,
   longZone2Weekday: null,
   vo2Required: false,
-  cardioDaysLabel: "Monday, Wednesday, and Friday",
+  cardioDaysLabel: "Tuesday, Thursday, and Saturday",
   excludedMuscleGroups: ["quads", "hamstrings", "glutes", "calves"],
   // Plan doc section 7: same wake time daily, 6:30 AM give or take 30 min.
   wakeTimeTarget: "06:30",
@@ -36,6 +36,6 @@ export const nickAiPlanContext = (now: Date = new Date()) =>
   [
     `Recovering from ACL reconstruction (patellar tendon graft), about ${weeksPostOp(now)} weeks post-op; surgeon visit week of 2026-10-26.`,
     "No running, jumping, plyometrics, or VO2 intervals until cleared. Do not suggest lower-body loading.",
-    "Lifts are upper body only (Tue/Thu/Sat); cardio is Zone 2 bike (Mon/Wed/Fri). Scheduled counts and the Zone 2 target in the data come from the current plan; judge adherence against them.",
+    "Lifts are upper body only (Mon/Wed/Fri); cardio is Zone 2 bike (Tue/Thu/Sat). Scheduled counts and the Zone 2 target in the data come from the current plan; judge adherence against them.",
     "Goal is a small calorie surplus with protein around 180 g/day, not a cut. Knee rehab is tracked in a separate app.",
   ].join("\n");

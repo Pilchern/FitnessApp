@@ -800,7 +800,7 @@ export function StrengthQuickForm({
                 Session name
                 <input
                   className={fieldClassName()}
-                  placeholder="Tue Push"
+                  placeholder="Mon Push"
                   value={values.sessionName}
                   onChange={(event) =>
                     setValues((c) => ({

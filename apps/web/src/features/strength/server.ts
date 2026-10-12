@@ -63,7 +63,7 @@ export async function getStrengthPageData(
   const overridesLookup = buildOverridesLookup(exerciseOverrides);
   const muscleGroupVolume = computeMuscleGroupVolume(
     sessions,
-    // Seven calendar days including today, so one Tue/Thu/Sat week never
+    // Seven calendar days including today, so one Mon/Wed/Fri week never
     // counts the same weekday twice.
     { startDate: shiftIsoDate(today, -6), endDate: today },
     overridesLookup,
