@@ -5,18 +5,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#14213D",
-        ember: "#C16630",
-        sand: "#F4E6D1",
-        mist: "#E8EEF2",
-        pine: "#466362",
+        // Neutral slate base with one teal accent; ember is the warning tone.
+        ink: "#0F172A",
+        ember: "#C2410C",
+        sand: "#F1F5F9",
+        mist: "#E2E8F0",
+        pine: "#0F766E",
       },
       fontFamily: {
-        display: ["Georgia", "Cambria", '"Times New Roman"', "serif"],
-        body: ['"Trebuchet MS"', '"Segoe UI"', "sans-serif"],
+        display: [
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          '"Segoe UI"',
+          "Roboto",
+          "sans-serif",
+        ],
+        body: [
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          '"Segoe UI"',
+          "Roboto",
+          "sans-serif",
+        ],
       },
       boxShadow: {
-        panel: "0 24px 60px -32px rgba(20, 33, 61, 0.35)",
+        panel:
+          "0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px -8px rgba(15, 23, 42, 0.08)",
       },
     },
   },
