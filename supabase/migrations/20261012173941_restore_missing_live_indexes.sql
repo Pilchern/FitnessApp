@@ -1,6 +1,6 @@
 -- The live project never received 20260331192000_create_indexes.sql (live
--- history before 2026-07-15 was applied by hand). Found 2026-10-12: 47 of its
--- indexes were missing, including the per-date unique index on
+-- history before 2026-07-15 was applied by hand). Found 2026-10-12: all 44 of
+-- its indexes were missing, including the per-date unique index on
 -- recovery_checkins, so a manual check-in could sit beside the row the Apple
 -- Health sleep sync made for the same day.
 --
