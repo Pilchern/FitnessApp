@@ -93,7 +93,9 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 ## 7. Recovery and sleep
 
-- Fixed wake time 6:30 AM, 7 days a week [assumed; Nick's stated 5:30 target is not being met, and consistency beats an aspirational time]. Bed about 10:00 PM, 9:30 PM ceiling for wind-down creep. 8-9 hours in bed (Attia).
+- Anchor the wake time, not the bedtime [stated 2026-10-12: bedtime and wake should not be set in stone; struggling to fall asleep and to get up before 6:30]. Ranked by value: (1) same wake time 7 days a week, 6:30 AM give or take 30 min, weekends included; (2) a fixed wind-down (phone-free from 8:30 PM, dim lights, caffeine cutoff 11 AM); (3) morning light right after waking; (4) a fixed bedtime, lowest, and counterproductive with trouble falling asleep. Basis: CBT-I (fixed rise time, sleepy-gated bedtime) and sleep-regularity research (Windred 2024, UK Biobank).
+- Bedtime is flexible: in bed when sleepy, not before about 9:45 PM, aiming to be asleep by about 10:30. Awake more than about 20 min: get up, dim light, return when sleepy. This replaces the 9:15 to 9:30 lights-out target in the 2026-10-12 session prompt. 8-9 hours in bed (Attia).
+- Watch data, 6 nights to 2026-10-12 [fact]: about 8.2 h asleep, 8.6 h in the sleep window, 6.9 to 9.25 h range. Duration is fine; the 2.3 h swing points to irregular timing [inferred]. Track wake-time variability (bedtime and wake now sync from Apple Health), not a bedtime hit rate. Night knee pain delaying sleep onset is a PT question, not something to coach here.
 - Cold plunge M-F AM is fine because lifts are in the evening. If lifts move to the morning, no plunge within about 2 hours after lifting (Huberman).
 - Wearable: keeping the Apple Watch, no ring [stated 2026-10-12; replaces the earlier Oura Ring 5 plan]. iPhone user; steps and sleep also feed UHC Rewards. Withings scale for weight. Health Auto Export relays Watch and Peloton data to the app hourly.
 - Recovery coaching in the app already warns on soreness 8+ and low readiness.
