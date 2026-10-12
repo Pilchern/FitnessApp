@@ -20,6 +20,7 @@ export * from "./modules/recovery/readiness";
 export * from "./modules/insights/trend-notes";
 export * from "./modules/strength/strength-progression";
 export * from "./modules/strength/strength-session";
+export * from "./modules/strength/watch-strength";
 export * from "./modules/strength/exercise-catalog-data";
 export * from "./modules/strength/exercise-override";
 export * from "./modules/strength/muscle-group-volume";

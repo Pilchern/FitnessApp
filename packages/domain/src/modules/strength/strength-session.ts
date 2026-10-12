@@ -31,6 +31,10 @@ export type StrengthSession = {
   readinessPre: number | null;
   energyPost: number | null;
   completedAsPlanned: boolean;
+  /** From a merged Apple Watch strength workout; absent or null otherwise. */
+  avgHeartRate?: number | null;
+  maxHeartRate?: number | null;
+  activeEnergyKcal?: number | null;
   source: ManualOrImportedRecordSource;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

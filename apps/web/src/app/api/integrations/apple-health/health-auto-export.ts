@@ -3,6 +3,7 @@ import type {
   AppleHealthSleepPayload,
   AppleHealthWorkoutPayload,
 } from "@fitness-app/jobs";
+import type { WatchStrengthWorkout } from "@fitness-app/application";
 
 /**
  * Maps Health Auto Export's REST automation JSON ({ data: { metrics,
@@ -12,8 +13,9 @@ import type {
  *
  * What is deliberately dropped:
  * - Weight and body fat: Withings syncs directly and outranks a relay.
- * - Workouts that are not rides: Watch walks would count as Zone 2 and Watch
- *   strength sessions would double-count lifts logged in the app.
+ * - Workouts that are neither rides nor strength: Watch walks would count as
+ *   Zone 2. Strength workouts are kept apart (`strengthWorkouts`) and merged
+ *   into the day's lift session rather than imported as cardio.
  * - A ride that overlaps another ride in the same batch by more than half
  *   (Peloton and the Watch both writing the same session): the one with
  *   heart rate, else the longer one, is kept.
@@ -50,6 +52,8 @@ type HaeWorkout = {
   avgHeartRate?: Quantity;
   maxHeartRate?: Quantity;
   heartRate?: { avg?: Quantity; max?: Quantity };
+  activeEnergyBurned?: Quantity;
+  activeEnergy?: Quantity;
 };
 
 export type HealthAutoExportBody = {
@@ -60,8 +64,13 @@ export type MappedHealthAutoExport = {
   dailyMetrics: AppleHealthDailyMetricsPayload[];
   sleep: AppleHealthSleepPayload[];
   workouts: AppleHealthWorkoutPayload[];
+  /** Watch strength workouts; merged into that day's lift session. */
+  strengthWorkouts: WatchStrengthWorkout[];
 };
 
+/** HealthKit names: Traditional/Functional Strength Training, Core Training. */
+export const STRENGTH_PATTERN =
+  /strength|weight ?lifting|functional training|core training/i;
 export const RIDE_PATTERN = /cycl|bike|biking|ride|peloton|spin/i;
 const KJ_PER_KCAL = 4.184;
 const METERS = { km: 1000, mi: 1609.344, m: 1 } as const;
@@ -279,6 +288,52 @@ export function dedupeOverlappingRides(
   return kept;
 }
 
+function toKcal(value: Quantity | undefined): number | null {
+  const qty = quantity(value);
+  if (qty == null) return null;
+  const units = value?.units?.toLowerCase() ?? "kcal";
+  const kcal = Math.round(units === "kj" ? qty / KJ_PER_KCAL : qty);
+  return kcal <= 5000 ? kcal : null;
+}
+
+/** Rounded heart rate, or null when absent or outside 20-250 bpm. */
+function bpmOrNull(value: number | undefined): number | null {
+  if (value == null) return null;
+  const bpm = Math.round(value);
+  return bpm >= 20 && bpm <= 250 ? bpm : null;
+}
+
+function mapStrengthWorkout(workout: HaeWorkout): WatchStrengthWorkout | null {
+  const name = workout.name?.trim();
+  const startedAt = toIsoDateTime(workout.start);
+  // The export's local wall-clock date ("2026-10-12 17:30:00 -0500").
+  const localDate = toIsoDate(workout.start);
+  if (!name || !startedAt || !localDate || !STRENGTH_PATTERN.test(name)) {
+    return null;
+  }
+  const minutes = isFiniteNumber(workout.duration)
+    ? Math.round(workout.duration / 60)
+    : null;
+  return {
+    externalId: workout.id?.trim() || `hae:${name}:${startedAt}`,
+    workoutType: name,
+    localDate,
+    startedAt,
+    endedAt: toIsoDateTime(workout.end) ?? null,
+    durationMinutes:
+      minutes != null && minutes >= 1 ? Math.min(600, minutes) : null,
+    avgHeartRate: bpmOrNull(
+      quantity(workout.avgHeartRate) ?? quantity(workout.heartRate?.avg),
+    ),
+    maxHeartRate: bpmOrNull(
+      quantity(workout.maxHeartRate) ?? quantity(workout.heartRate?.max),
+    ),
+    activeEnergyKcal: toKcal(
+      workout.activeEnergyBurned ?? workout.activeEnergy,
+    ),
+  };
+}
+
 export function mapHealthAutoExport(
   body: HealthAutoExportBody,
 ): MappedHealthAutoExport {
@@ -288,5 +343,8 @@ export function mapHealthAutoExport(
       .map(mapWorkout)
       .filter((w): w is AppleHealthWorkoutPayload => w != null),
   );
-  return { dailyMetrics, sleep, workouts };
+  const strengthWorkouts = (body.data?.workouts ?? [])
+    .map(mapStrengthWorkout)
+    .filter((w): w is WatchStrengthWorkout => w != null);
+  return { dailyMetrics, sleep, workouts, strengthWorkouts };
 }

@@ -7,6 +7,7 @@ import {
 } from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
 import { completeStepHabits } from "@/lib/server/step-habits";
+import { syncWatchStrength } from "@/lib/server/watch-strength";
 import {
   MAX_WEBHOOK_ITEMS,
   readBoundedWebhookBody,
@@ -22,7 +23,8 @@ import {
  * JSON ({ data: { metrics, workouts } }) and fans it out to the same three
  * orchestrators the sleep, daily-metrics and workouts webhooks use, so one
  * phone-side automation covers all three. Mapping rules (rides only, no
- * weight, overlapping rides deduped) live in ../health-auto-export.ts.
+ * weight, overlapping rides deduped, Watch strength workouts merged into
+ * the day's lift session) live in ../health-auto-export.ts.
  *
  * Auth is identical to the other Apple Health webhooks (verify-request.ts):
  *   Authorization: Bearer <per-user webhook token>  + X-User-Id
@@ -75,7 +77,8 @@ export async function POST(request: NextRequest) {
   if (
     mapped.dailyMetrics.length > MAX_WEBHOOK_ITEMS ||
     mapped.sleep.length > MAX_WEBHOOK_ITEMS ||
-    mapped.workouts.length > MAX_WEBHOOK_ITEMS
+    mapped.workouts.length > MAX_WEBHOOK_ITEMS ||
+    mapped.strengthWorkouts.length > MAX_WEBHOOK_ITEMS
   ) {
     return NextResponse.json(
       { ok: false, error: "too_many_items" },
@@ -116,12 +119,18 @@ export async function POST(request: NextRequest) {
       mapped.dailyMetrics,
     );
 
+    const strengthMerged = await syncWatchStrength(
+      userId,
+      mapped.strengthWorkouts,
+    );
+
     return NextResponse.json({
       ok: true,
       dailyMetrics: daily?.processedItemCount ?? 0,
       sleep: sleep?.processedItemCount ?? 0,
       workouts: workouts?.processedItemCount ?? 0,
       habitsCompleted,
+      strengthMerged,
     });
   } catch (error) {
     console.error("[apple-health/health-auto-export] Sync failed:", error);

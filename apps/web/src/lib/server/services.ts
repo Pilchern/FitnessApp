@@ -20,6 +20,7 @@ import {
   SupplementService,
   TrainingTemplateService,
   UserProfileService,
+  WatchStrengthSyncService,
   WeeklyReviewAutoFinalizeService,
   WeeklyReviewService,
 } from "@fitness-app/application";
@@ -107,8 +108,12 @@ export const createCoreServices = cache(async function createCoreServices(
   const recoveryService = new RecoveryCheckinService(
     new SupabaseRecoveryCheckinRepository(resolvedClient),
   );
-  const strengthService = new StrengthSessionService(
-    new SupabaseStrengthSessionRepository(resolvedClient),
+  const strengthRepository = new SupabaseStrengthSessionRepository(
+    resolvedClient,
+  );
+  const strengthService = new StrengthSessionService(strengthRepository);
+  const watchStrengthSyncService = new WatchStrengthSyncService(
+    strengthRepository,
   );
   const strengthSummaryService = new StrengthSessionSummaryService(
     new SupabaseStrengthSessionSummaryRepository(resolvedClient),
@@ -162,6 +167,7 @@ export const createCoreServices = cache(async function createCoreServices(
     cardioService,
     recoveryService,
     strengthService,
+    watchStrengthSyncService,
     strengthSummaryService,
     weeklyReviewService,
     nutritionService,

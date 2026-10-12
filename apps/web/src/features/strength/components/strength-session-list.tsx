@@ -90,6 +90,12 @@ export function StrengthSessionList({ sessions }: StrengthSessionListProps) {
                     {session.durationMinutes != null ? (
                       <span>{session.durationMinutes} min</span>
                     ) : null}
+                    {session.avgHeartRate != null ? (
+                      <span>Avg HR {session.avgHeartRate}</span>
+                    ) : null}
+                    {session.activeEnergyKcal != null ? (
+                      <span>{session.activeEnergyKcal} kcal</span>
+                    ) : null}
                     {session.readinessPre != null ? (
                       <span>Readiness {session.readinessPre}/10</span>
                     ) : null}

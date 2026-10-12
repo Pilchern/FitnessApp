@@ -251,3 +251,50 @@ describe("toIsoDateTime", () => {
     expect(toIsoDateTime("nope")).toBeNull();
   });
 });
+
+describe("mapHealthAutoExport strength workouts", () => {
+  const lift = {
+    id: "L1",
+    name: "Traditional Strength Training",
+    start: "2026-10-12 17:30:00 -0500",
+    end: "2026-10-12 18:22:00 -0500",
+    duration: 3120,
+    heartRate: { avg: { qty: 112.4 }, max: { qty: 151 } },
+    activeEnergyBurned: { qty: 1400, units: "kJ" },
+  };
+
+  it("keeps Watch strength workouts apart from rides, on their local date", () => {
+    const out = mapHealthAutoExport({ data: { workouts: [lift] } });
+    expect(out.workouts).toEqual([]);
+    expect(out.strengthWorkouts).toEqual([
+      {
+        externalId: "L1",
+        workoutType: "Traditional Strength Training",
+        localDate: "2026-10-12",
+        startedAt: "2026-10-12T17:30:00-05:00",
+        endedAt: "2026-10-12T18:22:00-05:00",
+        durationMinutes: 52,
+        avgHeartRate: 112,
+        maxHeartRate: 151,
+        activeEnergyKcal: 335,
+      },
+    ]);
+  });
+
+  it("drops an implausible heart rate rather than the workout", () => {
+    const out = mapHealthAutoExport({
+      data: {
+        workouts: [{ ...lift, heartRate: { avg: { qty: 400 } } }],
+      },
+    });
+    expect(out.strengthWorkouts[0]?.avgHeartRate).toBeNull();
+    expect(out.strengthWorkouts[0]?.durationMinutes).toBe(52);
+  });
+
+  it("ignores walks", () => {
+    const out = mapHealthAutoExport({
+      data: { workouts: [{ ...lift, name: "Outdoor Walk" }] },
+    });
+    expect(out.strengthWorkouts).toEqual([]);
+  });
+});

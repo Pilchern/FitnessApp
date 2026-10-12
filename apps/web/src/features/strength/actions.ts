@@ -2,6 +2,7 @@
 
 import {
   detectPersonalRecords,
+  isWatchOnlySession,
   strengthTemplateExerciseSchema,
 } from "@fitness-app/application";
 import { z } from "zod";
@@ -83,7 +84,25 @@ export async function createStrengthSessionAction(
     const { strengthService: service, insightRepository } =
       await createCoreServices();
     const payload = buildStrengthPayload(user.id, formData);
-    const session = await service.create(payload);
+
+    // The Watch got there first: its session for the day takes these sets
+    // instead of a second session starting. Its measured duration and source
+    // stay; heart rate and energy are untouched by an update.
+    const sameDay = await service.listByDateRange({
+      userId: user.id,
+      startDate: payload.sessionDate,
+      endDate: payload.sessionDate,
+    });
+    const watchOnly = sameDay.find(isWatchOnlySession);
+    const session = watchOnly
+      ? await service.update({
+          ...payload,
+          id: watchOnly.id,
+          sessionName: payload.sessionName ?? watchOnly.sessionName,
+          durationMinutes: watchOnly.durationMinutes ?? payload.durationMinutes,
+          source: watchOnly.source,
+        })
+      : await service.create(payload);
 
     // One entry per exercise, matched the way the logger matches names
     // (trimmed, case-insensitive), keeping the spelling just logged.

@@ -100,6 +100,27 @@ export async function StrengthDetailScreen({
           </div>
         </div>
 
+        {session.avgHeartRate != null ||
+        session.maxHeartRate != null ||
+        session.activeEnergyKcal != null ? (
+          <p className="mt-4 text-sm text-ink/70">
+            Apple Watch:{" "}
+            {[
+              session.avgHeartRate != null
+                ? `avg HR ${session.avgHeartRate}`
+                : null,
+              session.maxHeartRate != null
+                ? `max HR ${session.maxHeartRate}`
+                : null,
+              session.activeEnergyKcal != null
+                ? `${session.activeEnergyKcal} active kcal`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
+        ) : null}
+
         {session.notes ? (
           <p className="mt-5 text-sm leading-6 text-ink/75">{session.notes}</p>
         ) : null}

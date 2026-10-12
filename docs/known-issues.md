@@ -8,6 +8,7 @@
 - **Weekly reviews could never save** (0 rows ever; the Monday auto-finalize had nothing to write into): live never received `20260331230000_expand_weekly_reviews_v1`. Applied live.
 - **Journal**: live never received `20260401090000_expand_journal_entries_v1`, because its foreign key needs a `(id, user_id)` key on `cardio_sessions` that no migration creates. Added `20261012220000_add_cardio_sessions_id_user_id_key.sql`, then applied both live. A fresh replay must apply the new one before the journal migration.
 - A comparison of every column the repositories use against live found no other gaps.
+- **Apple Watch strength workouts were dropped** by the Health Auto Export mapping (rides only). They now merge into the day's lift session; see CURRENT_STATE. Watch lifts sent before the deploy were not stored; HAE resends its export window, so recent ones arrive on the next hourly push.
 
 ## Fixed 2026-10-12 (session 7)
 
@@ -45,6 +46,8 @@
 - `/api/account/export` silently truncated at 500 rows per table.
 
 ## Current weak spots
+
+- Watch strength merge assumes each Health Auto Export push carries whole days (its default export range). A push carrying only one of two same-day strength workouts would set that day's duration from that one workout until the next full push.
 
 - Weekly review auto-finalize had never written a review because live lacked the review columns (fixed 2026-10-12, session 8). Confirm a review appears after the next Monday 08:00 UTC run.
 
