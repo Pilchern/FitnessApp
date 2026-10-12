@@ -57,6 +57,53 @@ export function toRecoveryFormValues(
   };
 }
 
+type RecoveryPayloadFields = Pick<
+  RecoveryCheckin,
+  | "sleepDurationMinutes"
+  | "bedtimeLocal"
+  | "wakeTimeLocal"
+  | "sleepQuality"
+  | "readinessLevel"
+  | "energyLevel"
+  | "stressLevel"
+  | "sorenessLevel"
+  | "restingHeartRate"
+  | "hrv"
+  | "coldPlungeCompleted"
+  | "notes"
+>;
+
+/**
+ * A check-in saved for a date that already has a row (usually the one Apple
+ * Health created overnight) updates that row instead of adding a second one.
+ * Blank fields keep what is stored, so synced sleep and heart rate survive.
+ */
+export function mergeIntoExistingCheckin<T extends RecoveryPayloadFields>(
+  payload: T,
+  existing: RecoveryCheckin,
+): Omit<T, keyof RecoveryPayloadFields> &
+  RecoveryPayloadFields & { id: string } {
+  return {
+    ...payload,
+    id: existing.id,
+    sleepDurationMinutes:
+      payload.sleepDurationMinutes ?? existing.sleepDurationMinutes,
+    bedtimeLocal: payload.bedtimeLocal ?? existing.bedtimeLocal,
+    wakeTimeLocal: payload.wakeTimeLocal ?? existing.wakeTimeLocal,
+    sleepQuality: payload.sleepQuality ?? existing.sleepQuality,
+    readinessLevel: payload.readinessLevel ?? existing.readinessLevel,
+    energyLevel: payload.energyLevel ?? existing.energyLevel,
+    stressLevel: payload.stressLevel ?? existing.stressLevel,
+    sorenessLevel: payload.sorenessLevel ?? existing.sorenessLevel,
+    restingHeartRate: payload.restingHeartRate ?? existing.restingHeartRate,
+    hrv: payload.hrv ?? existing.hrv,
+    // An unticked box is indistinguishable from "not answered" here.
+    coldPlungeCompleted:
+      payload.coldPlungeCompleted || existing.coldPlungeCompleted,
+    notes: payload.notes ?? existing.notes,
+  };
+}
+
 export function formatRecoveryDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     weekday: "short",
