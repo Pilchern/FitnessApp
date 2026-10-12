@@ -24,6 +24,7 @@ type StrengthPageClientProps = {
   strengthTemplates: TrainingTemplate[];
   todaysScheduledTemplate: TrainingTemplate | null;
   lastByExercise: Record<string, LastExercisePerformance>;
+  latestCreatedAt: string | null;
 };
 
 export function StrengthPageClient({
@@ -35,6 +36,7 @@ export function StrengthPageClient({
   strengthTemplates,
   todaysScheduledTemplate,
   lastByExercise,
+  latestCreatedAt,
 }: StrengthPageClientProps) {
   const [loadedTemplate, setLoadedTemplate] =
     useState<StrengthTrainingTemplateDefinition | null>(null);
@@ -82,6 +84,7 @@ export function StrengthPageClient({
         loadedTemplate={loadedTemplate}
         loadedTemplateName={loadedTemplateName}
         lastByExercise={lastByExercise}
+        latestCreatedAt={latestCreatedAt}
       />
     </>
   );

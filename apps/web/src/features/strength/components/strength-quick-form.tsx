@@ -7,18 +7,22 @@ import type { StrengthSession } from "@fitness-app/domain";
 import type { StrengthTrainingTemplateDefinition } from "@fitness-app/application";
 import {
   createEmptyStrengthSet,
+  draftWasSaved,
   exerciseKey,
   formatLastPerformance,
   formatStrengthDate,
   groupSetsByExercise,
   isTimedSet,
+  parseStrengthDraft,
   showsTimedWeight,
   renumberSets,
   selectSetsToSave,
   startingDuration,
   startingWeight,
+  STRENGTH_DRAFT_KEY,
   toStrengthFormValues,
   type LastExercisePerformance,
+  type StrengthDraft,
 } from "../helpers";
 import type {
   StrengthActionState,
@@ -39,6 +43,7 @@ type StrengthQuickFormProps = {
   loadedTemplate?: StrengthTrainingTemplateDefinition | null;
   loadedTemplateName?: string | null;
   lastByExercise?: Record<string, LastExercisePerformance>;
+  latestCreatedAt?: string | null;
 };
 
 const initialState: StrengthActionState = {};
@@ -52,6 +57,30 @@ function formatClock(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   return `${m}:${`${s}`.padStart(2, "0")}`;
+}
+
+function readDraft(): StrengthDraft | null {
+  try {
+    return parseStrengthDraft(
+      window.localStorage.getItem(STRENGTH_DRAFT_KEY),
+      Date.now(),
+    );
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(draft: StrengthDraft | null) {
+  try {
+    if (draft) {
+      window.localStorage.setItem(STRENGTH_DRAFT_KEY, JSON.stringify(draft));
+    } else {
+      window.localStorage.removeItem(STRENGTH_DRAFT_KEY);
+    }
+  } catch {
+    // Private mode or full storage: the workout still saves, it just will not
+    // survive a reload.
+  }
 }
 
 function toDoneSets(sets: StrengthSetFormValue[]) {
@@ -139,6 +168,7 @@ export function StrengthQuickForm({
   loadedTemplate,
   loadedTemplateName,
   lastByExercise = {},
+  latestCreatedAt = null,
 }: StrengthQuickFormProps) {
   const [state, formAction] = useActionState(action, initialState);
   const [values, setValues] = useState<StrengthFormValues>(() => {
@@ -157,6 +187,8 @@ export function StrengthQuickForm({
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const vibrated = useRef(false);
+  const draftChecked = useRef(false);
+  const [restoredAt, setRestoredAt] = useState<number | null>(null);
 
   useEffect(() => {
     const initial = toStrengthFormValues(session);
@@ -170,6 +202,7 @@ export function StrengthQuickForm({
 
   useEffect(() => {
     if (!loadedTemplate) return;
+    setRestoredAt(null);
     setPlanNotes(loadedTemplate.notes ?? null);
     setExerciseNotes(
       Object.fromEntries(
@@ -206,6 +239,52 @@ export function StrengthQuickForm({
     // Only re-run when a plan is loaded; lastByExercise is stable page data.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedTemplate]);
+
+  // Declared before the restore effect so the mount pass skips it and cannot
+  // erase a draft before it is read back.
+  useEffect(() => {
+    if (mode !== "create" || !draftChecked.current) return;
+    const named = values.sets.some((set) => set.exerciseName.trim());
+    writeDraft(
+      named ? { savedAt: Date.now(), values, exerciseNotes, planNotes } : null,
+    );
+  }, [mode, values, exerciseNotes, planNotes]);
+
+  useEffect(() => {
+    if (mode !== "create") return;
+    const draft = readDraft();
+    if (draft && draftWasSaved(draft, latestCreatedAt)) {
+      writeDraft(null);
+      resetWorkout();
+    } else if (draft && !draftChecked.current) {
+      setValues(draft.values);
+      setExerciseNotes(draft.exerciseNotes);
+      setPlanNotes(draft.planNotes);
+      setRestoredAt(draft.savedAt);
+    }
+    draftChecked.current = true;
+    // resetWorkout only calls state setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, latestCreatedAt]);
+
+  function resetWorkout() {
+    setValues(toStrengthFormValues(null));
+    setExerciseNotes({});
+    setPlanNotes(null);
+    setRestEndsAt(null);
+    setRestoredAt(null);
+  }
+
+  function discardDraft() {
+    writeDraft(null);
+    resetWorkout();
+  }
+
+  function markSubmitted() {
+    if (mode !== "create") return;
+    const draft = readDraft();
+    if (draft) writeDraft({ ...draft, submittedAt: Date.now() });
+  }
 
   useEffect(() => {
     if (restEndsAt == null) return;
@@ -409,13 +488,33 @@ export function StrengthQuickForm({
         </details>
       ) : null}
 
+      {restoredAt != null && mode === "create" ? (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-pine/25 bg-pine/5 px-4 py-3 text-sm text-ink">
+          <span suppressHydrationWarning>
+            Unsaved workout restored (
+            {new Date(restoredAt).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+            ).
+          </span>
+          <button
+            type="button"
+            onClick={discardDraft}
+            className="h-9 shrink-0 rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink"
+          >
+            Discard
+          </button>
+        </div>
+      ) : null}
+
       {formError || state.error ? (
         <div className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember">
           {formError ?? state.error}
         </div>
       ) : null}
 
-      <form action={formAction} className="space-y-4">
+      <form action={formAction} onSubmit={markSubmitted} className="space-y-4">
         <datalist id="strength-exercise-names">
           {knownExercises.map((name) => (
             <option key={name} value={name} />

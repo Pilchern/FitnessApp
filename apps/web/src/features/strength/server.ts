@@ -92,6 +92,11 @@ export async function getStrengthPageData(
     unclassifiedExerciseNames,
     todaysScheduledTemplate,
     lastByExercise: buildLastByExercise(sessions),
+    latestCreatedAt: sessions.reduce<string | null>(
+      (latest, s) =>
+        latest == null || s.createdAt > latest ? s.createdAt : latest,
+      null,
+    ),
   };
 }
 
