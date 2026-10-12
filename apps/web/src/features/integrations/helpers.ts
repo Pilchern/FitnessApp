@@ -117,36 +117,6 @@ export function buildFlashMessage(
         tone: "success",
         text: "Withings disconnected. Your existing measurements are unchanged.",
       };
-    case "strava_connected":
-      return {
-        tone: "success",
-        text: "Strava connected. Your recent workouts are importing now.",
-      };
-    case "strava_sync_complete":
-      return {
-        tone: "success",
-        text: "Strava synced successfully. New workouts have been added to your cardio log.",
-      };
-    case "strava_disconnected":
-      return {
-        tone: "success",
-        text: "Strava disconnected. Your existing imported workouts are unchanged.",
-      };
-    case "peloton_connected":
-      return {
-        tone: "success",
-        text: "Peloton connected. Your rides are importing now.",
-      };
-    case "peloton_sync_complete":
-      return {
-        tone: "success",
-        text: "Peloton synced successfully. New rides have been added to your cardio log.",
-      };
-    case "peloton_disconnected":
-      return {
-        tone: "success",
-        text: "Peloton disconnected. Your existing imported rides are unchanged.",
-      };
     default:
       return null;
   }

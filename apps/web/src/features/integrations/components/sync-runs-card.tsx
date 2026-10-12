@@ -41,7 +41,7 @@ export function SyncRunsCard({ syncRuns }: SyncRunsCardProps) {
 
       {syncRuns.length === 0 ? (
         <p className="mt-4 text-sm leading-6 text-ink/75">
-          No syncs yet. Connect Strava or Withings above to get started.
+          No syncs yet. Withings and Apple Health runs show up here.
         </p>
       ) : (
         <div className="mt-4 space-y-3">

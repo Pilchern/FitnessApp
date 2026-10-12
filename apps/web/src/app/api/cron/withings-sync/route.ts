@@ -8,7 +8,7 @@ const CONCURRENCY = 3;
 
 /**
  * Weekly cron endpoint — syncs Withings body metrics for all active
- * connections. Mirrors apps/web/src/app/api/cron/peloton-sync/route.ts.
+ * connections.
  *
  * Scheduled only by Supabase pg_cron -> pg_net (job `withings-weekly-sync`,
  * daily at 13:30 UTC since 20261011140000_withings_sync_daily.sql; see

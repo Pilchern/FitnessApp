@@ -35,11 +35,6 @@ export const moduleNavigationItems = [
     description: "Reflect, score, and set next week's focus.",
   },
   {
-    href: "/journal",
-    title: "Journal",
-    description: "Notes tied to your training.",
-  },
-  {
     href: "/insights",
     title: "Insights",
     description: "Trends and coaching tips.",
@@ -52,7 +47,7 @@ export const moduleNavigationItems = [
   {
     href: "/integrations",
     title: "Integrations",
-    description: "Connect Strava, Withings, and Apple Health.",
+    description: "Withings and Apple Health sync.",
   },
 ] as const;
 

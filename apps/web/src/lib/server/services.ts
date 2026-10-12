@@ -142,9 +142,10 @@ export const createCoreServices = cache(async function createCoreServices(
     new SupabaseExerciseOverrideRepository(resolvedClient),
   );
 
+  // No journalService: the journal is out of the nav (2026-10-12), so the
+  // Monday run no longer drafts a weekly-reflection entry nobody reads.
   const weeklyReviewAutoFinalizeService = new WeeklyReviewAutoFinalizeService({
     weeklyReviewService,
-    journalService,
     bodyMetricService,
     cardioService,
     recoveryService,

@@ -18,7 +18,8 @@ import {
 
 export type WeeklyReviewAutoFinalizeDependencies = {
   weeklyReviewService: WeeklyReviewService;
-  journalService: JournalEntryService;
+  /** Optional: when present a "weekly-reflection" journal entry is drafted too. */
+  journalService?: JournalEntryService;
   bodyMetricService: BodyMetricService;
   cardioService: CardioSessionService;
   recoveryService: RecoveryCheckinService;
@@ -99,12 +100,15 @@ export class WeeklyReviewAutoFinalizeService {
 
     let journalDrafted = false;
     try {
-      await this.draftJournalEntryForUser(
-        profile,
-        draftResult.weekStart,
-        draftResult.autoSummary,
-      );
-      journalDrafted = true;
+      if (this.deps.journalService) {
+        await this.draftJournalEntryForUser(
+          this.deps.journalService,
+          profile,
+          draftResult.weekStart,
+          draftResult.autoSummary,
+        );
+        journalDrafted = true;
+      }
     } catch (journalErr) {
       const message =
         journalErr instanceof Error ? journalErr.message : "Unknown error";
@@ -255,11 +259,11 @@ export class WeeklyReviewAutoFinalizeService {
   }
 
   private async draftJournalEntryForUser(
+    journalService: JournalEntryService,
     profile: WeeklyReviewAutoFinalizeProfile,
     prevWeekStartIso: string,
     autoSummary: WeeklyReviewSummary,
   ): Promise<void> {
-    const { journalService } = this.deps;
     const title = `Week of ${formatDisplayDate(prevWeekStartIso)}`;
 
     const existing = await journalService.listEntries({

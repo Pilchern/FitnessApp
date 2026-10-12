@@ -4,11 +4,10 @@ import { headers } from "next/headers";
 import { requireCurrentUser } from "@/lib/server/auth";
 import {
   createIntegrationStatusService,
-  getStravaIntegrationConfig,
   getWithingsIntegrationConfig,
   hasAppleHealthWebhookToken,
 } from "@/lib/server/integrations";
-import { hasPelotonServerEnv, hasAppleHealthServerEnv } from "@/lib/server/env";
+import { hasAppleHealthServerEnv } from "@/lib/server/env";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { buildFlashMessage } from "./helpers";
 import type { IntegrationsPageData } from "./types";
@@ -71,12 +70,6 @@ export async function getIntegrationsPageData(input?: {
     withingsConfigured: Boolean(getWithingsIntegrationConfig()),
     withingsConnection:
       snapshot.connections.find((c) => c.provider === "withings") ?? null,
-    pelotonConfigured: hasPelotonServerEnv(),
-    pelotonConnection:
-      snapshot.connections.find((c) => c.provider === "peloton") ?? null,
-    stravaConfigured: Boolean(getStravaIntegrationConfig()),
-    stravaConnection:
-      snapshot.connections.find((c) => c.provider === "strava") ?? null,
     appleHealthConfigured: hasAppleHealthServerEnv(),
     appleHealthConnection:
       snapshot.connections.find((c) => c.provider === "apple_health") ?? null,

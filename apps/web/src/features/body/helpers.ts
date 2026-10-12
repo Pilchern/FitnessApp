@@ -17,12 +17,9 @@ export function toBodyFormValues(metric: BodyMetric | null): BodyFormValues {
   if (!metric) {
     return {
       measuredOn: todayIsoDate(),
-      weightLb: "",
       waistIn: "",
       waistHipIn: "",
       waistGutIn: "",
-      bodyFatPct: "",
-      muscleMassLb: "",
       sourceType: "manual",
       notes: "",
     };
@@ -31,12 +28,9 @@ export function toBodyFormValues(metric: BodyMetric | null): BodyFormValues {
   return {
     id: metric.id,
     measuredOn: metric.measuredOn,
-    weightLb: numberToInput(metric.weightLb),
     waistIn: numberToInput(metric.waistIn),
     waistHipIn: numberToInput(metric.waistHipIn),
     waistGutIn: numberToInput(metric.waistGutIn),
-    bodyFatPct: numberToInput(metric.bodyFatPct),
-    muscleMassLb: numberToInput(metric.muscleMassLb),
     sourceType: "manual",
     notes: metric.notes ?? "",
   };

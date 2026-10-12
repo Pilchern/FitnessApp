@@ -52,11 +52,11 @@ export function BodyQuickForm({
             Quick add
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">
-            {mode === "edit" ? "Edit body metrics" : "Log body metrics fast"}
+            {mode === "edit" ? "Edit measurements" : "Log measurements"}
           </h2>
           <p className="mt-2 text-sm leading-6 text-ink/75">
-            Weight and waist first. Body fat, muscle mass, and notes stay out of
-            the way until you need them.
+            Weight, body fat, and muscle mass come from Withings. Log the tape
+            here: waist at the navel, monthly.
           </p>
         </div>
 
@@ -80,7 +80,7 @@ export function BodyQuickForm({
         {values.id ? <input type="hidden" name="id" value={values.id} /> : null}
         <input type="hidden" name="sourceType" value={values.sourceType} />
 
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className="grid gap-2 text-sm font-medium text-ink">
             Date
             <input
@@ -103,27 +103,7 @@ export function BodyQuickForm({
           </label>
 
           <label className="grid gap-2 text-sm font-medium text-ink">
-            Weight (lb)
-            <input
-              className={fieldClassName()}
-              name="weightLb"
-              inputMode="decimal"
-              placeholder="189.4"
-              value={values.weightLb}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  weightLb: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.weightLb ? (
-              <p className="text-xs text-ember">{state.fieldErrors.weightLb}</p>
-            ) : null}
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Waist (in)
+            Waist at navel (in)
             <input
               className={fieldClassName()}
               name="waistIn"
@@ -151,7 +131,7 @@ export function BodyQuickForm({
           >
             {showAdvanced
               ? "Hide optional fields"
-              : "Add hip/gut waist, body fat, muscle, or notes"}
+              : "Add hip/gut waist or notes"}
           </button>
         </div>
 
@@ -201,48 +181,6 @@ export function BodyQuickForm({
               ) : null}
             </label>
 
-            <label className="grid gap-2 text-sm font-medium text-ink">
-              Body fat (%)
-              <input
-                className={fieldClassName()}
-                name="bodyFatPct"
-                inputMode="decimal"
-                value={values.bodyFatPct}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    bodyFatPct: event.target.value,
-                  }))
-                }
-              />
-              {state.fieldErrors?.bodyFatPct ? (
-                <p className="text-xs text-ember">
-                  {state.fieldErrors.bodyFatPct}
-                </p>
-              ) : null}
-            </label>
-
-            <label className="grid gap-2 text-sm font-medium text-ink">
-              Muscle mass (lb)
-              <input
-                className={fieldClassName()}
-                name="muscleMassLb"
-                inputMode="decimal"
-                value={values.muscleMassLb}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    muscleMassLb: event.target.value,
-                  }))
-                }
-              />
-              {state.fieldErrors?.muscleMassLb ? (
-                <p className="text-xs text-ember">
-                  {state.fieldErrors.muscleMassLb}
-                </p>
-              ) : null}
-            </label>
-
             <label className="grid gap-2 text-sm font-medium text-ink md:col-span-2">
               Notes
               <textarea
@@ -264,11 +202,11 @@ export function BodyQuickForm({
         <div className="flex justify-end">
           <AuthSubmitButton
             idleLabel={
-              mode === "edit" ? "Save body metrics" : "Save measurement"
+              mode === "edit" ? "Save measurements" : "Save measurement"
             }
             pendingLabel={
               mode === "edit"
-                ? "Saving body metrics..."
+                ? "Saving measurements..."
                 : "Saving measurement..."
             }
           />

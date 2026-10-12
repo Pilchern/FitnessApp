@@ -9,7 +9,6 @@ const navItems = [
   { title: "Body", href: "/body" },
   { title: "Nutrition", href: "/nutrition" },
   { title: "Weekly Review", href: "/weekly-review" },
-  { title: "Journal", href: "/journal" },
   { title: "Insights", href: "/insights" },
   { title: "Settings", href: "/settings" },
 ] as const;
@@ -62,13 +61,6 @@ test("can navigate to /weekly-review", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByRole("link", { name: "Weekly Review", exact: true }).click();
   await expect(page).toHaveURL("/weekly-review");
-});
-
-test("can navigate to /journal", async ({ page }) => {
-  await page.goto("/dashboard");
-  await page.setViewportSize({ width: 1280, height: 900 });
-  await page.getByRole("link", { name: "Journal", exact: true }).click();
-  await expect(page).toHaveURL("/journal");
 });
 
 test("can navigate to /insights", async ({ page }) => {

@@ -4,10 +4,6 @@ import type { IntegrationConnection } from "@fitness-app/domain";
 export type IntegrationsPageData = {
   withingsConfigured: boolean;
   withingsConnection: IntegrationConnection | null;
-  pelotonConfigured: boolean;
-  pelotonConnection: IntegrationConnection | null;
-  stravaConfigured: boolean;
-  stravaConnection: IntegrationConnection | null;
   appleHealthConfigured: boolean;
   appleHealthConnection: IntegrationConnection | null;
   appleHealthHasWebhookToken: boolean;

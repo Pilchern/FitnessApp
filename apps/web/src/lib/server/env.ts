@@ -20,9 +20,6 @@ const serverEnvSchema = z.object({
   WITHINGS_CLIENT_ID: optionalEnvStringSchema,
   WITHINGS_CLIENT_SECRET: optionalEnvStringSchema,
   WITHINGS_REDIRECT_URI: optionalEnvUrlSchema,
-  STRAVA_CLIENT_ID: optionalEnvStringSchema,
-  STRAVA_CLIENT_SECRET: optionalEnvStringSchema,
-  STRAVA_REDIRECT_URI: optionalEnvUrlSchema,
   INTEGRATION_ENCRYPTION_KEY: optionalEnvStringSchema,
   CRON_SECRET: optionalEnvStringSchema,
   ANTHROPIC_API_KEY: optionalEnvStringSchema,
@@ -56,9 +53,6 @@ export function getServerEnv() {
     WITHINGS_CLIENT_ID: process.env.WITHINGS_CLIENT_ID,
     WITHINGS_CLIENT_SECRET: process.env.WITHINGS_CLIENT_SECRET,
     WITHINGS_REDIRECT_URI: process.env.WITHINGS_REDIRECT_URI,
-    STRAVA_CLIENT_ID: process.env.STRAVA_CLIENT_ID,
-    STRAVA_CLIENT_SECRET: process.env.STRAVA_CLIENT_SECRET,
-    STRAVA_REDIRECT_URI: process.env.STRAVA_REDIRECT_URI,
     INTEGRATION_ENCRYPTION_KEY: process.env.INTEGRATION_ENCRYPTION_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
@@ -77,21 +71,6 @@ export function hasWithingsServerEnv() {
     env.WITHINGS_CLIENT_ID &&
     env.WITHINGS_CLIENT_SECRET &&
     env.WITHINGS_REDIRECT_URI &&
-    env.INTEGRATION_ENCRYPTION_KEY,
-  );
-}
-
-export function hasPelotonServerEnv() {
-  const env = getServerEnv();
-  return Boolean(env.INTEGRATION_ENCRYPTION_KEY);
-}
-
-export function hasStravaServerEnv() {
-  const env = getServerEnv();
-  return Boolean(
-    env.STRAVA_CLIENT_ID &&
-    env.STRAVA_CLIENT_SECRET &&
-    env.STRAVA_REDIRECT_URI &&
     env.INTEGRATION_ENCRYPTION_KEY,
   );
 }
