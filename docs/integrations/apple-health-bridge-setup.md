@@ -19,7 +19,7 @@ Every request below sends these headers:
 
 | Header | Value |
 |---|---|
-| `Authorization` | `Bearer <webhook token>` |
+| `Authorization` | `Bearer <webhook token>`, or the bare token (HAE's header field will not keep a trailing space) |
 | `X-User-Id` | `<user id from the card>` |
 | `Content-Type` | `application/json` |
 
@@ -30,7 +30,9 @@ project uses Standard Protection (`all_except_custom_domains`): previews are
 behind Vercel login, the production domain is not (pg_net calls reach it
 unauthenticated).
 
-### Option A (free): one Shortcut, run every evening
+### Option A (free): one Shortcut, run every evening. Not in use
+
+Tried 2026-10-12 and dropped for HAE. Pitfalls: summing raw Steps samples double-counts iPhone plus Watch (HAE uses Health's de-duplicated total); in the Sleep Value filter, pick In Bed and Awake from the value menu, not a variable of the same name.
 
 Covers steps (auto-ticks the steps habit), resting HR, HRV, VO2 max, last
 night's sleep, and rides (Peloton writes them to Apple Health). Needs the free
@@ -66,7 +68,7 @@ Immediately. HealthKit is unreadable once the phone has been locked a while,
 so pick a time it is usually in hand. Steps logged after the run (9 PM to
 midnight) are not sent; the habit is usually decided by then.
 
-### Option B (paid, $24.99 one-time): Health Auto Export
+### Option B (paid, $24.99 one-time): Health Auto Export. LIVE since 2026-10-12
 
 Covers everything in Option A plus rides with heart rate, with no shortcut
 building. Its REST automation needs the Premium tier: $24.99 lifetime, or a
