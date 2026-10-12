@@ -20,16 +20,16 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 
 ## 3. Weekly schedule (current phase, through about 10/26)
 
-Lifts Tue/Thu/Sat. Cardio Mon/Wed/Fri. Sunday rest. [stated 2026-10-09, confirmed 2026-10-12]
+Lifts Mon/Wed/Fri. Cardio Tue/Thu/Sat. Sunday rest. [stated 2026-10-12, session 8; replaces Tue/Thu/Sat lifts and Mon/Wed/Fri cardio]
 
 | Day | Work | Morning | Training | Notes |
 |---|---|---|---|---|
-| Mon | Office | Wake, light, Foundation Training, cold plunge, PT sheet round 1 | Bike Z2 30 min | Knee loaded block (PT Tracker) may still land here, see section 9 |
-| Tue | Office | Same stack | Lift: Push (upper) | Knee block first, then upper |
-| Wed | WFH | PT 7:40, cold plunge after | Bike Z2 30 min (evening) | 2 walks |
-| Thu | Office | Same stack | Lift: Pull (upper) | Knee block first, then upper |
-| Fri | WFH | PT 7:40 | Bike Z2 45 min (evening) | Mobility 15 min |
-| Sat | Off | Same stack | Lift: Arms (upper) | Weekly review in the evening |
+| Mon | Office | Wake, light, Foundation Training, cold plunge, PT sheet round 1 | Lift: Push (upper) | Knee block (PT Tracker) first, then upper |
+| Tue | Office | Same stack | Bike Z2 30 min | Knee block day in PT Tracker; bike after it |
+| Wed | WFH | PT 7:40, cold plunge after | Lift: Pull (upper, evening) | 2 walks |
+| Thu | Office | Same stack | Bike Z2 30 min | Knee block day in PT Tracker; bike after it |
+| Fri | WFH | PT 7:40 | Lift: Arms (upper, evening) | Mobility 15 min |
+| Sat | Off | Same stack | Bike Z2 45 min (long ride) | Weekly review in the evening |
 | Sun | Off | Walk 45-60 min outdoors | Rest | Meal prep, early bed |
 
 Daily non-negotiables: PT home sheet AM and PM (PT Tracker), 7,000 steps, protein about 180 g, fixed wake time, bed about 10:00 PM, alcohol under 7 drinks per week.
@@ -78,7 +78,7 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
   - Then 40 + 40 + 60 = 140 min
   - Then 45 + 45 + 60 = 150 min (Attia minimum is about 3 hr/wk; Huberman 150-200)
 - VO2 work (4x4 at 184-208 W, recovery about 87 W) stays parked until the surgeon visit AND pain is 2/10 or less AND no swelling after Z2. Pre-injury this was a Saturday session.
-- Target structure [stated 2026-10-12]: three rides Mon/Wed/Fri, two Zone 2 and one VO2 4x4. Until the VO2 gate above is met, all three stay Zone 2 (the current templates). At the switch the VO2 ride goes on Monday [assumed: freshest after the Sunday rest, no PT that morning, and the 4x4 is the shortest session on an office day], Wednesday and Friday stay Zone 2 with Friday the long one. Two Z2 rides carry the weekly Z2 total, so the 150 min target means about 60 + 90 min, or accept less Z2 for the VO2 work. This replaces the earlier 2x/week note.
+- Target structure [stated 2026-10-12]: three rides Tue/Thu/Sat, two Zone 2 and one VO2 4x4. Until the VO2 gate above is met, all three stay Zone 2 (the current templates). At the switch the VO2 ride goes on Tuesday [assumed: first ride of the week, the 4x4 is the shortest session on an office day, and Saturday stays the long Zone 2]. Two Z2 rides carry the weekly Z2 total, so the 150 min target means about 60 + 90 min, or accept less Z2 for the VO2 work.
 - No running, jumping or plyometrics. The patellar tendon is the weak link in a BTB graft; plyo needs a clinician sign-off.
 - Return-to-run criteria (all required): full extension; flexion within 5% of the other knee; trace effusion at most; pain 2/10 or less; quad strength at least 80% LSI. Villena 2025 markers: single-leg press 1.25x bodyweight, 30 step-and-holds, Y-balance 90% or better. Ask PT to measure quad dynamometry on both legs.
 
@@ -111,8 +111,8 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 ## 9. Open conflicts and decisions
 
-1. PT Tracker still schedules loaded knee sessions Mon/Tue/Thu. Monday is now a bike day. Options: keep the Monday knee block and bike after it, or move it. Nick has not decided; PT Tracker was left unchanged.
-2. The AI-Lab Phase III plan lists lifts Mon/Tue/Thu (Push/Pull/Arms with knee blocks). Nick's 2026-10-09 instruction overrides: lifts Tue/Thu/Sat. The AI-Lab docs have not been updated; edits need his approval.
+1. PT Tracker schedules loaded knee sessions Mon/Tue/Thu. Since the 2026-10-12 switch, Monday pairs the knee block with the Push lift and Tue/Thu pair it with the bike. The strength template notes still say "knee block first", which only applies on Monday now. PT Tracker was left unchanged.
+2. The AI-Lab Phase III plan lists lifts Mon/Tue/Thu (Push/Pull/Arms with knee blocks). Nick's instruction overrides: lifts Mon/Wed/Fri as of 2026-10-12 (was Tue/Thu/Sat from 2026-10-09). The AI-Lab docs have not been updated; edits need his approval.
 3. Resolved 2026-10-12: three rides, two Zone 2 plus one VO2 once cleared (section 5).
 4. Bike ramp and farmer carries wait on PT 10/14.
 5. Foundation Training and dead hangs were additions; Nick can drop either.
@@ -137,8 +137,8 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 ## 12. Post-clearance structure (conditional, after surgeon sign-off)
 
-- Lifting 3x/week full body (Tue/Thu/Sat); the knee work folds into strength days instead of separate sessions. Re-enter light over 2-3 weeks; baselines in section 4. Missed lift: move to the next available day, do not double up.
-- Cardio: Mon/Wed/Fri, two Zone 2 rides plus one VO2 4x4 (Monday); weekly Z2 150-180 min; retest FTP after returning to structured riding, then every 6-8 weeks.
+- Lifting 3x/week full body (Mon/Wed/Fri); the knee work folds into strength days instead of separate sessions. Re-enter light over 2-3 weeks; baselines in section 4. Missed lift: move to the next available day, do not double up.
+- Cardio: Tue/Thu/Sat, two Zone 2 rides plus one VO2 4x4 (Tuesday); weekly Z2 150-180 min; retest FTP after returning to structured riding, then every 6-8 weeks.
 - Run-walk only after the section 5 criteria. Golf only after ortho clearance.
 - Nutrition: reactivate the cut from the parked reference.
 - Long-term targets, not current: dead hang 2 min, farmer carry about half bodyweight per hand for 1 min, protein about 1 g/lb, heavy lifting about 4x/week per Attia, stability work.
@@ -155,7 +155,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 - Dashboard (rebuilt 2026-10-12): Today card with a daily readiness score (Apple Health HRV and resting HR against your 30-day baseline, plus sleep; an estimate, not a medical measure) and a one-line call for today's planned session; Plan card (templates over the week, Done/Missed/Planned, Z2 vs template target); habits (tap saves); "What changed" trend notes (wake time vs 6:30 target, cardio, resting HR, weight, lifts); Body.
 - /strength: Today's plan callout; Load plan prefills sets; weight starts at the last logged working-set weight, with "Last (date): 165 x 8, 8, 7".
-- Live database seeded by hand: 3 strength templates (Tue/Thu/Sat), 3 cardio templates (Mon 30, Wed 30, Fri 45), 4 habits, protein target 180.
+- Live database seeded by hand: 3 strength templates (Mon Push, Wed Pull, Fri Arms), 3 cardio templates (Tue 30, Thu 30, Sat 45), 4 habits, protein target 180.
 - Schema: supplements.kind (supplement | habit), migration applied live.
 - Live data counts at last check (2026-10-12): 144 rides (131 historical Strava, the rest from Apple Health), 294 body metrics, 0 lifts logged, recovery rows created nightly by the Apple Health sleep sync, 0 nutrition logs.
 - Apple Health (Health Auto Export, hourly): steps (auto-ticks the steps habit), resting HR, HRV, VO2 max, sleep with bedtime and wake, Peloton rides. Withings syncs daily.
