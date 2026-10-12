@@ -35,11 +35,13 @@ export async function RecoveryScreen({ editCheckinId }: RecoveryScreenProps) {
 
       <RecoverySummaryCards summary={data.summary} />
 
+      {/* Today's row, when the sleep sync already made one, opens prefilled
+          so a check-in adds to it instead of starting a second row. */}
       <RecoveryQuickForm
         mode={data.editingCheckin ? "edit" : "create"}
-        checkin={data.editingCheckin}
+        checkin={data.editingCheckin ?? data.todaysCheckin}
         action={
-          data.editingCheckin
+          (data.editingCheckin ?? data.todaysCheckin)
             ? updateRecoveryCheckinAction
             : createRecoveryCheckinAction
         }

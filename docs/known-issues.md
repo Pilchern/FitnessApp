@@ -1,6 +1,11 @@
 # Known Issues
 
-**Last verified against code:** 2026-10-11.
+**Last verified against code:** 2026-10-12.
+
+## Fixed 2026-10-12
+
+- Live was missing all 44 indexes from `20260331192000_create_indexes.sql`, including the per-date unique index on `recovery_checkins`. With Apple Health creating each day's row overnight, the next manual check-in from `/recovery` would have inserted a second row for the same date, and `findByDate` (`maybeSingle`) would then have failed every later sleep sync for that day. No duplicates existed yet. Restored 42 of them (`20261012173941_restore_missing_live_indexes.sql`, applied live). Left out: `raw_import_events_provider_dedupe_idx` (about 420 identical raw events from HAE resends already violate it) and `sync_job_runs_active_dedupe_idx` (one stale queued/running pair). Three journal indexes from `20260401090000` are also missing; the journal is retired, so they stay out.
+- `/recovery` now opens today's synced row prefilled and saves into it; a create for a date that already has a row merges into it (blank fields keep stored values). The collapsed "optional metrics" fields were unmounted, so a save never sent resting HR, HRV, cold plunge or notes; saving over a synced row would have blanked its resting HR and HRV. They are now hidden, not unmounted, and cold plunge sits in the main form.
 
 ## Fixed 2026-10-11
 
@@ -27,7 +32,7 @@
 - Playwright E2E covers auth, navigation, body, cardio, integrations connect flow, and weekly-review (6 specs); the remaining modules (strength, recovery, nutrition, journal, insights, settings) have no browser coverage yet.
 - E2E does not run in CI — Playwright's `webServer` needs a live Supabase project, and CI has no credentials for one. The GitHub Actions workflow (`.github/workflows/ci.yml`) runs format, typecheck, lint, unit tests, and the production build only.
 - OAuth callback and sync behavior are covered by unit tests, not live-provider integration tests.
-- Withings is live and, since 2026-10-09, actually scheduled (see above). The Apple Health webhooks work but no bridge is configured and no webhook token exists, so nothing is flowing yet. Strava's app registration is deactivated on Strava's side and its API now requires a paid subscription the user has declined; Peloton's unofficial auth endpoint returns `403` for any credentials as of 2026-07-16 and is not fixable from this codebase. Apple Health is the only active cardio-import path today.
+- Withings is live and, since 2026-10-09, actually scheduled (see above). Apple Health is live through Health Auto Export (hourly, since 2026-10-12) and is the only cardio-import path; Strava and Peloton code was removed 2026-10-12.
 - Integration credentials are intentionally server-only and require correct service-role usage in deployment.
 - Insight severity is computed by the rule engine and then dropped at the storage boundary: there is no `severity` column, so `InsightOrchestrator` hides it in the `evidence` JSONB and nothing reads it back. `listActive` orders by `insight_date desc`, and both "top 3" call sites are a bare `slice`, so the dashboard shows the three most recent insights rather than the three most important. Open and unfixed as of 2026-08-27 — it needs a product decision, not just a patch. See CURRENT_STATE.md.
 - Nutrition targets are personalized as of 2026-08-27 (TD-030 closed): `height_cm`/`birth_date`/`biological_sex` are on `profiles` and used in the BMR formula, falling back to population averages per-field and disclosing exactly which ones fell back.

@@ -5,6 +5,7 @@ import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
 import { recoveryCheckinFormSchema } from "./form-schema";
+import { mergeIntoExistingCheckin } from "./helpers";
 import type {
   RecoveryActionState,
   SupplementChecklistActionState,
@@ -64,7 +65,16 @@ export async function createRecoveryCheckinAction(
   try {
     const user = await requireCurrentUser();
     const { recoveryService } = await createCoreServices();
-    await recoveryService.create(buildRecoveryPayload(user.id, formData));
+    const payload = buildRecoveryPayload(user.id, formData);
+    const existing = await recoveryService.getByDate(
+      user.id,
+      payload.checkinDate,
+    );
+    if (existing) {
+      await recoveryService.update(mergeIntoExistingCheckin(payload, existing));
+    } else {
+      await recoveryService.create(payload);
+    }
     const returnTo = formData.get("returnTo");
     redirect(returnTo === "/dashboard" ? "/dashboard" : "/recovery");
   } catch (error) {
