@@ -16,6 +16,33 @@ type ProtectedShellProps = {
 // Bottom tab bar on phones: the four screens used daily, plus a More sheet.
 const primaryHrefs = ["/dashboard", "/strength", "/cardio", "/recovery"];
 
+// 24x24 stroke icons for the tab bar (home, dumbbell, heart pulse, moon, dots).
+const tabIconPaths: Record<string, string> = {
+  "/dashboard":
+    "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
+  "/strength": "M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11",
+  "/cardio": "M3 12h4l2-5 4 10 2-5h6M20.8 8.6A5 5 0 0 0 12 5a5 5 0 0 0-8.8 3.6",
+  "/recovery": "M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z",
+  more: "M5 12h.01M12 12h.01M19 12h.01",
+};
+
+function TabIcon({ path }: { path?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      className="h-6 w-6"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={path} />
+    </svg>
+  );
+}
+
 export function ProtectedShell({
   children,
   items,
@@ -37,9 +64,9 @@ export function ProtectedShell({
   const moreActive = secondary.some((item) => isActive(item.href));
 
   return (
-    <div className="min-h-[100dvh] bg-[radial-gradient(circle_at_top,rgba(232,238,242,0.95),transparent_36%),linear-gradient(180deg,#f4e6d1_0%,#fbf7f0_54%,#f3efe7_100%)] text-ink">
+    <div className="min-h-[100dvh] bg-[#f4f5f7] text-ink">
       <div className="mx-auto flex min-h-[100dvh] max-w-7xl gap-6 px-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))] sm:px-6 lg:px-8 lg:py-4">
-        <aside className="hidden w-80 shrink-0 rounded-[2rem] border border-ink/10 bg-white/80 p-5 shadow-panel backdrop-blur lg:flex lg:flex-col">
+        <aside className="hidden w-80 shrink-0 rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel lg:flex lg:flex-col">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-pine">
               Your Training
@@ -49,15 +76,15 @@ export function ProtectedShell({
             </h1>
           </div>
 
-          <nav className="mt-8 flex-1 space-y-2">
+          <nav className="mt-8 flex-1 space-y-1">
             {items.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`block rounded-[1.4rem] border px-4 py-3 transition ${
+                className={`block rounded-2xl px-4 py-3 transition ${
                   isActive(item.href)
-                    ? "border-pine/30 bg-pine text-white"
-                    : "border-ink/10 bg-white/40 text-ink hover:border-pine/30 hover:bg-pine/5"
+                    ? "bg-pine text-white"
+                    : "text-ink hover:bg-ink/5"
                 }`}
               >
                 <div className="text-sm font-semibold">{item.title}</div>
@@ -72,7 +99,7 @@ export function ProtectedShell({
             ))}
           </nav>
 
-          <div className="mt-6 rounded-[1.5rem] border border-ink/10 bg-sand/70 p-4 text-sm font-semibold text-ink">
+          <div className="mt-6 rounded-2xl bg-sand p-4 text-sm font-semibold text-ink">
             {userDisplayName}
           </div>
         </aside>
@@ -80,9 +107,7 @@ export function ProtectedShell({
         {/* No backdrop-filter here: it makes <main> the containing block for
             position:fixed children, which pins the lift logger's Finish bar and
             rest timer to the bottom of the page instead of the screen. */}
-        <main className="min-w-0 flex-1 rounded-[1.5rem] border border-ink/10 bg-white/55 p-3 shadow-panel sm:rounded-[2rem] sm:p-6">
-          {children}
-        </main>
+        <main className="min-w-0 flex-1 lg:py-2">{children}</main>
       </div>
 
       {isMoreOpen ? (
@@ -99,10 +124,10 @@ export function ProtectedShell({
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex min-h-14 items-center rounded-2xl border px-4 text-sm font-semibold ${
+                  className={`flex min-h-14 items-center rounded-2xl px-4 text-sm font-semibold ${
                     isActive(item.href)
-                      ? "border-pine/30 bg-pine text-white"
-                      : "border-ink/10 bg-sand/40 text-ink"
+                      ? "bg-pine text-white"
+                      : "bg-sand text-ink"
                   }`}
                 >
                   {item.title}
@@ -115,7 +140,7 @@ export function ProtectedShell({
 
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-ink/10 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-ink/10 bg-white/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
       >
         <ul className="mx-auto grid max-w-xl grid-cols-5">
           {primary.map((item) => (
@@ -123,10 +148,11 @@ export function ProtectedShell({
               <Link
                 href={item.href}
                 aria-current={isActive(item.href) ? "page" : undefined}
-                className={`flex h-16 items-center justify-center text-xs font-semibold ${
-                  isActive(item.href) ? "text-pine" : "text-ink/60"
+                className={`flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
+                  isActive(item.href) ? "text-pine" : "text-ink/50"
                 }`}
               >
+                <TabIcon path={tabIconPaths[item.href]} />
                 {item.title}
               </Link>
             </li>
@@ -136,10 +162,11 @@ export function ProtectedShell({
               type="button"
               aria-expanded={isMoreOpen}
               onClick={() => setIsMoreOpen((open) => !open)}
-              className={`flex h-16 w-full items-center justify-center text-xs font-semibold ${
-                moreActive || isMoreOpen ? "text-pine" : "text-ink/60"
+              className={`flex h-16 w-full flex-col items-center justify-center gap-1 text-[11px] font-semibold ${
+                moreActive || isMoreOpen ? "text-pine" : "text-ink/50"
               }`}
             >
+              <TabIcon path={tabIconPaths.more} />
               More
             </button>
           </li>

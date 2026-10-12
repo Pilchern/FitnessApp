@@ -4,10 +4,8 @@
 
 :root {
   color-scheme: light;
-  background:
-    radial-gradient(circle at top, rgba(232, 238, 242, 0.95), transparent 36%),
-    linear-gradient(180deg, #f4e6d1 0%, #fbf7f0 54%, #f3efe7 100%);
-  color: #14213d;
+  background: #f4f5f7;
+  color: #0f172a;
 }
 
 * {
@@ -21,15 +19,27 @@ body {
 
 body {
   margin: 0;
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(232, 238, 242, 0.95), transparent 36%),
-    linear-gradient(180deg, #f4e6d1 0%, #fbf7f0 54%, #f3efe7 100%);
-  color: #14213d;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "tnum";
+  background: #f4f5f7;
+  color: #0f172a;
 }
 
 a {
   color: inherit;
+}
+
+/* Native checkboxes, radios and ranges in the accent instead of browser blue. */
+input,
+progress {
+  accent-color: #0f766e;
 }
 
 /* Mobile: 16px+ inputs stop iOS Safari zooming on focus; no tap flash/delay. */
@@ -50,4 +60,11 @@ button,
 a,
 summary {
   touch-action: manipulation;
+}
+
+/* Headings: the display face is the system sans, so weight and tracking
+   carry the hierarchy the old serif did. */
+.font-display {
+  font-weight: 650;
+  letter-spacing: -0.02em;
 }
