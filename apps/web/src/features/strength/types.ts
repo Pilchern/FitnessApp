@@ -34,6 +34,8 @@ export type StrengthDetailData = {
 
 export type StrengthActionState = {
   error?: string;
+  /** Validation errors by field; the logger shows them in its error banner. */
+  fieldErrors?: Record<string, string>;
 };
 
 export type StrengthSetFormValue = {

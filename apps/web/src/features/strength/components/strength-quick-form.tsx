@@ -532,9 +532,16 @@ export function StrengthQuickForm({
         </div>
       ) : null}
 
-      {formError || state.error ? (
-        <div className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember">
-          {formError ?? state.error}
+      {/* Field errors have no inline home in the logger, so show them here
+          too; otherwise a rejected save looks like nothing happened. */}
+      {formError || state.error || state.fieldErrors ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember"
+        >
+          {formError ??
+            state.error ??
+            Object.values(state.fieldErrors ?? {}).join(" ")}
         </div>
       ) : null}
 
