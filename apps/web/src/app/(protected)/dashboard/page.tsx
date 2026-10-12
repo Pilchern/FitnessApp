@@ -1,5 +1,6 @@
 import { stepHabitThreshold } from "@fitness-app/application";
 import { getDashboardData } from "@/features/dashboard/server";
+import { routineForHabit } from "@/lib/routines";
 import { SupplementChecklist } from "@/features/recovery/components/supplement-checklist";
 import { logSupplementsAction } from "@/features/recovery/actions";
 import { TodayCard } from "@/features/dashboard/components/today-card";
@@ -23,6 +24,15 @@ export default async function DashboardPage() {
             .map((h) => [h.id, `${stepsToday.toLocaleString("en-US")} today`]),
         )
       : {};
+
+  const routineLinks = Object.fromEntries(
+    data.habits.items.flatMap((h) => {
+      const routine = routineForHabit(h.name);
+      return routine
+        ? [[h.id, { href: `/routines/${routine.slug}`, label: "Guide" }]]
+        : [];
+    }),
+  );
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -52,6 +62,7 @@ export default async function DashboardPage() {
           returnTo="/dashboard"
           weekCounts={data.habits.weekCounts}
           itemNotes={stepHabitNotes}
+          itemLinks={routineLinks}
           labels={{
             eyebrow: "Daily habits",
             title: "Today's habits",
