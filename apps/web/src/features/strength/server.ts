@@ -81,7 +81,8 @@ export async function getStrengthPageData(
         ? "The strength session you tried to edit could not be found."
         : undefined,
     knownExercises,
-    lastSession: sessions[0] ?? null,
+    // Skips a Watch-only session (no sets yet): "repeat last" needs sets.
+    lastSession: sessions.find((s) => s.sets.length > 0) ?? null,
     strengthTemplates,
     muscleGroupVolume,
     exerciseOverrides,

@@ -1,9 +1,12 @@
 import type { StrengthSession, StrengthExerciseSet } from "@fitness-app/domain";
 import type {
   CreateStrengthSessionInput,
+  CreateWatchStrengthSessionInput,
   StrengthSessionDateRangeQuery,
   StrengthSessionRepository,
   UpdateStrengthSessionInput,
+  WatchStrengthPatch,
+  WatchStrengthRepository,
 } from "@fitness-app/application";
 import { DEFAULT_DATE_RANGE_QUERY_LIMIT } from "@fitness-app/application";
 import { z } from "zod";
@@ -26,6 +29,10 @@ const strengthSessionRowSchema = z.object({
   readiness_pre: z.number().int().nullable(),
   energy_post: z.number().int().nullable(),
   completed_as_planned: z.boolean(),
+  // Optional so rows read before the watch-fields migration still parse.
+  avg_heart_rate: z.number().int().nullable().optional(),
+  max_heart_rate: z.number().int().nullable().optional(),
+  active_energy_kcal: z.number().int().nullable().optional(),
   source_type: z.enum(["manual", "imported"]),
   source_provider: z.string().nullable(),
   source_external_id: z.string().nullable(),
@@ -94,6 +101,9 @@ function mapStrengthSessionRow(
     readinessPre: row.readiness_pre,
     energyPost: row.energy_post,
     completedAsPlanned: row.completed_as_planned,
+    avgHeartRate: row.avg_heart_rate ?? null,
+    maxHeartRate: row.max_heart_rate ?? null,
+    activeEnergyKcal: row.active_energy_kcal ?? null,
     source: mapManualOrImportedSourceFromRow(row),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -153,7 +163,9 @@ function toStrengthSetInsert(
 const SESSION_ID_CHUNK_SIZE = 100;
 const SET_PAGE_SIZE = 1000;
 
-export class SupabaseStrengthSessionRepository implements StrengthSessionRepository {
+export class SupabaseStrengthSessionRepository
+  implements StrengthSessionRepository, WatchStrengthRepository
+{
   constructor(private readonly client: AppSupabaseClient) {}
 
   private async loadSetsForSessions(userId: string, sessionIds: string[]) {
@@ -334,5 +346,85 @@ export class SupabaseStrengthSessionRepository implements StrengthSessionReposit
     return rows.map((row) =>
       mapStrengthSessionRow(row, setsBySession.get(row.id) ?? []),
     );
+  }
+
+  async startedAtByIds(userId: string, ids: string[]) {
+    if (ids.length === 0) return {};
+    const response = await this.client
+      .from("strength_sessions")
+      .select("id, started_at")
+      .eq("user_id", userId)
+      .in("id", ids);
+    throwOnError(response.error, "Read strength session start times");
+    return Object.fromEntries(
+      (
+        (response.data ?? []) as { id: string; started_at: string | null }[]
+      ).map((row) => [row.id, row.started_at]),
+    );
+  }
+
+  async patchWatchFields(
+    userId: string,
+    id: string,
+    patch: WatchStrengthPatch,
+  ) {
+    const columns: Record<string, string | number | null> = {};
+    if (patch.startedAt) columns.started_at = patch.startedAt;
+    if (patch.endedAt !== undefined) columns.ended_at = patch.endedAt;
+    if (patch.durationMinutes != null)
+      columns.duration_minutes = patch.durationMinutes;
+    if (patch.avgHeartRate != null) columns.avg_heart_rate = patch.avgHeartRate;
+    if (patch.maxHeartRate != null) columns.max_heart_rate = patch.maxHeartRate;
+    if (patch.activeEnergyKcal != null)
+      columns.active_energy_kcal = patch.activeEnergyKcal;
+    if (Object.keys(columns).length === 0) return;
+
+    // Session row only: the sets are the logger's and are never touched here.
+    const response = await this.client
+      .from("strength_sessions")
+      .update(columns)
+      .eq("id", id)
+      .eq("user_id", userId)
+      .is("deleted_at", null);
+    throwOnError(response.error, "Merge Apple Watch workout into session");
+  }
+
+  async createFromWatch(input: CreateWatchStrengthSessionInput) {
+    const response = await this.client
+      .from("strength_sessions")
+      .insert({
+        user_id: input.userId,
+        session_date: input.sessionDate,
+        session_name: input.sessionName,
+        started_at: input.startedAt,
+        ended_at: input.endedAt,
+        duration_minutes: input.durationMinutes,
+        avg_heart_rate: input.avgHeartRate,
+        max_heart_rate: input.maxHeartRate,
+        active_energy_kcal: input.activeEnergyKcal,
+        completed_as_planned: true,
+        source_type: "imported",
+        source_provider: "apple_health",
+        source_external_id: input.externalId,
+      })
+      .select("*")
+      .single();
+
+    const row = strengthSessionRowSchema.parse(
+      requireSingleResult(response, "Create session from Apple Watch workout"),
+    );
+    return mapStrengthSessionRow(row, []);
+  }
+
+  async hasExternalId(userId: string, externalId: string) {
+    const response = await this.client
+      .from("strength_sessions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("source_provider", "apple_health")
+      .eq("source_external_id", externalId)
+      .limit(1);
+    throwOnError(response.error, "Look up Apple Watch strength session");
+    return (response.data ?? []).length > 0;
   }
 }
