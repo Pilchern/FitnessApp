@@ -56,28 +56,12 @@ export async function recomputeNutritionTargetsAction(): Promise<{
 }> {
   try {
     const user = await requireCurrentUser();
-    const { nutritionTargetService, profileService } =
-      await createCoreServices();
+    const { nutritionTargetService } = await createCoreServices();
+    // Compute only. The form fills these in; nothing is saved until the
+    // owner submits the settings form.
     const targets = await nutritionTargetService.computeNutritionTargets(
       user.id,
     );
-    const profile = await profileService.getByUserId(user.id);
-    if (!profile) {
-      return { error: "Profile not found" };
-    }
-    await profileService.update({
-      userId: user.id,
-      displayName: profile.displayName,
-      timezone: profile.timezone,
-      unitsSystem: profile.unitsSystem,
-      weekStartsOn: profile.weekStartsOn,
-      goalFatLoss: profile.goalFatLoss,
-      goalPreserveMuscle: profile.goalPreserveMuscle,
-      goalImproveVo2: profile.goalImproveVo2,
-      dailyProteinGramsTarget: targets.dailyProteinGramsTarget,
-      dailyCaloriesTarget: targets.dailyCaloriesTarget,
-      dailyFiberGramsTarget: targets.dailyFiberGramsTarget,
-    });
     return { targets };
   } catch (error) {
     if (error instanceof Error) {

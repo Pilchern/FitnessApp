@@ -2,16 +2,15 @@ import "server-only";
 
 import {
   buildBodyMetricSummary,
-  buildBodyWeightTrend,
   buildCardioWeeklyTotals,
+  buildReadinessHistory,
+  buildTrendNotes,
   buildWeeklyWeightTrend,
-  buildOverridesLookup,
-  computeJournalStreak,
-  computeMuscleGroupVolume,
+  computeDailyReadiness,
   getCurrentWeekRangeForUser,
-  getRecoveryCoachingSuggestion,
   getZonedDate,
 } from "@fitness-app/application";
+import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
 import { requireCurrentUser } from "@/lib/server/auth";
 import {
   createCoreServices,
@@ -21,25 +20,11 @@ import { getInsightsData } from "@/features/insights/server";
 import {
   addDaysIsoDate,
   buildWeekPlan,
-  computeGoalProgress,
   formatZonedIsoDate,
+  readinessCall,
   summarizeDailyActivity,
 } from "./helpers";
-import type {
-  DashboardData,
-  TodayNutrition,
-  NutritionTargetsSnapshot,
-} from "./types";
-
-function formatIsoDate(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
-function daysAgoIsoDate(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return formatIsoDate(date);
-}
+import type { DashboardData, TodayNutrition } from "./types";
 
 function settledOrNull<T>(result: PromiseSettledResult<T>): T | null {
   return result.status === "fulfilled" ? result.value : null;
@@ -52,11 +37,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     cardioService,
     recoveryService,
     strengthService,
-    strengthSummaryService,
     weeklyReviewService,
     nutritionService,
-    journalService,
-    exerciseOverrideService,
     trainingTemplateService,
     supplementService,
     supplementLogService,
@@ -71,24 +53,21 @@ export async function getDashboardData(): Promise<DashboardData> {
     weekStartsOn,
   );
 
-  // "Now" in the user's timezone — the same basis as weekStart/weekEnd above.
-  // A raw `new Date()` here would yield the UTC date, which for users west of
-  // UTC flips to tomorrow in the early evening.
-  const zonedNow = getZonedDate(timezone);
-  const today = formatZonedIsoDate(zonedNow);
+  // "Today" in the user's timezone, the same basis as weekStart/weekEnd. A raw
+  // `new Date()` would give the UTC date, which flips to tomorrow in the
+  // evening for users west of UTC.
+  const today = formatZonedIsoDate(getZonedDate(timezone));
+  const daysAgo = (days: number) => addDaysIsoDate(today, -days);
 
   const [
     cardioThisWeekResult,
-    liftsCompletedResult,
-    recentRecoveryResult,
+    recoveryResult,
     recentBodyResult,
     recentReviewsResult,
     insightDataResult,
-    journalEntriesResult,
-    todayNutritionResult,
+    nutritionResult,
     strengthSessionsResult,
     cardioLast8WeeksResult,
-    exerciseOverridesResult,
     strengthTemplatesResult,
     cardioTemplatesResult,
     habitDefsResult,
@@ -100,65 +79,57 @@ export async function getDashboardData(): Promise<DashboardData> {
       startDate: weekStart,
       endDate: weekEnd,
     }),
-    strengthSummaryService.countCompletedByDateRange({
-      userId: user.id,
-      startDate: weekStart,
-      endDate: weekEnd,
-    }),
+    // 30-day readiness baseline before each of the last 7 days.
     recoveryService.listByDateRange({
       userId: user.id,
-      startDate: daysAgoIsoDate(14),
+      startDate: daysAgo(37),
+      endDate: today,
     }),
     bodyMetricService.listByDateRange({
       userId: user.id,
-      startDate: daysAgoIsoDate(90),
+      startDate: daysAgo(90),
     }),
-    weeklyReviewService.listRecent(user.id, 6),
+    weeklyReviewService.listRecent(user.id, 1),
     getInsightsData(),
-    journalService.listByDateRange({
-      userId: user.id,
-      startDate: daysAgoIsoDate(60),
-    }),
     nutritionService.listByDateRange({
       userId: user.id,
-      startDate: daysAgoIsoDate(7),
+      startDate: daysAgo(6),
+      endDate: today,
     }),
     strengthService.listByDateRange({
       userId: user.id,
-      startDate: daysAgoIsoDate(60),
+      startDate: daysAgo(90),
+      endDate: today,
     }),
     cardioService.listByDateRange({
       userId: user.id,
-      startDate: daysAgoIsoDate(56),
+      startDate: daysAgo(55),
+      endDate: today,
     }),
-    exerciseOverrideService.listActive({ userId: user.id }),
     trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
     trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
     supplementService.listActive({ userId: user.id }),
     supplementLogService.listByDateRange({
       userId: user.id,
-      startDate: addDaysIsoDate(today, -6),
+      startDate: daysAgo(6),
       endDate: today,
     }),
     // A year, so the latest VO2 max estimate is found even when it is old.
     dailyActivityService.listByDateRange({
       userId: user.id,
-      startDate: addDaysIsoDate(today, -365),
+      startDate: daysAgo(365),
       endDate: today,
     }),
   ]);
 
   const cardioThisWeek = settledOrNull(cardioThisWeekResult) ?? [];
-  const liftsCompleted = settledOrNull(liftsCompletedResult) ?? 0;
-  const recentRecovery = settledOrNull(recentRecoveryResult) ?? [];
+  const recovery = settledOrNull(recoveryResult) ?? [];
   const recentBody = settledOrNull(recentBodyResult) ?? [];
-  const recentReviews = settledOrNull(recentReviewsResult) ?? [];
+  const latestReview = (settledOrNull(recentReviewsResult) ?? [])[0] ?? null;
   const insightData = settledOrNull(insightDataResult);
-  const journalEntries = settledOrNull(journalEntriesResult) ?? [];
-  const nutritionLogs = settledOrNull(todayNutritionResult) ?? [];
+  const nutritionLogs = settledOrNull(nutritionResult) ?? [];
   const strengthSessions = settledOrNull(strengthSessionsResult) ?? [];
   const cardioLast8Weeks = settledOrNull(cardioLast8WeeksResult) ?? [];
-  const exerciseOverrides = settledOrNull(exerciseOverridesResult) ?? [];
   const habitItems = (settledOrNull(habitDefsResult) ?? []).filter(
     (s) => s.kind === "habit",
   );
@@ -171,9 +142,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     ...(settledOrNull(strengthTemplatesResult) ?? []),
     ...(settledOrNull(cardioTemplatesResult) ?? []),
   ];
-  const exerciseOverridesLookup = buildOverridesLookup(exerciseOverrides);
-  const journalStreak = computeJournalStreak(journalEntries, today);
-  const topInsights = insightData?.topInsights ?? [];
 
   const todayNutrition: TodayNutrition | null =
     nutritionLogs.length === 0
@@ -186,76 +154,51 @@ export async function getDashboardData(): Promise<DashboardData> {
           totalDays: nutritionLogs.length,
         };
 
-  const nutritionTargets: NutritionTargetsSnapshot = {
-    calories: profile?.dailyCaloriesTarget ?? null,
-    proteinGrams: profile?.dailyProteinGramsTarget ?? null,
-    fiberGrams: profile?.dailyFiberGramsTarget ?? null,
-  };
-
-  const cardioTotals = buildCardioWeeklyTotals(cardioThisWeek);
   const bodyMetricSummary = buildBodyMetricSummary(recentBody);
-  const weightTrend = buildBodyWeightTrend(recentBody);
   const latestBodyDate =
-    recentBody.length > 0
-      ? ([...recentBody].sort((a, b) =>
-          b.measuredOn.localeCompare(a.measuredOn),
-        )[0]?.measuredOn ?? null)
-      : null;
+    [...recentBody]
+      .filter((m) => m.weightLb != null)
+      .sort((a, b) => b.measuredOn.localeCompare(a.measuredOn))[0]
+      ?.measuredOn ?? null;
 
-  // Count imported strength activities (WeightTraining, CrossFit, etc.) toward lifts
-  const importedLifts = cardioThisWeek.filter(
-    (s) => s.plannedVsCompleted === "completed" && s.sessionKind === "other",
-  ).length;
-
-  const sortedRecovery = [...recentRecovery].sort((a, b) =>
-    b.checkinDate.localeCompare(a.checkinDate),
-  );
-  const latestRecovery = sortedRecovery[0] ?? null;
-  const latestReview = recentReviews[0] ?? null;
-  const coachingSuggestion = getRecoveryCoachingSuggestion(
-    sortedRecovery.slice(0, 7),
-  );
-  const muscleGroupVolume = computeMuscleGroupVolume(
+  const weekPlan = buildWeekPlan({
+    weekStart,
+    today,
+    templates: planTemplates,
     strengthSessions,
-    { startDate: daysAgoIsoDate(7), endDate: today },
-    exerciseOverridesLookup,
-  );
+    cardioSessions: cardioThisWeek,
+  });
+  const todayItems = weekPlan.days.find((d) => d.isToday)?.items ?? [];
+  const readiness = computeDailyReadiness(recovery, today);
 
   return {
-    trainingWeek: {
-      weekStart,
-      weekEnd,
-      liftsCompleted: liftsCompleted + importedLifts,
-      ridesCompleted: cardioThisWeek.filter(
-        (s) =>
-          s.plannedVsCompleted === "completed" && s.sessionKind !== "other",
-      ).length,
-      zone2Minutes: cardioTotals.zone2Minutes,
-      totalMinutes: cardioTotals.totalMinutes,
-    },
-    latestRecovery,
+    today,
+    readiness,
+    readinessHistory: buildReadinessHistory(recovery, today),
+    readinessCall: readinessCall(
+      readiness.status === "scored" ? readiness.level : null,
+      todayItems,
+    ),
+    todayItems,
+    zone2Minutes: buildCardioWeeklyTotals(cardioThisWeek).zone2Minutes,
+    weekPlan,
     latestWeightLb: bodyMetricSummary.latestWeightLb,
-    weightChangeLb: bodyMetricSummary.weightChangeLb,
-    latestWaistIn: bodyMetricSummary.latestWaistIn,
-    waistChangeIn: bodyMetricSummary.waistChangeIn,
     latestBodyFatPct: bodyMetricSummary.latestBodyFatPct,
     latestBodyDate,
-    weightTrend,
-    recentReviews,
+    weeklyWeight: buildWeeklyWeightTrend(recentBody, today),
+    proteinHit: todayNutrition
+      ? { days: todayNutrition.proteinHitDays, of: todayNutrition.totalDays }
+      : null,
     latestReview,
-    topInsights: topInsights.slice(0, 3),
-    coachingSuggestion,
-    journalStreak,
-    goalProgress: computeGoalProgress(
-      profile,
-      recentBody,
+    topInsights: (insightData?.topInsights ?? []).slice(0, 2),
+    trendNotes: buildTrendNotes({
+      today,
       strengthSessions,
-      cardioLast8Weeks,
-      { zonedNow },
-    ),
-    todayNutrition,
-    nutritionTargets,
-    muscleGroupVolume,
+      cardioSessions: cardioLast8Weeks,
+      bodyMetrics: recentBody,
+      recovery,
+      wakeTarget: NICK_TRAINING_PLAN.wakeTimeTarget ?? null,
+    }),
     habits: {
       items: habitItems,
       takenTodayIds: habitLogs
@@ -270,13 +213,5 @@ export async function getDashboardData(): Promise<DashboardData> {
       logDate: today,
     },
     activity,
-    weeklyWeight: buildWeeklyWeightTrend(recentBody, today),
-    weekPlan: buildWeekPlan({
-      weekStart,
-      today,
-      templates: planTemplates,
-      strengthSessions,
-      cardioSessions: cardioThisWeek,
-    }),
   };
 }

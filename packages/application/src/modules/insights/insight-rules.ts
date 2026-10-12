@@ -739,14 +739,17 @@ function evaluatePushPullImbalance(input: InsightEngineInput) {
   const pull = summary.byMovementPattern.find(
     (p) => p.movementPattern === "pull",
   );
-  const ratio = summary.pushPullVolumeRatio;
+  // Working sets, not tonnage: bodyweight pull-ups, chin-ups and band work
+  // log 0 lb, so a tonnage ratio calls every heavy bench week "push-heavy".
+  const pushSets = push?.workingSetCount ?? 0;
+  const pullSets = pull?.workingSetCount ?? 0;
 
-  // Require a meaningful combined sample so the ratio isn't noise from one or two sets.
-  const combinedVolume = (push?.totalVolume ?? 0) + (pull?.totalVolume ?? 0);
-  if (ratio == null || combinedVolume < 2000) {
+  // Require a meaningful sample so the ratio isn't noise from a few sets.
+  if (pushSets === 0 || pullSets === 0 || pushSets + pullSets < 12) {
     return null;
   }
 
+  const ratio = Math.round((pushSets / pullSets) * 100) / 100;
   if (ratio < 1.4 && ratio > 0.71) {
     return null;
   }
@@ -754,20 +757,19 @@ function evaluatePushPullImbalance(input: InsightEngineInput) {
   const pushHeavy = ratio >= 1.4;
   const higher = pushHeavy ? "Pressing" : "Pulling";
   const lower = pushHeavy ? "pulling" : "pressing";
-  const displayRatio = pushHeavy ? ratio : Math.round((1 / ratio) * 100) / 100;
 
   return makeInsight(
     rangeEnd,
     "push_pull_imbalance",
     "caution",
     `${higher} volume is outpacing ${lower}`,
-    `Over the last 14 days, ${higher.toLowerCase()} volume has been ${displayRatio}x ${lower} volume (push: ${push?.totalVolume ?? 0} lb, pull: ${pull?.totalVolume ?? 0} lb).`,
-    `Add an extra ${lower} exercise or set to your next couple of sessions to bring the ratio back toward even.`,
+    `Over the last 14 days you logged ${pushSets} pressing and ${pullSets} pulling working sets.`,
+    `Add an extra ${lower} exercise or set to your next couple of sessions to bring the count back toward even.`,
     {
       rangeStart,
       rangeEnd,
-      pushVolume: push?.totalVolume ?? 0,
-      pullVolume: pull?.totalVolume ?? 0,
+      pushSets,
+      pullSets,
       ratio,
     },
   );

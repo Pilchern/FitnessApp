@@ -11,7 +11,6 @@ type RecomputeState = { error?: string; targets?: NutritionTargets };
 
 type SettingsFormProps = {
   profile: UserProfile;
-  userEmail: string;
   action: (
     state: SettingsActionState,
     formData: FormData,
@@ -116,7 +115,6 @@ function RadioPill({
 
 export function SettingsForm({
   profile,
-  userEmail,
   action,
   recomputeNutritionTargetsAction,
 }: SettingsFormProps) {
@@ -183,13 +181,6 @@ export function SettingsForm({
                 {state.fieldErrors.displayName}
               </p>
             ) : null}
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Email address
-            <div className="flex h-11 items-center rounded-2xl border border-ink/10 bg-mist/50 px-4 text-sm text-ink/60">
-              {userEmail}
-            </div>
           </label>
         </div>
 
@@ -263,7 +254,7 @@ export function SettingsForm({
         <SectionHeader
           eyebrow="Preferences"
           title="Display & formatting"
-          description="Controls how dates, units, and times are shown across all modules."
+          description="Sets what counts as today and this week."
         />
 
         <div className="space-y-5">
@@ -287,26 +278,12 @@ export function SettingsForm({
           </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2 text-sm font-medium text-ink">
-              Units system
-              <div className="flex gap-2">
-                <RadioPill
-                  name="unitsSystem"
-                  value="imperial"
-                  currentValue={values.unitsSystem}
-                  label="Imperial (lb, in)"
-                  onChange={(value) => set("unitsSystem", value)}
-                />
-                <RadioPill
-                  name="unitsSystem"
-                  value="metric"
-                  currentValue={values.unitsSystem}
-                  label="Metric (kg, cm)"
-                  onChange={(value) => set("unitsSystem", value)}
-                />
-              </div>
-            </div>
-
+            {/* Units are not used for display yet; keep the stored value. */}
+            <input
+              type="hidden"
+              name="unitsSystem"
+              value={values.unitsSystem}
+            />
             <div className="grid gap-2 text-sm font-medium text-ink">
               Week starts on
               <div className="flex gap-2">
@@ -489,7 +466,7 @@ export function SettingsForm({
           </button>
           {recomputeState.targets ? (
             <p className="text-sm text-pine">
-              Targets updated — save below to keep them.
+              Estimate filled in. Save below to keep it.
             </p>
           ) : null}
           {recomputeState.error ? (

@@ -4,8 +4,15 @@ import { useActionState, useState } from "react";
 import type { IntegrationConnection } from "@fitness-app/domain";
 import { SummaryStatCard } from "@/components/shared/summary-stat-card";
 import { generateAppleHealthWebhookTokenAction } from "../actions";
-import { formatIntegrationDateTime } from "../helpers";
-import type { AppleHealthWebhookTokenActionState } from "../types";
+import {
+  APPLE_HEALTH_STALE_HOURS,
+  type AppleHealthStream,
+  type AppleHealthStreamStatus,
+} from "../helpers";
+import type {
+  AppleHealthWebhookTokenActionState,
+  IntegrationsPageData,
+} from "../types";
 
 type AppleHealthConnectionCardProps = {
   configured: boolean;
@@ -13,12 +20,34 @@ type AppleHealthConnectionCardProps = {
   hasWebhookToken: boolean;
   userId: string;
   appUrl: string;
-  lastReceived: {
-    daily: string | null;
-    sleep: string | null;
-    workouts: string | null;
-  };
+  /** Times are formatted on the server in the profile timezone. */
+  streams: Record<AppleHealthStream, AppleHealthStreamStatus>;
+  failure: IntegrationsPageData["appleHealthFailure"];
 };
+
+const STREAM_TILES: {
+  key: AppleHealthStream;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    key: "daily",
+    label: "Steps and activity",
+    hint: "Steps, resting HR, HRV, VO2 max.",
+  },
+  { key: "sleep", label: "Sleep", hint: "Shows on Recovery." },
+  {
+    key: "workouts",
+    label: "Rides",
+    hint: "Only rides are imported; walks and lifts are skipped.",
+  },
+];
+
+function staleHint(hours: number) {
+  return hours >= 48
+    ? `Nothing new in over ${hours / 24} days. Check the phone.`
+    : `Nothing new in over ${hours} hours. Check the phone.`;
+}
 
 const initialTokenState: AppleHealthWebhookTokenActionState = {};
 
@@ -35,25 +64,23 @@ function GenerateWebhookTokenForm({
   return (
     <div className="min-w-0 flex-1 space-y-2">
       <p>
-        <strong>Your webhook token</strong> — add this as the{" "}
+        <strong>Your webhook token</strong> goes in the{" "}
         <code className="rounded bg-ink/5 px-1 font-mono text-xs">
           Authorization: Bearer &lt;token&gt;
         </code>{" "}
-        header. This token is unique to your account — it&apos;s checked against
-        your{" "}
+        header. It only works with your{" "}
         <code className="rounded bg-ink/5 px-1 font-mono text-xs">
           X-User-Id
-        </code>{" "}
-        above, so someone else knowing your user id isn&apos;t enough to write
-        into your data.
+        </code>
+        .
       </p>
 
       {state.token ? (
         <div className="space-y-2">
           <CodeLine value={state.token} />
           <p className="text-xs font-semibold text-ember">
-            Copy this now — it won&apos;t be shown again. Paste it into your
-            Shortcut&apos;s Authorization header right away.
+            Copy this now. It won&apos;t be shown again. Paste it into both
+            Health Auto Export automations right away.
           </p>
         </div>
       ) : null}
@@ -78,9 +105,8 @@ function GenerateWebhookTokenForm({
 
       {hasWebhookToken && !state.token ? (
         <p className="text-xs text-ink/60">
-          A token has already been generated for your account. Regenerating
-          replaces it — you&apos;ll need to update your Shortcut with the new
-          value.
+          A token already exists. Regenerating replaces it, so both Health Auto
+          Export automations need the new value.
         </p>
       ) : null}
     </div>
@@ -119,9 +145,10 @@ export function AppleHealthConnectionCard({
   hasWebhookToken,
   userId,
   appUrl,
-  lastReceived,
+  streams,
+  failure,
 }: AppleHealthConnectionCardProps) {
-  const webhookUrl = `${appUrl}/api/integrations/apple-health/shortcut`;
+  const webhookUrl = `${appUrl}/api/integrations/apple-health/health-auto-export`;
   const lastSyncedAt = connection?.lastSyncedAt ?? null;
 
   return (
@@ -133,10 +160,9 @@ export function AppleHealthConnectionCard({
           </p>
           <h2 className="mt-3 font-display text-2xl text-ink">Apple Health</h2>
           <p className="mt-2 text-sm leading-6 text-ink/75">
-            One iPhone Shortcut, run automatically every evening, sends
-            today&apos;s steps, resting heart rate, HRV and VO2 max, last
-            night&apos;s sleep, and your Peloton rides (Peloton writes them to
-            Apple Health). Steps tick the steps habit on their own.
+            Health Auto Export on your iPhone posts steps, resting HR, HRV, VO2
+            max, sleep and Peloton rides every hour. Steps tick the steps habit
+            on their own.
           </p>
         </div>
 
@@ -161,33 +187,48 @@ export function AppleHealthConnectionCard({
 
       {configured ? (
         <>
+          {failure ? (
+            <div
+              role="alert"
+              className="mt-6 rounded-[1.25rem] border border-ember/20 bg-ember/10 px-4 py-3 text-sm leading-6 text-ember"
+            >
+              {failure.label} sync failed {failure.at}
+              {failure.message ? `: ${failure.message}` : "."}
+            </div>
+          ) : null}
+
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <SummaryStatCard
-              label="Steps and activity"
-              value={formatIntegrationDateTime(lastReceived.daily)}
-              hint="Last time steps, resting HR or VO2 arrived."
-              tone={lastReceived.daily ? "accent" : "default"}
-            />
-            <SummaryStatCard
-              label="Sleep and HRV"
-              value={formatIntegrationDateTime(lastReceived.sleep)}
-              hint="Shows on Recovery."
-              tone={lastReceived.sleep ? "accent" : "default"}
-            />
-            <SummaryStatCard
-              label="Rides"
-              value={formatIntegrationDateTime(lastReceived.workouts)}
-              hint="Only rides are imported; walks and lifts are skipped."
-              tone={lastReceived.workouts ? "accent" : "default"}
-            />
+            {STREAM_TILES.map((tile) => {
+              const stream = streams[tile.key];
+              return (
+                <SummaryStatCard
+                  key={tile.key}
+                  label={tile.label}
+                  value={stream.lastReceivedLabel}
+                  hint={
+                    stream.stale
+                      ? staleHint(APPLE_HEALTH_STALE_HOURS[tile.key])
+                      : tile.hint
+                  }
+                  tone={
+                    stream.stale
+                      ? "alert"
+                      : stream.received
+                        ? "accent"
+                        : "default"
+                  }
+                />
+              );
+            })}
           </div>
 
-          <div className="mt-6 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-pine">
-              Setup (once, about 15 minutes)
-            </p>
+          <details className="group mt-6">
+            <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.2em] text-pine [&::-webkit-details-marker]:hidden">
+              <span className="group-open:hidden">Show setup</span>
+              <span className="hidden group-open:inline">Hide setup</span>
+            </summary>
 
-            <ol className="space-y-4 text-sm leading-6 text-ink/80">
+            <ol className="mt-4 space-y-4 text-sm leading-6 text-ink/80">
               <Step n={1}>
                 <p>
                   <strong>Token.</strong> Generate it and save it to your
@@ -197,77 +238,44 @@ export function AppleHealthConnectionCard({
               </Step>
               <Step n={2}>
                 <p>
-                  <strong>Apps.</strong> In the Peloton app turn on Settings
-                  &gt; Apple Health &gt; allow writing workouts. Install the
-                  free <strong>Actions</strong> app (by Sindre Sorhus), open it
-                  once, then restart the phone so its actions show up in
-                  Shortcuts.
+                  <strong>Peloton.</strong> In the Peloton app turn on Settings
+                  &gt; Apple Health &gt; allow writing workouts.
                 </p>
               </Step>
               <Step n={3}>
                 <p>
-                  <strong>Shortcut &ldquo;Fitness sync&rdquo;</strong>, actions
-                  in this order:
+                  <strong>Health Auto Export</strong> (Premium) &gt; Automations
+                  &gt; REST API. Both automations below use this URL, format
+                  JSON, and two headers:{" "}
+                  <code>Authorization: Bearer &lt;token&gt;</code> and{" "}
+                  <code>X-User-Id</code>.
                 </p>
-                <ul className="list-disc space-y-1 pl-5">
-                  <li>
-                    Find Health Samples: <em>Steps</em>, Start Date is today,
-                    then Calculate Statistics: <em>Sum</em>.
-                  </li>
-                  <li>
-                    Find Health Samples: <em>Resting Heart Rate</em>, last 1
-                    day, sort latest first, limit 1.
-                  </li>
-                  <li>
-                    Find Health Samples: <em>Heart Rate Variability</em>, last 1
-                    day, then Calculate Statistics: <em>Average</em>.
-                  </li>
-                  <li>
-                    Find Health Samples: <em>VO2 Max</em>, last 30 days, latest
-                    first, limit 1.
-                  </li>
-                  <li>
-                    Find Health Samples: <em>Sleep Analysis</em>, last 1 day,
-                    value is Core, Deep or REM. Get Details: Duration, then
-                    Calculate Statistics: <em>Sum</em> (minutes).
-                  </li>
-                  <li>
-                    Actions app <em>Find Workout</em>, last 2 days. Repeat with
-                    each: a Dictionary with <code>type</code>,{" "}
-                    <code>start</code> and <code>end</code> (Format Date &gt;
-                    ISO 8601), <code>duration_minutes</code>,{" "}
-                    <code>avg_heart_rate</code>; add it to a list.
-                  </li>
-                  <li>
-                    Get Contents of URL (below), Method <em>POST</em>, headers{" "}
-                    <code>Authorization: Bearer &lt;token&gt;</code> and{" "}
-                    <code>X-User-Id</code>, Request Body <em>JSON</em> with{" "}
-                    <code>steps</code>, <code>resting_heart_rate</code>,{" "}
-                    <code>hrv</code>, <code>vo2_max</code>,{" "}
-                    <code>sleep_minutes</code> (Number) and{" "}
-                    <code>workouts</code> (Array). Then Show Result.
-                  </li>
-                </ul>
                 <CodeLine value={webhookUrl} />
                 <p>Your X-User-Id:</p>
                 <CodeLine value={userId} />
               </Step>
               <Step n={4}>
                 <p>
-                  <strong>Test.</strong> Tap Run. The result lists what was
-                  saved and any warnings; the cards above update.
+                  <strong>&ldquo;Health Metrics&rdquo;</strong>: Step Count,
+                  Resting Heart Rate, Heart Rate Variability, VO2 Max, Apple
+                  Exercise Time, Active Energy, Sleep Analysis. Aggregate by
+                  day, Since Last Sync, every hour.
                 </p>
               </Step>
               <Step n={5}>
                 <p>
-                  <strong>Automate.</strong> Automation &gt; Time of Day &gt;
-                  9:00 PM daily &gt; Run Immediately, notifications off. Health
-                  data is unreadable while the phone has been locked a while, so
-                  pick a time it is usually in hand.
+                  <strong>&ldquo;Workouts&rdquo;</strong>: Export Version 2,
+                  workout metrics and route off, Since Last Sync, every hour.
+                </p>
+              </Step>
+              <Step n={6}>
+                <p>
+                  <strong>Test.</strong> Run each automation once by hand. The
+                  cards above update.
                 </p>
               </Step>
             </ol>
-          </div>
+          </details>
         </>
       ) : (
         <div className="mt-4 rounded-[1.25rem] border border-ink/10 bg-sand/60 px-4 py-3 text-sm leading-6 text-ink/75">

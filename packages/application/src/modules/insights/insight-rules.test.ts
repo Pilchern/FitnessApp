@@ -1227,90 +1227,50 @@ describe("insight rules", () => {
   // ── Rule: push_pull_imbalance ────────────────────────────────────────────
 
   describe("push_pull_imbalance", () => {
-    it("fires when press volume heavily outpaces pull volume over 14 days", () => {
-      const insights = buildInsights(
-        emptyInput({
-          strengthSessions: [
-            makeStrengthSession("2026-04-01", [
-              makeStrengthSet({
-                exerciseName: "Barbell Bench Press",
-                weight: 150,
-                reps: 10,
-                setNumber: 1,
-              }),
-              makeStrengthSet({
-                exerciseName: "Barbell Bench Press",
-                weight: 150,
-                reps: 10,
-                setNumber: 2,
-              }),
-            ]),
-            makeStrengthSession("2026-04-02", [
-              makeStrengthSet({
-                exerciseName: "Barbell Row",
-                weight: 50,
-                reps: 10,
-                setNumber: 1,
-              }),
-            ]),
-          ],
-          now: TEST_NOW,
-        }),
+    function sets(
+      sessionDate: string,
+      exerciseName: string,
+      count: number,
+      weight: number,
+    ) {
+      return makeStrengthSession(
+        sessionDate,
+        Array.from({ length: count }, (_, i) =>
+          makeStrengthSet({ exerciseName, weight, reps: 10, setNumber: i + 1 }),
+        ),
       );
-      const insight = insights.find(
-        (i) => i.insightType === "push_pull_imbalance",
-      );
-      expect(insight).toBeDefined();
+    }
+    const imbalance = (sessions: ReturnType<typeof sets>[]) =>
+      buildInsights(
+        emptyInput({ strengthSessions: sessions, now: TEST_NOW }),
+      ).find((i) => i.insightType === "push_pull_imbalance");
+
+    it("fires when pressing sets heavily outnumber pulling sets over 14 days", () => {
+      const insight = imbalance([
+        sets("2026-04-01", "Barbell Bench Press", 12, 150),
+        sets("2026-04-02", "Barbell Row", 4, 135),
+      ]);
       expect(insight?.title).toMatch(/pressing/i);
+      expect(insight?.explanation).toBe(
+        "Over the last 14 days you logged 12 pressing and 4 pulling working sets.",
+      );
     });
 
-    it("does not fire when combined volume is too small to be meaningful", () => {
-      const insights = buildInsights(
-        emptyInput({
-          strengthSessions: [
-            makeStrengthSession("2026-04-01", [
-              makeStrengthSet({
-                exerciseName: "Barbell Bench Press",
-                weight: 50,
-                reps: 5,
-                setNumber: 1,
-              }),
-            ]),
-          ],
-          now: TEST_NOW,
-        }),
-      );
+    it("counts bodyweight pull-ups, which tonnage treats as zero", () => {
       expect(
-        insights.find((i) => i.insightType === "push_pull_imbalance"),
+        imbalance([
+          sets("2026-04-01", "Barbell Bench Press", 8, 165),
+          sets("2026-04-02", "Pull-Up", 8, 0),
+        ]),
       ).toBeUndefined();
     });
 
-    it("does not fire when push and pull volume are roughly balanced", () => {
-      const insights = buildInsights(
-        emptyInput({
-          strengthSessions: [
-            makeStrengthSession("2026-04-01", [
-              makeStrengthSet({
-                exerciseName: "Barbell Bench Press",
-                weight: 150,
-                reps: 10,
-                setNumber: 1,
-              }),
-            ]),
-            makeStrengthSession("2026-04-02", [
-              makeStrengthSet({
-                exerciseName: "Barbell Row",
-                weight: 145,
-                reps: 10,
-                setNumber: 1,
-              }),
-            ]),
-          ],
-          now: TEST_NOW,
-        }),
-      );
+    it("does not fire on a small sample", () => {
       expect(
-        insights.find((i) => i.insightType === "push_pull_imbalance"),
+        imbalance([
+          sets("2026-04-01", "Barbell Bench Press", 6, 150),
+          sets("2026-04-02", "Barbell Row", 2, 135),
+        ]),
       ).toBeUndefined();
     });
   });

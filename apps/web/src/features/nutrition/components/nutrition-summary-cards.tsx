@@ -15,7 +15,7 @@ type AdherenceGoalCardProps = {
   totalDays: number;
   /**
    * The user's daily target value (in grams, kcal, etc.) used as a label.
-   * When null, no progress bar is shown and a "Set a goal" prompt is shown.
+   * When null, only the hit rate is shown.
    */
   targetValue: number | null;
   /** Unit label displayed after the target value, e.g. "g" or "kcal". */
@@ -65,16 +65,7 @@ function AdherenceGoalCard({
           </div>
         </>
       ) : (
-        <div className="mt-2 text-sm opacity-60">
-          {pct}% hit rate
-          <span className="mx-1.5 opacity-50">·</span>
-          <a
-            href="/settings"
-            className="text-xs text-ink/50 underline decoration-ink/20 underline-offset-2 hover:text-pine"
-          >
-            Set a goal
-          </a>
-        </div>
+        <div className="mt-2 text-sm opacity-60">{pct}% hit rate</div>
       )}
     </div>
   );
@@ -84,6 +75,20 @@ export function NutritionSummaryCards({
   summary,
   targets,
 }: NutritionSummaryCardsProps) {
+  if (summary.totalDays === 0) {
+    return (
+      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
+          Last 7 logs
+        </p>
+        <h2 className="mt-3 font-display text-2xl text-ink">No logs yet</h2>
+        <p className="mt-2 text-sm text-ink/70">
+          The snapshot fills in once you log a day below.
+        </p>
+      </section>
+    );
+  }
+
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
       <div className="flex items-start justify-between gap-4">

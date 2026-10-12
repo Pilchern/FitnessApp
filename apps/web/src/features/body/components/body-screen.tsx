@@ -4,31 +4,41 @@ import { BodyMetricList } from "./body-metric-list";
 import { BodyQuickForm } from "./body-quick-form";
 import { BodySummaryCards } from "./body-summary-cards";
 import { BodyTrendSection } from "./body-trend-section";
+import { PageHeader } from "@/components/shared/page-header";
 
 type BodyScreenProps = {
   editMetricId?: string;
   deleted?: boolean;
+  error?: string;
 };
 
-export async function BodyScreen({ editMetricId, deleted }: BodyScreenProps) {
+export async function BodyScreen({
+  editMetricId,
+  deleted,
+  error,
+}: BodyScreenProps) {
   const data = await getBodyPageData(editMetricId);
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          Measurements
-        </p>
-        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
-          Body
-        </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          Track your weight and measurements over time. Log the essentials
-          quickly — body fat and muscle mass are optional.
-        </p>
-      </section>
+    <div className="space-y-4 lg:space-y-6">
+      <PageHeader
+        title="Body"
+        subtitle="Weight and body fat sync from Withings. Log tape measurements here."
+      />
 
-      <BodySummaryCards summary={data.summary} />
+      <BodySummaryCards
+        summary={data.summary}
+        weeklyWeight={data.weeklyWeight}
+      />
+
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember"
+        >
+          {error}
+        </div>
+      ) : null}
 
       <BodyQuickForm
         mode={data.editingMetric ? "edit" : "create"}

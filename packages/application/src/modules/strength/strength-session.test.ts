@@ -363,8 +363,7 @@ describe("strength progression helpers", () => {
     expect(detectRepeatedStall(topSets)).toEqual({
       stalled: true,
       stagnantSessions: 3,
-      explanation:
-        "The last 3 top sets have not improved meaningfully, which is a simple stall signal.",
+      explanation: "Top set has not improved meaningfully in 3 sessions.",
     });
 
     const summaries = buildStrengthProgressionSummaries(sessions);

@@ -113,7 +113,14 @@ export function NutritionLogList({ logs }: NutritionLogListProps) {
                   >
                     Edit
                   </Link>
-                  <form action={deleteNutritionLogAction}>
+                  <form
+                    action={deleteNutritionLogAction}
+                    onSubmit={(event) => {
+                      if (!window.confirm("Delete this log?")) {
+                        event.preventDefault();
+                      }
+                    }}
+                  >
                     <input type="hidden" name="id" value={log.id} />
                     <button
                       type="submit"

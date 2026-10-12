@@ -1,3 +1,4 @@
+import type { WeeklyWeightTrend } from "@fitness-app/application";
 import type { BodyMetric } from "@fitness-app/domain";
 import type { BodyFormValues } from "./types";
 
@@ -64,6 +65,21 @@ export function formatChange(value: number | null, unit: string) {
   const prefix = value > 0 ? "+" : "";
   const arrow = value > 0 ? " ↑" : value < 0 ? " ↓" : "";
   return `${prefix}${value.toFixed(1)} ${unit}${arrow} vs first logged`;
+}
+
+/** Same basis as the dashboard: 7-day average and its change vs last week. */
+export function formatWeeklyWeightHint(trend: WeeklyWeightTrend) {
+  if (trend.sevenDayAvgLb == null) {
+    return "No weigh-ins this week";
+  }
+
+  const avg = `7-day avg ${trend.sevenDayAvgLb.toFixed(1)} lb`;
+  if (trend.weekOverWeekLb == null) {
+    return avg;
+  }
+
+  const prefix = trend.weekOverWeekLb > 0 ? "+" : "";
+  return `${avg}, ${prefix}${trend.weekOverWeekLb.toFixed(1)} vs last week`;
 }
 
 export function formatSourceLabel(

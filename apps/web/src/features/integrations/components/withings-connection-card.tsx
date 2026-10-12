@@ -7,23 +7,30 @@ import {
   formatIntegrationStatus,
   getIntegrationStatusGuidance,
   integrationStatusTone,
+  isFailureUnresolved,
 } from "../helpers";
 import { disconnectWithingsAction, syncWithingsAction } from "../actions";
 
 type WithingsConnectionCardProps = {
   configured: boolean;
   connection: IntegrationConnection | null;
+  timeZone: string;
 };
 
 export function WithingsConnectionCard({
   configured,
   connection,
+  timeZone,
 }: WithingsConnectionCardProps) {
   const isConnected =
     connection &&
     connection.status !== "disconnected" &&
     connection.deletedAt == null;
   const guidance = getIntegrationStatusGuidance(connection);
+  const failureUnresolved = isFailureUnresolved(
+    connection?.lastFailedAt,
+    connection?.lastSyncedAt,
+  );
 
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
@@ -96,15 +103,27 @@ export function WithingsConnectionCard({
         />
         <SummaryStatCard
           label="Last synced"
-          value={formatIntegrationDateTime(connection?.lastSyncedAt ?? null)}
+          value={formatIntegrationDateTime(
+            connection?.lastSyncedAt ?? null,
+            timeZone,
+          )}
           hint="Most recent successful measurement sync."
           tone={connection?.lastSyncedAt ? "accent" : "default"}
         />
         <SummaryStatCard
           label="Last error"
-          value={formatIntegrationDateTime(connection?.lastFailedAt ?? null)}
-          hint={connection?.lastFailureMessage ?? "No recent errors."}
-          tone={connection?.lastFailedAt ? "alert" : "default"}
+          value={formatIntegrationDateTime(
+            connection?.lastFailedAt ?? null,
+            timeZone,
+          )}
+          hint={
+            !connection?.lastFailedAt
+              ? "No recent errors."
+              : failureUnresolved
+                ? (connection.lastFailureMessage ?? "Sync failed.")
+                : "Synced fine since."
+          }
+          tone={failureUnresolved ? "alert" : "default"}
         />
       </div>
 

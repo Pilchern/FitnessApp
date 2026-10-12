@@ -150,33 +150,50 @@ function toStrengthSetInsert(
   };
 }
 
+const SESSION_ID_CHUNK_SIZE = 100;
+const SET_PAGE_SIZE = 1000;
+
 export class SupabaseStrengthSessionRepository implements StrengthSessionRepository {
   constructor(private readonly client: AppSupabaseClient) {}
 
   private async loadSetsForSessions(userId: string, sessionIds: string[]) {
-    if (sessionIds.length === 0) {
-      return new Map<string, StrengthExerciseSet[]>();
-    }
-
-    const response = await this.client
-      .from("strength_exercise_sets")
-      .select("*")
-      .eq("user_id", userId)
-      .in("strength_session_id", sessionIds)
-      .is("deleted_at", null)
-      .order("exercise_order", { ascending: true })
-      .order("set_order", { ascending: true });
-
-    throwOnError(response.error, "List strength sets");
-
-    const rows = strengthSetRowSchema.array().parse(response.data ?? []);
     const setsBySession = new Map<string, StrengthExerciseSet[]>();
 
-    rows.forEach((row) => {
-      const existing = setsBySession.get(row.strength_session_id) ?? [];
-      existing.push(mapStrengthSetRow(row));
-      setsBySession.set(row.strength_session_id, existing);
-    });
+    // PostgREST caps a response at 1000 rows and long `in` lists blow the URL
+    // length, so chunk the ids and page each chunk until a short page comes
+    // back. The order is total, so pages never skip or repeat a row.
+    for (
+      let start = 0;
+      start < sessionIds.length;
+      start += SESSION_ID_CHUNK_SIZE
+    ) {
+      const chunk = sessionIds.slice(start, start + SESSION_ID_CHUNK_SIZE);
+
+      for (let offset = 0; ; offset += SET_PAGE_SIZE) {
+        const response = await this.client
+          .from("strength_exercise_sets")
+          .select("*")
+          .eq("user_id", userId)
+          .in("strength_session_id", chunk)
+          .is("deleted_at", null)
+          .order("strength_session_id", { ascending: true })
+          .order("exercise_order", { ascending: true })
+          .order("set_order", { ascending: true })
+          .order("id", { ascending: true })
+          .range(offset, offset + SET_PAGE_SIZE - 1);
+
+        throwOnError(response.error, "List strength sets");
+
+        const rows = strengthSetRowSchema.array().parse(response.data ?? []);
+        rows.forEach((row) => {
+          const existing = setsBySession.get(row.strength_session_id) ?? [];
+          existing.push(mapStrengthSetRow(row));
+          setsBySession.set(row.strength_session_id, existing);
+        });
+
+        if (rows.length < SET_PAGE_SIZE) break;
+      }
+    }
 
     return setsBySession;
   }
@@ -294,6 +311,7 @@ export class SupabaseStrengthSessionRepository implements StrengthSessionReposit
       .eq("user_id", query.userId)
       .is("deleted_at", null)
       .order("session_date", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(query.limit ?? DEFAULT_DATE_RANGE_QUERY_LIMIT);
 
     if (query.startDate) {

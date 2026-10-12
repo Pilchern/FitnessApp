@@ -19,6 +19,10 @@ Seeded with a pre-injury weekly plan, written by `profile-bootstrap.ts`, read by
 
 `CardioSyncOrchestrator` and the `cardio` retry branch were deleted 2026-10-12 (session 5). Left: the `/journal` page, actions and `JournalEntryService` wiring, out of the nav since 2026-10-12. Kept because the page is the only way to read the old entries in the app (the data export also has them) and the dashboard still computes a journal streak; delete only when the owner says the entries can go dark. Keep the `strava`/`peloton` provider values: historical rows and cross-provider dedup use them.
 
+### TD-043 — Strength set saves are not atomic (low)
+
+`SupabaseStrengthSessionRepository.update` soft-deletes a session's sets and then inserts the new ones; create inserts the session and then its sets. If the second statement fails, the session is left with no sets (update) or an empty row that a retry duplicates (create). Fix with one Postgres function per write (needs a migration and the owner's approval to apply live). Low today: one user, saves are rare and the logger keeps a local draft until the server confirms.
+
 ### TD-041 — Two sources for the weekly Zone 2 target (closed 2026-10-12)
 
 Closed: the insight rules read `zone2TargetMinutes`, `liftsScheduled` and `cardioScheduled` from the weekly review summary (template-derived), with `NICK_TRAINING_PLAN` as the no-review fallback. The insights cron runs an hour after the review auto-finalize so the summary exists.

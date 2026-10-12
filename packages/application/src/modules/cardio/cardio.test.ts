@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildCardioAdherenceSummary,
   buildCardioWeeklyTotals,
   createCardioSessionSchema,
   updateCardioSessionSchema,
 } from "../../index";
-import type { CardioSession, TrainingTemplate } from "@fitness-app/domain";
+import type { CardioSession } from "@fitness-app/domain";
 
 const userId = "11111111-1111-4111-8111-111111111111";
 
@@ -147,39 +146,6 @@ describe("cardio summaries", () => {
     },
   ];
 
-  const templates: TrainingTemplate[] = [
-    {
-      id: "template-1",
-      userId,
-      name: "Tuesday Zone 2",
-      templateType: "cardio",
-      isArchived: false,
-      definition: {
-        sessionKind: "zone2",
-        targetDurationMinutes: 50,
-      },
-      scheduledDayOfWeek: null,
-      createdAt: "2026-03-20T00:00:00.000Z",
-      updatedAt: "2026-03-20T00:00:00.000Z",
-      deletedAt: null,
-    },
-    {
-      id: "template-2",
-      userId,
-      name: "Thursday VO2",
-      templateType: "cardio",
-      isArchived: false,
-      definition: {
-        sessionKind: "vo2",
-        targetDurationMinutes: 35,
-      },
-      scheduledDayOfWeek: null,
-      createdAt: "2026-03-20T00:00:00.000Z",
-      updatedAt: "2026-03-20T00:00:00.000Z",
-      deletedAt: null,
-    },
-  ];
-
   it("computes weekly totals from completed and partial sessions", () => {
     expect(buildCardioWeeklyTotals(sessions)).toEqual({
       completedSessions: 2,
@@ -188,21 +154,5 @@ describe("cardio summaries", () => {
       vo2Sessions: 1,
       averageHeartRate: 144,
     });
-  });
-
-  it("builds current-week adherence against expected template days", () => {
-    const summary = buildCardioAdherenceSummary(
-      sessions,
-      templates,
-      new Date("2026-03-27T12:00:00.000Z"),
-    );
-
-    expect(summary.completedCount).toBe(2);
-    expect(summary.expectedCount).toBe(2);
-    expect(summary.items.map((item) => item.status)).toEqual([
-      "completed",
-      "completed",
-      "pending",
-    ]);
   });
 });

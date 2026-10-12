@@ -7,7 +7,8 @@ import { StrengthTemplateForm } from "./strength-template-form";
 
 type StrengthTemplateSectionProps = {
   templates: TrainingTemplate[];
-  onLoad: (template: TrainingTemplate) => void;
+  /** Omitted while editing a past session, which hides the Load buttons. */
+  onLoad?: (template: TrainingTemplate) => void;
   knownExercises?: string[];
 };
 
@@ -19,38 +20,35 @@ export function StrengthTemplateSection({
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            Workout templates
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">
-            Your templates
-          </h2>
-          <p className="mt-2 text-sm leading-6 text-ink/75">
-            Define your program once and load it when starting a session.
-          </p>
-        </div>
+    <details className="group rounded-[1.75rem] border border-ink/10 bg-white/80 shadow-panel">
+      <summary className="flex h-14 cursor-pointer list-none items-center justify-between px-6 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+        <span>
+          Templates
+          <span className="ml-2 font-normal text-ink/50">
+            {templates.length}
+          </span>
+        </span>
+        <span className="text-ink/50 group-open:hidden">+</span>
+        <span className="hidden text-ink/50 group-open:inline">−</span>
+      </summary>
+
+      <div className="border-t border-ink/10 p-6 pt-5">
+        <StrengthTemplateList templates={templates} onLoad={onLoad} />
 
         <button
           type="button"
           onClick={() => setShowCreateForm((v) => !v)}
-          className="inline-flex h-11 items-center justify-center rounded-full border border-ink/15 px-5 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
+          className="mt-4 inline-flex h-11 items-center justify-center rounded-full border border-ink/15 px-5 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
         >
-          {showCreateForm ? "Hide form" : "Create template"}
+          {showCreateForm ? "Hide form" : "New template"}
         </button>
-      </div>
 
-      <div className="mt-5">
-        <StrengthTemplateList templates={templates} onLoad={onLoad} />
+        {showCreateForm ? (
+          <div className="mt-6">
+            <StrengthTemplateForm knownExercises={knownExercises} />
+          </div>
+        ) : null}
       </div>
-
-      {showCreateForm ? (
-        <div className="mt-6">
-          <StrengthTemplateForm knownExercises={knownExercises} />
-        </div>
-      ) : null}
-    </section>
+    </details>
   );
 }

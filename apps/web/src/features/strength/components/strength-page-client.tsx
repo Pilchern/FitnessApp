@@ -11,7 +11,7 @@ import {
 } from "../actions";
 import type { StrengthActionState } from "../types";
 import type { LastExercisePerformance } from "../helpers";
-import { StrengthQuickForm } from "./strength-quick-form";
+import { StrengthQuickForm, type PlanRequest } from "./strength-quick-form";
 import { StrengthTemplateSection } from "./strength-template-section";
 import { TodaysPlanCallout } from "./todays-plan-callout";
 
@@ -38,18 +38,16 @@ export function StrengthPageClient({
   lastByExercise,
   latestCreatedAt,
 }: StrengthPageClientProps) {
-  const [loadedTemplate, setLoadedTemplate] =
-    useState<StrengthTrainingTemplateDefinition | null>(null);
-  const [loadedTemplateName, setLoadedTemplateName] = useState<string | null>(
-    null,
-  );
+  const [planRequest, setPlanRequest] = useState<PlanRequest | null>(null);
 
   function handleLoadTemplate(template: TrainingTemplate) {
     if (isStrengthTemplateDefinition(template.definition)) {
-      setLoadedTemplateName(template.name);
-      setLoadedTemplate(
-        template.definition as StrengthTrainingTemplateDefinition,
-      );
+      // A fresh id per tap, so loading the same plan twice still reloads it.
+      setPlanRequest((current) => ({
+        id: (current?.id ?? 0) + 1,
+        name: template.name,
+        definition: template.definition as StrengthTrainingTemplateDefinition,
+      }));
     }
   }
 
@@ -58,33 +56,35 @@ export function StrengthPageClient({
     formData: FormData,
   ) => Promise<StrengthActionState> =
     mode === "edit" ? updateStrengthSessionAction : createStrengthSessionAction;
+  // Editing a past session must never pull a plan over it.
+  const onLoad = mode === "create" ? handleLoadTemplate : undefined;
 
   return (
     <>
-      {todaysScheduledTemplate ? (
-        <TodaysPlanCallout
-          template={todaysScheduledTemplate}
-          onLoad={handleLoadTemplate}
-        />
+      {/* Gone once a plan is loaded, so the workout starts at the top. */}
+      {todaysScheduledTemplate && onLoad && planRequest == null ? (
+        <TodaysPlanCallout template={todaysScheduledTemplate} onLoad={onLoad} />
       ) : null}
 
-      <StrengthTemplateSection
-        templates={strengthTemplates}
-        onLoad={handleLoadTemplate}
-        knownExercises={knownExercises}
-      />
-
+      {/* Keyed by mode so Edit -> Cancel remounts the logger and restores the
+          in-progress workout draft instead of carrying edit state across. */}
       <StrengthQuickForm
+        key={mode === "edit" ? `edit-${session?.id ?? ""}` : "create"}
         mode={mode}
         session={session}
         action={action}
         formError={formError}
         knownExercises={knownExercises}
         lastSession={lastSession}
-        loadedTemplate={loadedTemplate}
-        loadedTemplateName={loadedTemplateName}
+        planRequest={mode === "create" ? planRequest : null}
         lastByExercise={lastByExercise}
         latestCreatedAt={latestCreatedAt}
+      />
+
+      <StrengthTemplateSection
+        templates={strengthTemplates}
+        onLoad={onLoad}
+        knownExercises={knownExercises}
       />
     </>
   );

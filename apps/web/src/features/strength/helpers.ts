@@ -71,6 +71,18 @@ export function toStrengthFormValues(
   };
 }
 
+/** Calendar-date arithmetic on YYYY-MM-DD strings, immune to DST and timezone. */
+export function shiftIsoDate(isoDate: string, days: number) {
+  const date = new Date(`${isoDate}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** "60s"; seconds match how timed sets are logged. */
+export function formatDuration(seconds: number) {
+  return `${seconds}s`;
+}
+
 export function formatStrengthDate(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -79,20 +91,31 @@ export function formatStrengthDate(value: string) {
   }).format(new Date(`${value}T12:00:00`));
 }
 
-export function formatTopSet(weight: number | null, reps: number | null) {
-  if (weight == null && reps == null) {
-    return "--";
+export function formatTopSet(
+  weight: number | null,
+  reps: number | null,
+  durationSeconds: number | null = null,
+) {
+  const load = weight != null && weight > 0 ? weight : null;
+
+  if (reps == null && durationSeconds != null) {
+    const time = formatDuration(durationSeconds);
+    return load != null ? `${load} x ${time}` : time;
   }
 
-  if (weight != null && reps != null) {
-    return `${weight} x ${reps}`;
+  if (load != null && reps != null) {
+    return `${load} x ${reps}`;
   }
 
-  if (weight != null) {
-    return `${weight} lb`;
+  if (load != null) {
+    return `${load} lb`;
   }
 
-  return `${reps} reps`;
+  if (reps != null) {
+    return `${reps} reps`;
+  }
+
+  return "--";
 }
 
 export type LastExercisePerformance = {
@@ -174,18 +197,35 @@ export function formatLastPerformance(last: LastExercisePerformance) {
   return parts.filter(Boolean).join(", ");
 }
 
+/** Rep gap beyond which last time's load is not a fair start for the plan. */
+const REP_MISMATCH_LIMIT = 3;
+
 /**
  * Starting weight for set `index` of a loaded plan: what was lifted in the
  * same set last time, else the last set's weight, else the template target.
+ * When the plan's reps are far from last time's (lateral raise 4x18 on Tuesday
+ * vs 3x15 heavier on Saturday), last time's load does not carry over, so the
+ * template target wins.
  */
 export function startingWeight(
   last: LastExercisePerformance | undefined,
   index: number,
   templateTarget: number | null,
+  templateReps: number | null = null,
 ): string {
-  const fromLast = last
-    ? (last.sets[index]?.weight ?? last.sets[last.sets.length - 1]?.weight)
-    : null;
+  const lastSet = last
+    ? (last.sets[index] ?? last.sets[last.sets.length - 1])
+    : undefined;
+  const repsMismatch =
+    templateTarget != null &&
+    templateReps != null &&
+    lastSet?.reps != null &&
+    Math.abs(lastSet.reps - templateReps) > REP_MISMATCH_LIMIT;
+  const fromLast = repsMismatch
+    ? null
+    : last
+      ? (last.sets[index]?.weight ?? last.sets[last.sets.length - 1]?.weight)
+      : null;
   const value = fromLast ?? templateTarget;
   return value != null ? String(value) : "";
 }

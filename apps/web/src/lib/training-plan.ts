@@ -17,6 +17,8 @@ export const NICK_TRAINING_PLAN: TrainingPlan = {
   vo2Required: false,
   cardioDaysLabel: "Monday, Wednesday, and Friday",
   excludedMuscleGroups: ["quads", "hamstrings", "glutes", "calves"],
+  // Plan doc section 7: same wake time daily, 6:30 AM give or take 30 min.
+  wakeTimeTarget: "06:30",
 };
 
 /** ACL reconstruction date (plan doc section 1: 2026-10-09 is post-op day 53). */

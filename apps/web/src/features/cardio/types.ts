@@ -1,7 +1,4 @@
-import type {
-  CardioAdherenceSummary,
-  CardioWeeklyTotals,
-} from "@fitness-app/application";
+import type { CardioWeeklyTotals } from "@fitness-app/application";
 import type {
   CardioSession,
   CardioSessionCompletion,
@@ -20,7 +17,8 @@ export type CardioPageData = {
   templates: CardioTemplatePreset[];
   sessions: CardioSession[];
   weeklyTotals: CardioWeeklyTotals;
-  adherence: CardioAdherenceSummary;
+  /** Sum of targetZone2Minutes over scheduled cardio templates; null if unset. */
+  zone2TargetMinutes: number | null;
   editingSession: CardioSession | null;
   formError?: string;
 };

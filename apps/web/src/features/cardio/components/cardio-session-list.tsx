@@ -70,10 +70,10 @@ export function CardioSessionList({
         <div className="max-w-sm mx-auto text-center">
           <div className="text-4xl">🚴</div>
           <h2 className="mt-4 font-display text-xl text-ink">
-            No cardio logged yet
+            No workouts yet
           </h2>
           <p className="mt-2 text-sm text-ink/60">
-            Log your first ride, run, or workout using the form above.
+            Rides sync from Apple Health each hour. They will show up here.
           </p>
         </div>
       </section>
@@ -162,7 +162,14 @@ export function CardioSessionList({
                   >
                     Edit
                   </Link>
-                  <form action={deleteCardioSessionAction}>
+                  <form
+                    action={deleteCardioSessionAction}
+                    onSubmit={(event) => {
+                      if (!window.confirm("Delete this workout?")) {
+                        event.preventDefault();
+                      }
+                    }}
+                  >
                     <input type="hidden" name="id" value={session.id} />
                     <button
                       type="submit"

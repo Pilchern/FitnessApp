@@ -30,6 +30,13 @@ import type {
   StrengthSetFormValue,
 } from "../types";
 
+/** A plan the user asked to load; a new `id` per tap. */
+export type PlanRequest = {
+  id: number;
+  name: string;
+  definition: StrengthTrainingTemplateDefinition;
+};
+
 type StrengthQuickFormProps = {
   mode: "create" | "edit";
   session: StrengthSession | null;
@@ -40,8 +47,7 @@ type StrengthQuickFormProps = {
   formError?: string;
   knownExercises: string[];
   lastSession: StrengthSession | null;
-  loadedTemplate?: StrengthTrainingTemplateDefinition | null;
-  loadedTemplateName?: string | null;
+  planRequest?: PlanRequest | null;
   lastByExercise?: Record<string, LastExercisePerformance>;
   latestCreatedAt?: string | null;
 };
@@ -165,8 +171,7 @@ export function StrengthQuickForm({
   formError,
   knownExercises,
   lastSession,
-  loadedTemplate,
-  loadedTemplateName,
+  planRequest = null,
   lastByExercise = {},
   latestCreatedAt = null,
 }: StrengthQuickFormProps) {
@@ -189,6 +194,9 @@ export function StrengthQuickForm({
   const vibrated = useRef(false);
   const draftChecked = useRef(false);
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
+  // A plan requested before this form mounted (e.g. before Edit -> Cancel)
+  // was already handled; only later requests load.
+  const handledPlanId = useRef(planRequest?.id ?? null);
 
   useEffect(() => {
     const initial = toStrengthFormValues(session);
@@ -200,21 +208,33 @@ export function StrengthQuickForm({
     setShowDetails(mode === "edit");
   }, [mode, session]);
 
+  /** Ticked sets or a restored draft are real work; ask before replacing them. */
+  function confirmReplace(label: string) {
+    const hasWork = values.sets.some((set) => set.done) || restoredAt != null;
+    return (
+      !hasWork || window.confirm(`Replace the current workout with ${label}?`)
+    );
+  }
+
   useEffect(() => {
-    if (!loadedTemplate) return;
+    if (!planRequest || planRequest.id === handledPlanId.current) return;
+    handledPlanId.current = planRequest.id;
+    if (mode !== "create" || !confirmReplace(planRequest.name)) return;
+
+    const plan = planRequest.definition;
     setRestoredAt(null);
-    setPlanNotes(loadedTemplate.notes ?? null);
+    setPlanNotes(plan.notes ?? null);
     setExerciseNotes(
       Object.fromEntries(
-        loadedTemplate.exercises
+        plan.exercises
           .filter((ex) => ex.notes)
           .map((ex) => [exerciseKey(ex.exerciseName), ex.notes as string]),
       ),
     );
     setValues((current) => ({
       ...current,
-      sessionName: loadedTemplateName ?? current.sessionName,
-      sets: loadedTemplate.exercises.flatMap((ex) =>
+      sessionName: planRequest.name,
+      sets: plan.exercises.flatMap((ex) =>
         Array.from({ length: ex.targetSets }, (_, i) => ({
           exerciseName: ex.exerciseName,
           setNumber: i + 1,
@@ -223,6 +243,7 @@ export function StrengthQuickForm({
             lastByExercise[exerciseKey(ex.exerciseName)],
             i,
             ex.targetWeight,
+            ex.targetReps,
           ),
           rir: ex.targetRir != null ? String(ex.targetRir) : "",
           isWarmup: false,
@@ -236,9 +257,9 @@ export function StrengthQuickForm({
         })),
       ),
     }));
-    // Only re-run when a plan is loaded; lastByExercise is stable page data.
+    // Only re-run when a plan is requested; the rest is read at that moment.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadedTemplate]);
+  }, [planRequest]);
 
   // Declared before the restore effect so the mount pass skips it and cannot
   // erase a draft before it is read back.
@@ -399,7 +420,8 @@ export function StrengthQuickForm({
   }
 
   function copyLastSession() {
-    if (!lastSession) return;
+    if (!lastSession || !confirmReplace("your last session")) return;
+    setRestoredAt(null);
     setValues((current) => ({
       ...current,
       sessionName: lastSession.sessionName ?? "",
@@ -415,7 +437,7 @@ export function StrengthQuickForm({
               reps: set.reps != null ? `${set.reps}` : "",
               weight: set.weight != null ? `${set.weight}` : "",
               rir: set.rir != null ? `${set.rir}` : "",
-              isWarmup: false,
+              isWarmup: set.isWarmup,
               durationSeconds:
                 set.durationSeconds != null ? `${set.durationSeconds}` : "",
               distanceMeters:
@@ -445,8 +467,10 @@ export function StrengthQuickForm({
         ? `Finish workout · ${doneCount} of ${values.sets.length} sets`
         : "Save workout";
 
+  const showSaveBar = mode === "edit" || values.sets.length > 0;
+
   return (
-    <section className="space-y-4 pb-40">
+    <section className={`space-y-4 ${showSaveBar ? "pb-40" : ""}`}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
@@ -545,7 +569,7 @@ export function StrengthQuickForm({
 
         {!hasNamedSets ? (
           <p className="rounded-2xl border border-ink/10 bg-sand/45 px-4 py-6 text-center text-sm text-ink/70">
-            Load a plan above, copy your last session, or add an exercise below.
+            Start a plan, copy your last session, or add an exercise below.
           </p>
         ) : null}
 
@@ -860,47 +884,50 @@ export function StrengthQuickForm({
           ) : null}
         </div>
 
-        <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 space-y-2 border-t border-ink/10 bg-white/95 px-3 pb-3 pt-2 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
-          {restEndsAt != null && mode === "create" ? (
-            <div className="flex h-12 items-center justify-between gap-2 rounded-2xl bg-ink px-3 text-white">
-              <span className="text-lg font-semibold tabular-nums">
-                {restRemaining > 0
-                  ? `Rest ${formatClock(restRemaining)}`
-                  : "Rest over, go"}
-              </span>
-              <div className="flex items-center gap-1">
-                {REST_OPTIONS.map((option) => (
+        {/* Nothing to save on an empty workout, so no bar. */}
+        {showSaveBar ? (
+          <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 space-y-2 border-t border-ink/10 bg-white/95 px-3 pb-3 pt-2 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
+            {restEndsAt != null && mode === "create" ? (
+              <div className="flex h-12 items-center justify-between gap-2 rounded-2xl bg-ink px-3 text-white">
+                <span className="text-lg font-semibold tabular-nums">
+                  {restRemaining > 0
+                    ? `Rest ${formatClock(restRemaining)}`
+                    : "Rest over, go"}
+                </span>
+                <div className="flex items-center gap-1">
+                  {REST_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setRestSeconds(option);
+                        vibrated.current = false;
+                        setNow(Date.now());
+                        setRestEndsAt(Date.now() + option * 1000);
+                      }}
+                      className={`h-9 rounded-full px-2.5 text-xs font-semibold ${
+                        restSeconds === option
+                          ? "bg-white text-ink"
+                          : "text-white/70"
+                      }`}
+                    >
+                      {option >= 120 ? `${option / 60}m` : `${option}s`}
+                    </button>
+                  ))}
                   <button
-                    key={option}
                     type="button"
-                    onClick={() => {
-                      setRestSeconds(option);
-                      vibrated.current = false;
-                      setNow(Date.now());
-                      setRestEndsAt(Date.now() + option * 1000);
-                    }}
-                    className={`h-9 rounded-full px-2.5 text-xs font-semibold ${
-                      restSeconds === option
-                        ? "bg-white text-ink"
-                        : "text-white/70"
-                    }`}
+                    aria-label="Dismiss rest timer"
+                    onClick={() => setRestEndsAt(null)}
+                    className="h-9 w-9 text-lg text-white/70"
                   >
-                    {option >= 120 ? `${option / 60}m` : `${option}s`}
+                    ×
                   </button>
-                ))}
-                <button
-                  type="button"
-                  aria-label="Dismiss rest timer"
-                  onClick={() => setRestEndsAt(null)}
-                  className="h-9 w-9 text-lg text-white/70"
-                >
-                  ×
-                </button>
+                </div>
               </div>
-            </div>
-          ) : null}
-          <SaveButton label={saveLabel} pendingLabel="Saving..." />
-        </div>
+            ) : null}
+            <SaveButton label={saveLabel} pendingLabel="Saving..." />
+          </div>
+        ) : null}
       </form>
     </section>
   );

@@ -3,6 +3,7 @@ import { AppleHealthConnectionCard } from "./apple-health-connection-card";
 import { ImportBatchesCard } from "./import-batches-card";
 import { SyncRunsCard } from "./sync-runs-card";
 import { WithingsConnectionCard } from "./withings-connection-card";
+import { PageHeader } from "@/components/shared/page-header";
 
 type IntegrationsScreenProps = {
   status?: string;
@@ -16,20 +17,11 @@ export async function IntegrationsScreen({
   const data = await getIntegrationsPageData({ status, error });
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          Integrations
-        </p>
-        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
-          Connected apps
-        </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          Withings syncs weight and body composition daily. Health Auto Export
-          pushes Apple Health (steps, sleep, resting HR, HRV, VO2 max, and
-          Peloton rides) every hour.
-        </p>
-      </section>
+    <div className="space-y-4 lg:space-y-6">
+      <PageHeader
+        title="Connected apps"
+        subtitle="Withings syncs daily. Health Auto Export pushes Apple Health every hour."
+      />
 
       {data.flashMessage ? (
         <div
@@ -46,20 +38,28 @@ export async function IntegrationsScreen({
       <WithingsConnectionCard
         configured={data.withingsConfigured}
         connection={data.withingsConnection}
+        timeZone={data.timeZone}
       />
 
       <AppleHealthConnectionCard
         configured={data.appleHealthConfigured}
         connection={data.appleHealthConnection}
         hasWebhookToken={data.appleHealthHasWebhookToken}
-        lastReceived={data.appleHealthLastReceived}
+        streams={data.appleHealthStreams}
+        failure={data.appleHealthFailure}
         userId={data.userId}
         appUrl={data.appUrl}
       />
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <SyncRunsCard syncRuns={data.snapshot.syncRuns} />
-        <ImportBatchesCard importBatches={data.snapshot.importBatches} />
+        <SyncRunsCard
+          syncRuns={data.snapshot.syncRuns}
+          timeZone={data.timeZone}
+        />
+        <ImportBatchesCard
+          importBatches={data.snapshot.importBatches}
+          timeZone={data.timeZone}
+        />
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ import { getSettingsPageData } from "../server";
 import { DangerZone } from "./danger-zone";
 import { SettingsForm } from "./settings-form";
 import { SupplementsManager } from "./supplements-manager";
+import { PageHeader } from "@/components/shared/page-header";
 
 type SettingsScreenProps = {
   saved?: boolean;
@@ -19,20 +20,9 @@ export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
   const data = await getSettingsPageData();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 lg:space-y-6">
       {/* Header */}
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          Settings
-        </p>
-        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
-          Settings
-        </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          Update your name, timezone, units, and training goals. Your goals help
-          personalise the Weekly Review and Insights.
-        </p>
-      </section>
+      <PageHeader title="Settings" />
 
       {/* Success banner */}
       {saved ? (
@@ -50,7 +40,6 @@ export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
       {/* Form */}
       <SettingsForm
         profile={data.profile}
-        userEmail={data.userEmail}
         action={updateSettingsAction}
         recomputeNutritionTargetsAction={recomputeNutritionTargetsAction}
       />

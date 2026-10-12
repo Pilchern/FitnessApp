@@ -10,7 +10,7 @@ import { DAY_OF_WEEK_OPTIONS } from "../day-of-week";
 
 type StrengthTemplateListProps = {
   templates: TrainingTemplate[];
-  onLoad: (template: TrainingTemplate) => void;
+  onLoad?: (template: TrainingTemplate) => void;
 };
 
 export function StrengthTemplateList({
@@ -18,11 +18,7 @@ export function StrengthTemplateList({
   onLoad,
 }: StrengthTemplateListProps) {
   if (templates.length === 0) {
-    return (
-      <p className="text-sm text-ink/60">
-        No templates yet. Create one to get started.
-      </p>
-    );
+    return <p className="text-sm text-ink/60">No templates yet.</p>;
   }
 
   return (
@@ -74,15 +70,24 @@ export function StrengthTemplateList({
                 </select>
               </form>
 
-              <button
-                type="button"
-                onClick={() => onLoad(template)}
-                className="inline-flex h-10 items-center justify-center rounded-full border border-pine/30 px-4 text-sm font-semibold text-pine transition hover:bg-pine/10"
-              >
-                Load into form
-              </button>
+              {onLoad ? (
+                <button
+                  type="button"
+                  onClick={() => onLoad(template)}
+                  className="inline-flex h-10 items-center justify-center rounded-full border border-pine/30 px-4 text-sm font-semibold text-pine transition hover:bg-pine/10"
+                >
+                  Load
+                </button>
+              ) : null}
 
-              <form action={archiveStrengthTemplateAction}>
+              <form
+                action={archiveStrengthTemplateAction}
+                onSubmit={(event) => {
+                  if (!window.confirm(`Archive ${template.name}?`)) {
+                    event.preventDefault();
+                  }
+                }}
+              >
                 <input type="hidden" name="id" value={template.id} />
                 <button
                   type="submit"

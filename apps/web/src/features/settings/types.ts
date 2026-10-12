@@ -2,7 +2,6 @@ import type { Supplement, UserProfile } from "@fitness-app/domain";
 
 export type SettingsPageData = {
   profile: UserProfile;
-  userEmail: string;
   supplements: Supplement[];
 };
 

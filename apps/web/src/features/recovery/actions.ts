@@ -1,11 +1,12 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
 import { recoveryCheckinFormSchema } from "./form-schema";
-import { mergeIntoExistingCheckin } from "./helpers";
+import { keepSyncedValues, mergeIntoExistingCheckin } from "./helpers";
 import type {
   RecoveryActionState,
   SupplementChecklistActionState,
@@ -71,7 +72,9 @@ export async function createRecoveryCheckinAction(
       payload.checkinDate,
     );
     if (existing) {
-      await recoveryService.update(mergeIntoExistingCheckin(payload, existing));
+      await recoveryService.update(
+        keepSyncedValues(mergeIntoExistingCheckin(payload, existing), existing),
+      );
     } else {
       await recoveryService.create(payload);
     }
@@ -97,7 +100,10 @@ export async function updateRecoveryCheckinAction(
       };
     }
 
-    await recoveryService.update(payload);
+    const existing = await recoveryService.getById(user.id, payload.id);
+    await recoveryService.update(
+      existing ? keepSyncedValues(payload, existing) : payload,
+    );
     redirect("/recovery");
   } catch (error) {
     return parseActionError(error);
@@ -157,7 +163,11 @@ export async function logSupplementsAction(
         ),
     );
 
-    redirect("/recovery");
+    // Saved on every tap, so refresh in place rather than redirect: a
+    // redirect per tick would navigate and jump the page.
+    const returnTo = formData.get("returnTo");
+    revalidatePath(returnTo === "/dashboard" ? "/dashboard" : "/recovery");
+    return {};
   } catch (error) {
     return parseActionError(error);
   }

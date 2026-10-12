@@ -4,6 +4,7 @@ type CardioPageProps = {
   searchParams?: Promise<{
     edit?: string;
     deleted?: string;
+    error?: string;
   }>;
 };
 
@@ -14,6 +15,7 @@ export default async function CardioPage({ searchParams }: CardioPageProps) {
     <CardioScreen
       editSessionId={params.edit}
       deleted={params.deleted === "1"}
+      error={params.error}
     />
   );
 }

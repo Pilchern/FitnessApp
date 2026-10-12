@@ -150,3 +150,41 @@ export function formatSpO2(pct: number | null): string {
 export function formatRespiratoryRate(rate: number | null): string {
   return rate == null ? "—" : `${rate.toFixed(1)} br/min`;
 }
+
+/**
+ * Editing a synced row must not quietly rewrite what the sync wrote. The form
+ * shows sleep rounded to 0.1 h, so an unchanged field would save 437 min back
+ * as 438; keep the stored minutes when the hours still match. And keep the
+ * provider fields, marking the row mixed, so its Apple Health origin survives.
+ */
+export function keepSyncedValues<
+  T extends {
+    sleepDurationMinutes: number | null;
+    source: RecoveryCheckin["source"];
+  },
+>(
+  payload: T,
+  existing: RecoveryCheckin,
+): Omit<T, "source"> & { source: RecoveryCheckin["source"] } {
+  const shownHours = (minutes: number) => Math.round((minutes / 60) * 10) / 10;
+  const sleepUnchanged =
+    payload.sleepDurationMinutes != null &&
+    existing.sleepDurationMinutes != null &&
+    shownHours(payload.sleepDurationMinutes) ===
+      shownHours(existing.sleepDurationMinutes);
+  const synced = existing.source.sourceType !== "manual";
+  return {
+    ...payload,
+    sleepDurationMinutes: sleepUnchanged
+      ? existing.sleepDurationMinutes
+      : payload.sleepDurationMinutes,
+    source:
+      synced && existing.source.sourceProvider != null
+        ? {
+            ...existing.source,
+            sourceType: "mixed" as const,
+            sourceProvider: existing.source.sourceProvider,
+          }
+        : payload.source,
+  };
+}

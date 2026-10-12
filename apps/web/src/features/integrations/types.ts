@@ -1,5 +1,6 @@
 import type { IntegrationStatusSnapshot } from "@fitness-app/application";
 import type { IntegrationConnection } from "@fitness-app/domain";
+import type { AppleHealthStream, AppleHealthStreamStatus } from "./helpers";
 
 export type IntegrationsPageData = {
   withingsConfigured: boolean;
@@ -7,12 +8,16 @@ export type IntegrationsPageData = {
   appleHealthConfigured: boolean;
   appleHealthConnection: IntegrationConnection | null;
   appleHealthHasWebhookToken: boolean;
-  /** Finish time of the latest successful run per Apple Health stream. */
-  appleHealthLastReceived: {
-    daily: string | null;
-    sleep: string | null;
-    workouts: string | null;
-  };
+  /** Latest successful run per Apple Health stream, formatted on the server. */
+  appleHealthStreams: Record<AppleHealthStream, AppleHealthStreamStatus>;
+  /** Latest failed Apple Health run, only when no success has followed it. */
+  appleHealthFailure: {
+    label: string;
+    at: string;
+    message: string | null;
+  } | null;
+  /** Profile timezone, for formatting times in server components. */
+  timeZone: string;
   userId: string;
   appUrl: string;
   snapshot: IntegrationStatusSnapshot;

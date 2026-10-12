@@ -1,12 +1,14 @@
 import type {
   BodyMetricSummary,
   SparseTrendPoint,
+  WeeklyWeightTrend,
 } from "@fitness-app/application";
 import type { BodyMetric } from "@fitness-app/domain";
 
 export type BodyPageData = {
   metrics: BodyMetric[];
   summary: BodyMetricSummary;
+  weeklyWeight: WeeklyWeightTrend;
   weightTrend: SparseTrendPoint[];
   waistTrend: SparseTrendPoint[];
   bodyFatTrend: SparseTrendPoint[];

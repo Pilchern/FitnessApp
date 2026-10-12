@@ -12,6 +12,8 @@ export type TrainingPlan = {
   cardioDaysLabel: string;
   /** Muscle groups not currently trained, so "neglected" rules skip them. */
   excludedMuscleGroups: readonly string[];
+  /** "HH:MM" target wake time; the dashboard wake note measures against it. */
+  wakeTimeTarget?: string | null;
 };
 
 export const GENERIC_TRAINING_PLAN: TrainingPlan = {

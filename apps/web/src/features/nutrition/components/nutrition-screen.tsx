@@ -1,41 +1,38 @@
 import { createNutritionLogAction, updateNutritionLogAction } from "../actions";
 import { getNutritionPageData } from "../server";
-import { MacroProgressCard } from "./macro-progress-card";
 import { NutritionLogList } from "./nutrition-log-list";
 import { NutritionQuickForm } from "./nutrition-quick-form";
 import { NutritionSummaryCards } from "./nutrition-summary-cards";
+import { PageHeader } from "@/components/shared/page-header";
 
 type NutritionScreenProps = {
   editLogId?: string;
+  error?: string;
 };
 
-export async function NutritionScreen({ editLogId }: NutritionScreenProps) {
+export async function NutritionScreen({
+  editLogId,
+  error,
+}: NutritionScreenProps) {
   const data = await getNutritionPageData(editLogId);
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          Nutrition module
-        </p>
-        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
-          Nutrition
-        </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          Track daily nutrition checks: protein, meal plan adherence,
-          post-dinner snacking, junk leakage, and fiber. Keep it fast enough to
-          stay consistent.
-        </p>
-      </section>
-
-      <MacroProgressCard
-        proteinHitDays={data.summary.proteinHitDays}
-        fiberTakenDays={data.summary.fiberTakenDays}
-        totalDays={data.summary.totalDays}
-        targets={data.targets}
+    <div className="space-y-4 lg:space-y-6">
+      <PageHeader
+        title="Nutrition"
+        subtitle="Daily checks: protein, plan adherence, fiber. No calorie counting."
       />
 
       <NutritionSummaryCards summary={data.summary} targets={data.targets} />
+
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember"
+        >
+          {error}
+        </div>
+      ) : null}
 
       <NutritionQuickForm
         mode={data.editingLog ? "edit" : "create"}

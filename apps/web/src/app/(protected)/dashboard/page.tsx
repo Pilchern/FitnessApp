@@ -1,22 +1,19 @@
-import Link from "next/link";
 import { stepHabitThreshold } from "@fitness-app/application";
-import { CoachingBanner } from "@/components/shared/coaching-banner";
-import { InsightCard } from "@/components/shared/insight-card";
-import { WeeklyReviewSummaryCard } from "@/components/shared/weekly-review-summary-card";
 import { getDashboardData } from "@/features/dashboard/server";
 import { SupplementChecklist } from "@/features/recovery/components/supplement-checklist";
 import { logSupplementsAction } from "@/features/recovery/actions";
+import { TodayCard } from "@/features/dashboard/components/today-card";
 import { WeekPlanCard } from "@/features/dashboard/components/week-plan-card";
-import { TrainingWeekCard } from "@/features/dashboard/components/training-week-card";
-import { RecoverySnapshotCard } from "@/features/dashboard/components/recovery-snapshot-card";
+import { TrendNotesCard } from "@/features/dashboard/components/trend-notes-card";
 import { BodySnapshotCard } from "@/features/dashboard/components/body-snapshot-card";
-import { ScoreHistoryCard } from "@/features/dashboard/components/score-history-card";
-import { NutritionSnapshotCard } from "@/features/dashboard/components/nutrition-snapshot-card";
-import { GoalProgressCard } from "@/features/dashboard/components/goal-progress-card";
 
+/**
+ * Answers three questions top to bottom: what to do today (readiness and the
+ * planned session), how the week is going (plan and habits), and what has
+ * changed (trend notes, body).
+ */
 export default async function DashboardPage() {
   const data = await getDashboardData();
-  const today = new Date().toISOString().slice(0, 10);
   const stepsToday = data.activity.stepsToday;
   const stepHabitNotes: Record<string, string> =
     stepsToday != null
@@ -28,129 +25,55 @@ export default async function DashboardPage() {
       : {};
 
   return (
-    <div className="space-y-6">
-      {data.coachingSuggestion && (
-        <CoachingBanner suggestion={data.coachingSuggestion} today={today} />
-      )}
+    <div className="space-y-4 lg:space-y-6">
+      <h1 className="sr-only">Dashboard</h1>
 
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-              This week
-            </p>
-            <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
-              Dashboard
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-              Your training, recovery, and body at a glance.
-            </p>
-          </div>
-          {data.journalStreak >= 2 ? (
-            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-pine/20 bg-pine/10 px-4 py-2 text-sm font-semibold text-pine">
-              🔥 {data.journalStreak} day streak
-            </span>
-          ) : null}
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+        <TodayCard
+          today={data.today}
+          readiness={data.readiness}
+          history={data.readinessHistory}
+          call={data.readinessCall}
+          todayItems={data.todayItems}
+          stepsToday={stepsToday}
+        />
+        <WeekPlanCard
+          plan={data.weekPlan}
+          zone2Minutes={data.zone2Minutes}
+          latestReview={data.latestReview}
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+        <SupplementChecklist
+          supplements={data.habits.items}
+          takenSupplementIds={data.habits.takenTodayIds}
+          logDate={data.habits.logDate}
+          returnTo="/dashboard"
+          weekCounts={data.habits.weekCounts}
+          itemNotes={stepHabitNotes}
+          labels={{
+            eyebrow: "Daily habits",
+            title: "Today's habits",
+            empty: "No habits yet.",
+            hint: "Saves as you tap. The count is days done in the last 7.",
+            save: "Save habits",
+          }}
+          action={logSupplementsAction}
+        />
+        <div className="space-y-4 lg:space-y-6">
+          <TrendNotesCard notes={data.trendNotes} insights={data.topInsights} />
+          <BodySnapshotCard
+            today={data.today}
+            latestWeightLb={data.latestWeightLb}
+            latestBodyFatPct={data.latestBodyFatPct}
+            latestBodyDate={data.latestBodyDate}
+            weeklyWeight={data.weeklyWeight}
+            vo2Max={data.activity.vo2Max}
+            proteinHit={data.proteinHit}
+          />
         </div>
-      </section>
-
-      <WeekPlanCard
-        plan={data.weekPlan}
-        zone2Minutes={data.trainingWeek.zone2Minutes}
-      />
-
-      <SupplementChecklist
-        supplements={data.habits.items}
-        takenSupplementIds={data.habits.takenTodayIds}
-        logDate={data.habits.logDate}
-        returnTo="/dashboard"
-        weekCounts={data.habits.weekCounts}
-        itemNotes={stepHabitNotes}
-        labels={{
-          eyebrow: "Daily habits",
-          title: "Today's habits",
-          empty: "No habits yet.",
-          hint: "Check off what you did today. The count is days done in the last 7.",
-          save: "Save habits",
-        }}
-        action={logSupplementsAction}
-      />
-
-      <TrainingWeekCard
-        data={data.trainingWeek}
-        muscleGroupVolume={data.muscleGroupVolume}
-      />
-
-      <div className="grid gap-4 lg:gap-6 lg:grid-cols-2">
-        <RecoverySnapshotCard latestRecovery={data.latestRecovery} />
-        <BodySnapshotCard
-          latestWeightLb={data.latestWeightLb}
-          weightChangeLb={data.weightChangeLb}
-          latestWaistIn={data.latestWaistIn}
-          waistChangeIn={data.waistChangeIn}
-          latestBodyFatPct={data.latestBodyFatPct}
-          latestBodyDate={data.latestBodyDate}
-          weightTrend={data.weightTrend}
-          vo2Max={data.activity.vo2Max}
-          weeklyWeight={data.weeklyWeight}
-          proteinHit={
-            data.todayNutrition
-              ? {
-                  days: data.todayNutrition.proteinHitDays,
-                  of: data.todayNutrition.totalDays,
-                }
-              : null
-          }
-        />
       </div>
-
-      <GoalProgressCard goalProgress={data.goalProgress} />
-
-      <div className="grid gap-4 lg:gap-6 lg:grid-cols-2">
-        <WeeklyReviewSummaryCard
-          review={data.latestReview}
-          emptyTitle="No weekly review yet"
-          emptyDescription="Complete your first weekly review to start tracking your score over time."
-        />
-        <ScoreHistoryCard reviews={data.recentReviews} />
-      </div>
-
-      <div className="grid gap-4 lg:gap-6 lg:grid-cols-2">
-        <NutritionSnapshotCard
-          todayNutrition={data.todayNutrition}
-          nutritionTargets={data.nutritionTargets}
-        />
-      </div>
-
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-              Coaching
-            </p>
-            <h2 className="mt-3 font-display text-2xl text-ink">Insights</h2>
-          </div>
-          <Link
-            href="/insights"
-            className="inline-flex h-11 items-center justify-center rounded-full border border-ink/15 px-5 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
-          >
-            Open all insights
-          </Link>
-        </div>
-
-        {data.topInsights.length === 0 ? (
-          <p className="mt-5 text-sm leading-6 text-ink/75">
-            No insights yet. Keep logging your workouts and recovery —
-            they&apos;ll appear here as patterns emerge.
-          </p>
-        ) : (
-          <div className="mt-5 space-y-4">
-            {data.topInsights.map((insight) => (
-              <InsightCard key={insight.id} insight={insight} />
-            ))}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

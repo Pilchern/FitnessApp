@@ -4,7 +4,15 @@ import type {
   SyncJobRun,
 } from "@fitness-app/domain";
 
-function formatDateTime(value: string | null) {
+/**
+ * Pass the profile timezone: without it the server formats in UTC, and a
+ * client component would format in the browser's zone and mismatch on
+ * hydration.
+ */
+export function formatIntegrationDateTime(
+  value: string | null,
+  timeZone?: string,
+) {
   if (!value) {
     return "—";
   }
@@ -14,11 +22,64 @@ function formatDateTime(value: string | null) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone,
   }).format(new Date(value));
 }
 
-export function formatIntegrationDateTime(value: string | null) {
-  return formatDateTime(value);
+export type AppleHealthStream = "daily" | "sleep" | "workouts";
+
+/**
+ * Hours without a successful run before a stream reads as stale. Metrics post
+ * hourly and sleep once a day. Rides only post when there is a new ride
+ * (three a week), so they get a longer window.
+ */
+export const APPLE_HEALTH_STALE_HOURS: Record<AppleHealthStream, number> = {
+  daily: 6,
+  sleep: 36,
+  workouts: 96,
+};
+
+export type AppleHealthStreamStatus = {
+  lastReceivedLabel: string;
+  received: boolean;
+  stale: boolean;
+};
+
+export function buildAppleHealthStreamStatus(
+  lastReceived: Record<AppleHealthStream, string | null>,
+  now: Date,
+  timeZone?: string,
+): Record<AppleHealthStream, AppleHealthStreamStatus> {
+  const build = (key: AppleHealthStream): AppleHealthStreamStatus => {
+    const value = lastReceived[key];
+    const ageHours = value
+      ? (now.getTime() - new Date(value).getTime()) / 3_600_000
+      : null;
+    return {
+      lastReceivedLabel: formatIntegrationDateTime(value, timeZone),
+      received: value != null,
+      stale: ageHours != null && ageHours > APPLE_HEALTH_STALE_HOURS[key],
+    };
+  };
+  return {
+    daily: build("daily"),
+    sleep: build("sleep"),
+    workouts: build("workouts"),
+  };
+}
+
+/** True when the latest failure came after the latest success. */
+export function isFailureUnresolved(
+  lastFailedAt: string | null | undefined,
+  lastSucceededAt: string | null | undefined,
+) {
+  if (!lastFailedAt) {
+    return false;
+  }
+  if (!lastSucceededAt) {
+    return true;
+  }
+  return new Date(lastFailedAt).getTime() > new Date(lastSucceededAt).getTime();
 }
 
 export function formatIntegrationStatus(

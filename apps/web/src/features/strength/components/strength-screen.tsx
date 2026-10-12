@@ -4,17 +4,32 @@ import { MuscleGroupBalanceCard } from "./muscle-group-balance-card";
 import { StrengthProgressionSummarySection } from "./strength-progression-summary";
 import { StrengthSessionList } from "./strength-session-list";
 import { StrengthPageClient } from "./strength-page-client";
+import { PageHeader } from "@/components/shared/page-header";
 
 type StrengthScreenProps = {
   editSessionId?: string;
+  /** Set by delete/archive/schedule actions when they fail. */
+  error?: string;
 };
 
-export async function StrengthScreen({ editSessionId }: StrengthScreenProps) {
+export async function StrengthScreen({
+  editSessionId,
+  error,
+}: StrengthScreenProps) {
   const data = await getStrengthPageData(editSessionId);
 
   return (
-    <div className="space-y-6">
-      <h1 className="font-display text-2xl text-ink md:text-4xl">Strength</h1>
+    <div className="space-y-4 lg:space-y-6">
+      <PageHeader title="Strength" />
+
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember"
+        >
+          {error}
+        </div>
+      ) : null}
 
       <StrengthPageClient
         mode={data.editingSession ? "edit" : "create"}
@@ -37,6 +52,7 @@ export async function StrengthScreen({ editSessionId }: StrengthScreenProps) {
 
       <StrengthProgressionSummarySection
         summaries={data.progressionSummaries}
+        collapsible
       />
 
       <StrengthSessionList sessions={data.sessions} />

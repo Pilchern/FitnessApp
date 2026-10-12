@@ -10,6 +10,7 @@ import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
 import { strengthSessionFormSchema } from "./form-schema";
+import { exerciseKey, shiftIsoDate } from "./helpers";
 import type { StrengthActionState } from "./types";
 
 const templateExercisesSchema = z
@@ -84,26 +85,31 @@ export async function createStrengthSessionAction(
     const payload = buildStrengthPayload(user.id, formData);
     const session = await service.create(payload);
 
-    const exerciseNames = [...new Set(session.sets.map((s) => s.exerciseName))];
-    const ninetyDaysAgo = new Date();
-    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-    const startDate = ninetyDaysAgo.toISOString().slice(0, 10);
+    // One entry per exercise, matched the way the logger matches names
+    // (trimmed, case-insensitive), keeping the spelling just logged.
+    const exercisesByKey = new Map<string, string>();
+    session.sets.forEach((s) => {
+      const key = exerciseKey(s.exerciseName);
+      if (!exercisesByKey.has(key)) exercisesByKey.set(key, s.exerciseName);
+    });
 
+    // The window is anchored on the session's own calendar date, so it is
+    // right for back-dated sessions and immune to the server's UTC clock.
     const historical = await service.listByDateRange({
       userId: user.id,
-      startDate,
+      startDate: shiftIsoDate(session.sessionDate, -90),
       endDate: session.sessionDate,
     });
 
-    const allPrs = exerciseNames.flatMap((exerciseName) => {
+    const allPrs = [...exercisesByKey].flatMap(([key, exerciseName]) => {
       const newSets = session.sets.filter(
-        (s) => s.exerciseName === exerciseName && !s.isWarmup,
+        (s) => exerciseKey(s.exerciseName) === key && !s.isWarmup,
       );
       const historicalSets = historical
         .filter((s) => s.id !== session.id)
         .flatMap((s) =>
           s.sets.filter(
-            (set) => set.exerciseName === exerciseName && !set.isWarmup,
+            (set) => exerciseKey(set.exerciseName) === key && !set.isWarmup,
           ),
         );
       return detectPersonalRecords(exerciseName, newSets, historicalSets);
@@ -113,7 +119,7 @@ export async function createStrengthSessionAction(
       await insightRepository.upsertMany(
         allPrs.map((pr) => ({
           userId: user.id,
-          insightType: `personal_record_${pr.prType}_${pr.exerciseName.toLowerCase().replace(/\s+/g, "_")}`,
+          insightType: `personal_record_${pr.prType}_${exerciseKey(pr.exerciseName).replace(/\s+/g, "_")}`,
           title: `New ${pr.prType === "weight" ? "Weight" : "Volume"} PR: ${pr.exerciseName}`,
           body:
             pr.prType === "weight"

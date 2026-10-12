@@ -1,12 +1,23 @@
-import type { BodyMetricSummary } from "@fitness-app/application";
+import type {
+  BodyMetricSummary,
+  WeeklyWeightTrend,
+} from "@fitness-app/application";
 import { SummaryStatCard } from "@/components/shared/summary-stat-card";
-import { formatBodyValue, formatChange } from "../helpers";
+import {
+  formatBodyValue,
+  formatChange,
+  formatWeeklyWeightHint,
+} from "../helpers";
 
 type BodySummaryCardsProps = {
   summary: BodyMetricSummary;
+  weeklyWeight: WeeklyWeightTrend;
 };
 
-export function BodySummaryCards({ summary }: BodySummaryCardsProps) {
+export function BodySummaryCards({
+  summary,
+  weeklyWeight,
+}: BodySummaryCardsProps) {
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
       <div className="flex items-start justify-between gap-4">
@@ -22,24 +33,28 @@ export function BodySummaryCards({ summary }: BodySummaryCardsProps) {
         <SummaryStatCard
           label="Weight"
           value={formatBodyValue(summary.latestWeightLb, "lb")}
-          hint={formatChange(summary.weightChangeLb, "lb")}
+          hint={formatWeeklyWeightHint(weeklyWeight)}
           tone="accent"
         />
-        <SummaryStatCard
-          label="Waist"
-          value={formatBodyValue(summary.latestWaistIn, "in")}
-          hint={formatChange(summary.waistChangeIn, "in")}
-        />
-        <SummaryStatCard
-          label="Body fat"
-          value={formatBodyValue(summary.latestBodyFatPct, "%")}
-          hint="Optional measurement"
-        />
-        <SummaryStatCard
-          label="Muscle mass"
-          value={formatBodyValue(summary.latestMuscleMassLb, "lb")}
-          hint="Optional measurement"
-        />
+        {summary.latestWaistIn != null ? (
+          <SummaryStatCard
+            label="Waist"
+            value={formatBodyValue(summary.latestWaistIn, "in")}
+            hint={formatChange(summary.waistChangeIn, "in")}
+          />
+        ) : null}
+        {summary.latestBodyFatPct != null ? (
+          <SummaryStatCard
+            label="Body fat"
+            value={formatBodyValue(summary.latestBodyFatPct, "%")}
+          />
+        ) : null}
+        {summary.latestMuscleMassLb != null ? (
+          <SummaryStatCard
+            label="Muscle mass"
+            value={formatBodyValue(summary.latestMuscleMassLb, "lb")}
+          />
+        ) : null}
         {summary.latestFatFreeMassLb != null ? (
           <SummaryStatCard
             label="Fat-free mass"
@@ -51,7 +66,6 @@ export function BodySummaryCards({ summary }: BodySummaryCardsProps) {
           <SummaryStatCard
             label="Bone mass"
             value={formatBodyValue(summary.latestBoneMassLb, "lb")}
-            hint="Optional measurement"
           />
         ) : null}
         {summary.latestHydrationPct != null ? (
