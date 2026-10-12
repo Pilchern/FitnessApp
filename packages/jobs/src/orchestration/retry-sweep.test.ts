@@ -9,9 +9,9 @@ import {
 } from "./retry-sweep";
 
 describe("isRetryableJobType", () => {
-  it("accepts the two pull-based sync job types", () => {
-    expect(isRetryableJobType("cardio_session_sync")).toBe(true);
+  it("accepts the Withings body-metric sync only", () => {
     expect(isRetryableJobType("body_metric_sync")).toBe(true);
+    expect(isRetryableJobType("cardio_session_sync")).toBe(false);
   });
 
   it("rejects webhook-driven Apple Health job types", () => {
@@ -25,22 +25,12 @@ describe("isRetryableJobType", () => {
 });
 
 describe("resolveRetryTarget", () => {
-  it("resolves a cardio_session_sync/peloton row", () => {
-    expect(
-      resolveRetryTarget("cardio_session_sync", { provider: "peloton" }),
-    ).toEqual({
-      kind: "cardio",
-      provider: "peloton",
-    });
-  });
-
-  it("resolves a cardio_session_sync/strava row", () => {
-    expect(
-      resolveRetryTarget("cardio_session_sync", { provider: "strava" }),
-    ).toEqual({
-      kind: "cardio",
-      provider: "strava",
-    });
+  it("leaves retired Strava and Peloton cardio rows unsupported", () => {
+    for (const provider of ["peloton", "strava"]) {
+      expect(resolveRetryTarget("cardio_session_sync", { provider })).toEqual({
+        kind: "unsupported",
+      });
+    }
   });
 
   it("resolves a body_metric_sync/withings row", () => {

@@ -32,8 +32,8 @@ type SweepOutcome = "retried" | "dead_lettered" | "still_failed";
  * Retry/backoff/dead-letter sweep for TD-014.
  *
  * `sync_job_runs` is the queue: this route does NOT create a new queue
- * table. Every provider sync orchestrator (CardioSyncOrchestrator,
- * BodyMetricSyncOrchestrator) already creates its own fresh `sync_job_runs`
+ * table. The provider sync orchestrator (BodyMetricSyncOrchestrator)
+ * already creates its own fresh `sync_job_runs`
  * row per invocation and marks it succeeded/failed internally — this sweep
  * does not change that. Instead it treats the ORIGINAL failed row as a
  * queue entry: on each sweep tick it re-invokes the appropriate orchestrator
