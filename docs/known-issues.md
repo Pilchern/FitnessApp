@@ -2,6 +2,13 @@
 
 **Last verified against code:** 2026-10-12.
 
+## Fixed 2026-10-12 (session 8)
+
+- **No lift had ever saved.** Two causes, both since April. (1) `optionalString` (`apps/web/src/lib/form-utils.ts`) rejected `null`, and `formData.get("id")` is null on a new session because the logger renders the id input only when editing; the action returned a field error the logger never displayed. It now accepts null, and the logger shows field errors in its banner. (2) Live never received `20260401100000_expand_strength_sessions_v1` (session `duration_minutes`, `readiness_pre`, `energy_post`, `completed_as_planned`; set `rir`), so the insert would have failed next. Applied live and verified with a rolled-back insert of the app's exact columns.
+- **Weekly reviews could never save** (0 rows ever; the Monday auto-finalize had nothing to write into): live never received `20260331230000_expand_weekly_reviews_v1`. Applied live.
+- **Journal**: live never received `20260401090000_expand_journal_entries_v1`, because its foreign key needs a `(id, user_id)` key on `cardio_sessions` that no migration creates. Added `20261012220000_add_cardio_sessions_id_user_id_key.sql`, then applied both live. A fresh replay must apply the new one before the journal migration.
+- A comparison of every column the repositories use against live found no other gaps.
+
 ## Fixed 2026-10-12 (session 7)
 
 - Dashboard habit ticks saved and then redirected to `/recovery` (`logSupplementsAction` ignored `returnTo`). Ticks now save on tap and refresh in place.
@@ -39,7 +46,7 @@
 
 ## Current weak spots
 
-- Weekly review auto-finalize has never written a review on live (0 rows); cause not found from the container. See CURRENT_STATE open items.
+- Weekly review auto-finalize had never written a review because live lacked the review columns (fixed 2026-10-12, session 8). Confirm a review appears after the next Monday 08:00 UTC run.
 
 - The Playwright suite predates the login removal; `tests/e2e/strength.spec.ts` (2026-10-09) is read-only and safe against the live database, the others create rows.
 

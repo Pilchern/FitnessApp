@@ -1,9 +1,14 @@
 import { z } from "zod";
 
+/**
+ * An optional text field. Accepts null as well as undefined: FormData.get()
+ * returns null for a field that is not rendered (the `id` input exists only
+ * when editing), and rejecting that silently failed every new lift save.
+ */
 export const optionalString = z
   .string()
   .trim()
-  .optional()
+  .nullish()
   .transform((value) => value ?? "");
 
 /**
