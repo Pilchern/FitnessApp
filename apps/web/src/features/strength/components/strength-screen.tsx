@@ -25,6 +25,7 @@ export async function StrengthScreen({ editSessionId }: StrengthScreenProps) {
         strengthTemplates={data.strengthTemplates}
         todaysScheduledTemplate={data.todaysScheduledTemplate}
         lastByExercise={data.lastByExercise}
+        latestCreatedAt={data.latestCreatedAt}
       />
 
       <MuscleGroupBalanceCard summary={data.muscleGroupVolume} />

@@ -268,3 +268,62 @@ export function showsTimedWeight(set: {
 }) {
   return set.weight !== "" || LOADED_TIMED_PATTERN.test(set.exerciseName);
 }
+
+/**
+ * An in-progress workout kept in localStorage, so an iOS tab reload or a
+ * tab-bar tap mid-workout does not lose the ticked sets. `submittedAt` is set
+ * when Finish is tapped; the draft is dropped once a session created at or
+ * after that time shows up from the server.
+ */
+export type StrengthDraft = {
+  savedAt: number;
+  submittedAt?: number;
+  values: StrengthFormValues;
+  exerciseNotes: Record<string, string>;
+  planNotes: string | null;
+};
+
+export const STRENGTH_DRAFT_KEY = "fitness-app:strength-draft:v1";
+const DRAFT_MAX_AGE_MS = 18 * 60 * 60 * 1000;
+// Phone and server clocks differ by a few seconds; a two-minute window still
+// rules out matching a session saved before this workout started.
+const SAVE_CLOCK_SKEW_MS = 2 * 60 * 1000;
+
+/** Parses a stored draft; null when missing, malformed, empty or stale. */
+export function parseStrengthDraft(
+  raw: string | null,
+  nowMs: number,
+): StrengthDraft | null {
+  if (!raw) return null;
+  try {
+    const draft = JSON.parse(raw) as StrengthDraft;
+    if (
+      typeof draft?.savedAt !== "number" ||
+      nowMs - draft.savedAt > DRAFT_MAX_AGE_MS ||
+      !Array.isArray(draft.values?.sets) ||
+      !draft.values.sets.some((set) => set.exerciseName?.trim())
+    ) {
+      return null;
+    }
+    return {
+      ...draft,
+      exerciseNotes: draft.exerciseNotes ?? {},
+      planNotes: draft.planNotes ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** True once the server has a session created at or after the draft's Finish tap. */
+export function draftWasSaved(
+  draft: Pick<StrengthDraft, "submittedAt">,
+  latestCreatedAt: string | null,
+): boolean {
+  if (draft.submittedAt == null || !latestCreatedAt) return false;
+  const created = Date.parse(latestCreatedAt);
+  return (
+    Number.isFinite(created) &&
+    created >= draft.submittedAt - SAVE_CLOCK_SKEW_MS
+  );
+}

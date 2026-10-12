@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildLastByExercise,
+  draftWasSaved,
   formatLastPerformance,
   groupSetsByExercise,
   isTimedSet,
+  parseStrengthDraft,
   renumberSets,
   selectSetsToSave,
   showsTimedWeight,
@@ -228,5 +230,88 @@ describe("timed sets", () => {
     expect(startingDuration(last, 1)).toBe("25");
     expect(startingDuration(last, 2)).toBe("25");
     expect(startingDuration(undefined, 0)).toBe("");
+  });
+});
+
+describe("parseStrengthDraft", () => {
+  const now = Date.parse("2026-10-13T01:00:00Z");
+  const values = {
+    sessionDate: "2026-10-12",
+    sessionName: "Tue Push",
+    notes: "",
+    durationMinutes: "",
+    readinessPre: "",
+    energyPost: "",
+    completedAsPlanned: true,
+    sets: [
+      {
+        exerciseName: "Bench Press",
+        setNumber: 1,
+        reps: "8",
+        weight: "135",
+        rir: "2",
+        isWarmup: false,
+        durationSeconds: "",
+        distanceMeters: "",
+        notes: "",
+        done: true,
+      },
+    ],
+  };
+
+  it("restores a recent draft with ticked sets", () => {
+    const raw = JSON.stringify({ savedAt: now - 60_000, values });
+    const draft = parseStrengthDraft(raw, now);
+    expect(draft?.values.sets[0]?.done).toBe(true);
+    expect(draft?.exerciseNotes).toEqual({});
+    expect(draft?.planNotes).toBeNull();
+  });
+
+  it("drops missing, malformed, stale and empty drafts", () => {
+    expect(parseStrengthDraft(null, now)).toBeNull();
+    expect(parseStrengthDraft("{not json", now)).toBeNull();
+    expect(
+      parseStrengthDraft(
+        JSON.stringify({ savedAt: now - 19 * 3600_000, values }),
+        now,
+      ),
+    ).toBeNull();
+    expect(
+      parseStrengthDraft(
+        JSON.stringify({
+          savedAt: now,
+          values: {
+            ...values,
+            sets: [{ ...values.sets[0], exerciseName: " " }],
+          },
+        }),
+        now,
+      ),
+    ).toBeNull();
+  });
+});
+
+describe("draftWasSaved", () => {
+  const submittedAt = Date.parse("2026-10-13T01:00:00Z");
+
+  it("is false until Finish was tapped", () => {
+    expect(draftWasSaved({}, "2026-10-13T01:00:05Z")).toBe(false);
+  });
+
+  it("matches a session created at or just before the Finish tap", () => {
+    expect(draftWasSaved({ submittedAt }, "2026-10-13T01:00:01+00:00")).toBe(
+      true,
+    );
+    // Phone clock a minute fast.
+    expect(draftWasSaved({ submittedAt }, "2026-10-13T00:59:00+00:00")).toBe(
+      true,
+    );
+  });
+
+  it("ignores sessions saved before this workout and no sessions at all", () => {
+    expect(draftWasSaved({ submittedAt }, "2026-10-12T23:00:00+00:00")).toBe(
+      false,
+    );
+    expect(draftWasSaved({ submittedAt }, null)).toBe(false);
   });
 });

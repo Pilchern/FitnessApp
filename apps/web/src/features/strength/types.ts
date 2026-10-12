@@ -23,6 +23,8 @@ export type StrengthPageData = {
   unclassifiedExerciseNames: string[];
   todaysScheduledTemplate: TrainingTemplate | null;
   lastByExercise: Record<string, LastExercisePerformance>;
+  /** Newest `createdAt` across sessions; tells the logger its draft was saved. */
+  latestCreatedAt: string | null;
 };
 
 export type StrengthDetailData = {
