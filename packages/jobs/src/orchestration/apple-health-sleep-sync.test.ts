@@ -509,6 +509,58 @@ describe("AppleHealthSleepSyncOrchestrator", () => {
     });
   });
 
+  it("fills bedtime and wake from the payload only when the check-in has none", async () => {
+    const connection = createConnection();
+    const stores = createStores(connection);
+    const payload = {
+      date: "2026-07-15",
+      bedtime_local: "21:40",
+      wake_time_local: "15:30",
+    };
+    const rawImportEventStore = createRawImportEventStore([
+      { id: "raw-4", date: "2026-07-15", payload },
+    ]);
+    const repository = createRepository(
+      createExistingCheckin({ bedtimeLocal: null, wakeTimeLocal: "06:25" }),
+    );
+
+    await createOrchestrator(repository, rawImportEventStore, stores).syncSleep(
+      { userId: connection.userId, triggerType: "webhook", items: [payload] },
+    );
+
+    const [updateArg] = repository.update.mock.calls[0] as [
+      Record<string, unknown>,
+    ];
+    expect(updateArg.bedtimeLocal).toBe("21:40");
+    // An afternoon nap stretches the by-day window; the stored wake stays.
+    expect(updateArg).not.toHaveProperty("wakeTimeLocal");
+  });
+
+  it("stores bedtime and wake on a new check-in", async () => {
+    const connection = createConnection();
+    const stores = createStores(connection);
+    const payload = {
+      date: "2026-07-16",
+      bedtime_local: "21:40",
+      wake_time_local: "06:20",
+    };
+    const rawImportEventStore = createRawImportEventStore([
+      { id: "raw-5", date: "2026-07-16", payload },
+    ]);
+    const repository = createRepository(null);
+
+    await createOrchestrator(repository, rawImportEventStore, stores).syncSleep(
+      { userId: connection.userId, triggerType: "webhook", items: [payload] },
+    );
+
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bedtimeLocal: "21:40",
+        wakeTimeLocal: "06:20",
+      }),
+    );
+  });
+
   it("isolates a per-item failure and keeps processing the rest of the batch", async () => {
     const connection = createConnection();
     const stores = createStores(connection);
