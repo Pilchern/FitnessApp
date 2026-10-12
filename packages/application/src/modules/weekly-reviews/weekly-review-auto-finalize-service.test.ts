@@ -257,6 +257,23 @@ describe("WeeklyReviewAutoFinalizeService", () => {
     expect(journalRepo.created).toHaveLength(1);
   });
 
+  it("drafts the review without a journal entry when no journal service is wired", async () => {
+    const { deps, weeklyReviewRepo, journalRepo } = buildDeps();
+    const service = new WeeklyReviewAutoFinalizeService({
+      ...deps,
+      journalService: undefined,
+    });
+
+    const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
+
+    expect(result.status).toBe("drafted");
+    if (result.status === "drafted") {
+      expect(result.journalDrafted).toBe(false);
+    }
+    expect(weeklyReviewRepo.created).toHaveLength(1);
+    expect(journalRepo.created).toHaveLength(0);
+  });
+
   it("skips drafting when a review already exists for the week", async () => {
     const weeklyReviewRepo = new FakeWeeklyReviewRepository();
     weeklyReviewRepo.existing = makeReview();

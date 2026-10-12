@@ -7,16 +7,16 @@ import { createCoreServices } from "@/lib/server/services";
 import { bodyMetricFormSchema } from "./form-schema";
 import type { BodyActionState } from "./types";
 
+// Tape measurements only. Weight, body fat and muscle mass come from Withings,
+// so the form never writes them: a create leaves them null and an update
+// leaves a Withings row's values (and its source) untouched.
 function buildBodyMetricPayload(userId: string, formData: FormData) {
   const parsed = bodyMetricFormSchema.parse({
     id: formData.get("id"),
     measuredOn: formData.get("measuredOn"),
-    weightLb: formData.get("weightLb"),
     waistIn: formData.get("waistIn"),
     waistHipIn: formData.get("waistHipIn"),
     waistGutIn: formData.get("waistGutIn"),
-    bodyFatPct: formData.get("bodyFatPct"),
-    muscleMassLb: formData.get("muscleMassLb"),
     sourceType: formData.get("sourceType"),
     notes: formData.get("notes"),
   });
@@ -25,22 +25,20 @@ function buildBodyMetricPayload(userId: string, formData: FormData) {
     id: parsed.id || undefined,
     userId,
     measuredOn: parsed.measuredOn,
-    weightLb: parsed.weightLb,
     waistIn: parsed.waistIn,
     waistHipIn: parsed.waistHipIn,
     waistGutIn: parsed.waistGutIn,
-    bodyFatPct: parsed.bodyFatPct,
-    muscleMassLb: parsed.muscleMassLb,
     notes: parsed.notes || null,
-    source: {
-      sourceType: "manual" as const,
-      sourceProvider: null,
-      sourceExternalId: null,
-      importBatchId: null,
-      rawImportEventId: null,
-    },
   };
 }
+
+const MANUAL_SOURCE = {
+  sourceType: "manual" as const,
+  sourceProvider: null,
+  sourceExternalId: null,
+  importBatchId: null,
+  rawImportEventId: null,
+} as const;
 
 export async function createBodyMetricAction(
   _previousState: BodyActionState,
@@ -49,7 +47,10 @@ export async function createBodyMetricAction(
   try {
     const user = await requireCurrentUser();
     const { bodyMetricService } = await createCoreServices();
-    await bodyMetricService.create(buildBodyMetricPayload(user.id, formData));
+    await bodyMetricService.create({
+      ...buildBodyMetricPayload(user.id, formData),
+      source: MANUAL_SOURCE,
+    });
     redirect("/body");
   } catch (error) {
     return parseActionError(error);

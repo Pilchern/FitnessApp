@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-10-12 (TD-041 closed: insight rules read the template-derived Z2 target)
+**Last updated:** 2026-10-12 (TD-041 closed; TD-042 added: dead code after retiring Strava, Peloton and the journal)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -14,6 +14,10 @@ Daily habits reuse `supplements` / `supplement_logs` through a `kind` column (`s
 ### TD-040 — `profiles.baseline_schedule` is dead config (low)
 
 Seeded with a pre-injury weekly plan, written by `profile-bootstrap.ts`, read by nothing. The real schedule is `training_templates.scheduled_day_of_week`. Either delete the column or make the dashboard plan card read it; do not add a third source of truth.
+
+### TD-042 — Dead code left after retiring Strava, Peloton and the journal (low)
+
+`CardioSyncOrchestrator` (`packages/jobs/src/orchestration/cardio-sync.ts`) and its tests, the `cardio` branch of `resolveRetryTarget`, and the `/journal` page, actions and `JournalEntryService` wiring are unused since 2026-10-12. Kept so this cut stayed reviewable; delete in one pass if nothing needs them. Keep the `strava`/`peloton` provider values: historical rows and cross-provider dedup use them.
 
 ### TD-041 — Two sources for the weekly Zone 2 target (closed 2026-10-12)
 

@@ -8,11 +8,7 @@ import {
   isQueueEntry,
   resolveRetryTarget,
 } from "@fitness-app/jobs";
-import {
-  createPelotonSyncOrchestrator,
-  createStravaSyncOrchestrator,
-  createWithingsSyncOrchestrator,
-} from "@/lib/server/integrations";
+import { createWithingsSyncOrchestrator } from "@/lib/server/integrations";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { getServerEnv } from "@/lib/server/env";
 
@@ -56,9 +52,11 @@ type SweepOutcome = "retried" | "dead_lettered" | "still_failed";
  * moved to `dead_letter` instead of being rescheduled, and is never picked
  * up again (the `attempt_count < MAX_RETRY_ATTEMPTS` filter excludes it).
  *
- * Only `cardio_session_sync` (Peloton/Strava) and `body_metric_sync`
- * (Withings) rows are retried — these are pull-based syncs that can be
- * safely re-run against the provider's API using the stored connection.
+ * Only `body_metric_sync` (Withings) rows are retried: a pull-based sync that
+ * can be safely re-run against the provider's API using the stored
+ * connection. Strava and Peloton direct sync were retired on 2026-10-12
+ * (rides now arrive through Apple Health), so their `cardio_session_sync`
+ * rows are left alone.
  * Apple Health job types are push/webhook-driven and are intentionally
  * excluded (see retry-sweep.ts).
  *
@@ -108,7 +106,7 @@ export async function GET(request: NextRequest) {
 
   const eligible = rows.filter((row) => {
     if (!row.user_id || !isQueueEntry(row.trigger_type)) return false;
-    return resolveRetryTarget(row.job_type, row.payload).kind !== "unsupported";
+    return resolveRetryTarget(row.job_type, row.payload).kind === "body_metric";
   });
 
   if (eligible.length === 0) {
@@ -129,17 +127,7 @@ export async function GET(request: NextRequest) {
       const userId = row.user_id as string;
 
       try {
-        if (target.kind === "cardio") {
-          const orchestrator =
-            target.provider === "peloton"
-              ? createPelotonSyncOrchestrator()
-              : createStravaSyncOrchestrator();
-          await orchestrator.syncRides({
-            userId,
-            provider: target.provider,
-            triggerType: "retry",
-          });
-        } else if (target.kind === "body_metric") {
+        if (target.kind === "body_metric") {
           const orchestrator = createWithingsSyncOrchestrator();
           await orchestrator.syncBodyMetrics({
             userId,

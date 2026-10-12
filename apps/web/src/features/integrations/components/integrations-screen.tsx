@@ -1,8 +1,6 @@
 import { getIntegrationsPageData } from "../server";
 import { AppleHealthConnectionCard } from "./apple-health-connection-card";
 import { ImportBatchesCard } from "./import-batches-card";
-import { PelotonConnectionCard } from "./peloton-connection-card";
-import { StravaConnectionCard } from "./strava-connection-card";
 import { SyncRunsCard } from "./sync-runs-card";
 import { WithingsConnectionCard } from "./withings-connection-card";
 
@@ -27,11 +25,9 @@ export async function IntegrationsScreen({
           Connected apps
         </h1>
         <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          Connect Strava, Peloton, and Withings to automatically import your
-          workouts and body measurements. Use the Apple Health webhook to push
-          sleep and recovery data from your iPhone each morning. Your manually
-          logged data is always kept separate and is never affected by these
-          connections.
+          Withings syncs weight and body composition daily. Health Auto Export
+          pushes Apple Health (steps, sleep, resting HR, HRV, VO2 max, and
+          Peloton rides) every hour.
         </p>
       </section>
 
@@ -47,19 +43,9 @@ export async function IntegrationsScreen({
         </div>
       ) : null}
 
-      <StravaConnectionCard
-        configured={data.stravaConfigured}
-        connection={data.stravaConnection}
-      />
-
       <WithingsConnectionCard
         configured={data.withingsConfigured}
         connection={data.withingsConnection}
-      />
-
-      <PelotonConnectionCard
-        configured={data.pelotonConfigured}
-        connection={data.pelotonConnection}
       />
 
       <AppleHealthConnectionCard

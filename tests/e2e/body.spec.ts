@@ -12,23 +12,21 @@ test("body page shows the quick-add form", async ({ page }) => {
   // The BodyQuickForm renders "Quick add" eyebrow and "Log body metrics fast" heading
   await expect(page.getByText(/quick add/i)).toBeVisible();
   await expect(
-    page.getByText(/log body metrics fast|edit body metrics/i),
+    page.getByText(/log measurements|edit measurements/i),
   ).toBeVisible();
 });
 
-test("can submit a body metric (weight and waist)", async ({ page }) => {
+test("can submit a measurement (waist)", async ({ page }) => {
   await page.goto("/body");
 
   // Fill the date field (label text is "Date")
   const dateInput = page.getByLabel("Date");
   await dateInput.fill("2025-01-15");
 
-  // Fill Weight (lb)
-  const weightInput = page.getByLabel(/weight \(lb\)/i);
-  await weightInput.fill("185.0");
+  // Weight comes from Withings; the form only takes tape measurements.
+  await expect(page.getByLabel(/weight \(lb\)/i)).toHaveCount(0);
 
-  // Fill Waist (in)
-  const waistInput = page.getByLabel(/waist \(in\)/i);
+  const waistInput = page.getByLabel(/waist at navel \(in\)/i);
   await waistInput.fill("33.5");
 
   // Submit the form
@@ -39,12 +37,12 @@ test("can submit a body metric (weight and waist)", async ({ page }) => {
   await expect(page).toHaveURL(/\/body/, { timeout: 10000 });
 });
 
-test("empty weight field does not crash — shows validation or stays on page", async ({
+test("an empty measurement does not crash — shows validation or stays on page", async ({
   page,
 }) => {
   await page.goto("/body");
 
-  // Leave weight empty, fill only date
+  // Fill only the date
   const dateInput = page.getByLabel("Date");
   await dateInput.fill("2025-01-15");
 
