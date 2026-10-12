@@ -1,7 +1,7 @@
 # Current State — FitnessApp
 
-**Last updated:** 2026-10-12 (lift logger keeps an unsaved workout across reloads). Prior: 2026-10-09 (weekly plan card, daily habits, lift-tracker last-session prefill; templates and habits seeded, no strength sessions logged yet as of 2026-10-12). Prior: 2026-08-27 (TD-030 closed, CI, format normalization, TD-019, security fixes)
-**Overall health:** Stable. TypeScript clean. 539 tests pass (150 web, 317 application, 21 infrastructure, 5 integrations, 46 jobs). Lint clean. Production build succeeds. CI runs format/typecheck/lint/test/build on every PR. **All migrations through `20260827154823` have been applied to the live Supabase project** (done directly via the Supabase MCP connector this session — no more manual `supabase db push` step outstanding for those). Withings and Apple Health are live and verified. **Strava now requires a paid subscription to keep API access** (a Strava policy change, not something fixable in this codebase) — the user has chosen not to subscribe, so Strava is being retired as the cardio path in favor of Apple Health (see below). Peloton's unofficial API auth endpoint is also confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not viable either way.
+**Last updated:** 2026-10-12, session 5 (bedtime and wake sync from Apple Health; recovery check-in saves into the synced row; 42 live indexes restored; schedule confirmed; sleep anchored on wake time). Prior: 2026-10-12 (lift logger keeps an unsaved workout across reloads). Prior: 2026-10-09 (weekly plan card, daily habits, lift-tracker last-session prefill; templates and habits seeded, no strength sessions logged yet as of 2026-10-12). Prior: 2026-08-27 (TD-030 closed, CI, format normalization, TD-019, security fixes)
+**Overall health:** Stable. TypeScript clean. 538 tests pass (157 web, 317 application, 21 infrastructure, 5 integrations, 38 jobs; jobs dropped with the deleted Strava/Peloton orchestrator). Lint clean. Production build succeeds. CI runs format/typecheck/lint/test/build on every PR. **All migrations through `20260827154823` have been applied to the live Supabase project** (done directly via the Supabase MCP connector this session — no more manual `supabase db push` step outstanding for those). Withings and Apple Health are live and verified. **Strava now requires a paid subscription to keep API access** (a Strava policy change, not something fixable in this codebase) — the user has chosen not to subscribe, so Strava is being retired as the cardio path in favor of Apple Health (see below). Peloton's unofficial API auth endpoint is also confirmed blocked by Peloton as of 2026-07-16 — direct Peloton sync is not viable either way.
 
 This session ran a full product/UX/security/fitness-safety audit (see "What Was Done in This Session (2026-08-02, fitness-safety audit)" below), using parallel research passes over (a) strength/cardio unit conversion and progression logic and (b) security/auth/accessibility. Four concrete fixes shipped:
 
@@ -54,11 +54,14 @@ Read `CLAUDE.md` first. What changed on 2026-10-09, and what the live database n
 - Recovering from an ACL reconstruction (patellar tendon graft) with a surgeon visit the week of 2026-10-26. No running, jumping, or VO2 intervals until cleared. Do not add lower-body loading features or suggestions to this app without checking with the owner.
 - The owner prefers direct answers, small targeted changes, and being told about tradeoffs. He does not want files or docs created unless asked.
 
-**Open items**
-- Strava and Peloton direct sync are dead (see Integrations). The Apple Health bridge is on (live since 2026-10-12 via Health Auto Export; see Code above). App side is ready for both the free Shortcuts path and Health Auto Export.
-- About 19,700 `sync_job_runs` rows are failed or dead-lettered Strava retries from the 10/9 to 10/11 retry storm; the storm stopped 2026-10-12 02:00 UTC. Clearing them is the owner's call.
-- `profiles.baseline_schedule` is unused (TD-040).
-- Insight severity is not persisted (Active Known Issues, Medium 4).
+**Open items (end of session 5, 2026-10-12)**
+- Repo `Pilchern/FitnessApp` is still public and holds the plan doc's medical detail. Owner's call.
+- Production URL protection: Vercel SSO is `all_except_custom_domains`; whether `fitness-app-web-six.vercel.app` is covered was not verifiable from the container (session 4 found it outside). The app has no login. Owner should set protection to all deployments.
+- Unverified at close: the first Health Auto Export push after the index migration and #43 (bedtime/wake fill). No push had arrived between 16:56 and 17:58 UTC. Check `sync_job_runs` for `apple_health_*` failures and `recovery_checkins.bedtime_local` counts.
+- After PT 10/14: edit only the cardio templates for the ramp. At surgeon clearance: turn the Monday ride into the VO2 4x4 template, flip `vo2Required`, clear `excludedMuscleGroups`, remove the plan context.
+- About 19,700 junk `sync_job_runs` rows from the Strava retry storm; clearing them is a hard delete, owner's call.
+- TD-040 (`profiles.baseline_schedule` unused; drop needs approval), TD-042 remainder (journal page kept), insight severity not persisted (needs a column and a ranking decision).
+- Left out of the index restore: `raw_import_events_provider_dedupe_idx` (about 420 duplicate raw events) and `sync_job_runs_active_dedupe_idx` (one stale pair); three retired-journal indexes also missing.
 
 ---
 
