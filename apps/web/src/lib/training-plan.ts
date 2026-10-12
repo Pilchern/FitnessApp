@@ -19,9 +19,21 @@ export const NICK_TRAINING_PLAN: TrainingPlan = {
   excludedMuscleGroups: ["quads", "hamstrings", "glutes", "calves"],
 };
 
-export const NICK_AI_PLAN_CONTEXT = [
-  "Recovering from ACL reconstruction (patellar tendon graft), about 8 weeks post-op; surgeon visit week of 2026-10-26.",
-  "No running, jumping, plyometrics, or VO2 intervals until cleared. Do not suggest lower-body loading.",
-  "Lifts are upper body only (Tue/Thu/Sat); cardio is Zone 2 bike (Mon/Wed/Fri). Scheduled counts and the Zone 2 target in the data come from the current plan; judge adherence against them.",
-  "Goal is a small calorie surplus with protein around 180 g/day, not a cut. Knee rehab is tracked in a separate app.",
-].join("\n");
+/** ACL reconstruction date (plan doc section 1: 2026-10-09 is post-op day 53). */
+export const SURGERY_DATE = "2026-08-17";
+
+export function weeksPostOp(now: Date = new Date()): number {
+  const days = Math.floor(
+    (now.getTime() - Date.parse(`${SURGERY_DATE}T00:00:00Z`)) / 86_400_000,
+  );
+  return Math.max(0, Math.floor(days / 7));
+}
+
+/** Built per request so the post-op week does not go stale. */
+export const nickAiPlanContext = (now: Date = new Date()) =>
+  [
+    `Recovering from ACL reconstruction (patellar tendon graft), about ${weeksPostOp(now)} weeks post-op; surgeon visit week of 2026-10-26.`,
+    "No running, jumping, plyometrics, or VO2 intervals until cleared. Do not suggest lower-body loading.",
+    "Lifts are upper body only (Tue/Thu/Sat); cardio is Zone 2 bike (Mon/Wed/Fri). Scheduled counts and the Zone 2 target in the data come from the current plan; judge adherence against them.",
+    "Goal is a small calorie surplus with protein around 180 g/day, not a cut. Knee rehab is tracked in a separate app.",
+  ].join("\n");

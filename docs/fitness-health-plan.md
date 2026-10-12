@@ -86,7 +86,7 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 
 1. Foundation Training 8-10 min (Eric Goodman: founder hold, decompression breathing). Evidence is promotional only; treated as a posture/warm-up habit, not part of the strength budget.
 2. Morning sunlight 10-20 min after waking.
-3. 7,000 steps (auto-ticked from synced Apple Health steps once the bridge is on; manual checkbox until then).
+3. 7,000 steps (auto-ticked from synced Apple Health steps; the bridge is live via Health Auto Export since 2026-10-12). Ladder to 8,000 by 10/26 [stated 2026-10-12]; edit the habit name to move the threshold.
 4. Mobility 15 min (static stretching; no knee-loaded stretches while rehabbing).
 
 Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery check-in; M-F first thing in the morning, 55F, 5 min, then sunlight), wake and bed time (recovery check-in), protein hit, fiber and alcohol (nutrition log), supplements (kind = supplement).
@@ -95,7 +95,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 - Fixed wake time 6:30 AM, 7 days a week [assumed; Nick's stated 5:30 target is not being met, and consistency beats an aspirational time]. Bed about 10:00 PM, 9:30 PM ceiling for wind-down creep. 8-9 hours in bed (Attia).
 - Cold plunge M-F AM is fine because lifts are in the evening. If lifts move to the morning, no plunge within about 2 hours after lifting (Huberman).
-- Wearable: moving off Apple Watch to an Oura Ring 5 (Whoop and RingConn were the alternatives). iPhone user; steps and sleep also feed UHC Rewards. [stated]
+- Wearable: keeping the Apple Watch, no ring [stated 2026-10-12; replaces the earlier Oura Ring 5 plan]. iPhone user; steps and sleep also feed UHC Rewards. Withings scale for weight. Health Auto Export relays Watch and Peloton data to the app hourly.
 - Recovery coaching in the app already warns on soreness 8+ and low readiness.
 
 ## 8. Nutrition
@@ -154,15 +154,16 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 - /strength: Today's plan callout; Load plan prefills sets; weight starts at the last logged working-set weight, with "Last (date): 165 x 8, 8, 7".
 - Live database seeded by hand: 3 strength templates (Tue/Thu/Sat), 3 cardio templates (Mon 30, Wed 30, Fri 45), 4 habits, protein target 180.
 - Schema: supplements.kind (supplement | habit), migration applied live.
-- Live data counts at last check: 131 imported rides, 275 body metrics, 1 profile, 0 lifts logged, 1 recovery check-in, 0 nutrition logs.
+- Live data counts at last check (2026-10-12): 144 rides (131 historical Strava, the rest from Apple Health), 294 body metrics, 0 lifts logged, recovery rows created nightly by the Apple Health sleep sync, 0 nutrition logs.
+- Apple Health (Health Auto Export, hourly): steps (auto-ticks the steps habit), resting HR, HRV, VO2 max, sleep with bedtime and wake, Peloton rides. Withings syncs daily.
 - Docs: CLAUDE.md, CURRENT_STATE.md "Start Here", TECH_DEBT.md TD-039/TD-040, FitnessAppContext.md session log.
 
 ## 15. Suggested next work, ranked
 
-1. Apple Health bridge (Health Auto Export) to the existing webhooks for steps, sleep and rides; then auto-check the 7,000 steps habit from daily_activity_metrics. Biggest tracking gain, no new schema.
+1. [done 2026-10-12] Apple Health bridge (Health Auto Export) to the existing webhooks for steps, sleep and rides; then auto-check the 7,000 steps habit from daily_activity_metrics. Biggest tracking gain, no new schema.
 2. After PT 10/14: edit the cardio templates' targetZone2Minutes and durations for the 40/40/60 ramp. No code change needed.
-3. Weekly review: include plan adherence (sessions done of scheduled) and habit completion in the auto summary and the AI draft.
-4. Dashboard: show the weigh-in trend next to protein-hit days, since the rehab goal is a small surplus.
+3. [done 2026-10-09] Weekly review: include plan adherence (sessions done of scheduled) and habit completion in the auto summary and the AI draft.
+4. [done 2026-10-09] Dashboard: show the weigh-in trend next to protein-hit days, since the rehab goal is a small surplus.
 5. Decide TD-040 (delete profiles.baseline_schedule or drive the plan card from it; do not keep three sources of truth).
 6. At surgeon clearance: swap templates to full-body lifts, add the VO2 session template, add a run-walk cardio sessionKind only if the domain needs it.
 7. Do not build: a calorie logger, a knee rehab module, or a generic habit engine. Split habits out of the supplements tables only if they need per-day schedules or targets (TD-039).
