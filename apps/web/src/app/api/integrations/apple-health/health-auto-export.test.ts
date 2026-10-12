@@ -3,6 +3,7 @@ import {
   dedupeOverlappingRides,
   mapHealthAutoExport,
   toIsoDateTime,
+  toLocalClockTime,
 } from "./health-auto-export";
 
 // Synthetic values in Health Auto Export's REST shape (aggregated by day).
@@ -59,6 +60,8 @@ const metricsBody = {
             inBed: 0,
             inBedStart: "2026-10-07 21:45:00 -0500",
             inBedEnd: "2026-10-08 05:45:00 -0500",
+            sleepStart: "2026-10-07 21:58:12 -0500",
+            sleepEnd: "2026-10-08 05:41:40 -0500",
           },
         ],
       },
@@ -94,8 +97,35 @@ describe("mapHealthAutoExport metrics", () => {
         core_sleep_minutes: 270,
         awake_minutes: 15,
         time_in_bed_minutes: 480,
+        bedtime_local: "21:58",
+        wake_time_local: "05:41",
       },
     ]);
+  });
+
+  it("falls back to the in-bed window for bedtime and wake", () => {
+    const out = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "sleep_analysis",
+            units: "hr",
+            data: [
+              {
+                date: "2026-10-09 00:00:00 -0500",
+                totalSleep: 7,
+                inBedStart: "2026-10-08 21:30:00 -0500",
+                inBedEnd: "2026-10-09 06:05:00 -0500",
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(out.sleep[0]).toMatchObject({
+      bedtime_local: "21:30",
+      wake_time_local: "06:05",
+    });
   });
 
   it("ignores weight (Withings is the direct source)", () => {
@@ -200,6 +230,15 @@ describe("mapHealthAutoExport workouts", () => {
         mapHealthAutoExport({ data: { workouts: [ride, later] } }).workouts,
       ),
     ).toHaveLength(2);
+  });
+});
+
+describe("toLocalClockTime", () => {
+  it("keeps the phone's wall-clock hour and minute", () => {
+    expect(toLocalClockTime("2026-10-11 21:42:10 -0500")).toBe("21:42");
+    expect(toLocalClockTime("2026-10-12T06:05:00Z")).toBe("06:05");
+    expect(toLocalClockTime("2026-10-12")).toBeNull();
+    expect(toLocalClockTime(undefined)).toBeNull();
   });
 });
 
