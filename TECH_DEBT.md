@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-10-12 (TD-041 closed; TD-042 added: dead code after retiring Strava, Peloton and the journal)
+**Last updated:** 2026-10-12 (TD-042 narrowed: the Strava/Peloton sync orchestrator is deleted; the journal page stays)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -17,7 +17,7 @@ Seeded with a pre-injury weekly plan, written by `profile-bootstrap.ts`, read by
 
 ### TD-042 — Dead code left after retiring Strava, Peloton and the journal (low)
 
-`CardioSyncOrchestrator` (`packages/jobs/src/orchestration/cardio-sync.ts`) and its tests, the `cardio` branch of `resolveRetryTarget`, and the `/journal` page, actions and `JournalEntryService` wiring are unused since 2026-10-12. Kept so this cut stayed reviewable; delete in one pass if nothing needs them. Keep the `strava`/`peloton` provider values: historical rows and cross-provider dedup use them.
+`CardioSyncOrchestrator` and the `cardio` retry branch were deleted 2026-10-12 (session 5). Left: the `/journal` page, actions and `JournalEntryService` wiring, out of the nav since 2026-10-12. Kept because the page is the only way to read the old entries in the app (the data export also has them) and the dashboard still computes a journal streak; delete only when the owner says the entries can go dark. Keep the `strava`/`peloton` provider values: historical rows and cross-provider dedup use them.
 
 ### TD-041 — Two sources for the weekly Zone 2 target (closed 2026-10-12)
 

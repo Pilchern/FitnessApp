@@ -20,7 +20,7 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 
 ## 3. Weekly schedule (current phase, through about 10/26)
 
-Lifts Tue/Thu/Sat. Cardio Mon/Wed/Fri. [stated, 2026-10-09]
+Lifts Tue/Thu/Sat. Cardio Mon/Wed/Fri. Sunday rest. [stated 2026-10-09, confirmed 2026-10-12]
 
 | Day | Work | Morning | Training | Notes |
 |---|---|---|---|---|
@@ -78,7 +78,7 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
   - Then 40 + 40 + 60 = 140 min
   - Then 45 + 45 + 60 = 150 min (Attia minimum is about 3 hr/wk; Huberman 150-200)
 - VO2 work (4x4 at 184-208 W, recovery about 87 W) stays parked until the surgeon visit AND pain is 2/10 or less AND no swelling after Z2. Pre-injury this was a Saturday session.
-- Post-clearance cardio target in Nick's notes is 2x/week, revised down from 3x [stated]. The current 3x bike is a rehab-phase choice (ROM, swelling control, graft-friendly loading). Decide at clearance whether to hold 3x or go to 2 longer sessions to keep weekly Z2 at 150-180 min. [open decision]
+- Target structure [stated 2026-10-12]: three rides Mon/Wed/Fri, two Zone 2 and one VO2 4x4. Until the VO2 gate above is met, all three stay Zone 2 (the current templates). At the switch the VO2 ride goes on Monday [assumed: freshest after the Sunday rest, no PT that morning, and the 4x4 is the shortest session on an office day], Wednesday and Friday stay Zone 2 with Friday the long one. Two Z2 rides carry the weekly Z2 total, so the 150 min target means about 60 + 90 min, or accept less Z2 for the VO2 work. This replaces the earlier 2x/week note.
 - No running, jumping or plyometrics. The patellar tendon is the weak link in a BTB graft; plyo needs a clinician sign-off.
 - Return-to-run criteria (all required): full extension; flexion within 5% of the other knee; trace effusion at most; pain 2/10 or less; quad strength at least 80% LSI. Villena 2025 markers: single-leg press 1.25x bodyweight, 30 step-and-holds, Y-balance 90% or better. Ask PT to measure quad dynamometry on both legs.
 
@@ -111,7 +111,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 1. PT Tracker still schedules loaded knee sessions Mon/Tue/Thu. Monday is now a bike day. Options: keep the Monday knee block and bike after it, or move it. Nick has not decided; PT Tracker was left unchanged.
 2. The AI-Lab Phase III plan lists lifts Mon/Tue/Thu (Push/Pull/Arms with knee blocks). Nick's 2026-10-09 instruction overrides: lifts Tue/Thu/Sat. The AI-Lab docs have not been updated; edits need his approval.
-3. Cardio 3x (now) vs 2x (stated post-clearance target).
+3. Resolved 2026-10-12: three rides, two Zone 2 plus one VO2 once cleared (section 5).
 4. Bike ramp and farmer carries wait on PT 10/14.
 5. Foundation Training and dead hangs were additions; Nick can drop either.
 
@@ -135,7 +135,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 ## 12. Post-clearance structure (conditional, after surgeon sign-off)
 
 - Lifting 3x/week full body (Tue/Thu/Sat); the knee work folds into strength days instead of separate sessions. Re-enter light over 2-3 weeks; baselines in section 4. Missed lift: move to the next available day, do not double up.
-- Cardio: weekly Z2 150-180 min; one VO2 4x4 session per week; retest FTP after returning to structured riding, then every 6-8 weeks.
+- Cardio: Mon/Wed/Fri, two Zone 2 rides plus one VO2 4x4 (Monday); weekly Z2 150-180 min; retest FTP after returning to structured riding, then every 6-8 weeks.
 - Run-walk only after the section 5 criteria. Golf only after ortho clearance.
 - Nutrition: reactivate the cut from the parked reference.
 - Long-term targets, not current: dead hang 2 min, farmer carry about half bodyweight per hand for 1 min, protein about 1 g/lb, heavy lifting about 4x/week per Attia, stability work.

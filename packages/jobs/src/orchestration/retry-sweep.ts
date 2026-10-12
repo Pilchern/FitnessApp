@@ -2,9 +2,9 @@
  * Pure logic for the `/api/cron/retry-failed-syncs` sweep (TD-014).
  *
  * `sync_job_runs` IS the retry queue — no new queue table. Each provider
- * sync (`CardioSyncOrchestrator.syncRides`, `BodyMetricSyncOrchestrator.syncBodyMetrics`)
- * already creates a fresh `sync_job_runs` row per invocation and marks it
- * succeeded/failed itself (see cardio-sync.ts / body-metric-sync.ts). This
+ * sync (`BodyMetricSyncOrchestrator.syncBodyMetrics`, the only pull-based
+ * one left) creates a fresh `sync_job_runs` row per invocation and marks it
+ * succeeded/failed itself (see body-metric-sync.ts). This
  * module does NOT change that behavior — it only computes, from a row that
  * is currently `failed`, whether/when to retry it and when to give up.
  *
@@ -33,10 +33,7 @@ export const RETRY_BACKOFF_UNIT_MINUTES = 5;
  * failed webhook delivery is retried by the sender (Apple Health Auto
  * Export), not by us.
  */
-export const RETRYABLE_JOB_TYPES = [
-  "cardio_session_sync",
-  "body_metric_sync",
-] as const;
+export const RETRYABLE_JOB_TYPES = ["body_metric_sync"] as const;
 
 export type RetryableJobType = (typeof RETRYABLE_JOB_TYPES)[number];
 
@@ -61,17 +58,16 @@ export function isQueueEntry(triggerType: string | null | undefined): boolean {
 }
 
 export type RetryTarget =
-  | { kind: "cardio"; provider: "peloton" | "strava" }
   | { kind: "body_metric"; provider: "withings" }
   | { kind: "unsupported" };
 
 /**
  * Resolve which orchestrator/provider a failed `sync_job_runs` row belongs
- * to. Both `CardioSyncOrchestrator.syncRides` and
- * `BodyMetricSyncOrchestrator.syncBodyMetrics` stamp `payload.provider` on
- * every run they create (see `dedupeKey`/payload construction in
- * cardio-sync.ts and body-metric-sync.ts), so we read it back from there
- * rather than joining to `integration_connections`.
+ * to. `BodyMetricSyncOrchestrator.syncBodyMetrics` stamps
+ * `payload.provider` on every run it creates (see body-metric-sync.ts), so we
+ * read it back from there rather than joining to `integration_connections`.
+ * Strava and Peloton `cardio_session_sync` rows (retired 2026-10-12) resolve
+ * to unsupported and are left alone.
  */
 export function resolveRetryTarget(
   jobType: string,
@@ -79,13 +75,6 @@ export function resolveRetryTarget(
 ): RetryTarget {
   const provider =
     typeof payload?.provider === "string" ? payload.provider : null;
-
-  if (
-    jobType === "cardio_session_sync" &&
-    (provider === "peloton" || provider === "strava")
-  ) {
-    return { kind: "cardio", provider };
-  }
 
   if (jobType === "body_metric_sync" && provider === "withings") {
     return { kind: "body_metric", provider: "withings" };
