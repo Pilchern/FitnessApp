@@ -423,13 +423,36 @@ function evaluateMissingWeeklyReview(input: InsightEngineInput) {
   );
 }
 
+/**
+ * The week's targets: from the stored weekly review when it carries them
+ * (summed from the scheduled templates, the same source as the dashboard Plan
+ * card and the weekly score), else the plan defaults. Editing the cardio
+ * templates after a ramp change therefore moves the insights too.
+ */
+function weekTargets(
+  summary: {
+    zone2TargetMinutes?: number | null;
+    liftsScheduled?: number | null;
+    cardioScheduled?: number | null;
+  },
+  plan: TrainingPlan,
+) {
+  return {
+    zone2: summary.zone2TargetMinutes || plan.weeklyZone2TargetMinutes,
+    lifts: summary.liftsScheduled || 3,
+    rides: summary.cardioScheduled || 3,
+  };
+}
+
 function evaluateZone2BelowTarget(input: InsightEngineInput) {
   const weekStart = getLastCompletedWeekStart(input.now);
   const review = getReviewForWeek(input.weeklyReviews, weekStart);
   const summary = review?.summary ?? buildWeekSummary(weekStart, input);
   const zone2Minutes = summary.zone2Minutes ?? 0;
-  const zone2Target = (input.plan ?? GENERIC_TRAINING_PLAN)
-    .weeklyZone2TargetMinutes;
+  const zone2Target = weekTargets(
+    summary,
+    input.plan ?? GENERIC_TRAINING_PLAN,
+  ).zone2;
 
   if (zone2Minutes >= zone2Target) {
     return null;
@@ -594,12 +617,12 @@ function evaluateStrongWeek(input: InsightEngineInput) {
   const liftsCompleted = summary.liftsCompleted ?? 0;
   const ridesCompleted = summary.ridesCompleted ?? 0;
   const zone2Minutes = summary.zone2Minutes ?? 0;
+  const targets = weekTargets(summary, input.plan ?? GENERIC_TRAINING_PLAN);
 
   if (
-    liftsCompleted < 3 ||
-    ridesCompleted < 3 ||
-    zone2Minutes <
-      (input.plan ?? GENERIC_TRAINING_PLAN).weeklyZone2TargetMinutes
+    liftsCompleted < targets.lifts ||
+    ridesCompleted < targets.rides ||
+    zone2Minutes < targets.zone2
   ) {
     return null;
   }
