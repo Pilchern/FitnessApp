@@ -53,5 +53,6 @@ export async function getRecoveryPageData(
       .filter((log) => log.taken)
       .map((log) => log.supplementId),
     todayIsoDate: today,
+    todaysCheckin: checkins.find((c) => c.checkinDate === today) ?? null,
   };
 }

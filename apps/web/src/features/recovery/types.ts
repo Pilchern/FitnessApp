@@ -15,6 +15,8 @@ export type RecoveryPageData = {
   activeSupplements: Supplement[];
   supplementsTakenToday: string[];
   todayIsoDate: string;
+  /** Usually created overnight by the Apple Health sleep sync. */
+  todaysCheckin: RecoveryCheckin | null;
 };
 
 export type RecoveryActionState = {

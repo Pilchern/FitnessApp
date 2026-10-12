@@ -341,6 +341,22 @@ export function RecoveryQuickForm({
           </div>
         </div>
 
+        <label className="flex h-11 cursor-pointer items-center gap-3 text-sm font-medium text-ink">
+          <input
+            type="checkbox"
+            className={checkboxClassName()}
+            name="coldPlungeCompleted"
+            checked={values.coldPlungeCompleted}
+            onChange={(event) =>
+              setValues((current) => ({
+                ...current,
+                coldPlungeCompleted: event.target.checked,
+              }))
+            }
+          />
+          Cold plunge completed
+        </label>
+
         <div>
           <button
             type="button"
@@ -353,81 +369,71 @@ export function RecoveryQuickForm({
           </button>
         </div>
 
-        {showAdvanced ? (
-          <div className="grid gap-4 rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4 md:grid-cols-2">
-            <label className="grid gap-2 text-sm font-medium text-ink">
-              Resting HR
-              <input
-                className={fieldClassName()}
-                name="restingHeartRate"
-                inputMode="numeric"
-                value={values.restingHeartRate}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    restingHeartRate: event.target.value,
-                  }))
-                }
-              />
-              {state.fieldErrors?.restingHeartRate ? (
-                <p className="text-xs text-ember">
-                  {state.fieldErrors.restingHeartRate}
-                </p>
-              ) : null}
-            </label>
+        {/* Collapsed, not unmounted: these fields must still submit, or
+            saving over a synced row would blank its resting HR and HRV. */}
+        <div
+          className={
+            showAdvanced
+              ? "grid gap-4 rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4 md:grid-cols-2"
+              : "hidden"
+          }
+        >
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Resting HR
+            <input
+              className={fieldClassName()}
+              name="restingHeartRate"
+              inputMode="numeric"
+              value={values.restingHeartRate}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  restingHeartRate: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.restingHeartRate ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.restingHeartRate}
+              </p>
+            ) : null}
+          </label>
 
-            <label className="grid gap-2 text-sm font-medium text-ink">
-              HRV
-              <input
-                className={fieldClassName()}
-                name="hrv"
-                inputMode="decimal"
-                value={values.hrv}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    hrv: event.target.value,
-                  }))
-                }
-              />
-              {state.fieldErrors?.hrv ? (
-                <p className="text-xs text-ember">{state.fieldErrors.hrv}</p>
-              ) : null}
-            </label>
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            HRV
+            <input
+              className={fieldClassName()}
+              name="hrv"
+              inputMode="decimal"
+              value={values.hrv}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  hrv: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.hrv ? (
+              <p className="text-xs text-ember">{state.fieldErrors.hrv}</p>
+            ) : null}
+          </label>
 
-            <label className="flex items-center gap-3 text-sm font-medium text-ink cursor-pointer md:col-span-2">
-              <input
-                type="checkbox"
-                className={checkboxClassName()}
-                name="coldPlungeCompleted"
-                checked={values.coldPlungeCompleted}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    coldPlungeCompleted: event.target.checked,
-                  }))
-                }
-              />
-              Cold plunge completed
-            </label>
-
-            <label className="grid gap-2 text-sm font-medium text-ink md:col-span-2">
-              Notes
-              <textarea
-                className={textAreaClassName()}
-                name="notes"
-                placeholder="Anything that explains the day?"
-                value={values.notes}
-                onChange={(event) =>
-                  setValues((current) => ({
-                    ...current,
-                    notes: event.target.value,
-                  }))
-                }
-              />
-            </label>
-          </div>
-        ) : null}
+          <label className="grid gap-2 text-sm font-medium text-ink md:col-span-2">
+            Notes
+            <textarea
+              className={textAreaClassName()}
+              name="notes"
+              placeholder="Anything that explains the day?"
+              value={values.notes}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  notes: event.target.value,
+                }))
+              }
+            />
+          </label>
+        </div>
 
         <div className="flex justify-end">
           <AuthSubmitButton
