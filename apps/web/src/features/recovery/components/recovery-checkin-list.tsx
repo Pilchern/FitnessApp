@@ -7,13 +7,12 @@ import { deleteRecoveryCheckinAction } from "../actions";
 import {
   formatHours,
   formatRecoveryDate,
-  formatRestingHeartRate,
   formatScore,
   formatSleepEfficiency,
   formatSleepStageMinutes,
 } from "../helpers";
 
-const PAGE_SIZE = 14;
+const PAGE_SIZE = 10;
 
 type RecoveryCheckinListProps = {
   checkins: RecoveryCheckin[];
@@ -40,134 +39,124 @@ export function RecoveryCheckinList({ checkins }: RecoveryCheckinListProps) {
   }
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            History
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">
-            Recent check-ins
-          </h2>
-        </div>
-        <div className="text-sm text-ink/65">{checkins.length} total</div>
+    <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="font-display text-lg text-ink">History</h2>
+        <div className="text-sm text-ink/55">{checkins.length} nights</div>
       </div>
 
-      <div className="mt-5 space-y-4">
-        {visible.map((checkin) => (
-          <article
-            key={checkin.id}
-            className="rounded-[1.5rem] border border-ink/10 bg-sand/40 p-5"
-          >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-3">
-                <h3 className="text-lg font-semibold text-ink">
-                  {formatRecoveryDate(checkin.checkinDate)}
-                </h3>
-                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
-                  <span>{`Sleep ${formatHours(
-                    checkin.sleepDurationMinutes != null
-                      ? Math.round((checkin.sleepDurationMinutes / 60) * 10) /
-                          10
-                      : null,
-                  )}`}</span>
-                  <span>{`Quality ${formatScore(checkin.sleepQuality, "/5")}`}</span>
-                  <span className="inline-flex items-center gap-1.5">
-                    {`Readiness ${formatScore(checkin.readinessLevel)}`}
-                    {checkin.readinessLevel != null &&
-                    checkin.readinessLevel >= 8 ? (
-                      <span className="inline-block h-2 w-2 rounded-full bg-pine" />
-                    ) : null}
-                  </span>
-                  <span>{`Stress ${formatScore(checkin.stressLevel)}`}</span>
-                  <span>{`Soreness ${formatScore(checkin.sorenessLevel)}`}</span>
-                  <span>{`Alcohol ${checkin.alcoholCount}`}</span>
-                  <span>{`RHR ${formatRestingHeartRate(checkin.restingHeartRate)}`}</span>
-                  {checkin.hrv != null ? (
-                    <span>{`HRV ${checkin.hrv}`}</span>
-                  ) : null}
-                  {checkin.bedtimeLocal != null ? (
-                    <span>{`Bedtime ${checkin.bedtimeLocal}`}</span>
-                  ) : null}
-                  {checkin.wakeTimeLocal != null ? (
-                    <span>{`Wake ${checkin.wakeTimeLocal}`}</span>
-                  ) : null}
-                  {checkin.coldPlungeCompleted ? (
-                    <span className="inline-flex items-center gap-1 text-pine">
-                      Cold plunge ✓
-                    </span>
-                  ) : null}
-                </div>
+      {/* One row per night; tap for stages, notes, edit and delete. */}
+      <ul className="mt-3 divide-y divide-ink/10">
+        {visible.map((checkin) => {
+          const summary = [
+            checkin.sleepDurationMinutes != null
+              ? formatHours(
+                  Math.round((checkin.sleepDurationMinutes / 60) * 10) / 10,
+                )
+              : null,
+            checkin.restingHeartRate != null
+              ? `RHR ${checkin.restingHeartRate}`
+              : null,
+            checkin.hrv != null ? `HRV ${Math.round(checkin.hrv)}` : null,
+            checkin.readinessLevel != null
+              ? `Ready ${checkin.readinessLevel}/10`
+              : null,
+            checkin.sorenessLevel != null
+              ? `Sore ${checkin.sorenessLevel}/10`
+              : null,
+          ].filter(Boolean);
+          const details = [
+            checkin.bedtimeLocal
+              ? `Bed ${checkin.bedtimeLocal.slice(0, 5)}`
+              : null,
+            checkin.wakeTimeLocal
+              ? `Up ${checkin.wakeTimeLocal.slice(0, 5)}`
+              : null,
+            checkin.deepSleepMinutes != null
+              ? `Deep ${formatSleepStageMinutes(checkin.deepSleepMinutes)}`
+              : null,
+            checkin.remSleepMinutes != null
+              ? `REM ${formatSleepStageMinutes(checkin.remSleepMinutes)}`
+              : null,
+            checkin.coreSleepMinutes != null
+              ? `Core ${formatSleepStageMinutes(checkin.coreSleepMinutes)}`
+              : null,
+            checkin.awakeMinutes != null
+              ? `Awake ${formatSleepStageMinutes(checkin.awakeMinutes)}`
+              : null,
+            checkin.sleepEfficiencyPct != null
+              ? `Efficiency ${formatSleepEfficiency(checkin.sleepEfficiencyPct)}`
+              : null,
+            checkin.sleepQuality != null
+              ? `Quality ${formatScore(checkin.sleepQuality, "/5")}`
+              : null,
+            checkin.energyLevel != null
+              ? `Energy ${formatScore(checkin.energyLevel)}`
+              : null,
+            checkin.stressLevel != null
+              ? `Stress ${formatScore(checkin.stressLevel)}`
+              : null,
+            checkin.alcoholCount > 0 ? `Drinks ${checkin.alcoholCount}` : null,
+            checkin.coldPlungeCompleted ? "Cold plunge" : null,
+          ].filter(Boolean);
 
-                {checkin.deepSleepMinutes != null ||
-                checkin.remSleepMinutes != null ||
-                checkin.coreSleepMinutes != null ||
-                checkin.awakeMinutes != null ||
-                checkin.sleepEfficiencyPct != null ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm text-ink/60">
-                      {[
-                        checkin.deepSleepMinutes != null &&
-                          `Deep ${formatSleepStageMinutes(checkin.deepSleepMinutes)}`,
-                        checkin.remSleepMinutes != null &&
-                          `REM ${formatSleepStageMinutes(checkin.remSleepMinutes)}`,
-                        checkin.coreSleepMinutes != null &&
-                          `Core ${formatSleepStageMinutes(checkin.coreSleepMinutes)}`,
-                        checkin.awakeMinutes != null &&
-                          `Awake ${formatSleepStageMinutes(checkin.awakeMinutes)}`,
-                        checkin.sleepEfficiencyPct != null &&
-                          `Efficiency ${formatSleepEfficiency(checkin.sleepEfficiencyPct)}`,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    {(checkin.source.sourceType === "imported" ||
-                      checkin.source.sourceType === "mixed") &&
-                    checkin.source.sourceProvider != null &&
-                    (checkin.sleepDurationMinutes != null ||
-                      checkin.deepSleepMinutes != null) ? (
-                      <span className="rounded-full border border-ink/10 bg-white px-2.5 py-0.5 text-xs text-ink/50">
+          return (
+            <li key={checkin.id}>
+              <details className="group">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-2">
+                  <span className="text-sm font-medium text-ink">
+                    {formatRecoveryDate(checkin.checkinDate)}
+                  </span>
+                  <span className="text-right text-sm text-ink/65">
+                    {summary.length > 0 ? summary.join(" · ") : "No data"}
+                  </span>
+                </summary>
+                <div className="space-y-3 pb-4 text-sm text-ink/70">
+                  {details.length > 0 ? <p>{details.join(" · ")}</p> : null}
+                  {checkin.notes ? (
+                    <p className="text-ink/80">{checkin.notes}</p>
+                  ) : null}
+                  <div className="flex items-center gap-4">
+                    <Link
+                      href={`/recovery?edit=${checkin.id}`}
+                      className="font-semibold text-pine hover:underline"
+                    >
+                      Edit
+                    </Link>
+                    <form
+                      action={deleteRecoveryCheckinAction}
+                      onSubmit={(event) => {
+                        if (
+                          !window.confirm(
+                            "Delete this night? Synced sleep and heart rate for it go too.",
+                          )
+                        ) {
+                          event.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="id" value={checkin.id} />
+                      <button
+                        type="submit"
+                        className="font-semibold text-ember hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                    {checkin.source.sourceType !== "manual" ? (
+                      <span className="ml-auto text-xs text-ink/45">
                         {checkin.source.sourceProvider === "apple_health"
                           ? "Apple Health"
-                          : checkin.source.sourceProvider === "withings"
-                            ? "Withings"
-                            : checkin.source.sourceProvider
-                                .charAt(0)
-                                .toUpperCase() +
-                              checkin.source.sourceProvider.slice(1)}
+                          : checkin.source.sourceProvider}
                       </span>
                     ) : null}
                   </div>
-                ) : null}
-
-                {checkin.notes ? (
-                  <p className="text-sm leading-6 text-ink/75">
-                    {checkin.notes}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Link
-                  href={`/recovery?edit=${checkin.id}`}
-                  className="inline-flex h-10 items-center justify-center rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
-                >
-                  Edit
-                </Link>
-                <form action={deleteRecoveryCheckinAction}>
-                  <input type="hidden" name="id" value={checkin.id} />
-                  <button
-                    type="submit"
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-ember/20 px-4 text-sm font-semibold text-ember transition hover:bg-ember/10"
-                  >
-                    Delete
-                  </button>
-                </form>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+                </div>
+              </details>
+            </li>
+          );
+        })}
+      </ul>
 
       {checkins.length > PAGE_SIZE ? (
         <div className="mt-5 flex justify-center">

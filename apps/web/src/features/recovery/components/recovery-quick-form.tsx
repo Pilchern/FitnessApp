@@ -94,20 +94,27 @@ export function RecoveryQuickForm({
     setShowAdvanced(mode === "edit");
   }, [checkin, mode]);
 
+  const syncedSleep = [
+    checkin?.sleepDurationMinutes != null
+      ? `${Math.round((checkin.sleepDurationMinutes / 60) * 10) / 10} h asleep`
+      : null,
+    checkin?.bedtimeLocal ? `bed ${checkin.bedtimeLocal.slice(0, 5)}` : null,
+    checkin?.wakeTimeLocal ? `up ${checkin.wakeTimeLocal.slice(0, 5)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
+    <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            Quick add
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">
-            {mode === "edit"
-              ? "Edit recovery check-in"
-              : "Log recovery in under 20 seconds"}
+          <h2 className="font-display text-lg text-ink">
+            {mode === "edit" ? "Edit check-in" : "How do you feel today?"}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-ink/75">
-            Log the basics in under a minute. Heart rate and HRV are optional.
+          <p className="mt-1 text-sm leading-6 text-ink/65">
+            {syncedSleep
+              ? `Last night: ${syncedSleep}. Synced from Apple Health.`
+              : "Sleep, resting HR and HRV sync from Apple Health overnight."}
           </p>
         </div>
 
@@ -130,147 +137,10 @@ export function RecoveryQuickForm({
       <form action={formAction} className="mt-5 space-y-5">
         {values.id ? <input type="hidden" name="id" value={values.id} /> : null}
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Date
-            <input
-              className={fieldClassName()}
-              name="checkinDate"
-              type="date"
-              value={values.checkinDate}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  checkinDate: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.checkinDate ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.checkinDate}
-              </p>
-            ) : null}
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Sleep hours
-            <input
-              className={fieldClassName()}
-              name="sleepHours"
-              inputMode="decimal"
-              placeholder="7.5"
-              value={values.sleepHours}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  sleepHours: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.sleepHours ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.sleepHours}
-              </p>
-            ) : null}
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Bedtime
-            <input
-              className={fieldClassName()}
-              name="bedtimeLocal"
-              type="time"
-              value={values.bedtimeLocal}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  bedtimeLocal: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.bedtimeLocal ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.bedtimeLocal}
-              </p>
-            ) : null}
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Wake time
-            <input
-              className={fieldClassName()}
-              name="wakeTimeLocal"
-              type="time"
-              value={values.wakeTimeLocal}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  wakeTimeLocal: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.wakeTimeLocal ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.wakeTimeLocal}
-              </p>
-            ) : null}
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Alcohol count
-            <input
-              className={fieldClassName()}
-              name="alcoholCount"
-              inputMode="numeric"
-              value={values.alcoholCount}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  alcoholCount: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.alcoholCount ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.alcoholCount}
-              </p>
-            ) : null}
-          </label>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Sleep quality
-            <select
-              className={fieldClassName()}
-              name="sleepQuality"
-              value={values.sleepQuality}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  sleepQuality: event.target.value,
-                }))
-              }
-            >
-              <option value="">Select</option>
-              {sleepQualityOptions.map((value) => (
-                <option key={value} value={value}>
-                  {value}/5
-                </option>
-              ))}
-            </select>
-            {state.fieldErrors?.sleepQuality ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.sleepQuality}
-              </p>
-            ) : null}
-          </label>
-        </div>
-
         <div className="grid gap-4">
           <div className="grid gap-2">
             <span className="text-sm font-medium text-ink">
-              Readiness (1-10)
+              How ready do you feel? (1-10)
             </span>
             <ScoreButtonRow
               name="readinessLevel"
@@ -283,40 +153,6 @@ export function RecoveryQuickForm({
             {state.fieldErrors?.readinessLevel ? (
               <p className="text-xs text-ember">
                 {state.fieldErrors.readinessLevel}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="grid gap-2">
-            <span className="text-sm font-medium text-ink">Energy (1-10)</span>
-            <ScoreButtonRow
-              name="energyLevel"
-              value={values.energyLevel}
-              ariaLabel="Energy 1 to 10"
-              onChange={(next) =>
-                setValues((current) => ({ ...current, energyLevel: next }))
-              }
-            />
-            {state.fieldErrors?.energyLevel ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.energyLevel}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="grid gap-2">
-            <span className="text-sm font-medium text-ink">Stress (1-10)</span>
-            <ScoreButtonRow
-              name="stressLevel"
-              value={values.stressLevel}
-              ariaLabel="Stress 1 to 10"
-              onChange={(next) =>
-                setValues((current) => ({ ...current, stressLevel: next }))
-              }
-            />
-            {state.fieldErrors?.stressLevel ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.stressLevel}
               </p>
             ) : null}
           </div>
@@ -364,8 +200,8 @@ export function RecoveryQuickForm({
             className="text-sm font-semibold text-pine underline-offset-4 hover:underline"
           >
             {showAdvanced
-              ? "Hide optional metrics"
-              : "Add optional recovery metrics"}
+              ? "Fewer fields"
+              : "More: sleep, energy, stress, drinks, notes"}
           </button>
         </div>
 
@@ -374,65 +210,242 @@ export function RecoveryQuickForm({
         <div
           className={
             showAdvanced
-              ? "grid gap-4 rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4 md:grid-cols-2"
+              ? "grid gap-4 rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4 "
               : "hidden"
           }
         >
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Resting HR
-            <input
-              className={fieldClassName()}
-              name="restingHeartRate"
-              inputMode="numeric"
-              value={values.restingHeartRate}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  restingHeartRate: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.restingHeartRate ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.restingHeartRate}
-              </p>
-            ) : null}
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Date
+              <input
+                className={fieldClassName()}
+                name="checkinDate"
+                type="date"
+                value={values.checkinDate}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    checkinDate: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.checkinDate ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.checkinDate}
+                </p>
+              ) : null}
+            </label>
 
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            HRV
-            <input
-              className={fieldClassName()}
-              name="hrv"
-              inputMode="decimal"
-              value={values.hrv}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  hrv: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.hrv ? (
-              <p className="text-xs text-ember">{state.fieldErrors.hrv}</p>
-            ) : null}
-          </label>
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Sleep hours
+              <input
+                className={fieldClassName()}
+                name="sleepHours"
+                inputMode="decimal"
+                placeholder="7.5"
+                value={values.sleepHours}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    sleepHours: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.sleepHours ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.sleepHours}
+                </p>
+              ) : null}
+            </label>
 
-          <label className="grid gap-2 text-sm font-medium text-ink md:col-span-2">
-            Notes
-            <textarea
-              className={textAreaClassName()}
-              name="notes"
-              placeholder="Anything that explains the day?"
-              value={values.notes}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  notes: event.target.value,
-                }))
-              }
-            />
-          </label>
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Bedtime
+              <input
+                className={fieldClassName()}
+                name="bedtimeLocal"
+                type="time"
+                value={values.bedtimeLocal}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    bedtimeLocal: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.bedtimeLocal ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.bedtimeLocal}
+                </p>
+              ) : null}
+            </label>
+
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Wake time
+              <input
+                className={fieldClassName()}
+                name="wakeTimeLocal"
+                type="time"
+                value={values.wakeTimeLocal}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    wakeTimeLocal: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.wakeTimeLocal ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.wakeTimeLocal}
+                </p>
+              ) : null}
+            </label>
+
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Alcohol count
+              <input
+                className={fieldClassName()}
+                name="alcoholCount"
+                inputMode="numeric"
+                value={values.alcoholCount}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    alcoholCount: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.alcoholCount ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.alcoholCount}
+                </p>
+              ) : null}
+            </label>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Sleep quality
+              <select
+                className={fieldClassName()}
+                name="sleepQuality"
+                value={values.sleepQuality}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    sleepQuality: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Select</option>
+                {sleepQualityOptions.map((value) => (
+                  <option key={value} value={value}>
+                    {value}/5
+                  </option>
+                ))}
+              </select>
+              {state.fieldErrors?.sleepQuality ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.sleepQuality}
+                </p>
+              ) : null}
+            </label>
+          </div>
+          <div className="grid gap-4">
+            <div className="grid gap-2">
+              <span className="text-sm font-medium text-ink">
+                Energy (1-10)
+              </span>
+              <ScoreButtonRow
+                name="energyLevel"
+                value={values.energyLevel}
+                ariaLabel="Energy 1 to 10"
+                onChange={(next) =>
+                  setValues((current) => ({ ...current, energyLevel: next }))
+                }
+              />
+              {state.fieldErrors?.energyLevel ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.energyLevel}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="grid gap-2">
+              <span className="text-sm font-medium text-ink">
+                Stress (1-10)
+              </span>
+              <ScoreButtonRow
+                name="stressLevel"
+                value={values.stressLevel}
+                ariaLabel="Stress 1 to 10"
+                onChange={(next) =>
+                  setValues((current) => ({ ...current, stressLevel: next }))
+                }
+              />
+              {state.fieldErrors?.stressLevel ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.stressLevel}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Resting HR
+              <input
+                className={fieldClassName()}
+                name="restingHeartRate"
+                inputMode="numeric"
+                value={values.restingHeartRate}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    restingHeartRate: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.restingHeartRate ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.restingHeartRate}
+                </p>
+              ) : null}
+            </label>
+
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              HRV
+              <input
+                className={fieldClassName()}
+                name="hrv"
+                inputMode="decimal"
+                value={values.hrv}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    hrv: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.hrv ? (
+                <p className="text-xs text-ember">{state.fieldErrors.hrv}</p>
+              ) : null}
+            </label>
+
+            <label className="grid gap-2 text-sm font-medium text-ink md:col-span-2">
+              Notes
+              <textarea
+                className={textAreaClassName()}
+                name="notes"
+                placeholder="Anything that explains the day?"
+                value={values.notes}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    notes: event.target.value,
+                  }))
+                }
+              />
+            </label>
+          </div>
         </div>
 
         <div className="flex justify-end">

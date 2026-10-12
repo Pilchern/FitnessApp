@@ -3,6 +3,7 @@ import { StrengthScreen } from "@/features/strength/components/strength-screen";
 type StrengthPageProps = {
   searchParams?: Promise<{
     edit?: string;
+    error?: string;
   }>;
 };
 
@@ -11,5 +12,5 @@ export default async function StrengthPage({
 }: StrengthPageProps) {
   const params = (await searchParams) ?? {};
 
-  return <StrengthScreen editSessionId={params.edit} />;
+  return <StrengthScreen editSessionId={params.edit} error={params.error} />;
 }

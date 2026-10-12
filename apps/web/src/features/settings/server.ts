@@ -17,7 +17,6 @@ export async function getSettingsPageData(): Promise<SettingsPageData> {
 
   return {
     profile,
-    userEmail: user.email ?? "",
     supplements,
   };
 }

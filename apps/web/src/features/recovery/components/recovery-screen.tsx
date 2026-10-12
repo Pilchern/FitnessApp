@@ -3,6 +3,7 @@ import {
   logSupplementsAction,
   updateRecoveryCheckinAction,
 } from "../actions";
+import { PageHeader } from "@/components/shared/page-header";
 import { getRecoveryPageData } from "../server";
 import { RecoveryCheckinList } from "./recovery-checkin-list";
 import { RecoveryQuickForm } from "./recovery-quick-form";
@@ -12,28 +13,27 @@ import { SupplementChecklist } from "./supplement-checklist";
 
 type RecoveryScreenProps = {
   editCheckinId?: string;
+  error?: string;
 };
 
-export async function RecoveryScreen({ editCheckinId }: RecoveryScreenProps) {
+export async function RecoveryScreen({
+  editCheckinId,
+  error,
+}: RecoveryScreenProps) {
   const data = await getRecoveryPageData(editCheckinId);
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          Today
-        </p>
-        <h1 className="mt-3 font-display text-2xl md:text-4xl text-ink">
-          Recovery
-        </h1>
-        <p className="mt-3 max-w-3xl text-sm leading-7 text-ink/80">
-          A quick daily check-in — sleep, readiness, stress, and soreness. Takes
-          less than a minute and helps you understand why training feels the way
-          it does.
-        </p>
-      </section>
+    <div className="space-y-4 lg:space-y-6">
+      <PageHeader title="Recovery" />
 
-      <RecoverySummaryCards summary={data.summary} />
+      {error ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember"
+        >
+          {error}
+        </div>
+      ) : null}
 
       {/* Today's row, when the sleep sync already made one, opens prefilled
           so a check-in adds to it instead of starting a second row. */}
@@ -47,6 +47,8 @@ export async function RecoveryScreen({ editCheckinId }: RecoveryScreenProps) {
         }
         formError={data.formError}
       />
+
+      <RecoverySummaryCards summary={data.summary} />
 
       <SupplementChecklist
         supplements={data.activeSupplements}

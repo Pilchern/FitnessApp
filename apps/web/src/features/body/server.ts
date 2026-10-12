@@ -5,9 +5,14 @@ import {
   buildBodyMetricSummary,
   buildBodyWaistTrend,
   buildBodyWeightTrend,
+  buildWeeklyWeightTrend,
+  getZonedDate,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
-import { createCoreServices } from "@/lib/server/services";
+import {
+  createCoreServices,
+  getCachedUserProfile,
+} from "@/lib/server/services";
 import type { BodyPageData } from "./types";
 
 export async function getBodyPageData(
@@ -15,7 +20,14 @@ export async function getBodyPageData(
 ): Promise<BodyPageData> {
   const user = await requireCurrentUser();
   const { bodyMetricService } = await createCoreServices();
-  const metrics = await bodyMetricService.listByDateRange({ userId: user.id });
+  const [metrics, profile] = await Promise.all([
+    bodyMetricService.listByDateRange({ userId: user.id }),
+    getCachedUserProfile(user.id),
+  ]);
+  // getZonedDate's UTC fields hold the user's local date (see dashboard).
+  const today = getZonedDate(profile?.timezone || "UTC")
+    .toISOString()
+    .slice(0, 10);
   const chartWindow = metrics.slice(0, 12);
   const editingMetric = editMetricId
     ? await bodyMetricService.getById(user.id, editMetricId)
@@ -24,6 +36,7 @@ export async function getBodyPageData(
   return {
     metrics,
     summary: buildBodyMetricSummary(metrics),
+    weeklyWeight: buildWeeklyWeightTrend(metrics, today),
     weightTrend: buildBodyWeightTrend(chartWindow),
     waistTrend: buildBodyWaistTrend(chartWindow),
     bodyFatTrend: buildBodyFatTrend(chartWindow),

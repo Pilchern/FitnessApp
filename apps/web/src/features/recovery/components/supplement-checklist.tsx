@@ -1,9 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type { Supplement } from "@fitness-app/domain";
-import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import type { SupplementChecklistActionState } from "../types";
 
 type SupplementChecklistProps = {
@@ -35,14 +40,14 @@ const SUPPLEMENT_LABELS: ChecklistLabels = {
   eyebrow: "Supplements",
   title: "Today's supplements",
   empty: "You haven't added any supplements yet.",
-  hint: "Check off what you took today. Unchecked items are saved as not taken.",
+  hint: "Tap to mark what you took today. Saves as you tap.",
   save: "Save supplements",
 };
 
 const initialState: SupplementChecklistActionState = {};
 
 function checkboxClassName() {
-  return "h-4 w-4 rounded border-ink/20 text-pine focus:ring-pine";
+  return "h-5 w-5 rounded border-ink/20 text-pine focus:ring-pine";
 }
 
 export function SupplementChecklist({
@@ -55,7 +60,19 @@ export function SupplementChecklist({
   labels = SUPPLEMENT_LABELS,
   action,
 }: SupplementChecklistProps) {
-  const [state, formAction] = useActionState(action, initialState);
+  const [state, formAction, isPending] = useActionState(action, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+  // Bumped on each tap; the effect saves after React has committed the new
+  // checked state, so the form data carries it.
+  const [saveRequest, setSaveRequest] = useState(0);
+  useEffect(() => {
+    // Dispatched directly rather than via requestSubmit: React resets a
+    // submitted <form action>, which would untick the boxes on screen.
+    const form = formRef.current;
+    if (saveRequest > 0 && form) {
+      startTransition(() => formAction(new FormData(form)));
+    }
+  }, [saveRequest, formAction]);
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(
       supplements.map((supplement) => [
@@ -67,11 +84,8 @@ export function SupplementChecklist({
 
   if (supplements.length === 0) {
     return (
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          {labels.eyebrow}
-        </p>
-        <h2 className="mt-3 font-display text-2xl text-ink">{labels.title}</h2>
+      <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
+        <h2 className="font-display text-lg text-ink">{labels.title}</h2>
         <p className="mt-2 text-sm leading-6 text-ink/75">
           {labels.empty}{" "}
           <Link
@@ -87,12 +101,14 @@ export function SupplementChecklist({
   }
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-        {labels.eyebrow}
-      </p>
-      <h2 className="mt-3 font-display text-2xl text-ink">{labels.title}</h2>
-      <p className="mt-2 text-sm leading-6 text-ink/75">{labels.hint}</p>
+    <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-display text-lg text-ink">{labels.title}</h2>
+        <span className="text-xs text-ink/50" aria-live="polite">
+          {isPending ? "Saving..." : null}
+        </span>
+      </div>
+      <p className="mt-1 text-sm leading-6 text-ink/60">{labels.hint}</p>
 
       {state.error ? (
         <div className="mt-4 rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember">
@@ -100,24 +116,30 @@ export function SupplementChecklist({
         </div>
       ) : null}
 
-      <form action={formAction} className="mt-5 space-y-3">
+      <form
+        ref={formRef}
+        action={formAction}
+        className="mt-3 divide-y divide-ink/5"
+      >
         <input type="hidden" name="logDate" value={logDate} />
         <input type="hidden" name="returnTo" value={returnTo} />
         {supplements.map((supplement) => (
           <div key={supplement.id}>
             <input type="hidden" name="supplementIds" value={supplement.id} />
-            <label className="flex items-center gap-3 text-sm font-medium text-ink cursor-pointer">
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 py-1 text-sm font-medium text-ink">
               <input
                 type="checkbox"
                 className={checkboxClassName()}
                 name={`supplement_${supplement.id}`}
                 checked={checked[supplement.id] ?? false}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const next = event.target.checked;
                   setChecked((current) => ({
                     ...current,
-                    [supplement.id]: event.target.checked,
-                  }))
-                }
+                    [supplement.id]: next,
+                  }));
+                  setSaveRequest((n) => n + 1);
+                }}
               />
               <span className="flex-1">
                 {supplement.name}
@@ -136,9 +158,14 @@ export function SupplementChecklist({
           </div>
         ))}
 
-        <div className="flex justify-end pt-2">
-          <AuthSubmitButton idleLabel={labels.save} pendingLabel="Saving..." />
-        </div>
+        <noscript>
+          <button
+            type="submit"
+            className="mt-3 text-sm font-semibold text-pine"
+          >
+            {labels.save}
+          </button>
+        </noscript>
       </form>
     </section>
   );

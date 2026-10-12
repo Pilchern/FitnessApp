@@ -49,15 +49,16 @@ function buildCardioPayload(userId: string, formData: FormData) {
     intervalStructure: parsed.intervalStructure || null,
     rpe: parsed.rpe,
     notes: parsed.notes || null,
-    source: {
-      sourceType: "manual" as const,
-      sourceProvider: null,
-      sourceExternalId: null,
-      importBatchId: null,
-      rawImportEventId: null,
-    },
   };
 }
+
+const manualSource = {
+  sourceType: "manual" as const,
+  sourceProvider: null,
+  sourceExternalId: null,
+  importBatchId: null,
+  rawImportEventId: null,
+};
 
 export async function createCardioSessionAction(
   _previousState: CardioActionState,
@@ -67,7 +68,7 @@ export async function createCardioSessionAction(
     const user = await requireCurrentUser();
     const { cardioService } = await createCoreServices();
     const payload = buildCardioPayload(user.id, formData);
-    await cardioService.create(payload);
+    await cardioService.create({ ...payload, source: manualSource });
     redirect("/cardio");
   } catch (error) {
     return parseActionError(error);
@@ -88,6 +89,8 @@ export async function updateCardioSessionAction(
       };
     }
 
+    // No `source` on update: an edited synced ride keeps its provider and
+    // external id, so the next sync still dedupes against it.
     await cardioService.update(payload);
     redirect("/cardio");
   } catch (error) {

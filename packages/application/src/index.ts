@@ -16,6 +16,8 @@ export * from "./modules/insights/insight-orchestrator";
 export * from "./modules/journal/journal-entry";
 export * from "./modules/recovery/recovery-checkin";
 export * from "./modules/recovery/recovery-helpers";
+export * from "./modules/recovery/readiness";
+export * from "./modules/insights/trend-notes";
 export * from "./modules/strength/strength-progression";
 export * from "./modules/strength/strength-session";
 export * from "./modules/strength/exercise-catalog-data";

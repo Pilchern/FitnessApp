@@ -38,7 +38,7 @@ export function RecoveryTrendSection({
         description="Your resting HR over time. Lower is generally better."
         points={restingHeartRateTrend}
         formatValue={formatHeartRate}
-        emptyMessage="Add resting HR in your daily check-in to see this chart."
+        emptyMessage="Resting HR syncs from Apple Health each night."
         strokeClassName="stroke-ember"
       />
       <TrendChart
@@ -46,7 +46,7 @@ export function RecoveryTrendSection({
         description="Heart rate variability. Higher is generally better for recovery."
         points={hrvTrend}
         formatValue={formatHrv}
-        emptyMessage="HRV syncs automatically from Apple Health, or enter it manually."
+        emptyMessage="HRV syncs from Apple Health each night."
         strokeClassName="stroke-pine"
       />
     </section>

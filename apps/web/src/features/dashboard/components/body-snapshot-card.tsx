@@ -1,210 +1,115 @@
 import Link from "next/link";
-import { TrendChart } from "@/components/shared/trend-chart";
-import type {
-  SparseTrendPoint,
-  WeeklyWeightTrend,
-} from "@fitness-app/application";
+import type { WeeklyWeightTrend } from "@fitness-app/application";
 
 type BodySnapshotCardProps = {
+  today: string;
   latestWeightLb: number | null;
-  weightChangeLb: number | null;
-  latestWaistIn: number | null;
-  waistChangeIn: number | null;
   latestBodyFatPct: number | null;
   latestBodyDate: string | null;
-  weightTrend: SparseTrendPoint[];
-  vo2Max?: { value: number; date: string } | null;
-  weeklyWeight?: WeeklyWeightTrend | null;
+  weeklyWeight: WeeklyWeightTrend;
+  vo2Max: { value: number; date: string } | null;
   /** Protein-hit days over the last 7; null when nothing is logged, so the line hides. */
-  proteinHit?: { days: number; of: number } | null;
+  proteinHit: { days: number; of: number } | null;
 };
 
-function bodyRelativeDate(isoDate: string): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const logged = new Date(`${isoDate}T00:00:00`);
-  const diffDays = Math.round(
-    (today.getTime() - logged.getTime()) / (1000 * 60 * 60 * 24),
+function daysBetween(from: string, to: string) {
+  return Math.round(
+    (Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) /
+      86_400_000,
   );
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  return `${diffDays} days ago`;
 }
 
-function directionArrow(change: number | null): string {
-  if (change == null || change === 0) return "";
-  return change > 0 ? " ↑" : " ↓";
+function ago(date: string, today: string) {
+  const days = daysBetween(date, today);
+  if (days <= 0) return "today";
+  if (days === 1) return "yesterday";
+  return `${days} days ago`;
 }
 
-function formatChange(change: number | null, unit: string): string {
-  if (change == null) return "";
-  const prefix = change > 0 ? "+" : "";
-  return `${prefix}${change} ${unit}${directionArrow(change)} vs first logged`;
-}
-
-function changeTone(change: number | null): string {
-  if (change == null) return "text-ink/40";
-  if (change < 0) return "text-pine";
-  if (change > 0) return "text-ember";
-  return "text-ink/60";
+function Stat({
+  label,
+  value,
+  sub,
+}: {
+  label: string;
+  value: string;
+  sub?: string | null;
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-xs text-ink/55">{label}</div>
+      <div className="mt-1 whitespace-nowrap text-xl font-semibold text-ink">
+        {value}
+      </div>
+      {sub ? <div className="mt-0.5 text-xs text-ink/55">{sub}</div> : null}
+    </div>
+  );
 }
 
 export function BodySnapshotCard({
+  today,
   latestWeightLb,
-  weightChangeLb,
-  latestWaistIn,
-  waistChangeIn,
   latestBodyFatPct,
   latestBodyDate,
-  weightTrend,
-  vo2Max = null,
-  weeklyWeight = null,
-  proteinHit = null,
+  weeklyWeight,
+  vo2Max,
+  proteinHit,
 }: BodySnapshotCardProps) {
-  const hasAnyData = latestWeightLb != null || latestWaistIn != null;
+  if (latestWeightLb == null && vo2Max == null) return null;
 
-  if (!hasAnyData) {
-    return (
-      <section className="rounded-[1.75rem] border border-dashed border-ink/15 bg-white/75 p-6 shadow-panel">
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          Body
-        </p>
-        <h2 className="mt-3 font-display text-2xl text-ink">
-          No measurements yet
-        </h2>
-        <p className="mt-3 text-sm leading-6 text-ink/70">
-          Log weight and waist measurements to track body composition trends.
-        </p>
-        <Link
-          href="/body"
-          className="mt-5 inline-flex h-11 items-center justify-center rounded-full border border-ink/15 px-5 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
-        >
-          Log measurement
-        </Link>
-      </section>
-    );
-  }
+  const avg = weeklyWeight.sevenDayAvgLb;
+  const wow = weeklyWeight.weekOverWeekLb;
+  const weightSub =
+    avg != null && wow != null
+      ? `${wow > 0 ? "+" : ""}${wow} lb vs prior week`
+      : latestBodyDate
+        ? `Weighed ${ago(latestBodyDate, today)}`
+        : null;
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            Body
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">Composition</h2>
-          {latestBodyDate ? (
-            <p className="mt-1 text-xs text-ink/50">
-              Updated {bodyRelativeDate(latestBodyDate)}
-            </p>
-          ) : null}
-        </div>
+    <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="font-display text-lg text-ink">Body</h2>
         <Link
           href="/body"
-          className="inline-flex h-10 items-center justify-center rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
+          className="text-sm font-semibold text-pine hover:underline"
         >
-          View body
+          Details
         </Link>
       </div>
 
-      {weeklyWeight?.surplusThrottle ? (
-        <p className="mt-4 rounded-2xl border border-ember/25 bg-ember/10 px-4 py-3 text-sm font-medium text-ember">
-          Surplus throttle: the 7-day average is up more than 0.5 lb/week two
-          weeks running. Review the surplus; keep protein at target.
-        </p>
-      ) : null}
-      {proteinHit ? (
-        <p className="mt-3 text-sm text-ink/70">
-          Protein hit {proteinHit.days}/{proteinHit.of} logged days this week
+      {weeklyWeight.surplusThrottle ? (
+        <p className="mt-3 rounded-2xl border border-ember/25 bg-ember/10 px-4 py-3 text-sm font-medium text-ember">
+          Weight is up more than 0.5 lb a week two weeks running. Trim the
+          surplus; keep protein at target.
         </p>
       ) : null}
 
-      <div className="mt-5 grid grid-cols-2 gap-4">
-        <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-            {weeklyWeight?.sevenDayAvgLb != null
-              ? "Weight, 7-day avg"
-              : "Weight"}
-          </div>
-          <div className="mt-2 whitespace-nowrap text-2xl font-semibold text-ink sm:text-3xl">
-            {weeklyWeight?.sevenDayAvgLb != null
-              ? `${weeklyWeight.sevenDayAvgLb} lb`
-              : latestWeightLb != null
-                ? `${latestWeightLb} lb`
-                : "--"}
-          </div>
-          {weeklyWeight?.weekOverWeekLb != null ? (
-            <div className="mt-1.5 text-sm font-medium text-ink/70">
-              {weeklyWeight.weekOverWeekLb > 0 ? "+" : ""}
-              {weeklyWeight.weekOverWeekLb} lb vs prior 7 days
-            </div>
-          ) : weightChangeLb != null ? (
-            <div
-              className={`mt-1.5 text-sm font-medium ${changeTone(weightChangeLb)}`}
-            >
-              {formatChange(weightChangeLb, "lb")}
-            </div>
-          ) : null}
-          {weeklyWeight?.sevenDayAvgLb != null && latestWeightLb != null ? (
-            <div className="mt-1 text-xs text-ink/50">
-              Last weigh-in {latestWeightLb} lb
-            </div>
-          ) : null}
-        </div>
-
-        <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-            Waist
-          </div>
-          <div className="mt-2 text-3xl font-semibold text-ink">
-            {latestWaistIn != null ? `${latestWaistIn}"` : "--"}
-          </div>
-          {waistChangeIn != null ? (
-            <div
-              className={`mt-1.5 text-sm font-medium ${changeTone(waistChangeIn)}`}
-            >
-              {formatChange(waistChangeIn, "in")}
-            </div>
-          ) : null}
-        </div>
-
-        {latestBodyFatPct != null ? (
-          <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-              Body fat
-            </div>
-            <div className="mt-2 text-3xl font-semibold text-ink">
-              {`${latestBodyFatPct.toFixed(1)} %`}
-            </div>
-          </div>
+      <div className="mt-4 grid grid-cols-3 gap-4">
+        {latestWeightLb != null ? (
+          <Stat
+            label={avg != null ? "Weight, 7-day avg" : "Weight"}
+            value={`${avg ?? latestWeightLb} lb`}
+            sub={weightSub}
+          />
         ) : null}
-
+        {latestBodyFatPct != null ? (
+          <Stat label="Body fat" value={`${latestBodyFatPct.toFixed(1)}%`} />
+        ) : null}
         {vo2Max ? (
-          <div className="rounded-[1.25rem] border border-ink/10 bg-sand/60 p-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-              VO2 max
-            </div>
-            <div className="mt-2 text-3xl font-semibold text-ink">
-              {vo2Max.value.toFixed(1)}
-            </div>
-            <div className="mt-1.5 text-xs text-ink/50">
-              Apple Health, {vo2Max.date}
-            </div>
-          </div>
+          <Stat
+            label="VO2 max"
+            value={vo2Max.value.toFixed(1)}
+            sub={ago(vo2Max.date, today)}
+          />
         ) : null}
       </div>
 
-      {weightTrend.length > 1 ? (
-        <div className="mt-4">
-          <TrendChart
-            title="Weight trend"
-            description="Last 90 days"
-            points={weightTrend}
-            formatValue={(v) => `${v} lb`}
-            emptyMessage="Log weight measurements to see a trend."
-            strokeClassName="stroke-pine"
-          />
-        </div>
+      {proteinHit ? (
+        <p className="mt-4 text-sm text-ink/70">
+          Protein target hit on {proteinHit.days} of {proteinHit.of} logged days
+          this week.
+        </p>
       ) : null}
     </section>
   );

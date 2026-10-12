@@ -2,6 +2,18 @@
 
 **Last verified against code:** 2026-10-12.
 
+## Fixed 2026-10-12 (session 7)
+
+- Dashboard habit ticks saved and then redirected to `/recovery` (`logSupplementsAction` ignored `returnTo`). Ticks now save on tap and refresh in place.
+- `/cardio` adherence card was hardcoded to Tue Zone 2 / Thu VO2 / Sat long ride and matched rides by exact date, so the real Mon/Wed/Fri rides never counted. Removed.
+- Settings "Recompute my estimate" wrote calories, protein and fiber to the profile immediately, replacing protein 180 and the intentionally unset targets. It now only fills the form.
+- First strength session would have produced a weight and volume PR for every exercise (null prior max). No PR without prior history.
+- Loading a plan replaced the workout without asking, including a restored draft, and could overwrite a past session in edit mode.
+- `loadSetsForSessions` had no paging: past 1000 sets the high `exercise_order` sets dropped out of every session.
+- The push/pull insight used tonnage, so bodyweight pull-ups, chin-ups and band work counted as 0 and every heavy bench week read as push-heavy. It now compares working sets.
+- Editing a synced recovery night saved 437 min back as 438 and stamped it manual; editing a synced ride dropped its Apple Health provider. Both keep provenance now.
+- The dashboard "Not trained this week" callout would have listed quads, hamstrings, glutes and calves (rehab plan excludes them). Card removed.
+
 ## Fixed 2026-10-12
 
 - Live was missing all 44 indexes from `20260331192000_create_indexes.sql`, including the per-date unique index on `recovery_checkins`. With Apple Health creating each day's row overnight, the next manual check-in from `/recovery` would have inserted a second row for the same date, and `findByDate` (`maybeSingle`) would then have failed every later sleep sync for that day. No duplicates existed yet. Restored 42 of them (`20261012173941_restore_missing_live_indexes.sql`, applied live). Left out: `raw_import_events_provider_dedupe_idx` (about 420 identical raw events from HAE resends already violate it) and `sync_job_runs_active_dedupe_idx` (one stale queued/running pair). Three journal indexes from `20260401090000` are also missing; the journal is retired, so they stay out.
@@ -26,6 +38,8 @@
 - `/api/account/export` silently truncated at 500 rows per table.
 
 ## Current weak spots
+
+- Weekly review auto-finalize has never written a review on live (0 rows); cause not found from the container. See CURRENT_STATE open items.
 
 - The Playwright suite predates the login removal; `tests/e2e/strength.spec.ts` (2026-10-09) is read-only and safe against the live database, the others create rows.
 

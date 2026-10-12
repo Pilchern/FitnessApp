@@ -7,7 +7,7 @@ export const moduleNavigationItems = [
   {
     href: "/cardio",
     title: "Cardio",
-    description: "Rides, runs, and Zone 2 sessions.",
+    description: "Rides and Zone 2 sessions.",
   },
   {
     href: "/strength",

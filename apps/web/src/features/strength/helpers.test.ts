@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   buildLastByExercise,
   draftWasSaved,
+  formatDuration,
   formatLastPerformance,
+  formatTopSet,
   groupSetsByExercise,
   isTimedSet,
   parseStrengthDraft,
   renumberSets,
   selectSetsToSave,
+  shiftIsoDate,
   showsTimedWeight,
   startingDuration,
   startingWeight,
@@ -130,6 +133,17 @@ describe("startingWeight", () => {
     expect(startingWeight(last, 3, 150)).toBe("160");
     expect(startingWeight(undefined, 0, 150)).toBe("150");
     expect(startingWeight(undefined, 0, null)).toBe("");
+  });
+
+  it("uses the template when its reps are far from last time's", () => {
+    // Lateral raise: Saturday 3x15 @10, Tuesday plan 4x18 @7.5.
+    const saturday = {
+      sessionDate: "2026-10-10",
+      sets: [{ weight: 10, reps: 15, durationSeconds: null }],
+    };
+    expect(startingWeight(saturday, 0, 7.5, 18)).toBe("10");
+    expect(startingWeight(saturday, 0, 7.5, 19)).toBe("7.5");
+    expect(startingWeight(saturday, 0, null, 19)).toBe("10");
   });
 
   it("falls back to the template for a bodyweight last time", () => {
@@ -313,5 +327,26 @@ describe("draftWasSaved", () => {
       false,
     );
     expect(draftWasSaved({ submittedAt }, null)).toBe(false);
+  });
+});
+
+describe("display and date helpers", () => {
+  it("formats top sets for loaded, bodyweight and timed sets", () => {
+    expect(formatTopSet(135, 8)).toBe("135 x 8");
+    expect(formatTopSet(0, 3)).toBe("3 reps");
+    expect(formatTopSet(null, null, 60)).toBe("60s");
+    expect(formatTopSet(50, null, 60)).toBe("50 x 60s");
+    expect(formatTopSet(null, null)).toBe("--");
+  });
+
+  it("formats durations", () => {
+    expect(formatDuration(45)).toBe("45s");
+    expect(formatDuration(90)).toBe("90s");
+  });
+
+  it("shifts calendar dates across month and DST boundaries", () => {
+    expect(shiftIsoDate("2026-11-02", -6)).toBe("2026-10-27");
+    expect(shiftIsoDate("2026-03-01", -1)).toBe("2026-02-28");
+    expect(shiftIsoDate("2026-10-12", 0)).toBe("2026-10-12");
   });
 });

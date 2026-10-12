@@ -1,7 +1,8 @@
-import type {
-  TopSetPoint,
-  VolumeTrendPoint,
-  StrengthProgressionSummary,
+import {
+  MIN_SESSIONS_FOR_TREND,
+  topSetScore,
+  type StrengthProgressionSummary,
+  type TopSetPoint,
 } from "@fitness-app/application";
 import { formatTopSet } from "../helpers";
 
@@ -9,6 +10,8 @@ type StrengthProgressionSummaryProps = {
   summaries: StrengthProgressionSummary[];
   title?: string;
   description?: string;
+  /** Render folded behind a <details>, for the busy /strength page. */
+  collapsible?: boolean;
 };
 
 // ─── Mini sparkline ───────────────────────────────────────────────────────────
@@ -39,7 +42,7 @@ function Sparkline({ values, strokeClass }: SparklineProps) {
   const d = `M ${pts.join(" L ")}`;
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-12 w-full" aria-hidden>
+    <svg viewBox={`0 0 ${w} ${h}`} className="mt-2 h-10 w-full" aria-hidden>
       <path
         d={d}
         fill="none"
@@ -66,191 +69,213 @@ function Sparkline({ values, strokeClass }: SparklineProps) {
   );
 }
 
-// ─── Top-set sparkline card ───────────────────────────────────────────────────
+// ─── Trend cards ──────────────────────────────────────────────────────────────
 
-function TopSetChart({ history }: { history: TopSetPoint[] }) {
-  const values = history
-    .map((p) => p.estimatedOneRepMax ?? p.weight ?? p.reps ?? null)
-    .filter((v): v is number => v != null);
+type TrendCardProps = {
+  label: string;
+  values: number[];
+  /** Change from first to latest that counts as real, not noise. */
+  threshold: number;
+  /** False under 3 sessions: show the numbers, but colour nothing. */
+  judged: boolean;
+  unit?: string;
+};
 
+function TrendCard({ label, values, threshold, judged, unit }: TrendCardProps) {
   if (values.length < 2) return null;
 
   const latest = values[values.length - 1];
-  const first = values[0];
-  const delta = Math.round((latest - first) * 10) / 10;
-  const prefix = delta > 0 ? "+" : "";
+  const delta = Math.round((latest - values[0]) * 10) / 10;
+  const tone = !judged
+    ? "text-ink/50"
+    : delta > threshold
+      ? "text-pine"
+      : delta < -threshold
+        ? "text-ember"
+        : "text-ink/50";
 
   return (
-    <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-4">
+    <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-3">
       <div className="flex items-center justify-between gap-2">
         <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-          Top set
+          {label}
         </div>
-        <div
-          className={`text-xs font-semibold ${delta > 0.5 ? "text-pine" : delta < -0.5 ? "text-ember" : "text-ink/50"}`}
-        >
-          {prefix}
+        <div className={`text-xs font-semibold ${tone}`}>
+          {delta > 0 ? "+" : ""}
           {delta}
         </div>
       </div>
-      <div className="mt-2 text-xl font-semibold text-ink">{latest}</div>
-      <div className="mt-3">
-        <Sparkline
-          values={values}
-          strokeClass={delta >= 0 ? "stroke-pine" : "stroke-ember"}
-        />
+      <div className="mt-1 text-lg font-semibold text-ink">
+        {latest.toLocaleString()}
+        {unit ? (
+          <span className="ml-1 text-xs font-normal text-ink/50">{unit}</span>
+        ) : null}
       </div>
-      <div className="mt-1 text-xs text-ink/50">{history.length} sessions</div>
+      <Sparkline
+        values={values}
+        strokeClass={
+          tone === "text-ember"
+            ? "stroke-ember"
+            : tone === "text-pine"
+              ? "stroke-pine"
+              : "stroke-ink/40"
+        }
+      />
     </div>
   );
 }
 
-// ─── Volume sparkline card ────────────────────────────────────────────────────
+// ─── Status badge ─────────────────────────────────────────────────────────────
 
-function VolumeChart({ history }: { history: VolumeTrendPoint[] }) {
-  const values = history.map((p) => p.totalVolume);
+function statusBadge(summary: StrengthProgressionSummary) {
+  if (summary.kind === "bodyweight") {
+    return { label: "Bodyweight", tone: "neutral" as const };
+  }
+  if (summary.kind === "timed") {
+    return { label: "Timed", tone: "neutral" as const };
+  }
+  if (summary.sessionCount < MIN_SESSIONS_FOR_TREND) {
+    return { label: "New", tone: "neutral" as const };
+  }
+  if (summary.isPersonalRecord) {
+    return { label: "PR", tone: "good" as const };
+  }
+  if (summary.stall.stalled) {
+    return { label: "Stall", tone: "bad" as const };
+  }
+  return { label: "Up", tone: "good" as const };
+}
 
-  if (values.length < 2) return null;
+const BADGE_TONES = {
+  neutral: "border-ink/10 bg-white/70 text-ink/60",
+  good: "border-pine/20 bg-pine/10 text-pine",
+  bad: "border-ember/20 bg-ember/10 text-ember",
+};
 
-  const latest = values[values.length - 1];
-  const first = values[0];
-  const delta = Math.round((latest - first) * 10) / 10;
-  const prefix = delta > 0 ? "+" : "";
-
-  return (
-    <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-4">
-      <div className="flex items-center justify-between gap-2">
-        <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-          Volume
-        </div>
-        <div
-          className={`text-xs font-semibold ${delta > 1 ? "text-pine" : delta < -1 ? "text-ember" : "text-ink/50"}`}
-        >
-          {prefix}
-          {delta}
-        </div>
-      </div>
-      <div className="mt-2 text-xl font-semibold text-ink">{latest}</div>
-      <div className="mt-3">
-        <Sparkline
-          values={values}
-          strokeClass={delta >= 0 ? "stroke-pine" : "stroke-ember"}
-        />
-      </div>
-      <div className="mt-1 text-xs text-ink/50">{history.length} sessions</div>
-    </div>
-  );
+function formatPoint(point: TopSetPoint) {
+  return formatTopSet(point.weight, point.reps, point.durationSeconds ?? null);
 }
 
 // ─── Main section ─────────────────────────────────────────────────────────────
 
+function SummaryCards({
+  summaries,
+}: {
+  summaries: StrengthProgressionSummary[];
+}) {
+  if (summaries.length === 0) {
+    return (
+      <p className="text-sm leading-6 text-ink/75">
+        Trends show up after 3 sessions of the same exercise.
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 lg:grid-cols-2">
+      {summaries.map((summary) => {
+        const badge = statusBadge(summary);
+        const weighted = summary.kind === "weighted";
+        const judged =
+          weighted && summary.sessionCount >= MIN_SESSIONS_FOR_TREND;
+        const scores = summary.topSetHistory.map(topSetScore);
+        const volumes = summary.volumeHistory.map((p) => p.totalVolume);
+
+        return (
+          <article
+            key={summary.exerciseName}
+            className="rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="truncate text-base font-semibold text-ink">
+                  {summary.exerciseName}
+                </h3>
+                <p className="mt-0.5 text-sm text-ink/70">
+                  {summary.latestTopSet
+                    ? formatPoint(summary.latestTopSet)
+                    : "--"}
+                  {summary.previousTopSet ? (
+                    <span className="text-ink/45">
+                      {" "}
+                      · Prev {formatPoint(summary.previousTopSet)}
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold uppercase tracking-[0.16em] ${BADGE_TONES[badge.tone]}`}
+              >
+                {badge.label}
+              </span>
+            </div>
+
+            {weighted && scores.length >= 2 ? (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <TrendCard
+                  label="Est. 1RM"
+                  unit="lb"
+                  values={scores}
+                  threshold={Math.max(2.5, Math.abs(scores[0]) * 0.015)}
+                  judged={judged}
+                />
+                <TrendCard
+                  label="Volume"
+                  unit="lb"
+                  values={volumes}
+                  threshold={Math.max(1, Math.abs(volumes[0]) * 0.05)}
+                  judged={judged}
+                />
+              </div>
+            ) : null}
+
+            {judged ? (
+              <p className="mt-3 text-xs leading-5 text-ink/60">
+                {summary.stall.explanation}
+              </p>
+            ) : null}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 export function StrengthProgressionSummarySection({
   summaries,
   title = "Progression",
-  description = "Strength trends for your main exercises.",
+  description,
+  collapsible = false,
 }: StrengthProgressionSummaryProps) {
+  if (collapsible) {
+    return (
+      <details className="group rounded-[1.75rem] border border-ink/10 bg-white/80 shadow-panel">
+        <summary className="flex h-14 cursor-pointer list-none items-center justify-between px-6 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+          <span>
+            {title}
+            <span className="ml-2 font-normal text-ink/50">
+              {summaries.length}
+            </span>
+          </span>
+          <span className="text-ink/50 group-open:hidden">+</span>
+          <span className="hidden text-ink/50 group-open:inline">−</span>
+        </summary>
+        <div className="border-t border-ink/10 p-4 sm:p-6">
+          <SummaryCards summaries={summaries} />
+        </div>
+      </details>
+    );
+  }
+
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-          Trends
-        </p>
-        <h2 className="mt-3 font-display text-2xl text-ink">{title}</h2>
+      <h2 className="font-display text-2xl text-ink">{title}</h2>
+      {description ? (
         <p className="mt-2 text-sm leading-6 text-ink/70">{description}</p>
+      ) : null}
+      <div className="mt-4">
+        <SummaryCards summaries={summaries} />
       </div>
-
-      {summaries.length === 0 ? (
-        <p className="mt-5 text-sm leading-6 text-ink/75">
-          Log a few sessions with the same exercises and trends will appear
-          here.
-        </p>
-      ) : (
-        <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {summaries.map((summary) => {
-            const hasCharts =
-              summary.topSetHistory.length >= 2 ||
-              summary.volumeHistory.length >= 2;
-
-            return (
-              <article
-                key={summary.exerciseName}
-                className="rounded-[1.5rem] border border-ink/10 bg-sand/50 p-5"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold text-ink">
-                        {summary.exerciseName}
-                      </h3>
-                      {summary.isPersonalRecord ? (
-                        <span className="rounded-full border border-amber-400/40 bg-amber-50 px-2.5 py-0.5 text-xs font-bold uppercase tracking-[0.16em] text-amber-700">
-                          PR
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-sm text-ink/70">
-                      Latest:{" "}
-                      {formatTopSet(
-                        summary.latestTopSet?.weight ?? null,
-                        summary.latestTopSet?.reps ?? null,
-                      )}
-                      {summary.previousTopSet ? (
-                        <span className="text-ink/45">
-                          {" "}
-                          · Prev:{" "}
-                          {formatTopSet(
-                            summary.previousTopSet.weight,
-                            summary.previousTopSet.reps,
-                          )}
-                        </span>
-                      ) : null}
-                    </p>
-                  </div>
-                  <div
-                    className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
-                      summary.stall.stalled
-                        ? "border-ember/20 bg-ember/10 text-ember"
-                        : "border-pine/20 bg-pine/10 text-pine"
-                    }`}
-                  >
-                    {summary.stall.stalled ? "Stall" : "Moving"}
-                  </div>
-                </div>
-
-                {hasCharts ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <TopSetChart history={summary.topSetHistory} />
-                    <VolumeChart history={summary.volumeHistory} />
-                  </div>
-                ) : (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-                        Top set trend
-                      </div>
-                      <div className="mt-2 text-lg font-semibold capitalize text-ink">
-                        {summary.topSetTrend}
-                      </div>
-                    </div>
-                    <div className="rounded-[1.25rem] border border-ink/10 bg-white/70 p-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-                        Volume trend
-                      </div>
-                      <div className="mt-2 text-lg font-semibold capitalize text-ink">
-                        {summary.volumeTrend}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <p className="mt-4 text-xs leading-5 text-ink/60">
-                  {summary.stall.explanation}
-                </p>
-              </article>
-            );
-          })}
-        </div>
-      )}
     </section>
   );
 }

@@ -33,14 +33,16 @@ export function BodyTrendSection({
         formatValue={formatWeight}
         emptyMessage="Log a few weigh-ins to see your trend."
       />
-      <TrendChart
-        title="Waist"
-        description="Your waist measurement over time."
-        points={waistTrend}
-        formatValue={formatWaist}
-        emptyMessage="Log waist measurements to see your trend."
-        strokeClassName="stroke-ember"
-      />
+      {waistTrend.length > 0 ? (
+        <TrendChart
+          title="Waist"
+          description="Your waist measurement over time."
+          points={waistTrend}
+          formatValue={formatWaist}
+          emptyMessage="Log waist measurements to see your trend."
+          strokeClassName="stroke-ember"
+        />
+      ) : null}
       {bodyFatTrend.length > 1 ? (
         <TrendChart
           title="Body fat"

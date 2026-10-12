@@ -264,3 +264,142 @@ describe("detectRepeatedStall", () => {
     expect(result.explanation).toContain("at least 3 sessions");
   });
 });
+
+describe("detectPersonalRecords without usable history", () => {
+  it("never flags a first session as a PR", () => {
+    expect(
+      detectPersonalRecords("Bench press", [{ weight: 135, reps: 8 }], []),
+    ).toEqual([]);
+  });
+
+  it("ignores bodyweight and zero-volume sets on both sides", () => {
+    expect(
+      detectPersonalRecords(
+        "Pull-up",
+        [
+          { weight: 0, reps: 3 },
+          { weight: null, reps: 4 },
+        ],
+        [{ weight: 0, reps: 3 }],
+      ),
+    ).toEqual([]);
+
+    // History is bodyweight only, so a first loaded set has nothing to beat.
+    expect(
+      detectPersonalRecords(
+        "Pull-up",
+        [{ weight: 10, reps: 3 }],
+        [{ weight: null, reps: 3 }],
+      ),
+    ).toEqual([]);
+
+    expect(
+      detectPersonalRecords(
+        "Bench press",
+        [{ weight: 200, reps: 0 }],
+        [{ weight: 135, reps: 8 }],
+      ).map((r) => r.prType),
+    ).toEqual(["weight"]);
+  });
+
+  it("reports the best set, not the first set that beats history", () => {
+    const results = detectPersonalRecords(
+      "Bench press",
+      [
+        { weight: 140, reps: 5 },
+        { weight: 150, reps: 5 },
+      ],
+      [{ weight: 135, reps: 5 }],
+    );
+    expect(results.find((r) => r.prType === "weight")?.newValue).toBe(150);
+    expect(results.find((r) => r.prType === "volume")?.newValue).toBe(750);
+  });
+});
+
+describe("buildStrengthProgressionSummaries honesty", () => {
+  const bench = (date: string, weight: number, reps = 8) =>
+    makeSession(date, [
+      makeSet({ exerciseName: "Bench press", weight, reps, setNumber: 1 }),
+    ]);
+
+  it("shows a new exercise as new, with no trend or PR, under 3 sessions", () => {
+    const [summary] = buildStrengthProgressionSummaries([
+      bench("2026-10-13", 135),
+      bench("2026-10-20", 155),
+    ]);
+
+    expect(summary.sessionCount).toBe(2);
+    expect(summary.topSetTrend).toBe("new");
+    expect(summary.volumeTrend).toBe("insufficient_data");
+    expect(summary.isPersonalRecord).toBe(false);
+    expect(summary.stall.stalled).toBe(false);
+  });
+
+  it("treats a sub-threshold gain as flat, not progress", () => {
+    // 135 -> 136 is under 1.5% of the estimated 1RM: noise, not a PR.
+    const [summary] = buildStrengthProgressionSummaries([
+      bench("2026-10-13", 135),
+      bench("2026-10-20", 135),
+      bench("2026-10-27", 136),
+    ]);
+
+    expect(summary.topSetTrend).toBe("flat");
+    expect(summary.volumeTrend).toBe("flat");
+    expect(summary.isPersonalRecord).toBe(false);
+    expect(summary.stall.stalled).toBe(true);
+  });
+
+  it("flags a real step up as up and a PR", () => {
+    const [summary] = buildStrengthProgressionSummaries([
+      bench("2026-10-13", 135),
+      bench("2026-10-20", 135),
+      bench("2026-10-27", 145),
+    ]);
+
+    expect(summary.topSetTrend).toBe("up");
+    expect(summary.volumeTrend).toBe("up");
+    expect(summary.isPersonalRecord).toBe(true);
+    expect(summary.stall.stalled).toBe(false);
+  });
+
+  it("does not call constant bodyweight or timed work a stall", () => {
+    const sessions = ["2026-10-13", "2026-10-20", "2026-10-27"].map((date) =>
+      makeSession(date, [
+        makeSet({ exerciseName: "Pull-up", weight: 0, reps: 3 }),
+        makeSet({
+          exerciseName: "Dead hang",
+          durationSeconds: 60,
+          setNumber: 1,
+        }),
+      ]),
+    );
+
+    const summaries = buildStrengthProgressionSummaries(sessions);
+    const pullUp = summaries.find((s) => s.exerciseName === "Pull-up")!;
+    const hang = summaries.find((s) => s.exerciseName === "Dead hang")!;
+
+    expect(pullUp.kind).toBe("bodyweight");
+    expect(hang.kind).toBe("timed");
+    for (const summary of [pullUp, hang]) {
+      expect(summary.stall.stalled).toBe(false);
+      expect(summary.isPersonalRecord).toBe(false);
+      expect(summary.topSetTrend).toBe("new");
+    }
+    expect(hang.latestTopSet?.durationSeconds).toBe(60);
+  });
+
+  it("groups exercise names case- and whitespace-insensitively", () => {
+    const summaries = buildStrengthProgressionSummaries([
+      makeSession("2026-10-13", [
+        makeSet({ exerciseName: "bench press ", weight: 135, reps: 8 }),
+      ]),
+      makeSession("2026-10-20", [
+        makeSet({ exerciseName: "Bench Press", weight: 135, reps: 8 }),
+      ]),
+    ]);
+
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0].exerciseName).toBe("Bench Press");
+    expect(summaries[0].sessionCount).toBe(2);
+  });
+});

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { RecoveryCheckin } from "@fitness-app/domain";
-import { mergeIntoExistingCheckin, toRecoveryFormValues } from "./helpers";
+import {
+  keepSyncedValues,
+  mergeIntoExistingCheckin,
+  toRecoveryFormValues,
+} from "./helpers";
 
 // Synthetic values, shaped like a row the Apple Health sleep sync creates.
 const synced = {
@@ -94,5 +98,52 @@ describe("toRecoveryFormValues", () => {
       restingHeartRate: "55",
       hrv: "48.2",
     });
+  });
+});
+
+describe("keepSyncedValues", () => {
+  const manual = {
+    sourceType: "manual" as const,
+    sourceProvider: null,
+    sourceExternalId: null,
+    importBatchId: null,
+    rawImportEventId: null,
+  };
+
+  it("keeps stored sleep minutes when the rounded hours are unchanged", () => {
+    // 430 min shows as 7.2 h and would save back as 432.
+    const result = keepSyncedValues(
+      { sleepDurationMinutes: 432, source: manual },
+      synced,
+    );
+    expect(result.sleepDurationMinutes).toBe(430);
+  });
+
+  it("takes an edited sleep value", () => {
+    const result = keepSyncedValues(
+      { sleepDurationMinutes: 480, source: manual },
+      synced,
+    );
+    expect(result.sleepDurationMinutes).toBe(480);
+  });
+
+  it("marks an edited synced row mixed and keeps its provider", () => {
+    const result = keepSyncedValues(
+      { sleepDurationMinutes: 430, source: manual },
+      synced,
+    );
+    expect(result.source).toMatchObject({
+      sourceType: "mixed",
+      sourceProvider: "apple_health",
+      sourceExternalId: "2026-10-13",
+    });
+  });
+
+  it("leaves a manual row manual", () => {
+    const result = keepSyncedValues(
+      { sleepDurationMinutes: 430, source: manual },
+      { ...synced, source: manual },
+    );
+    expect(result.source).toEqual(manual);
   });
 });

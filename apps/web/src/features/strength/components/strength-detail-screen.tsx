@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { StrengthExerciseSet } from "@fitness-app/domain";
 import { StrengthProgressionSummarySection } from "./strength-progression-summary";
 import { getStrengthDetailData } from "../server";
-import { formatStrengthDate } from "../helpers";
+import { formatDuration, formatStrengthDate } from "../helpers";
 
 type StrengthDetailScreenProps = {
   sessionId: string;
@@ -117,7 +117,7 @@ export async function StrengthDetailScreen({
               <tr>
                 <th className="pb-3 pr-4">Exercise</th>
                 <th className="pb-3 pr-4">Set</th>
-                <th className="pb-3 pr-4">Reps</th>
+                <th className="pb-3 pr-4">Reps / time</th>
                 <th className="pb-3 pr-4">Weight</th>
                 <th className="pb-3 pr-4">RIR</th>
                 <th className="pb-3">Notes</th>
@@ -125,12 +125,28 @@ export async function StrengthDetailScreen({
             </thead>
             <tbody>
               {session.sets.map((set: StrengthExerciseSet) => (
-                <tr key={set.id} className="border-t border-ink/10">
+                <tr
+                  key={set.id}
+                  className={`border-t border-ink/10 ${set.isWarmup ? "text-ink/50" : ""}`}
+                >
                   <td className="py-3 pr-4 font-semibold text-ink">
                     {set.exerciseName}
                   </td>
-                  <td className="py-3 pr-4">{set.setNumber}</td>
-                  <td className="py-3 pr-4">{set.reps ?? "--"}</td>
+                  <td className="py-3 pr-4">
+                    {set.isWarmup ? (
+                      <span className="font-semibold text-ember">
+                        W<span className="sr-only">arm-up</span>
+                      </span>
+                    ) : (
+                      set.setNumber
+                    )}
+                  </td>
+                  <td className="py-3 pr-4">
+                    {set.reps ??
+                      (set.durationSeconds != null
+                        ? formatDuration(set.durationSeconds)
+                        : "--")}
+                  </td>
                   <td className="py-3 pr-4">{set.weight ?? "--"}</td>
                   <td className="py-3 pr-4">{set.rir ?? "--"}</td>
                   <td className="py-3">{set.notes ?? "--"}</td>
@@ -144,7 +160,7 @@ export async function StrengthDetailScreen({
       <StrengthProgressionSummarySection
         summaries={data.exerciseProgressionSummaries}
         title="Exercise trends"
-        description="How the movements from this session are trending across all your logged history."
+        description="These exercises across all your sessions."
       />
     </div>
   );

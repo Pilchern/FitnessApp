@@ -119,7 +119,18 @@ export function StrengthSessionList({ sessions }: StrengthSessionListProps) {
                   >
                     Edit
                   </Link>
-                  <form action={deleteStrengthSessionAction}>
+                  <form
+                    action={deleteStrengthSessionAction}
+                    onSubmit={(event) => {
+                      if (
+                        !window.confirm(
+                          `Delete ${session.sessionName ?? "this session"} (${formatStrengthDate(session.sessionDate)})?`,
+                        )
+                      ) {
+                        event.preventDefault();
+                      }
+                    }}
+                  >
                     <input type="hidden" name="id" value={session.id} />
                     <button
                       type="submit"

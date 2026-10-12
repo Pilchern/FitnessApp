@@ -3,6 +3,7 @@ import { formatImportBatchStatus, formatIntegrationDateTime } from "../helpers";
 
 type ImportBatchesCardProps = {
   importBatches: ImportBatch[];
+  timeZone: string;
 };
 
 function providerLabel(provider: string): string {
@@ -14,7 +15,10 @@ function providerLabel(provider: string): string {
   return map[provider.toLowerCase()] ?? provider;
 }
 
-export function ImportBatchesCard({ importBatches }: ImportBatchesCardProps) {
+export function ImportBatchesCard({
+  importBatches,
+  timeZone,
+}: ImportBatchesCardProps) {
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
       <div>
@@ -49,7 +53,7 @@ export function ImportBatchesCard({ importBatches }: ImportBatchesCardProps) {
                   </div>
                 </div>
                 <div className="text-sm text-ink/70">
-                  {formatIntegrationDateTime(batch.createdAt)}
+                  {formatIntegrationDateTime(batch.createdAt, timeZone)}
                 </div>
               </div>
 

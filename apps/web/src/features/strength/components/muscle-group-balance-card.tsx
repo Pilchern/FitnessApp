@@ -1,4 +1,5 @@
 import type { MuscleGroupVolumeSummary } from "@fitness-app/application";
+import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
 
 type MuscleGroupBalanceCardProps = {
   summary: MuscleGroupVolumeSummary;
@@ -17,21 +18,33 @@ const MUSCLE_GROUP_LABELS: Record<string, string> = {
   core: "Core",
 };
 
-function formatRatio(ratio: number | null): string {
-  if (ratio == null) return "Not enough data yet";
-  if (ratio > 1.3)
-    return `Push volume is ${ratio}x pull — pulling may be lagging`;
-  if (ratio < 0.77)
-    return `Pull volume is ${(1 / ratio).toFixed(2)}x push — pressing may be lagging`;
-  return `Push and pull volume are balanced (${ratio}x)`;
+/**
+ * Push vs pull by working sets, not tonnage: pull-ups and band face pulls log
+ * no weight, so a tonnage ratio would call pulling "lagging" every week.
+ */
+function formatSetBalance(summary: MuscleGroupVolumeSummary): string {
+  const sets = (pattern: string) =>
+    summary.byMovementPattern.find((p) => p.movementPattern === pattern)
+      ?.workingSetCount ?? 0;
+  const push = sets("push");
+  const pull = sets("pull");
+  if (push === 0 || pull === 0) return "Push vs pull: not enough data yet.";
+  const counts = `Push ${push} sets, pull ${pull} sets`;
+  const ratio = push / pull;
+  if (ratio > 1.3) return `${counts}. Pulling may be lagging.`;
+  if (ratio < 0.77) return `${counts}. Pressing may be lagging.`;
+  return `${counts}. Balanced.`;
 }
 
 export function MuscleGroupBalanceCard({
   summary,
 }: MuscleGroupBalanceCardProps) {
-  const trainedGroups = summary.byMuscleGroup.filter(
-    (g) => g.workingSetCount > 0,
+  // Legs are trained in the PT app during rehab; don't flag them here.
+  const excluded = new Set<string>(NICK_TRAINING_PLAN.excludedMuscleGroups);
+  const groups = summary.byMuscleGroup.filter(
+    (g) => !excluded.has(g.muscleGroup),
   );
+  const trainedGroups = groups.filter((g) => g.workingSetCount > 0);
   const hasAnyData = trainedGroups.length > 0;
 
   return (
@@ -43,8 +56,7 @@ export function MuscleGroupBalanceCard({
         Muscle group balance
       </h2>
       <p className="mt-2 text-sm leading-6 text-ink/75">
-        Working sets by muscle group (warm-ups excluded), so you can spot
-        what&apos;s neglected before it becomes a pattern.
+        Working sets by muscle group. Warm-ups excluded.
       </p>
 
       {!hasAnyData ? (
@@ -53,8 +65,8 @@ export function MuscleGroupBalanceCard({
         </p>
       ) : (
         <>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {summary.byMuscleGroup.map((group) => {
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {groups.map((group) => {
               const isNeglected = group.workingSetCount === 0;
               return (
                 <div
@@ -78,7 +90,9 @@ export function MuscleGroupBalanceCard({
                   <div className="text-xs text-ink/50">
                     {isNeglected
                       ? "Not trained this week"
-                      : `${group.totalVolume.toLocaleString()} lb volume`}
+                      : group.totalVolume > 0
+                        ? `${group.totalVolume.toLocaleString()} lb`
+                        : "Bodyweight"}
                   </div>
                 </div>
               );
@@ -86,7 +100,7 @@ export function MuscleGroupBalanceCard({
           </div>
 
           <div className="mt-4 rounded-[1.25rem] border border-ink/10 bg-white/70 p-4 text-sm text-ink/75">
-            {formatRatio(summary.pushPullVolumeRatio)}
+            {formatSetBalance(summary)}
           </div>
 
           {summary.unclassifiedWorkingSetCount > 0 ? (

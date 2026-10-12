@@ -8,8 +8,15 @@ import {
   hasAppleHealthWebhookToken,
 } from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
+import { getCachedUserProfile } from "@/lib/server/services";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
-import { buildFlashMessage } from "./helpers";
+import {
+  buildAppleHealthStreamStatus,
+  buildFlashMessage,
+  formatIntegrationDateTime,
+  isFailureUnresolved,
+  type AppleHealthStream,
+} from "./helpers";
 import type { IntegrationsPageData } from "./types";
 
 async function getAppUrl(): Promise<string> {
@@ -20,11 +27,17 @@ async function getAppUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-const APPLE_HEALTH_JOBS = {
+const APPLE_HEALTH_JOBS: Record<AppleHealthStream, string> = {
   daily: "apple_health_daily_metrics_sync",
   sleep: "apple_health_sleep_sync",
   workouts: "apple_health_workout_sync",
-} as const;
+};
+
+const APPLE_HEALTH_STREAM_LABELS: Record<AppleHealthStream, string> = {
+  daily: "Steps and activity",
+  sleep: "Sleep",
+  workouts: "Rides",
+};
 
 /** When each Apple Health stream last synced, so phone setup can be checked here. */
 async function getAppleHealthLastReceived(userId: string) {
@@ -43,9 +56,34 @@ async function getAppleHealthLastReceived(userId: string) {
       return [key, (data?.finished_at as string | null) ?? null] as const;
     }),
   );
-  return Object.fromEntries(
-    entries,
-  ) as IntegrationsPageData["appleHealthLastReceived"];
+  return Object.fromEntries(entries) as Record<
+    AppleHealthStream,
+    string | null
+  >;
+}
+
+/** Latest failed Apple Health run, whatever the stream. */
+async function getAppleHealthLatestFailure(userId: string) {
+  const client = createSupabaseAdminClient();
+  const { data } = await client
+    .from("sync_job_runs")
+    .select("job_type, error_message, finished_at, created_at")
+    .eq("user_id", userId)
+    .in("job_type", Object.values(APPLE_HEALTH_JOBS))
+    .in("status", ["failed", "dead_letter"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const stream = (Object.keys(APPLE_HEALTH_JOBS) as AppleHealthStream[]).find(
+    (key) => APPLE_HEALTH_JOBS[key] === data.job_type,
+  );
+  if (!stream) return null;
+  return {
+    stream,
+    at: (data.finished_at as string | null) ?? (data.created_at as string),
+    message: (data.error_message as string | null) ?? null,
+  };
 }
 
 export async function getIntegrationsPageData(input?: {
@@ -59,12 +97,17 @@ export async function getIntegrationsPageData(input?: {
     appUrl,
     appleHealthHasWebhookToken,
     appleHealthLastReceived,
+    appleHealthFailure,
+    profile,
   ] = await Promise.all([
     service.getSnapshot({ userId: user.id, limit: 8 }),
     getAppUrl(),
     hasAppleHealthWebhookToken(user.id),
     getAppleHealthLastReceived(user.id),
+    getAppleHealthLatestFailure(user.id),
+    getCachedUserProfile(user.id),
   ]);
+  const timeZone = profile?.timezone || "UTC";
 
   return {
     withingsConfigured: Boolean(getWithingsIntegrationConfig()),
@@ -74,7 +117,24 @@ export async function getIntegrationsPageData(input?: {
     appleHealthConnection:
       snapshot.connections.find((c) => c.provider === "apple_health") ?? null,
     appleHealthHasWebhookToken,
-    appleHealthLastReceived,
+    appleHealthStreams: buildAppleHealthStreamStatus(
+      appleHealthLastReceived,
+      new Date(),
+      timeZone,
+    ),
+    appleHealthFailure:
+      appleHealthFailure &&
+      isFailureUnresolved(
+        appleHealthFailure.at,
+        appleHealthLastReceived[appleHealthFailure.stream],
+      )
+        ? {
+            label: APPLE_HEALTH_STREAM_LABELS[appleHealthFailure.stream],
+            at: formatIntegrationDateTime(appleHealthFailure.at, timeZone),
+            message: appleHealthFailure.message,
+          }
+        : null,
+    timeZone,
     userId: user.id,
     appUrl,
     snapshot,

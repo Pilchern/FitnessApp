@@ -1,4 +1,3 @@
-import { buildLastByExercise } from "./helpers";
 import "server-only";
 
 import {
@@ -13,22 +12,22 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
+import { buildLastByExercise, exerciseKey, shiftIsoDate } from "./helpers";
 import type { StrengthDetailData, StrengthPageData } from "./types";
 
-function twoYearsAgoIsoDate() {
-  const date = new Date();
-  date.setFullYear(date.getFullYear() - 2);
-  return date.toISOString().slice(0, 10);
-}
+const HISTORY_DAYS = 730;
 
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function daysAgoIsoDate(days: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return date.toISOString().slice(0, 10);
+/**
+ * Today in the profile's timezone. `new Date().toISOString()` is the UTC date,
+ * which rolls over at 7 PM Central and would pull tomorrow into "today".
+ */
+async function zonedToday(userId: string) {
+  const profile = await getCachedUserProfile(userId);
+  const zonedNow = getZonedDate(profile?.timezone || "UTC");
+  return {
+    today: zonedNow.toISOString().slice(0, 10),
+    dayOfWeek: zonedNow.getUTCDay(),
+  };
 }
 
 export async function getStrengthPageData(
@@ -38,26 +37,21 @@ export async function getStrengthPageData(
   const { strengthService, trainingTemplateService, exerciseOverrideService } =
     await createCoreServices();
 
-  const [
-    sessions,
-    strengthTemplates,
-    editingSession,
-    exerciseOverrides,
-    profile,
-  ] = await Promise.all([
-    strengthService.listByDateRange({
-      userId: user.id,
-      startDate: twoYearsAgoIsoDate(),
-    }),
-    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
-    editSessionId
-      ? strengthService.getById(user.id, editSessionId)
-      : Promise.resolve(null),
-    exerciseOverrideService.listActive({ userId: user.id }),
-    getCachedUserProfile(user.id),
-  ]);
+  const { today, dayOfWeek: todayDayOfWeek } = await zonedToday(user.id);
 
-  const todayDayOfWeek = getZonedDate(profile?.timezone || "UTC").getUTCDay();
+  const [sessions, strengthTemplates, editingSession, exerciseOverrides] =
+    await Promise.all([
+      strengthService.listByDateRange({
+        userId: user.id,
+        startDate: shiftIsoDate(today, -HISTORY_DAYS),
+      }),
+      trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
+      editSessionId
+        ? strengthService.getById(user.id, editSessionId)
+        : Promise.resolve(null),
+      exerciseOverrideService.listActive({ userId: user.id }),
+    ]);
+
   const todaysScheduledTemplate =
     strengthTemplates.find((t) => t.scheduledDayOfWeek === todayDayOfWeek) ??
     null;
@@ -69,7 +63,9 @@ export async function getStrengthPageData(
   const overridesLookup = buildOverridesLookup(exerciseOverrides);
   const muscleGroupVolume = computeMuscleGroupVolume(
     sessions,
-    { startDate: daysAgoIsoDate(7), endDate: todayIsoDate() },
+    // Seven calendar days including today, so one Tue/Thu/Sat week never
+    // counts the same weekday twice.
+    { startDate: shiftIsoDate(today, -6), endDate: today },
     overridesLookup,
   );
   const unclassifiedExerciseNames = knownExercises.filter(
@@ -105,21 +101,25 @@ export async function getStrengthDetailData(
 ): Promise<StrengthDetailData> {
   const user = await requireCurrentUser();
   const { strengthService } = await createCoreServices();
+  const { today } = await zonedToday(user.id);
   const [session, sessions] = await Promise.all([
     strengthService.getById(user.id, sessionId),
     strengthService.listByDateRange({
       userId: user.id,
-      startDate: twoYearsAgoIsoDate(),
+      startDate: shiftIsoDate(today, -HISTORY_DAYS),
     }),
   ]);
 
-  const sessionExerciseNames = new Set(
-    session?.sets.map((set: { exerciseName: string }) => set.exerciseName) ??
-      [],
+  const sessionExerciseKeys = new Set(
+    session?.sets.map((set: { exerciseName: string }) =>
+      exerciseKey(set.exerciseName),
+    ) ?? [],
   );
   const exerciseProgressionSummaries = buildStrengthProgressionSummaries(
     sessions,
-  ).filter((summary) => sessionExerciseNames.has(summary.exerciseName));
+  ).filter((summary) =>
+    sessionExerciseKeys.has(exerciseKey(summary.exerciseName)),
+  );
 
   return {
     session,

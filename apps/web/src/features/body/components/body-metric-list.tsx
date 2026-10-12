@@ -39,8 +39,7 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
             No measurements yet
           </h2>
           <p className="mt-2 text-sm text-ink/60">
-            Log your first weight or waist measurement to start tracking your
-            body composition trend.
+            Weigh-ins sync from Withings each day. They will show up here.
           </p>
         </div>
       </section>
@@ -82,16 +81,24 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
                 </div>
 
                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
-                  <span>{`Weight ${formatBodyValue(metric.weightLb, "lb")}`}</span>
-                  <span>{`Waist ${formatBodyValue(metric.waistIn, "in")}`}</span>
+                  {metric.weightLb != null ? (
+                    <span>{`Weight ${formatBodyValue(metric.weightLb, "lb")}`}</span>
+                  ) : null}
+                  {metric.waistIn != null ? (
+                    <span>{`Waist ${formatBodyValue(metric.waistIn, "in")}`}</span>
+                  ) : null}
                   {metric.waistHipIn != null ? (
                     <span>{`Waist (hip) ${formatBodyValue(metric.waistHipIn, "in")}`}</span>
                   ) : null}
                   {metric.waistGutIn != null ? (
                     <span>{`Waist (gut) ${formatBodyValue(metric.waistGutIn, "in")}`}</span>
                   ) : null}
-                  <span>{`Body fat ${formatBodyValue(metric.bodyFatPct, "%")}`}</span>
-                  <span>{`Muscle ${formatBodyValue(metric.muscleMassLb, "lb")}`}</span>
+                  {metric.bodyFatPct != null ? (
+                    <span>{`Body fat ${formatBodyValue(metric.bodyFatPct, "%")}`}</span>
+                  ) : null}
+                  {metric.muscleMassLb != null ? (
+                    <span>{`Muscle ${formatBodyValue(metric.muscleMassLb, "lb")}`}</span>
+                  ) : null}
                   {metric.fatFreeMassLb != null ? (
                     <span>{`Fat-free mass ${formatBodyValue(metric.fatFreeMassLb, "lb")}`}</span>
                   ) : null}
@@ -120,7 +127,14 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
                 >
                   Edit
                 </Link>
-                <form action={deleteBodyMetricAction}>
+                <form
+                  action={deleteBodyMetricAction}
+                  onSubmit={(event) => {
+                    if (!window.confirm("Delete this entry?")) {
+                      event.preventDefault();
+                    }
+                  }}
+                >
                   <input type="hidden" name="id" value={metric.id} />
                   <button
                     type="submit"

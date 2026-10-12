@@ -1,36 +1,38 @@
 import Link from "next/link";
+import type { WeeklyReview } from "@fitness-app/domain";
 import type { WeekPlan } from "../helpers";
 
 type WeekPlanCardProps = {
   plan: WeekPlan;
   zone2Minutes: number;
+  latestReview: WeeklyReview | null;
 };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export function WeekPlanCard({ plan, zone2Minutes }: WeekPlanCardProps) {
+export function WeekPlanCard({
+  plan,
+  zone2Minutes,
+  latestReview,
+}: WeekPlanCardProps) {
   const scheduled = plan.days.flatMap((d) => d.items);
   if (scheduled.length === 0) return null;
 
   const doneCount = scheduled.filter((i) => i.done).length;
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
+    <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            Plan
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">
+          <p className="text-xs text-ink/55">This week</p>
+          <h2 className="mt-1 font-display text-lg text-ink">
             {doneCount} of {scheduled.length} sessions done
           </h2>
         </div>
         {plan.zone2TargetMinutes > 0 ? (
           <div className="text-right">
-            <div className="text-xs uppercase tracking-[0.2em] text-ink/60">
-              Zone 2 this week
-            </div>
-            <div className="mt-1 text-2xl font-semibold text-ink">
+            <div className="text-xs text-ink/55">Zone 2</div>
+            <div className="mt-1 text-lg font-semibold text-ink">
               {zone2Minutes}
               <span className="text-base font-normal text-ink/60">
                 {" "}
@@ -41,7 +43,7 @@ export function WeekPlanCard({ plan, zone2Minutes }: WeekPlanCardProps) {
         ) : null}
       </div>
 
-      <ul className="mt-5 divide-y divide-ink/10">
+      <ul className="mt-4 divide-y divide-ink/10">
         {plan.days
           .filter((d) => d.items.length > 0)
           .map((day) =>
@@ -76,6 +78,18 @@ export function WeekPlanCard({ plan, zone2Minutes }: WeekPlanCardProps) {
             }),
           )}
       </ul>
+      <Link
+        href="/weekly-review"
+        className="mt-2 flex items-center justify-between border-t border-ink/10 pt-3 text-sm text-ink/70 hover:text-pine"
+      >
+        <span>
+          Weekly review
+          {latestReview?.scoreDetails != null
+            ? ` · last score ${latestReview.scoreDetails.totalScore}/100`
+            : ""}
+        </span>
+        <span aria-hidden="true">→</span>
+      </Link>
     </section>
   );
 }

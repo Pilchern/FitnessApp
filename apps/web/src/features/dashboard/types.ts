@@ -1,25 +1,11 @@
-import type { WeeklyWeightTrend } from "@fitness-app/application";
 import type {
-  MuscleGroupVolumeSummary,
+  DailyReadiness,
   PersistedInsight,
-  RecoveryCoachingSuggestion,
-  SparseTrendPoint,
+  TrendNote,
+  WeeklyWeightTrend,
 } from "@fitness-app/application";
-import type {
-  RecoveryCheckin,
-  Supplement,
-  WeeklyReview,
-} from "@fitness-app/domain";
-import type { WeekPlan } from "./helpers";
-
-export type TrainingWeekData = {
-  weekStart: string;
-  weekEnd: string;
-  liftsCompleted: number;
-  ridesCompleted: number;
-  zone2Minutes: number;
-  totalMinutes: number;
-};
+import type { Supplement, WeeklyReview } from "@fitness-app/domain";
+import type { WeekPlan, WeekPlanItem } from "./helpers";
 
 export type HabitsToday = {
   items: Supplement[];
@@ -29,48 +15,31 @@ export type HabitsToday = {
   logDate: string;
 };
 
-export type GoalProgress = {
-  label: string;
-  description: string;
-  trend: "improving" | "maintaining" | "declining" | "insufficient_data";
-  trendDetail: string;
-};
-
 export type TodayNutrition = {
   proteinHitDays: number;
   fiberTakenDays: number;
   totalDays: number;
 };
 
-export type NutritionTargetsSnapshot = {
-  calories: number | null;
-  proteinGrams: number | null;
-  fiberGrams: number | null;
-};
-
 export type DashboardData = {
-  trainingWeek: TrainingWeekData;
-  latestRecovery: RecoveryCheckin | null;
+  today: string;
+  readiness: DailyReadiness;
+  readinessHistory: { date: string; score: number | null }[];
+  readinessCall: string;
+  todayItems: WeekPlanItem[];
+  zone2Minutes: number;
+  weekPlan: WeekPlan;
   latestWeightLb: number | null;
-  weightChangeLb: number | null;
-  latestWaistIn: number | null;
-  waistChangeIn: number | null;
   latestBodyFatPct: number | null;
   latestBodyDate: string | null;
-  weightTrend: SparseTrendPoint[];
-  recentReviews: WeeklyReview[];
+  weeklyWeight: WeeklyWeightTrend;
+  /** Protein-hit days over the last 7; null when nothing is logged. */
+  proteinHit: { days: number; of: number } | null;
   latestReview: WeeklyReview | null;
   topInsights: PersistedInsight[];
-  coachingSuggestion: RecoveryCoachingSuggestion | null;
-  journalStreak: number;
-  goalProgress: GoalProgress[];
-  todayNutrition: TodayNutrition | null;
-  nutritionTargets: NutritionTargetsSnapshot;
-  muscleGroupVolume: MuscleGroupVolumeSummary;
-  weekPlan: WeekPlan;
+  trendNotes: TrendNote[];
   habits: HabitsToday;
   activity: ActivitySnapshot;
-  weeklyWeight: WeeklyWeightTrend;
 };
 
 /** Apple Health daily metrics for the dashboard; nulls until the bridge syncs. */

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildFlashMessage, getIntegrationStatusGuidance } from "./helpers";
+import {
+  buildAppleHealthStreamStatus,
+  buildFlashMessage,
+  getIntegrationStatusGuidance,
+  isFailureUnresolved,
+} from "./helpers";
 
 describe("buildFlashMessage", () => {
   it("prioritizes explicit errors", () => {
@@ -32,5 +37,50 @@ describe("getIntegrationStatusGuidance", () => {
     ).toMatchObject({
       tone: "alert",
     });
+  });
+});
+
+describe("buildAppleHealthStreamStatus", () => {
+  const now = new Date("2026-10-12T18:00:00Z");
+
+  it("marks metrics stale after 6 hours and sleep after 36", () => {
+    const status = buildAppleHealthStreamStatus(
+      {
+        daily: "2026-10-12T11:00:00Z",
+        sleep: "2026-10-11T12:00:00Z",
+        workouts: null,
+      },
+      now,
+      "America/Chicago",
+    );
+    expect(status.daily.stale).toBe(true);
+    expect(status.sleep.stale).toBe(false);
+    expect(status.workouts).toEqual({
+      lastReceivedLabel: "—",
+      received: false,
+      stale: false,
+    });
+  });
+
+  it("formats in the given timezone", () => {
+    const status = buildAppleHealthStreamStatus(
+      { daily: "2026-10-12T17:30:00Z", sleep: null, workouts: null },
+      now,
+      "America/Chicago",
+    );
+    expect(status.daily.lastReceivedLabel).toBe("Oct 12, 12:30 PM");
+  });
+});
+
+describe("isFailureUnresolved", () => {
+  it("is true only when the failure is newer than the last success", () => {
+    expect(isFailureUnresolved(null, "2026-10-12T00:00:00Z")).toBe(false);
+    expect(isFailureUnresolved("2026-10-12T00:00:00Z", null)).toBe(true);
+    expect(
+      isFailureUnresolved("2026-10-11T00:00:00Z", "2026-10-12T00:00:00Z"),
+    ).toBe(false);
+    expect(
+      isFailureUnresolved("2026-10-12T01:00:00Z", "2026-10-12T00:00:00Z"),
+    ).toBe(true);
   });
 });

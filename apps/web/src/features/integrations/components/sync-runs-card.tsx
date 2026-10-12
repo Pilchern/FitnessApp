@@ -3,6 +3,7 @@ import { formatIntegrationDateTime, formatSyncRunStatus } from "../helpers";
 
 type SyncRunsCardProps = {
   syncRuns: SyncJobRun[];
+  timeZone: string;
 };
 
 function formatJobType(jobType: string): string {
@@ -16,7 +17,7 @@ function formatJobType(jobType: string): string {
   return map[jobType] ?? jobType.replaceAll("_", " ");
 }
 
-export function SyncRunsCard({ syncRuns }: SyncRunsCardProps) {
+export function SyncRunsCard({ syncRuns, timeZone }: SyncRunsCardProps) {
   const deadLetteredCount = syncRuns.filter(
     (run) => run.status === "dead_letter",
   ).length;
@@ -74,7 +75,7 @@ export function SyncRunsCard({ syncRuns }: SyncRunsCardProps) {
                     </div>
                   </div>
                   <div className="text-sm text-ink/70">
-                    {formatIntegrationDateTime(run.createdAt)}
+                    {formatIntegrationDateTime(run.createdAt, timeZone)}
                   </div>
                 </div>
 
