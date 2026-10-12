@@ -93,7 +93,10 @@ are dropped so they do not inflate Zone 2 or double-count lifts; when Peloton
 and the Watch both record the same ride, the one with heart rate is kept;
 weight and body fat are ignored because Withings is the direct source; kJ is
 converted to kcal; sleep hours become minutes; daily resting HR and HRV also
-land on the recovery check-in so `/recovery` charts them.
+land on the recovery check-in so `/recovery` charts them. Sleep start and end
+(Watch onset and wake, else the iPhone in-bed window) fill the check-in's
+bedtime and wake time as local clock times, only when those are blank, so a
+time typed on the check-in stays and an afternoon nap cannot move the wake time.
 
 ### Steps habit
 

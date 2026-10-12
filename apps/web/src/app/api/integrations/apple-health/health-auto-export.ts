@@ -102,6 +102,14 @@ function minutesBetween(start?: string, end?: string): number | null {
     : null;
 }
 
+/** "2026-10-11 21:42:10 -0500" -> "21:42", the phone's local clock time. */
+export function toLocalClockTime(value: string | undefined): string | null {
+  const match = value
+    ? /^\d{4}-\d{2}-\d{2}[ T]([01]\d|2[0-3]):([0-5]\d)/.exec(value.trim())
+    : null;
+  return match ? `${match[1]}:${match[2]}` : null;
+}
+
 function hoursToMinutes(units: string | undefined, value: unknown) {
   if (!isFiniteNumber(value)) return undefined;
   return Math.min(1440, Math.round(units === "min" ? value : value * 60));
@@ -170,6 +178,15 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
           minutesBetween(point.inBedStart, point.inBedEnd) ||
           minutesBetween(point.sleepStart, point.sleepEnd);
         if (inBed) row.time_in_bed_minutes = Math.min(1440, Math.round(inBed));
+        // Watch-measured sleep onset and wake, falling back to the iPhone's
+        // in-bed window. Onset runs a few minutes after lights out.
+        const bedtime =
+          toLocalClockTime(point.sleepStart) ??
+          toLocalClockTime(point.inBedStart);
+        const wake =
+          toLocalClockTime(point.sleepEnd) ?? toLocalClockTime(point.inBedEnd);
+        if (bedtime) row.bedtime_local = bedtime;
+        if (wake) row.wake_time_local = wake;
       }
     }
   }

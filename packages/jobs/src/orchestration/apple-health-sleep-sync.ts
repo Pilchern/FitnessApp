@@ -32,6 +32,9 @@ export type AppleHealthSleepPayload = {
   sleep_avg_heart_rate?: number;
   sleep_respiratory_rate?: number;
   sleep_spo2_avg_pct?: number;
+  /** Local wall-clock "HH:MM" the user fell asleep and woke. */
+  bedtime_local?: string;
+  wake_time_local?: string;
 };
 
 export type SyncAppleHealthSleepInput = {
@@ -226,6 +229,14 @@ export class AppleHealthSleepSyncOrchestrator {
                 payload.sleep_avg_heart_rate ??
                 existing.sleepAvgHeartRate ??
                 undefined,
+              // Fill-only: a time typed on the check-in stays, and a later
+              // push (by-day aggregates include naps) cannot move it.
+              ...(existing.bedtimeLocal == null && payload.bedtime_local
+                ? { bedtimeLocal: payload.bedtime_local }
+                : {}),
+              ...(existing.wakeTimeLocal == null && payload.wake_time_local
+                ? { wakeTimeLocal: payload.wake_time_local }
+                : {}),
               source: {
                 sourceType: "mixed",
                 sourceProvider: "apple_health",
@@ -270,6 +281,8 @@ export class AppleHealthSleepSyncOrchestrator {
               sleepSpo2AvgPct: payload.sleep_spo2_avg_pct ?? null,
               sleepHrvAvg: payload.sleep_hrv_avg ?? null,
               sleepAvgHeartRate: payload.sleep_avg_heart_rate ?? null,
+              bedtimeLocal: payload.bedtime_local ?? null,
+              wakeTimeLocal: payload.wake_time_local ?? null,
               source: {
                 sourceType: "imported",
                 sourceProvider: "apple_health",
