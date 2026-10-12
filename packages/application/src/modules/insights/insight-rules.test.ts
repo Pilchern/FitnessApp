@@ -495,6 +495,9 @@ describe("insight rules", () => {
       averageWeightLb?: number | null;
       waistIn?: number | null;
       vo2Completed?: boolean;
+      liftsScheduled?: number;
+      cardioScheduled?: number;
+      zone2TargetMinutes?: number;
     } = {},
   ): WeeklyReview {
     return {
@@ -519,6 +522,9 @@ describe("insight rules", () => {
         averageWeightLb: summary.averageWeightLb ?? null,
         waistIn: summary.waistIn ?? null,
         vo2Completed: summary.vo2Completed ?? false,
+        liftsScheduled: summary.liftsScheduled,
+        cardioScheduled: summary.cardioScheduled,
+        zone2TargetMinutes: summary.zone2TargetMinutes,
       },
       bestWin: null,
       biggestMiss: null,
@@ -688,6 +694,24 @@ describe("insight rules", () => {
       expect(
         insights.find((i) => i.insightType === "zone2_below_target"),
       ).toBeUndefined();
+    });
+
+    it("measures against the review's template target when it has one", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              zone2Minutes: 110,
+              zone2TargetMinutes: 130,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      const insight = insights.find(
+        (i) => i.insightType === "zone2_below_target",
+      );
+      expect(insight?.explanation).toContain("110 min logged vs. 130 min");
     });
   });
 
@@ -1049,6 +1073,24 @@ describe("insight rules", () => {
       expect(
         insights.find((i) => i.insightType === "strong_week"),
       ).toBeUndefined();
+    });
+
+    it("uses the review's scheduled counts and Zone 2 target", () => {
+      const review = (zone2Minutes: number) =>
+        makeWeeklyReview("2026-03-30", {
+          liftsCompleted: 3,
+          ridesCompleted: 3,
+          zone2Minutes,
+          liftsScheduled: 3,
+          cardioScheduled: 3,
+          zone2TargetMinutes: 130,
+        });
+      const strong = (zone2Minutes: number) =>
+        buildInsights(
+          emptyInput({ weeklyReviews: [review(zone2Minutes)], now: TEST_NOW }),
+        ).find((i) => i.insightType === "strong_week");
+      expect(strong(120)).toBeUndefined();
+      expect(strong(130)).toBeDefined();
     });
   });
 

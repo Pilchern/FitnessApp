@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-10-09 (TD-041 added: Z2 target still duplicated for insight rules)
+**Last updated:** 2026-10-12 (TD-041 closed: insight rules read the template-derived Z2 target)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -15,9 +15,9 @@ Daily habits reuse `supplements` / `supplement_logs` through a `kind` column (`s
 
 Seeded with a pre-injury weekly plan, written by `profile-bootstrap.ts`, read by nothing. The real schedule is `training_templates.scheduled_day_of_week`. Either delete the column or make the dashboard plan card read it; do not add a third source of truth.
 
-### TD-041 — Two sources for the weekly Zone 2 target (low)
+### TD-041 — Two sources for the weekly Zone 2 target (closed 2026-10-12)
 
-The dashboard Plan card and the weekly review read the target from the scheduled cardio templates (since 2026-10-09). The insight rules still read `NICK_TRAINING_PLAN.weeklyZone2TargetMinutes` in `apps/web/src/lib/training-plan.ts`. After the PT ramp change both must be edited. Fix: pass the template-derived target into `buildInsights` the same way the review does.
+Closed: the insight rules read `zone2TargetMinutes`, `liftsScheduled` and `cardioScheduled` from the weekly review summary (template-derived), with `NICK_TRAINING_PLAN` as the no-review fallback. The insights cron runs an hour after the review auto-finalize so the summary exists.
 
 ---
 
