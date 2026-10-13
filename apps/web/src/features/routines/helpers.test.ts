@@ -77,7 +77,16 @@ describe("routineForHabit", () => {
   it("never tells the user to kneel", () => {
     for (const routine of ROUTINES) {
       for (const step of routine.steps) {
-        expect(`${step.name} ${step.cue}`).not.toMatch(/kneel/i);
+        const { howTo } = step;
+        const text = [
+          step.name,
+          step.cue,
+          ...howTo.steps,
+          howTo.feel,
+          howTo.avoid,
+        ];
+        expect(text.join(" ")).not.toMatch(/kneel/i);
+        expect(howTo.steps.length).toBeGreaterThan(0);
       }
     }
   });
