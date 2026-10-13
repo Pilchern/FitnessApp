@@ -1,5 +1,6 @@
 import type {
   DailyReadiness,
+  PeerFitness,
   PersistedInsight,
   TrendNote,
   WeeklyWeightTrend,
@@ -24,6 +25,7 @@ export type TodayNutrition = {
 export type DashboardData = {
   today: string;
   readiness: DailyReadiness;
+  peerFitness: PeerFitness;
   readinessHistory: { date: string; score: number | null }[];
   readinessCall: string;
   todayItems: WeekPlanItem[];
