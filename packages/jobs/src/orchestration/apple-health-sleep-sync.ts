@@ -32,6 +32,8 @@ export type AppleHealthSleepPayload = {
   sleep_avg_heart_rate?: number;
   sleep_respiratory_rate?: number;
   sleep_spo2_avg_pct?: number;
+  /** Absolute sleeping wrist temperature, Celsius. */
+  sleep_wrist_temp_c?: number;
   /** Local wall-clock "HH:MM" the user fell asleep and woke. */
   bedtime_local?: string;
   wake_time_local?: string;
@@ -229,6 +231,10 @@ export class AppleHealthSleepSyncOrchestrator {
                 payload.sleep_avg_heart_rate ??
                 existing.sleepAvgHeartRate ??
                 undefined,
+              sleepWristTempC:
+                payload.sleep_wrist_temp_c ??
+                existing.sleepWristTempC ??
+                undefined,
               // Fill-only: a time typed on the check-in stays, and a later
               // push (by-day aggregates include naps) cannot move it.
               ...(existing.bedtimeLocal == null && payload.bedtime_local
@@ -281,6 +287,7 @@ export class AppleHealthSleepSyncOrchestrator {
               sleepSpo2AvgPct: payload.sleep_spo2_avg_pct ?? null,
               sleepHrvAvg: payload.sleep_hrv_avg ?? null,
               sleepAvgHeartRate: payload.sleep_avg_heart_rate ?? null,
+              sleepWristTempC: payload.sleep_wrist_temp_c ?? null,
               bedtimeLocal: payload.bedtime_local ?? null,
               wakeTimeLocal: payload.wake_time_local ?? null,
               source: {

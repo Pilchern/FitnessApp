@@ -99,6 +99,7 @@ function createExistingCheckin(overrides: Record<string, unknown> = {}) {
     sleepSpo2AvgPct: null,
     sleepHrvAvg: null,
     sleepAvgHeartRate: null,
+    sleepWristTempC: null,
     coldPlungeCompleted: null,
     source: {
       sourceType: "manual" as const,

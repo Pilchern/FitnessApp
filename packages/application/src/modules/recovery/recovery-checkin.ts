@@ -36,6 +36,7 @@ const recoveryCheckinBaseSchema = z.object({
   sleepSpo2AvgPct: z.number().nullable().optional(),
   sleepHrvAvg: z.number().nullable().optional(),
   sleepAvgHeartRate: z.number().nullable().optional(),
+  sleepWristTempC: z.number().nullable().optional(),
   coldPlungeCompleted: z.boolean().nullable().optional(),
   source: canonicalRecordSourceSchema.default(defaultManualSource),
 });

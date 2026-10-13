@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { DailyReadiness } from "@fitness-app/application";
+import { readinessLevel, type DailyReadiness } from "@fitness-app/application";
 import type { WeekPlanItem } from "../helpers";
 
 type TodayCardProps = {
@@ -22,10 +22,6 @@ const LEVEL_BAR = {
   fair: "bg-amber-400",
   low: "bg-ember",
 } as const;
-
-function levelOf(score: number) {
-  return score >= 75 ? "good" : score >= 55 ? "fair" : "low";
-}
 
 function formatDay(isoDate: string, options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("en-US", {
@@ -152,6 +148,20 @@ export function TodayCard({
                 </span>
               </li>
             ))}
+            {scored.adjustments.map((a) => (
+              <li
+                key={a.key}
+                className="flex items-baseline justify-between gap-3 text-sm"
+              >
+                <span className="text-ink">{a.label}</span>
+                <span className="text-right text-ink/60">
+                  {a.detail}
+                  <span className="ml-2 font-semibold text-ember">
+                    −{a.points}
+                  </span>
+                </span>
+              </li>
+            ))}
             {scored.caps.map((cap) => (
               <li key={cap} className="text-sm text-ember">
                 Capped: {cap}
@@ -170,7 +180,7 @@ export function TodayCard({
                     className="flex flex-1 flex-col items-center gap-1"
                   >
                     <div
-                      className={`w-full rounded-sm ${h.score != null ? LEVEL_BAR[levelOf(h.score)] : "bg-ink/10"}`}
+                      className={`w-full rounded-sm ${h.score != null ? LEVEL_BAR[readinessLevel(h.score)] : "bg-ink/10"}`}
                       style={{
                         height: `${h.score != null ? Math.max(8, h.score * 0.4) : 4}px`,
                       }}
@@ -189,10 +199,13 @@ export function TodayCard({
             </div>
           ) : null}
           <p className="mt-4 text-xs leading-5 text-ink/50">
-            An estimate from Apple Health HRV, resting heart rate and sleep,
-            measured against your own last 30 days. Not a medical measure.
+            An estimate from Apple Health HRV, heart rate, sleep and wake time,
+            measured against your own last 30 days, less penalties for raised
+            wrist temperature, raised breathing rate or a training-load spike.
+            70 is a normal day for you; 100 needs every signal at or above your
+            usual. Not a medical measure.
             {scored.calibrating
-              ? ` Baseline has ${scored.baselineDays} days so far; it steadies after about two weeks.`
+              ? ` Baseline has ${scored.baselineDays} days so far; it steadies after about two weeks, and scores top out at 95 until then.`
               : null}
           </p>
         </details>

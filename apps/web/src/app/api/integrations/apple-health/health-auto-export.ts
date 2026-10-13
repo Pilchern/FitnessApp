@@ -11,6 +11,14 @@ import type { WatchStrengthWorkout } from "@fitness-app/application";
  * orchestrators already take, so the app accepts that app's native format
  * without a phone-side transform.
  *
+ * Overnight metrics: a second automation can send HRV, heart rate,
+ * respiratory rate, blood oxygen and sleeping wrist temperature grouped by
+ * hour. Hourly points from 23:00 to 05:59 local are averaged onto the wake
+ * date's sleep_* fields (a fixed core-sleep window, so every night is measured
+ * the same way and partial pushes are overwritten by fuller ones). A metric
+ * counts as hourly when any point carries a clock time other than midnight or
+ * two points share a date; daily HRV keeps feeding `hrv` as before.
+ *
  * What is deliberately dropped:
  * - Weight and body fat: Withings syncs directly and outranks a relay.
  * - Workouts that are neither rides nor strength: Watch walks would count as
@@ -27,6 +35,8 @@ type HaeMetricPoint = {
   date?: string;
   qty?: number;
   Avg?: number;
+  Min?: number;
+  Max?: number;
   totalSleep?: number;
   asleep?: number;
   core?: number;
@@ -124,6 +134,100 @@ function hoursToMinutes(units: string | undefined, value: unknown) {
   return Math.min(1440, Math.round(units === "min" ? value : value * 60));
 }
 
+const OVERNIGHT_METRICS = new Set([
+  "heart_rate_variability",
+  "heart_rate",
+  "respiratory_rate",
+  "blood_oxygen_saturation",
+  "apple_sleeping_wrist_temperature",
+]);
+
+/** Hours (local) counted as overnight; 23:00 belongs to the next date. */
+const OVERNIGHT_HOURS = new Set([23, 0, 1, 2, 3, 4, 5]);
+
+/** The local clock hour of "2026-10-13 02:00:00 -0500", or null. */
+function localHour(value: string | undefined): number | null {
+  const clock = toLocalClockTime(value);
+  return clock ? Number(clock.slice(0, 2)) : null;
+}
+
+/** True when a metric's points are intraday (hourly or raw), not daily. */
+function isIntraday(metric: HaeMetric): boolean {
+  const dates = new Set<string>();
+  for (const point of metric.data ?? []) {
+    const clock = toLocalClockTime(point.date);
+    if (clock && clock !== "00:00") return true;
+    const date = toIsoDate(point.date);
+    if (date && dates.has(date)) return true;
+    if (date) dates.add(date);
+  }
+  return false;
+}
+
+function addDaysIso(isoDate: string, days: number) {
+  const date = new Date(`${isoDate}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+/** The wake date a night-time point belongs to: evening rolls forward. */
+function nightDate(value: string | undefined): string | null {
+  const date = toIsoDate(value);
+  const hour = localHour(value);
+  if (!date || hour == null) return date;
+  return hour >= 15 ? addDaysIso(date, 1) : date;
+}
+
+type OvernightField =
+  | "sleep_hrv_avg"
+  | "sleep_avg_heart_rate"
+  | "sleep_respiratory_rate"
+  | "sleep_spo2_avg_pct"
+  | "sleep_wrist_temp_c";
+
+function overnightValue(
+  name: string,
+  units: string | undefined,
+  point: HaeMetricPoint,
+): { field: OvernightField; value: number } | null {
+  const qty = point.qty ?? point.Avg;
+  if (!isFiniteNumber(qty)) return null;
+  switch (name) {
+    case "heart_rate_variability":
+      return qty > 0 ? { field: "sleep_hrv_avg", value: qty } : null;
+    case "heart_rate":
+      return qty >= 20 && qty <= 250
+        ? { field: "sleep_avg_heart_rate", value: qty }
+        : null;
+    case "respiratory_rate":
+      return qty > 0 && qty < 60
+        ? { field: "sleep_respiratory_rate", value: qty }
+        : null;
+    case "blood_oxygen_saturation": {
+      const pct = qty <= 1 ? qty * 100 : qty;
+      return pct > 50 && pct <= 100
+        ? { field: "sleep_spo2_avg_pct", value: pct }
+        : null;
+    }
+    case "apple_sleeping_wrist_temperature": {
+      const celsius = /f/i.test(units ?? "") ? ((qty - 32) * 5) / 9 : qty;
+      return celsius > 25 && celsius < 45
+        ? { field: "sleep_wrist_temp_c", value: celsius }
+        : null;
+    }
+    default:
+      return null;
+  }
+}
+
+const OVERNIGHT_ROUNDING: Record<OvernightField, (v: number) => number> = {
+  sleep_hrv_avg: (v) => Math.round(v * 10) / 10,
+  sleep_avg_heart_rate: (v) => Math.round(v),
+  sleep_respiratory_rate: (v) => Math.round(v * 10) / 10,
+  sleep_spo2_avg_pct: (v) => Math.round(v * 10) / 10,
+  sleep_wrist_temp_c: (v) => Math.round(v * 100) / 100,
+};
+
 function mapDailyAndSleep(metrics: HaeMetric[]) {
   const daily = new Map<string, AppleHealthDailyMetricsPayload>();
   const sleep = new Map<string, AppleHealthSleepPayload>();
@@ -138,8 +242,33 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
     return row;
   };
 
+  // date -> field -> readings, averaged once every metric is read.
+  const overnight = new Map<string, Map<OvernightField, number[]>>();
+
   for (const metric of metrics) {
     const name = metric.name ?? "";
+    if (isIntraday(metric)) {
+      for (const point of metric.data ?? []) {
+        const reading = overnightValue(name, metric.units, point);
+        const hour = localHour(point.date);
+        const date = nightDate(point.date);
+        if (!reading || hour == null || !date) continue;
+        // Wrist temperature is one reading per night, whenever it is stamped.
+        if (
+          reading.field !== "sleep_wrist_temp_c" &&
+          !OVERNIGHT_HOURS.has(hour)
+        ) {
+          continue;
+        }
+        const fields = overnight.get(date) ?? new Map();
+        overnight.set(date, fields);
+        fields.set(reading.field, [
+          ...(fields.get(reading.field) ?? []),
+          reading.value,
+        ]);
+      }
+      if (OVERNIGHT_METRICS.has(name)) continue;
+    }
     for (const point of metric.data ?? []) {
       const date = toIsoDate(point.date);
       if (!date) continue;
@@ -197,6 +326,14 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
         if (bedtime) row.bedtime_local = bedtime;
         if (wake) row.wake_time_local = wake;
       }
+    }
+  }
+
+  for (const [date, fields] of overnight) {
+    const row = sleepFor(date);
+    for (const [field, values] of fields) {
+      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+      row[field] = OVERNIGHT_ROUNDING[field](mean);
     }
   }
 
