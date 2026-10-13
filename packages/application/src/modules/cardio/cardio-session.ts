@@ -288,6 +288,18 @@ export class CardioSessionService {
         sourceExternalId,
       );
       if (existing) {
+        // Apple Health re-posts the last week of rides, so a re-push can carry
+        // measured Zone 2 the first import lacked or a value from a changed
+        // band. Refresh just that field; everything else stays as stored.
+        const zone2Minutes = session.zone2Minutes;
+        if (zone2Minutes != null && zone2Minutes !== existing.zone2Minutes) {
+          const updated = await this.update({
+            id: existing.id,
+            userId,
+            zone2Minutes,
+          });
+          return { created: false, session: updated };
+        }
         return { created: false, session: existing };
       }
 
