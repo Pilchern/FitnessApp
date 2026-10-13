@@ -71,7 +71,7 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 
 ## 5. Cardio
 
-- Zone 2 on the Peloton, 97-130 W (56-75% of FTP 173 W, last tested 2026-05-21). Conversational pace, about 60-70% max HR. [doc]
+- Zone 2 on the Peloton, 97-130 W (56-75% of FTP 173 W, last tested 2026-05-21). Conversational pace, about 65-75% max HR (Peloton's band; the app moved from 60-70% on 2026-10-13 after the first measured ride credited 16 of 30 min). Replace with a measured band after the PT bike test or an FTP retest. [doc]
 - Full revolution, low resistance, seat high. Add resistance only if the next-morning swelling is unchanged. [doc]
 - Ramp, pending PT confirmation on 10/14 [assumed]:
   - This week and next: Mon 30 + Wed 30 + Fri 45 = 105 min

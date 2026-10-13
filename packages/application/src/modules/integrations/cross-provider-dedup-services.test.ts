@@ -208,6 +208,48 @@ describe("CardioSessionService.upsertImported cross-provider handling", () => {
     expect(result.created).toBe(false);
     expect(result.session.id).toBe("existing-1");
     expect(repository.listByDateRange).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
+  it("refreshes Zone 2 on a re-imported ride when the measured value differs", async () => {
+    const rideId = "22222222-2222-4222-8222-222222222222";
+    const repository = createCardioRepository([]);
+    repository.findByExternalId.mockResolvedValue(
+      storedCardio({ id: rideId, zone2Minutes: null }),
+    );
+    repository.update.mockResolvedValue(
+      storedCardio({ id: rideId, zone2Minutes: 8 }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    const result = await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      zone2Minutes: 8,
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id: rideId,
+      userId,
+      zone2Minutes: 8,
+    });
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(result.created).toBe(false);
+    expect(result.session.zone2Minutes).toBe(8);
+  });
+
+  it("leaves a re-imported ride alone when Zone 2 is unchanged", async () => {
+    const repository = createCardioRepository([]);
+    repository.findByExternalId.mockResolvedValue(
+      storedCardio({ id: "existing-1", zone2Minutes: 16 }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      zone2Minutes: 16,
+    });
+
+    expect(repository.update).not.toHaveBeenCalled();
   });
 
   it("widens the duplicate lookup to the adjacent days", async () => {

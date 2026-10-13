@@ -35,10 +35,15 @@ export function estimatedMaxHeartRate(age: number): number {
   return Math.round(208 - 0.7 * age);
 }
 
-/** Zone 2 as the plan defines it: about 60-70% of max HR. */
+/**
+ * Zone 2 as the plan defines it: about 65-75% of max HR, the same band
+ * Peloton uses. 60-70% credited 16 of a 30 min ride Peloton scored as all
+ * Zone 2 (owner call, 2026-10-13). Both are age estimates; swap in a measured
+ * band once there is a bike test.
+ */
 export function zone2HeartRateRange(age: number): [number, number] {
   const max = estimatedMaxHeartRate(age);
-  return [Math.round(max * 0.6), Math.round(max * 0.7)];
+  return [Math.round(max * 0.65), Math.round(max * 0.75)];
 }
 
 export function banisterTrimp(input: {
