@@ -42,6 +42,7 @@ const recoveryCheckinRowSchema = z.object({
   sleep_spo2_avg_pct: z.number().nullable(),
   sleep_hrv_avg: z.number().nullable(),
   sleep_avg_heart_rate: z.number().int().nullable(),
+  sleep_wrist_temp_c: z.number().nullable().optional(),
   cold_plunge_completed: z.boolean().nullable(),
   source_type: z.enum(["manual", "imported", "mixed"]),
   source_provider: z.string().nullable(),
@@ -92,6 +93,7 @@ export function mapRecoveryCheckinRow(
     sleepSpo2AvgPct: row.sleep_spo2_avg_pct,
     sleepHrvAvg: row.sleep_hrv_avg,
     sleepAvgHeartRate: row.sleep_avg_heart_rate,
+    sleepWristTempC: row.sleep_wrist_temp_c ?? null,
     coldPlungeCompleted: row.cold_plunge_completed,
     source: mapCanonicalSourceFromRow(row),
     createdAt: row.created_at,
@@ -126,6 +128,7 @@ function toRecoveryCheckinInsert(input: CreateRecoveryCheckinInput) {
     sleep_spo2_avg_pct: input.sleepSpo2AvgPct ?? null,
     sleep_hrv_avg: input.sleepHrvAvg ?? null,
     sleep_avg_heart_rate: input.sleepAvgHeartRate ?? null,
+    sleep_wrist_temp_c: input.sleepWristTempC ?? null,
     cold_plunge_completed: input.coldPlungeCompleted ?? null,
     ...toSourceColumns(input.source),
   };
@@ -159,6 +162,7 @@ function toRecoveryCheckinUpdate(input: UpdateRecoveryCheckinInput) {
     sleep_spo2_avg_pct: input.sleepSpo2AvgPct,
     sleep_hrv_avg: input.sleepHrvAvg,
     sleep_avg_heart_rate: input.sleepAvgHeartRate,
+    sleep_wrist_temp_c: input.sleepWristTempC,
     cold_plunge_completed: input.coldPlungeCompleted,
     ...sourceColumns,
   });

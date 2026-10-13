@@ -27,6 +27,8 @@ export type RecoveryCheckin = {
   sleepSpo2AvgPct: number | null;
   sleepHrvAvg: number | null;
   sleepAvgHeartRate: number | null;
+  /** Absolute sleeping wrist temperature, Celsius (Apple Watch). */
+  sleepWristTempC: number | null;
   coldPlungeCompleted: boolean | null;
   source: CanonicalRecordSource;
   createdAt: IsoDateTime;

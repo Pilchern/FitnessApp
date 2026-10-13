@@ -298,3 +298,94 @@ describe("mapHealthAutoExport strength workouts", () => {
     expect(out.strengthWorkouts).toEqual([]);
   });
 });
+
+describe("mapHealthAutoExport overnight (hourly) metrics", () => {
+  const hourly = (hours: [string, number][]) =>
+    hours.map(([date, qty]) => ({ date: `${date} -0500`, qty }));
+
+  const body = {
+    data: {
+      metrics: [
+        {
+          name: "heart_rate_variability",
+          units: "ms",
+          data: hourly([
+            ["2026-10-12 15:00:00", 30], // daytime: ignored
+            ["2026-10-12 23:00:00", 60], // counts toward 10-13
+            ["2026-10-13 02:00:00", 70],
+            ["2026-10-13 05:00:00", 80],
+            ["2026-10-13 07:00:00", 20], // after the window: ignored
+          ]),
+        },
+        {
+          name: "heart_rate",
+          units: "count/min",
+          data: [
+            { date: "2026-10-13 01:00:00 -0500", Min: 48, Avg: 52, Max: 60 },
+            { date: "2026-10-13 03:00:00 -0500", Min: 49, Avg: 55, Max: 63 },
+            { date: "2026-10-13 12:00:00 -0500", Min: 70, Avg: 95, Max: 130 },
+          ],
+        },
+        {
+          name: "respiratory_rate",
+          units: "count/min",
+          data: hourly([
+            ["2026-10-13 01:00:00", 14],
+            ["2026-10-13 04:00:00", 15],
+          ]),
+        },
+        {
+          name: "blood_oxygen_saturation",
+          units: "%",
+          data: hourly([
+            ["2026-10-13 02:00:00", 0.96],
+            ["2026-10-13 03:00:00", 0.97],
+          ]),
+        },
+        {
+          name: "apple_sleeping_wrist_temperature",
+          units: "degF",
+          data: hourly([["2026-10-12 22:00:00", 94.1]]),
+        },
+      ],
+    },
+  };
+
+  it("averages the 23:00-05:59 hours onto the wake date's sleep fields", () => {
+    const out = mapHealthAutoExport(body);
+    expect(out.sleep).toEqual([
+      {
+        date: "2026-10-13",
+        sleep_hrv_avg: 70,
+        sleep_avg_heart_rate: 54,
+        sleep_respiratory_rate: 14.5,
+        sleep_spo2_avg_pct: 96.5,
+        sleep_wrist_temp_c: 34.5,
+      },
+    ]);
+    // Hourly HRV never overwrites the daily `hrv` the baseline is built on.
+    expect(out.sleep[0]).not.toHaveProperty("hrv");
+    expect(out.dailyMetrics).toEqual([]);
+  });
+
+  it("still treats one point per day at midnight as daily HRV", () => {
+    const out = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "heart_rate_variability",
+            units: "ms",
+            data: hourly([
+              ["2026-10-12 00:00:00", 44],
+              ["2026-10-13 00:00:00", 48],
+            ]),
+          },
+        ],
+      },
+    });
+    expect(out.sleep).toEqual([
+      { date: "2026-10-12", hrv: 44 },
+      { date: "2026-10-13", hrv: 48 },
+    ]);
+  });
+});

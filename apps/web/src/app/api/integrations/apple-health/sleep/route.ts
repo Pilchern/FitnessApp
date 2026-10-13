@@ -41,6 +41,7 @@ const appleHealthSleepPayloadSchema = z.object({
   sleep_avg_heart_rate: z.number().optional(),
   sleep_respiratory_rate: z.number().optional(),
   sleep_spo2_avg_pct: z.number().min(0).max(100).optional(),
+  sleep_wrist_temp_c: z.number().min(25).max(45).optional(),
 });
 
 const appleHealthSleepBodySchema = z.union([

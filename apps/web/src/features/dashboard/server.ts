@@ -4,6 +4,7 @@ import {
   buildBodyMetricSummary,
   buildCardioWeeklyTotals,
   buildReadinessHistory,
+  buildTrainingLoad,
   buildTrendNotes,
   buildWeeklyWeightTrend,
   computeDailyReadiness,
@@ -169,12 +170,22 @@ export async function getDashboardData(): Promise<DashboardData> {
     cardioSessions: cardioThisWeek,
   });
   const todayItems = weekPlan.days.find((d) => d.isToday)?.items ?? [];
-  const readiness = computeDailyReadiness(recovery, today);
+  // Load needs the 28 days before each of the last 7: cardio covers 55 days,
+  // strength 90.
+  const readinessOptions = {
+    trainingLoad: buildTrainingLoad(cardioLast8Weeks, strengthSessions),
+  };
+  const readiness = computeDailyReadiness(recovery, today, readinessOptions);
 
   return {
     today,
     readiness,
-    readinessHistory: buildReadinessHistory(recovery, today),
+    readinessHistory: buildReadinessHistory(
+      recovery,
+      today,
+      7,
+      readinessOptions,
+    ),
     readinessCall: readinessCall(
       readiness.status === "scored" ? readiness.level : null,
       todayItems,
