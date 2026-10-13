@@ -8,7 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Routine } from "@/lib/routines";
+import type { Routine, RoutineStep } from "@/lib/routines";
 import { markHabitDoneAction } from "../actions";
 import {
   formatClock,
@@ -196,14 +196,29 @@ export function RoutinePlayer({
 
         <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
           <h2 className="font-display text-lg text-ink">Steps</h2>
+          <p className="mt-1 text-sm text-ink/55">
+            Tap a step for how to do it.
+          </p>
           <ol className="mt-2 divide-y divide-ink/10">
             {steps.map((step, i) => (
-              <li
-                key={`${step.name}-${i}`}
-                className="flex items-baseline justify-between gap-3 py-2.5 text-sm"
-              >
-                <span className="text-ink">{step.name}</span>
-                <span className="shrink-0 text-ink/55">{step.seconds}s</span>
+              <li key={`${step.name}-${i}`}>
+                <details className="group py-2.5 text-sm">
+                  <summary className="flex cursor-pointer list-none items-baseline justify-between gap-3 [&::-webkit-details-marker]:hidden">
+                    <span className="text-ink">
+                      <span
+                        aria-hidden="true"
+                        className="mr-1.5 inline-block text-ink/40 transition group-open:rotate-90"
+                      >
+                        ›
+                      </span>
+                      {step.name}
+                    </span>
+                    <span className="shrink-0 text-ink/55">
+                      {step.seconds}s
+                    </span>
+                  </summary>
+                  <StepHowTo step={step} />
+                </details>
               </li>
             ))}
           </ol>
@@ -302,6 +317,12 @@ export function RoutinePlayer({
       <p className="mt-4 min-h-[4.5rem] text-base leading-7 text-ink/80">
         {step.cue}
       </p>
+      <details key={position.index} className="mt-1 text-sm">
+        <summary className="cursor-pointer font-semibold text-pine">
+          How to do it
+        </summary>
+        <StepHowTo step={step} />
+      </details>
       {next ? (
         <p className="mt-2 text-sm text-ink/50">Next: {next.name}</p>
       ) : null}
@@ -354,5 +375,39 @@ export function RoutinePlayer({
         End routine
       </button>
     </section>
+  );
+}
+
+function StepHowTo({ step }: { step: RoutineStep }) {
+  const { howTo } = step;
+  return (
+    <div className="mt-2 space-y-2 rounded-2xl bg-mist/60 p-3 leading-6 text-ink/80">
+      <ol className="list-decimal space-y-1 pl-5">
+        {howTo.steps.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ol>
+      <p>
+        <span className="font-semibold text-ink">Feel it: </span>
+        {howTo.feel}
+      </p>
+      <p>
+        <span className="font-semibold text-ink">Avoid: </span>
+        {howTo.avoid}
+      </p>
+      {howTo.video ? (
+        <p className="text-ink/60">
+          <a
+            href={`https://www.youtube.com/results?search_query=${encodeURIComponent(howTo.video)}`}
+            target="_blank"
+            rel="noreferrer"
+            className="font-semibold text-pine underline-offset-2 hover:underline"
+          >
+            Watch a demo
+          </a>{" "}
+          · videos may show a deeper or floor version; do the one written here.
+        </p>
+      ) : null}
+    </div>
   );
 }
