@@ -25,6 +25,8 @@ export type AppleHealthWorkoutPayload = {
   max_heart_rate?: number;
   distance_meters?: number;
   source_name?: string;
+  /** Minutes inside the Zone 2 HR band, from per-interval workout HR. */
+  zone2_minutes?: number;
 };
 
 export type SyncAppleHealthWorkoutsInput = {
@@ -175,6 +177,14 @@ export class AppleHealthWorkoutSyncOrchestrator {
               sessionKind: payload.session_kind ?? "zone2",
               plannedVsCompleted: "completed",
               durationMinutes: durationMinutesOf(payload),
+              ...(payload.zone2_minutes != null
+                ? {
+                    zone2Minutes: Math.min(
+                      Math.round(payload.zone2_minutes),
+                      durationMinutesOf(payload) ?? payload.zone2_minutes,
+                    ),
+                  }
+                : {}),
               avgHeartRate:
                 payload.avg_heart_rate != null
                   ? Math.round(payload.avg_heart_rate)

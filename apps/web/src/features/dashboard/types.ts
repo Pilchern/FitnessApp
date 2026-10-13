@@ -1,6 +1,8 @@
 import type {
   DailyReadiness,
   PeerFitness,
+  DailyStrain,
+  SleepPlan,
   PersistedInsight,
   TrendNote,
   WeeklyWeightTrend,
@@ -26,6 +28,7 @@ export type DashboardData = {
   today: string;
   readiness: DailyReadiness;
   peerFitness: PeerFitness;
+  strainSleep: StrainSleep;
   readinessHistory: { date: string; score: number | null }[];
   readinessCall: string;
   todayItems: WeekPlanItem[];
@@ -48,4 +51,11 @@ export type DashboardData = {
 export type ActivitySnapshot = {
   stepsToday: number | null;
   vo2Max: { value: number; date: string } | null;
+};
+
+/** Last 7 days of strain (oldest first) and the sleep plan; strain is null until age and resting HR exist. */
+export type StrainSleep = {
+  strain: DailyStrain[] | null;
+  missing: string | null;
+  sleep: SleepPlan;
 };

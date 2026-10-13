@@ -389,3 +389,78 @@ describe("mapHealthAutoExport overnight (hourly) metrics", () => {
     ]);
   });
 });
+
+describe("mapHealthAutoExport Zone 2 and daylight", () => {
+  const ride = {
+    id: "ride-1",
+    name: "Indoor Cycling",
+    start: "2026-10-13 17:00:00 -0500",
+    end: "2026-10-13 17:10:00 -0500",
+    duration: 600,
+    heartRateData: [100, 112, 118, 125, 127, 131, 135, 126, 120, 108].map(
+      (bpm, i) => ({
+        date: `2026-10-13 17:${String(i).padStart(2, "0")}:00 -0500`,
+        Avg: bpm,
+      }),
+    ),
+  };
+
+  it("counts minutes inside the Zone 2 band from workout heart rate", () => {
+    const out = mapHealthAutoExport(
+      { data: { workouts: [ride] } },
+      { zone2Bpm: [110, 128] },
+    );
+    // 112, 118, 125, 127, 126, 120: six one-minute readings in band.
+    expect(out.workouts[0]?.zone2_minutes).toBe(6);
+  });
+
+  it("leaves Zone 2 unset without a band or heart rate series", () => {
+    expect(
+      mapHealthAutoExport({ data: { workouts: [ride] } }).workouts[0],
+    ).not.toHaveProperty("zone2_minutes");
+    expect(
+      mapHealthAutoExport(
+        { data: { workouts: [{ ...ride, heartRateData: undefined }] } },
+        { zone2Bpm: [110, 128] },
+      ).workouts[0],
+    ).not.toHaveProperty("zone2_minutes");
+  });
+
+  it("sums hourly daylight between 05:00 and 09:59 per day", () => {
+    const out = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "time_in_daylight",
+            units: "min",
+            data: [
+              { date: "2026-10-13 06:00:00 -0500", qty: 4 },
+              { date: "2026-10-13 07:00:00 -0500", qty: 9 },
+              { date: "2026-10-13 12:00:00 -0500", qty: 30 },
+              { date: "2026-10-12 09:00:00 -0500", qty: 3 },
+            ],
+          },
+        ],
+      },
+    });
+    expect(out.morningDaylight).toEqual([
+      { date: "2026-10-13", minutes: 13 },
+      { date: "2026-10-12", minutes: 3 },
+    ]);
+  });
+
+  it("ignores a daily daylight total, which says nothing about the morning", () => {
+    const out = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "time_in_daylight",
+            units: "min",
+            data: [{ date: "2026-10-13 00:00:00 -0500", qty: 45 }],
+          },
+        ],
+      },
+    });
+    expect(out.morningDaylight).toEqual([]);
+  });
+});

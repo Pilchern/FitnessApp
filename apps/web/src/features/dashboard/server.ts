@@ -6,6 +6,10 @@ import {
   buildReadinessHistory,
   buildTrainingLoad,
   buildPeerFitness,
+  buildDailyStrain,
+  buildSleepPlan,
+  estimatedMaxHeartRate,
+  ageOn,
   buildTrendNotes,
   buildWeeklyWeightTrend,
   computeDailyReadiness,
@@ -26,7 +30,7 @@ import {
   readinessCall,
   summarizeDailyActivity,
 } from "./helpers";
-import type { DashboardData, TodayNutrition } from "./types";
+import type { DashboardData, StrainSleep, TodayNutrition } from "./types";
 
 function settledOrNull<T>(result: PromiseSettledResult<T>): T | null {
   return result.status === "fulfilled" ? result.value : null;
@@ -188,10 +192,24 @@ export async function getDashboardData(): Promise<DashboardData> {
       .map((c) => c.restingHeartRate!),
   });
 
+  const strainSleep = buildStrainSleep({
+    today,
+    daysAgo,
+    birthDate: profile?.birthDate ?? null,
+    sex: profile?.biologicalSex ?? null,
+    restingHeartRates: recovery
+      .filter((c) => c.checkinDate > daysAgo(30) && c.restingHeartRate != null)
+      .map((c) => c.restingHeartRate!),
+    cardio: cardioLast8Weeks,
+    strength: strengthSessions,
+    recovery,
+  });
+
   return {
     today,
     readiness,
     peerFitness,
+    strainSleep,
     readinessHistory: buildReadinessHistory(
       recovery,
       today,
@@ -236,5 +254,54 @@ export async function getDashboardData(): Promise<DashboardData> {
       logDate: today,
     },
     activity,
+  };
+}
+
+/**
+ * Strain for today and the last few days (Banister TRIMP on average HR) and
+ * the sleep plan that follows from it. Strain needs a birth date for max HR
+ * and a week of resting HR; without them the sleep plan still runs, with no
+ * strain allowance.
+ */
+function buildStrainSleep(input: {
+  today: string;
+  daysAgo: (days: number) => string;
+  birthDate: string | null;
+  sex: "male" | "female" | "unspecified" | null;
+  restingHeartRates: number[];
+  cardio: Parameters<typeof buildDailyStrain>[1];
+  strength: Parameters<typeof buildDailyStrain>[2];
+  recovery: Parameters<typeof buildSleepPlan>[0]["checkins"];
+}): StrainSleep {
+  const dates = Array.from({ length: 7 }, (_, i) => input.daysAgo(6 - i));
+  const rhr = [...input.restingHeartRates].sort((a, b) => a - b);
+  const restingHeartRate =
+    rhr.length >= 7 ? rhr[Math.floor(rhr.length / 2)]! : null;
+  const strain =
+    input.birthDate && restingHeartRate != null
+      ? buildDailyStrain(dates, input.cardio, input.strength, {
+          restingHeartRate,
+          maxHeartRate: estimatedMaxHeartRate(
+            ageOn(input.birthDate, input.today),
+          ),
+          sex: input.sex === "female" ? "female" : "male",
+        })
+      : null;
+  const sleep = buildSleepPlan({
+    checkins: input.recovery,
+    today: input.today,
+    sleepTargetHours: 8,
+    strainByDate: new Map((strain ?? []).map((d) => [d.date, d.strain])),
+    wakeTarget: NICK_TRAINING_PLAN.wakeTimeTarget ?? null,
+    earliestBedtime: "21:45",
+  });
+  return {
+    strain,
+    missing: !input.birthDate
+      ? "birth date"
+      : restingHeartRate == null
+        ? "a week of resting heart rate"
+        : null,
+    sleep,
   };
 }

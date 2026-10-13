@@ -62,6 +62,8 @@ type HaeWorkout = {
   avgHeartRate?: Quantity;
   maxHeartRate?: Quantity;
   heartRate?: { avg?: Quantity; max?: Quantity };
+  /** Per-interval heart rate during the workout (v2 "heartRateData"). */
+  heartRateData?: { date?: string; Avg?: number; qty?: number }[];
   activeEnergyBurned?: Quantity;
   activeEnergy?: Quantity;
 };
@@ -72,6 +74,8 @@ export type HealthAutoExportBody = {
 
 export type MappedHealthAutoExport = {
   dailyMetrics: AppleHealthDailyMetricsPayload[];
+  /** Daylight minutes from 05:00 to 09:59 local, per date (hourly exports only). */
+  morningDaylight: { date: string; minutes: number }[];
   sleep: AppleHealthSleepPayload[];
   workouts: AppleHealthWorkoutPayload[];
   /** Watch strength workouts; merged into that day's lift session. */
@@ -133,6 +137,10 @@ function hoursToMinutes(units: string | undefined, value: unknown) {
   if (!isFiniteNumber(value)) return undefined;
   return Math.min(1440, Math.round(units === "min" ? value : value * 60));
 }
+
+/** Morning light window for the sunlight habit: 05:00 to 09:59 local. */
+const MORNING_START_HOUR = 5;
+const MORNING_END_HOUR = 10;
 
 const OVERNIGHT_METRICS = new Set([
   "heart_rate_variability",
@@ -244,9 +252,25 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
 
   // date -> field -> readings, averaged once every metric is read.
   const overnight = new Map<string, Map<OvernightField, number[]>>();
+  const morningDaylight = new Map<string, number>();
 
   for (const metric of metrics) {
     const name = metric.name ?? "";
+    if (name === "time_in_daylight") {
+      // Only an hourly export says when the light was; a daily total is
+      // ignored rather than credited to the morning.
+      if (!isIntraday(metric)) continue;
+      for (const point of metric.data ?? []) {
+        const hour = localHour(point.date);
+        const date = toIsoDate(point.date);
+        const qty = point.qty;
+        if (date == null || hour == null || !isFiniteNumber(qty)) continue;
+        if (hour < MORNING_START_HOUR || hour >= MORNING_END_HOUR) continue;
+        const minutes = metric.units === "hr" ? qty * 60 : qty;
+        morningDaylight.set(date, (morningDaylight.get(date) ?? 0) + minutes);
+      }
+      continue;
+    }
     if (isIntraday(metric)) {
       for (const point of metric.data ?? []) {
         const reading = overnightValue(name, metric.units, point);
@@ -338,6 +362,10 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
   }
 
   return {
+    morningDaylight: [...morningDaylight.entries()].map(([date, minutes]) => ({
+      date,
+      minutes: Math.round(minutes),
+    })),
     dailyMetrics: [...daily.values()].map((row) =>
       row.active_energy_kcal != null
         ? {
@@ -359,7 +387,44 @@ function quantity(value: Quantity | undefined): number | undefined {
   return isFiniteNumber(value?.qty) && value.qty > 0 ? value.qty : undefined;
 }
 
-function mapWorkout(workout: HaeWorkout): AppleHealthWorkoutPayload | null {
+export type HealthAutoExportOptions = {
+  /** Zone 2 heart rate band, bpm; rides with per-interval HR get real minutes. */
+  zone2Bpm?: [number, number] | null;
+};
+
+/**
+ * Minutes inside the Zone 2 band from per-interval workout heart rate. Each
+ * reading covers the gap to the next one (capped at 5 min, 1 min for the
+ * last), so the total tracks the ride even if the export interval changes.
+ */
+export function zone2MinutesFromHeartRate(
+  data: HaeWorkout["heartRateData"],
+  [low, high]: [number, number],
+): number | null {
+  const points = (data ?? [])
+    .map((p) => ({
+      at: Date.parse(toIsoDateTime(p.date) ?? ""),
+      bpm: p.Avg ?? p.qty,
+    }))
+    .filter(
+      (p): p is { at: number; bpm: number } =>
+        Number.isFinite(p.at) && isFiniteNumber(p.bpm),
+    )
+    .sort((a, b) => a.at - b.at);
+  if (points.length < 2) return null;
+  let minutes = 0;
+  points.forEach((p, i) => {
+    const next = points[i + 1];
+    const span = next ? Math.min(5, (next.at - p.at) / 60000) : 1;
+    if (p.bpm >= low && p.bpm <= high) minutes += span;
+  });
+  return Math.round(minutes);
+}
+
+function mapWorkout(
+  workout: HaeWorkout,
+  options: HealthAutoExportOptions,
+): AppleHealthWorkoutPayload | null {
   const name = workout.name?.trim();
   const start = toIsoDateTime(workout.start);
   if (!name || !start || !RIDE_PATTERN.test(name)) return null;
@@ -369,6 +434,9 @@ function mapWorkout(workout: HaeWorkout): AppleHealthWorkoutPayload | null {
     : undefined;
   const distance = quantity(workout.distance);
   const distanceUnits = workout.distance?.units as keyof typeof METERS;
+  const zone2 = options.zone2Bpm
+    ? zone2MinutesFromHeartRate(workout.heartRateData, options.zone2Bpm)
+    : null;
 
   return {
     // Export v1 has no id; start time is unique per workout.
@@ -387,6 +455,12 @@ function mapWorkout(workout: HaeWorkout): AppleHealthWorkoutPayload | null {
         ? Math.round(distance * METERS[distanceUnits])
         : undefined,
     source_name: "Health Auto Export",
+    ...(zone2 != null
+      ? {
+          zone2_minutes:
+            durationMinutes != null ? Math.min(zone2, durationMinutes) : zone2,
+        }
+      : {}),
   };
 }
 
@@ -473,15 +547,18 @@ function mapStrengthWorkout(workout: HaeWorkout): WatchStrengthWorkout | null {
 
 export function mapHealthAutoExport(
   body: HealthAutoExportBody,
+  options: HealthAutoExportOptions = {},
 ): MappedHealthAutoExport {
-  const { dailyMetrics, sleep } = mapDailyAndSleep(body.data?.metrics ?? []);
+  const { dailyMetrics, sleep, morningDaylight } = mapDailyAndSleep(
+    body.data?.metrics ?? [],
+  );
   const workouts = dedupeOverlappingRides(
     (body.data?.workouts ?? [])
-      .map(mapWorkout)
+      .map((w) => mapWorkout(w, options))
       .filter((w): w is AppleHealthWorkoutPayload => w != null),
   );
   const strengthWorkouts = (body.data?.workouts ?? [])
     .map(mapStrengthWorkout)
     .filter((w): w is WatchStrengthWorkout => w != null);
-  return { dailyMetrics, sleep, workouts, strengthWorkouts };
+  return { dailyMetrics, sleep, morningDaylight, workouts, strengthWorkouts };
 }

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { Supplement, SupplementLog } from "@fitness-app/domain";
 import {
   buildSupplementAdherenceSummary,
+  daylightHabitCompletions,
+  daylightHabitThreshold,
   createSupplementSchema,
   listSupplementsQuerySchema,
   logSupplementAdherenceSchema,
@@ -222,5 +224,28 @@ describe("step habit auto-complete", () => {
         { date: "2026-10-10" },
       ]),
     ).toEqual([{ supplementId: "h1", logDate: "2026-10-08" }]);
+  });
+});
+
+describe("daylight habit", () => {
+  it("reads the minutes from the habit name", () => {
+    expect(daylightHabitThreshold("Morning sunlight (10-20 min)")).toBe(10);
+    expect(daylightHabitThreshold("Daylight walk")).toBe(10);
+    expect(daylightHabitThreshold("Mobility (15 min)")).toBeNull();
+  });
+
+  it("ticks only days that reached the minutes", () => {
+    expect(
+      daylightHabitCompletions(
+        [
+          { id: "h1", name: "Morning sunlight (10-20 min)", kind: "habit" },
+          { id: "h2", name: "Mobility (15 min)", kind: "habit" },
+        ],
+        [
+          { date: "2026-10-12", minutes: 3 },
+          { date: "2026-10-13", minutes: 13 },
+        ],
+      ),
+    ).toEqual([{ supplementId: "h1", logDate: "2026-10-13" }]);
   });
 });
