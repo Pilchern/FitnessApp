@@ -9,9 +9,9 @@ import {
 } from "../../index";
 
 describe("heart rate zones", () => {
-  it("uses Tanaka max HR and 60-70% for Zone 2", () => {
+  it("uses Tanaka max HR and 65-75% for Zone 2", () => {
     expect(estimatedMaxHeartRate(36)).toBe(183);
-    expect(zone2HeartRateRange(36)).toEqual([110, 128]);
+    expect(zone2HeartRateRange(36)).toEqual([119, 137]);
   });
 });
 
