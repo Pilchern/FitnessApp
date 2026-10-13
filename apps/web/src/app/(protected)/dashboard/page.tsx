@@ -8,6 +8,7 @@ import { WeekPlanCard } from "@/features/dashboard/components/week-plan-card";
 import { TrendNotesCard } from "@/features/dashboard/components/trend-notes-card";
 import { BodySnapshotCard } from "@/features/dashboard/components/body-snapshot-card";
 import { PeerFitnessCard } from "@/features/dashboard/components/peer-fitness-card";
+import { StrainSleepCard } from "@/features/dashboard/components/strain-sleep-card";
 
 /**
  * Answers three questions top to bottom: what to do today (readiness and the
@@ -48,11 +49,14 @@ export default async function DashboardPage() {
           todayItems={data.todayItems}
           stepsToday={stepsToday}
         />
-        <WeekPlanCard
-          plan={data.weekPlan}
-          zone2Minutes={data.zone2Minutes}
-          latestReview={data.latestReview}
-        />
+        <div className="space-y-4 lg:space-y-6">
+          <StrainSleepCard data={data.strainSleep} />
+          <WeekPlanCard
+            plan={data.weekPlan}
+            zone2Minutes={data.zone2Minutes}
+            latestReview={data.latestReview}
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">

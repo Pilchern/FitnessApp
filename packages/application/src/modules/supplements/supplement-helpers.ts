@@ -73,3 +73,32 @@ export function stepHabitCompletions(
   }
   return out;
 }
+
+/** "Morning sunlight (10-20 min)" -> 10; null when the habit is not about light. */
+export function daylightHabitThreshold(name: string): number | null {
+  if (!/sunlight|daylight/i.test(name)) return null;
+  const match = /(\d+)\s*(?:-\s*\d+\s*)?min/i.exec(name);
+  return match?.[1] ? Number(match[1]) : 10;
+}
+
+/**
+ * Habit logs to write when synced morning daylight reaches a light habit's
+ * minutes. Like steps, it only ever marks done; it never unticks.
+ */
+export function daylightHabitCompletions(
+  habits: Pick<Supplement, "id" | "name" | "kind">[],
+  days: { date: string; minutes: number }[],
+): { supplementId: string; logDate: string }[] {
+  const out: { supplementId: string; logDate: string }[] = [];
+  for (const habit of habits) {
+    if (habit.kind !== "habit") continue;
+    const threshold = daylightHabitThreshold(habit.name);
+    if (threshold == null) continue;
+    for (const day of days) {
+      if (day.minutes >= threshold) {
+        out.push({ supplementId: habit.id, logDate: day.date });
+      }
+    }
+  }
+  return out;
+}

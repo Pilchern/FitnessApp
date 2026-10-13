@@ -6,7 +6,12 @@ import {
   createAppleHealthWorkoutOrchestrator,
 } from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
-import { completeStepHabits } from "@/lib/server/step-habits";
+import {
+  completeDaylightHabits,
+  completeStepHabits,
+} from "@/lib/server/step-habits";
+import { getCachedUserProfile } from "@/lib/server/services";
+import { ageOn, zone2HeartRateRange } from "@fitness-app/application";
 import { syncWatchStrength } from "@/lib/server/watch-strength";
 import {
   MAX_WEBHOOK_ITEMS,
@@ -73,7 +78,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const mapped = mapHealthAutoExport(body);
+  // Zone 2 band from the profile's age; without a birth date rides keep
+  // counting their full duration as before.
+  const profile = await getCachedUserProfile(userId).catch(() => null);
+  const today = new Date().toISOString().slice(0, 10);
+  const mapped = mapHealthAutoExport(body, {
+    zone2Bpm: profile?.birthDate
+      ? zone2HeartRateRange(ageOn(profile.birthDate, today))
+      : null,
+  });
   if (
     mapped.dailyMetrics.length > MAX_WEBHOOK_ITEMS ||
     mapped.sleep.length > MAX_WEBHOOK_ITEMS ||
@@ -119,6 +132,11 @@ export async function POST(request: NextRequest) {
       mapped.dailyMetrics,
     );
 
+    const daylightHabitsCompleted = await completeDaylightHabits(
+      userId,
+      mapped.morningDaylight,
+    );
+
     const strengthMerged = await syncWatchStrength(
       userId,
       mapped.strengthWorkouts,
@@ -129,7 +147,7 @@ export async function POST(request: NextRequest) {
       dailyMetrics: daily?.processedItemCount ?? 0,
       sleep: sleep?.processedItemCount ?? 0,
       workouts: workouts?.processedItemCount ?? 0,
-      habitsCompleted,
+      habitsCompleted: habitsCompleted + daylightHabitsCompleted,
       strengthMerged,
     });
   } catch (error) {
