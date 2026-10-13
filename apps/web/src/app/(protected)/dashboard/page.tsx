@@ -7,6 +7,7 @@ import { TodayCard } from "@/features/dashboard/components/today-card";
 import { WeekPlanCard } from "@/features/dashboard/components/week-plan-card";
 import { TrendNotesCard } from "@/features/dashboard/components/trend-notes-card";
 import { BodySnapshotCard } from "@/features/dashboard/components/body-snapshot-card";
+import { PeerFitnessCard } from "@/features/dashboard/components/peer-fitness-card";
 
 /**
  * Answers three questions top to bottom: what to do today (readiness and the
@@ -83,6 +84,7 @@ export default async function DashboardPage() {
             vo2Max={data.activity.vo2Max}
             proteinHit={data.proteinHit}
           />
+          <PeerFitnessCard peerFitness={data.peerFitness} />
         </div>
       </div>
     </div>

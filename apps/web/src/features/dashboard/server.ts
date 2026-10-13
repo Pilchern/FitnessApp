@@ -5,6 +5,7 @@ import {
   buildCardioWeeklyTotals,
   buildReadinessHistory,
   buildTrainingLoad,
+  buildPeerFitness,
   buildTrendNotes,
   buildWeeklyWeightTrend,
   computeDailyReadiness,
@@ -177,9 +178,20 @@ export async function getDashboardData(): Promise<DashboardData> {
   };
   const readiness = computeDailyReadiness(recovery, today, readinessOptions);
 
+  const peerFitness = buildPeerFitness({
+    today,
+    birthDate: profile?.birthDate ?? null,
+    sex: profile?.biologicalSex ?? null,
+    vo2Max: activity.vo2Max,
+    restingHeartRates: recovery
+      .filter((c) => c.checkinDate > daysAgo(30) && c.restingHeartRate != null)
+      .map((c) => c.restingHeartRate!),
+  });
+
   return {
     today,
     readiness,
+    peerFitness,
     readinessHistory: buildReadinessHistory(
       recovery,
       today,
