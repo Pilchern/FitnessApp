@@ -270,6 +270,29 @@ describe("computeDailyReadiness", () => {
     expect(result.level).toBe("low");
   });
 
+  it("ignores overnight readings on a night with no sleep recorded", () => {
+    const rows = settledBaseline().map((r) => ({
+      ...r,
+      sleepHrvAvg: 70,
+      sleepAvgHeartRate: 52,
+    }));
+    const result = computeDailyReadiness(
+      [
+        ...rows,
+        checkin(TODAY, {
+          hrv: 55,
+          restingHeartRate: 60,
+          sleepAvgHeartRate: 116,
+        }),
+      ],
+      TODAY,
+    );
+    if (result.status !== "scored") throw new Error("expected a score");
+    const hr = result.components.find((c) => c.key === "restingHeartRate");
+    expect(hr?.label).toBe("Resting HR");
+    expect(hr?.detail).toBe("60 bpm vs 61 usual");
+  });
+
   it("scores wake-time consistency over the last 7 days", () => {
     const rows = settledBaseline().map((r, i) => ({
       ...r,
