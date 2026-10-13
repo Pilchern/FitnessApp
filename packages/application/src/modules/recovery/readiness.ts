@@ -294,17 +294,21 @@ function scoreDay(
     (c) => c.checkinDate < day.checkinDate && c.checkinDate >= windowStart,
   );
   const positive = (v: number | null) => (v != null && v > 0 ? v : null);
+  // Overnight readings only count on nights the Watch recorded sleep; without
+  // it the 23:00-05:59 window is awake (or off-wrist) heart rate.
+  const slept = (c: RecoveryCheckin, v: number | null) =>
+    c.sleepDurationMinutes != null ? positive(v) : null;
 
   const hrv = pickSeries(
     day,
     prior,
-    (c) => positive(c.sleepHrvAvg),
+    (c) => slept(c, c.sleepHrvAvg),
     (c) => positive(c.hrv),
   );
   const heartRate = pickSeries(
     day,
     prior,
-    (c) => positive(c.sleepAvgHeartRate),
+    (c) => slept(c, c.sleepAvgHeartRate),
     (c) => c.restingHeartRate,
   );
 
