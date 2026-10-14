@@ -108,6 +108,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 - Fiber target about 50 g (Attia) [assumed, not set in the app]. Calorie target intentionally unset in the app.
 - The post-clearance cut (day-specific calories, deficit math, stall diagnostic) is parked in AI-Lab fitness-resumption-reference.md. Do not reactivate before full training returns.
 - Pace guard: losing over 1.5 lb/week means add calories; under 0.5 lb/week means audit weekends before cutting weekdays. [doc]
+- Winter-to-summer body composition plan (lean gain, then cut) is in section 17, pending the 2026-10-24 DEXA.
 
 ## 9. Open conflicts and decisions
 
@@ -174,3 +175,43 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 ## 16. Working style Nick expects
 
 Answer first, direct, short. Smallest clean change reusing existing patterns. Name tradeoffs and opportunity cost. Tag numbers as fact, inferred or hypothesis. Do the math in code. No new docs or files unless asked, other than keeping the repo docs current. Never touch credentials, .env files or GitHub keys. Ask before external sends, calendar items, purchases over $200, and edits to AI-Lab context files.
+
+## 17. Body composition plan, pending the 2026-10-24 DEXA [stated/assumed 2026-10-14]
+
+Goal [stated]: visibly lean and muscular by late May/early June 2027, built for hiking, golf, sports and longevity, not maximum size. Lock the targets below once the DEXA is back; until then they are drafts.
+
+Starting point (Withings BIA, mid-October; directional only, foot-to-foot BIA is skewed by the atrophied, swollen left leg) [fact]: about 177-178 lb, about 21% body fat, about 141 lb lean, FFMI about 19. Weight down about 14 lb from spring 2026; flat since mid-September. Roughly half the loss is inferred to be lower body (operated thigh and glute, 3-7 lb) plus water and glycogen (3-5 lb); fat about 5-7 lb. Drivers: post-op unloading, a no-appetite week, stopping cannabis (appetite drop is a known withdrawal effect). Nick is lower-body heavy, so leg loss is likely at the high end.
+
+Decision rule after the DEXA:
+- DEXA body fat 18% or less: a short lean bulk (+300-500 kcal) through January is viable.
+- Above 18%: no bulk. Lean gain at +100-200 kcal (default, Path B below).
+
+Draft plan (Path B):
+- Phase 1, now to Jan 31 (rebuild): +100-200 kcal, protein 180 g, extra carbs around lifts. Weekly average weight +0.25-0.5 lb; faster with a growing waist means pull back. Upper-body hypertrophy Mon/Wed/Fri (8-12 reps, 1-2 in reserve); legs follow PT; ask PT about loaded hip thrusts/glute bridges. Z2 ramp to 150-180 min, VO2 4x4 once gated. Steps to 10,000 by January. FTP retest mid-January (aim 185 W or more). Expected peak about 185-187 lb.
+- Phase 2, Feb 1 to May 31 (cut): -400-500 kcal, 0.75-1 lb/week, protein 180 g, reactivate the parked cut reference if full training is cleared. Full body 3-4x/week heavy (4-8 reps) plus carries, single-leg and rotational core. Two Z2 rides plus one VO2 4x4. If leg loading is still restricted at month 6, start the cut in March and accept about 15% in June.
+- Phase 3, June to Sept: maintenance, golf, hiking, lift 3x/week. A real lean bulk next fall from about 14% if more size is wanted.
+- Return to sport: golf in steps (chip/putt, half swing, full swing) on ortho clearance; ask about lead (left) knee rotation [assumed right-handed]. Cutting/pivoting sports not before month 9 (mid-May 2027) and passing return-to-sport tests (Grindem 2016: reinjury risk fell about 51% per month of delay up to 9 months). Hiking descents: step-down progression, poles at first.
+
+Draft June 1, 2027 targets (reset in DEXA terms after the baseline):
+| Area | Target |
+|---|---|
+| Weight | 168-174 lb (172-180 acceptable if lean mass lands higher) |
+| Body fat (DEXA) | 13-15% |
+| Lean mass | back to pre-injury about 148 lb or more |
+| Leg symmetry | left leg lean within 5% of right; quad strength 90% or more of the other leg |
+| Resting HR | under 60 |
+| FTP | about 215 W (about 2.8 W/kg at 170 lb) |
+| VO2max | lab baseline in Feb, +10% by June |
+| Strength | bench 195x5, pull-ups 10+, dead hang 90 s, farmer carry 70 lb per hand for 1 min; squat/RDL back to pre-injury as PT allows |
+
+Testing:
+- DEXA at LiveLean, Saturday 9:40 AM, same machine every time: 2026-10-24 (baseline), about 2027-02-01 (end of Phase 1, add a cycle VO2max test once max efforts are cleared), about 2027-06-01. Confirm the repeat-scan price and the scanner model at the first visit. Lean changes under about 2 lb between scans are noise.
+- Skipped: RMR (no calorie logging to plug it into; the weight trend answers it), DexaFit movement screen, sweat/sodium, nutrition consult.
+- Bloodwork through the PCP before 12/31 (section 11): apoB, Lp(a), total and free testosterone, ferritin, fasting insulin, CMP, CBC. Fallback if the PCP stalls past about Dec 1: DexaFit wellness panel ($400; has apoB, Lp(a), hs-CRP, A1c, TSH, vitamin D; no testosterone).
+
+Scan-day protocol (repeat exactly each time):
+- Week before: normal eating and training. Do not start or stop creatine or change carbs or sodium on purpose.
+- Day before: normal dinner by about 8 PM, no alcohol, no unusually salty or large meal. Upper-body lifting is fine; if PT that morning leaves the knee more swollen than usual on scan morning, reschedule.
+- Scan morning: wake 6:30, water only (normal amount), no food, no coffee. Withings weigh-in at home right after the bathroom (gives a BIA-to-DEXA offset). Tape waist at the navel and both thighs 6 inches above the kneecap. Metal-free clothes, nothing in pockets. Empty the bladder right before the scan.
+- After: eat, then the Saturday ride. Ask for the full PDF with regional (per-leg, per-arm, trunk) results.
+
