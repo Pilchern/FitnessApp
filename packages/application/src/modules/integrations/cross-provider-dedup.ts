@@ -147,7 +147,8 @@ export function resolveSourcePriority(
  * duplicates are already handled by the unique index and by each service's
  * existing `findByExternalId` check, so this module deliberately ignores
  * them — re-deduping them here could skip a legitimate second workout that
- * the provider itself gave a distinct external id.
+ * the provider itself gave a distinct external id. The one exception, a
+ * provider that stores one workout twice, is `findSameProviderCardioTwin`.
  */
 function isDifferentSource(
   incoming: DedupRecordSource,
@@ -305,6 +306,72 @@ export function isSameCardioEvent(
   // meaningful alongside a duration match — and even then only when both
   // records happen to have derived their date the same way.
   return incoming.sessionDate === existing.sessionDate && durationsAgree;
+}
+
+/**
+ * Providers that can hand over one workout under two different external ids.
+ * Apple Health holds a separate workout per writing app (the Watch and the
+ * Peloton app both record the same ride), and an export can re-issue an id,
+ * so the per-provider unique index never sees them as the same row.
+ */
+const PROVIDERS_WITH_TWIN_WORKOUTS = new Set(["apple_health"]);
+
+/**
+ * Twins start within seconds of each other and stop on the same minute. Much
+ * tighter than the cross-provider tolerances: two real rides on one provider
+ * never start two minutes apart with the same length.
+ */
+export const CARDIO_TWIN_START_TOLERANCE_MINUTES = 2;
+export const CARDIO_TWIN_DURATION_TOLERANCE_MINUTES = 1;
+
+/**
+ * Finds a stored session from the same provider that is the same workout as
+ * the incoming one under a different external id. Only for providers in
+ * `PROVIDERS_WITH_TWIN_WORKOUTS`, and only on positive evidence: both start
+ * times and both durations must be present and agree.
+ */
+export function findSameProviderCardioTwin<
+  T extends CardioDedupShape & { id: string },
+>(incoming: CardioDedupShape, nearbyExisting: T[]): T | null {
+  const provider = incoming.source.sourceProvider;
+  if (
+    incoming.source.sourceType !== "imported" ||
+    !provider ||
+    !PROVIDERS_WITH_TWIN_WORKOUTS.has(provider) ||
+    !incoming.startedAt ||
+    incoming.durationMinutes == null
+  ) {
+    return null;
+  }
+  const incomingFamily = resolveSportFamily(incoming.sportType);
+
+  return (
+    nearbyExisting.find((existing) => {
+      if (
+        existing.source.sourceType !== "imported" ||
+        existing.source.sourceProvider !== provider ||
+        !existing.startedAt ||
+        existing.durationMinutes == null
+      ) {
+        return false;
+      }
+      const existingFamily = resolveSportFamily(existing.sportType);
+      if (
+        incomingFamily &&
+        existingFamily &&
+        incomingFamily !== existingFamily
+      ) {
+        return false;
+      }
+      const apart = minutesApart(incoming.startedAt!, existing.startedAt);
+      return (
+        apart != null &&
+        apart <= CARDIO_TWIN_START_TOLERANCE_MINUTES &&
+        Math.abs(incoming.durationMinutes! - existing.durationMinutes!) <=
+          CARDIO_TWIN_DURATION_TOLERANCE_MINUTES
+      );
+    }) ?? null
+  );
 }
 
 /**
