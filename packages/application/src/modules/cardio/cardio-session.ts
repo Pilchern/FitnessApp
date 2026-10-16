@@ -19,6 +19,7 @@ import {
 import {
   type CrossProviderDecision,
   decideCardioCrossProvider,
+  findSameProviderCardioTwin,
 } from "../integrations/cross-provider-dedup";
 
 /**
@@ -252,12 +253,15 @@ export class CardioSessionService {
    * Inserts an imported cardio session, skipping it when the same real-world
    * workout is already stored.
    *
-   * Two checks run, in order:
+   * Three checks run, in order:
    *
    * 1. **Same provider** — a row with the same
    *    `(userId, sourceProvider, sourceExternalId)` is a straight re-import;
    *    the existing row is returned untouched.
-   * 2. **Cross-provider (TD-019)** — the same ride can arrive from two
+   * 2. **Same-provider twin** — Apple Health can hold one ride under two
+   *    ids (one per writing app). A near-identical start and duration on the
+   *    same provider keeps the stored row. See `findSameProviderCardioTwin`.
+   * 3. **Cross-provider (TD-019)** — the same ride can arrive from two
    *    different providers with different external ids, so neither the unique
    *    index nor check 1 catches it. Every session already stored for that
    *    calendar day is compared against the incoming one; on a match the
@@ -332,16 +336,31 @@ export class CardioSessionService {
       startDate: shiftIsoDate(parsed.sessionDate, -1),
       endDate: shiftIsoDate(parsed.sessionDate, 1),
     });
-    const decision = decideCardioCrossProvider(
-      {
-        sessionDate: parsed.sessionDate,
-        startedAt: parsed.startedAt ?? null,
-        durationMinutes: parsed.durationMinutes ?? null,
-        sportType: parsed.sportType ?? null,
-        source: parsed.source,
-      },
-      nearbyExisting,
-    );
+    const incoming = {
+      sessionDate: parsed.sessionDate,
+      startedAt: parsed.startedAt ?? null,
+      durationMinutes: parsed.durationMinutes ?? null,
+      sportType: parsed.sportType ?? null,
+      source: parsed.source,
+    };
+
+    // Same ride, same provider, new external id (Apple Health keeps one
+    // workout per writing app). Keep the stored row; borrow its distance if
+    // the stored copy has none.
+    const twin = findSameProviderCardioTwin(incoming, nearbyExisting);
+    if (twin) {
+      if (twin.distanceMeters == null && parsed.distanceMeters != null) {
+        const updated = await this.update({
+          id: twin.id,
+          userId,
+          distanceMeters: parsed.distanceMeters,
+        });
+        return { created: false, session: updated };
+      }
+      return { created: false, session: twin };
+    }
+
+    const decision = decideCardioCrossProvider(incoming, nearbyExisting);
 
     if (decision.outcome === "skip_incoming") {
       const winner = nearbyExisting.find(

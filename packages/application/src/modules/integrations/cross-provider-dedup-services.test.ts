@@ -287,6 +287,93 @@ describe("CardioSessionService.upsertImported cross-provider handling", () => {
   });
 });
 
+describe("CardioSessionService.upsertImported same-provider twins", () => {
+  const twinId = "33333333-3333-4333-8333-333333333333";
+  const storedAppleHealthRide = (overrides: Partial<CardioSession> = {}) =>
+    storedCardio({
+      id: twinId,
+      startedAt: "2026-08-10T14:00:53.000Z",
+      sportType: "Indoor Cycling",
+      source: {
+        sourceType: "imported",
+        sourceProvider: "apple_health",
+        sourceExternalId: "ah-watch",
+        importBatchId: null,
+        rawImportEventId: null,
+      },
+      ...overrides,
+    });
+
+  it("skips the second Apple Health copy of the same ride", async () => {
+    const repository = createCardioRepository([
+      storedAppleHealthRide({ distanceMeters: 8271 }),
+    ]);
+    const service = new CardioSessionService(repository as never);
+
+    const result = await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      distanceMeters: 8271,
+    });
+
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(repository.archive).not.toHaveBeenCalled();
+    expect(repository.update).not.toHaveBeenCalled();
+    expect(result.created).toBe(false);
+    expect(result.session.id).toBe(twinId);
+  });
+
+  it("copies distance onto the stored copy when only the twin has it", async () => {
+    const repository = createCardioRepository([storedAppleHealthRide()]);
+    repository.update.mockResolvedValue(
+      storedAppleHealthRide({ distanceMeters: 8271 }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    const result = await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      distanceMeters: 8271,
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id: twinId,
+      userId,
+      distanceMeters: 8271,
+    });
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(result.session.distanceMeters).toBe(8271);
+  });
+
+  it("keeps a second ride that starts minutes later", async () => {
+    const repository = createCardioRepository([
+      storedAppleHealthRide({ startedAt: "2026-08-10T13:55:00.000Z" }),
+    ]);
+    const service = new CardioSessionService(repository as never);
+
+    const result = await service.upsertImported(
+      userId,
+      importedAppleHealthRide,
+    );
+
+    expect(repository.create).toHaveBeenCalled();
+    expect(result.created).toBe(true);
+  });
+
+  it("keeps a same-start ride of a different length", async () => {
+    const repository = createCardioRepository([
+      storedAppleHealthRide({ durationMinutes: 20 }),
+    ]);
+    const service = new CardioSessionService(repository as never);
+
+    const result = await service.upsertImported(
+      userId,
+      importedAppleHealthRide,
+    );
+
+    expect(repository.create).toHaveBeenCalled();
+    expect(result.created).toBe(true);
+  });
+});
+
 describe("BodyMetricService.upsertImported cross-provider handling", () => {
   const importedAppleHealthWeight = {
     userId,
