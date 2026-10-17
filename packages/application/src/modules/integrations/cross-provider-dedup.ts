@@ -323,6 +323,12 @@ const PROVIDERS_WITH_TWIN_WORKOUTS = new Set(["apple_health"]);
  */
 export const CARDIO_TWIN_START_TOLERANCE_MINUTES = 2;
 export const CARDIO_TWIN_DURATION_TOLERANCE_MINUTES = 1;
+/**
+ * Apple Health copies of one ride can differ by a few minutes (the Peloton
+ * app and the Watch start and stop their records separately), so the length
+ * tolerance also allows 10% of the longer ride.
+ */
+export const CARDIO_TWIN_DURATION_TOLERANCE_SHARE = 0.1;
 
 /**
  * Finds a stored session from the same provider that is the same workout as
@@ -364,11 +370,19 @@ export function findSameProviderCardioTwin<
         return false;
       }
       const apart = minutesApart(incoming.startedAt!, existing.startedAt);
+      const longer = Math.max(
+        incoming.durationMinutes!,
+        existing.durationMinutes!,
+      );
+      const tolerance = Math.max(
+        CARDIO_TWIN_DURATION_TOLERANCE_MINUTES,
+        longer * CARDIO_TWIN_DURATION_TOLERANCE_SHARE,
+      );
       return (
         apart != null &&
         apart <= CARDIO_TWIN_START_TOLERANCE_MINUTES &&
         Math.abs(incoming.durationMinutes! - existing.durationMinutes!) <=
-          CARDIO_TWIN_DURATION_TOLERANCE_MINUTES
+          tolerance
       );
     }) ?? null
   );

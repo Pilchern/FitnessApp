@@ -15,6 +15,7 @@ import {
   ageOn,
   ZONE2_CREDIT_BY,
   maxHeartRateFor,
+  MEASURED_MAX_HEART_RATE,
   zone2HeartRateRange,
   zone2PowerRange,
 } from "@fitness-app/application";
@@ -84,14 +85,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Zone 2 by power when a ride carries it, else by the heart rate band from
-  // the profile's age; without either a ride counts its full duration.
-  const profile = await getCachedUserProfile(userId).catch(() => null);
+  // Heart rate band from the measured max HR, else the profile's age. A
+  // failed profile lookup must not drop the band while max HR is measured.
   const today = new Date().toISOString().slice(0, 10);
+  const birthDate =
+    MEASURED_MAX_HEART_RATE == null
+      ? ((await getCachedUserProfile(userId).catch(() => null))?.birthDate ??
+        null)
+      : null;
+  const maxHeartRate =
+    MEASURED_MAX_HEART_RATE ??
+    (birthDate ? maxHeartRateFor(ageOn(birthDate, today)) : null);
   const mapped = mapHealthAutoExport(body, {
-    zone2Bpm: profile?.birthDate
-      ? zone2HeartRateRange(maxHeartRateFor(ageOn(profile.birthDate, today)))
-      : null,
+    zone2Bpm: maxHeartRate != null ? zone2HeartRateRange(maxHeartRate) : null,
     zone2Watts: zone2PowerRange(),
     zone2CreditBy: ZONE2_CREDIT_BY,
   });

@@ -457,6 +457,23 @@ describe("mapHealthAutoExport Zone 2 and daylight", () => {
     expect(out.workouts[0]?.avg_power_watts).toBe(106);
   });
 
+  it("leaves Zone 2 unset in heart rate mode when the ride has no heart rate", () => {
+    const out = mapHealthAutoExport(
+      {
+        data: {
+          workouts: [{ ...ride, heartRateData: undefined, cyclingPower }],
+        },
+      },
+      {
+        zone2Bpm: [110, 128],
+        zone2Watts: [97, 130],
+        zone2CreditBy: "heart_rate",
+      },
+    );
+    expect(out.workouts[0]).not.toHaveProperty("zone2_minutes");
+    expect(out.workouts[0]?.avg_power_watts).toBe(106);
+  });
+
   it("falls back to heart rate when the ride has no power", () => {
     const out = mapHealthAutoExport(
       { data: { workouts: [ride] } },
@@ -538,6 +555,20 @@ describe("mapHealthAutoExport Zone 2 and daylight", () => {
       heart_rate_sources: ["Nick’s Apple Watch"],
       power_sources: ["Peloton"],
     });
+  });
+
+  it("drops best power values a glitch pushes past 2000 W", () => {
+    const glitched = {
+      ...longRide,
+      cyclingPower: longRide.cyclingPower.map((p, i) =>
+        i === 30 ? { ...p, qty: 20000 } : p,
+      ),
+    };
+    const out = mapHealthAutoExport(
+      { data: { workouts: [glitched] } },
+      { zone2Watts: [97, 130] },
+    );
+    expect(out.workouts[0]).not.toHaveProperty("best_5min_watts");
   });
 
   it("prefers strap heart rate relayed by Peloton over the Watch", () => {
