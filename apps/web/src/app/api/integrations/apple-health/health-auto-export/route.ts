@@ -11,7 +11,11 @@ import {
   completeStepHabits,
 } from "@/lib/server/step-habits";
 import { getCachedUserProfile } from "@/lib/server/services";
-import { ageOn, zone2HeartRateRange } from "@fitness-app/application";
+import {
+  ageOn,
+  zone2HeartRateRange,
+  zone2PowerRange,
+} from "@fitness-app/application";
 import { syncWatchStrength } from "@/lib/server/watch-strength";
 import {
   MAX_WEBHOOK_ITEMS,
@@ -78,14 +82,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Zone 2 band from the profile's age; without a birth date rides keep
-  // counting their full duration as before.
+  // Zone 2 by power when a ride carries it, else by the heart rate band from
+  // the profile's age; without either a ride counts its full duration.
   const profile = await getCachedUserProfile(userId).catch(() => null);
   const today = new Date().toISOString().slice(0, 10);
   const mapped = mapHealthAutoExport(body, {
     zone2Bpm: profile?.birthDate
       ? zone2HeartRateRange(ageOn(profile.birthDate, today))
       : null,
+    zone2Watts: zone2PowerRange(),
   });
   if (
     mapped.dailyMetrics.length > MAX_WEBHOOK_ITEMS ||

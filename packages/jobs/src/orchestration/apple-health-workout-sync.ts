@@ -25,8 +25,13 @@ export type AppleHealthWorkoutPayload = {
   max_heart_rate?: number;
   distance_meters?: number;
   source_name?: string;
-  /** Minutes inside the Zone 2 HR band, from per-interval workout HR. */
+  /**
+   * Minutes inside the Zone 2 band: by power when the ride has it, else by
+   * per-interval workout heart rate.
+   */
   zone2_minutes?: number;
+  /** Average power in watts from the ride's power samples (Peloton). */
+  avg_power_watts?: number;
 };
 
 export type SyncAppleHealthWorkoutsInput = {
@@ -194,6 +199,10 @@ export class AppleHealthWorkoutSyncOrchestrator {
                   ? Math.round(payload.max_heart_rate)
                   : null,
               distanceMeters: payload.distance_meters ?? null,
+              avgOutput:
+                payload.avg_power_watts != null
+                  ? Math.round(payload.avg_power_watts)
+                  : null,
               sportType: payload.workout_type,
               notes: payload.source_name
                 ? `Synced via Apple Health (${payload.source_name})`
