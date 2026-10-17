@@ -11,7 +11,8 @@ import {
 describe("heart rate zones", () => {
   it("uses Tanaka max HR and 65-75% for Zone 2", () => {
     expect(estimatedMaxHeartRate(36)).toBe(183);
-    expect(zone2HeartRateRange(36)).toEqual([119, 137]);
+    expect(zone2HeartRateRange(estimatedMaxHeartRate(36))).toEqual([119, 137]);
+    expect(zone2HeartRateRange(192)).toEqual([125, 144]);
   });
 });
 

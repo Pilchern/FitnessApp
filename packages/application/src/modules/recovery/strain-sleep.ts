@@ -36,14 +36,24 @@ export function estimatedMaxHeartRate(age: number): number {
 }
 
 /**
- * Zone 2 as the plan defines it: about 65-75% of max HR, the same band
- * Peloton uses. 60-70% credited 16 of a 30 min ride Peloton scored as all
- * Zone 2 (owner call, 2026-10-13). Both are age estimates; swap in a measured
- * band once there is a bike test.
+ * Highest heart rate seen across the Strava history (192, reached on several
+ * separate activities), so a real ceiling rather than one optical spike.
+ * Null falls back to the age estimate. Max HR barely moves with detraining.
  */
-export function zone2HeartRateRange(age: number): [number, number] {
-  const max = estimatedMaxHeartRate(age);
-  return [Math.round(max * 0.65), Math.round(max * 0.75)];
+export const MEASURED_MAX_HEART_RATE: number | null = 192;
+
+export function maxHeartRateFor(age: number): number {
+  return MEASURED_MAX_HEART_RATE ?? estimatedMaxHeartRate(age);
+}
+
+/**
+ * Zone 2 as the plan defines it: 65-75% of max HR, the same band Peloton
+ * uses (set Peloton's max HR to the same number so the two agree). 60-70%
+ * credited 16 of a 30 min ride Peloton scored as all Zone 2 (owner call,
+ * 2026-10-13).
+ */
+export function zone2HeartRateRange(maxHeartRate: number): [number, number] {
+  return [Math.round(maxHeartRate * 0.65), Math.round(maxHeartRate * 0.75)];
 }
 
 /**
@@ -56,6 +66,13 @@ export const CURRENT_FTP_WATTS = 173;
  * Zone 2 by power, the plan's primary band: 56-75% of FTP (97-130 W at 173).
  * Rides that carry power are credited by this band instead of heart rate.
  */
+/**
+ * Which band credits Zone 2 minutes. Heart rate until FTP is retested after
+ * surgeon clearance: the 173 W FTP predates the July 2026 ACL injury, so its
+ * watt band sits above current Zone 2. Switch to "power" with the new FTP.
+ */
+export const ZONE2_CREDIT_BY: "power" | "heart_rate" = "heart_rate";
+
 export function zone2PowerRange(
   ftpWatts: number = CURRENT_FTP_WATTS,
 ): [number, number] {

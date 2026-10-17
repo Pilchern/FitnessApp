@@ -13,6 +13,8 @@ import {
 import { getCachedUserProfile } from "@/lib/server/services";
 import {
   ageOn,
+  ZONE2_CREDIT_BY,
+  maxHeartRateFor,
   zone2HeartRateRange,
   zone2PowerRange,
 } from "@fitness-app/application";
@@ -88,9 +90,10 @@ export async function POST(request: NextRequest) {
   const today = new Date().toISOString().slice(0, 10);
   const mapped = mapHealthAutoExport(body, {
     zone2Bpm: profile?.birthDate
-      ? zone2HeartRateRange(ageOn(profile.birthDate, today))
+      ? zone2HeartRateRange(maxHeartRateFor(ageOn(profile.birthDate, today)))
       : null,
     zone2Watts: zone2PowerRange(),
+    zone2CreditBy: ZONE2_CREDIT_BY,
   });
   if (
     mapped.dailyMetrics.length > MAX_WEBHOOK_ITEMS ||
