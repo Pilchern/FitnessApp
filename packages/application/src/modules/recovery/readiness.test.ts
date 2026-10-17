@@ -98,6 +98,7 @@ describe("computeDailyReadiness", () => {
     expect(result.level).toBe("good");
     expect(result.components.map((c) => c.key)).toEqual([
       "hrv",
+      "hrvBalance",
       "restingHeartRate",
       "sleep",
       "sleepBalance",
@@ -197,6 +198,65 @@ describe("computeDailyReadiness", () => {
     expect(Math.abs(withOutlier.score - without.score)).toBeLessThanOrEqual(5);
   });
 
+  it("scores the 7-night HRV median, robust to one odd night", () => {
+    const balance = (rows: ReturnType<typeof baseline>) => {
+      const result = computeDailyReadiness(
+        [...rows, checkin(TODAY, { hrv: 55, restingHeartRate: 60 })],
+        TODAY,
+      );
+      if (result.status !== "scored") throw new Error("expected a score");
+      return result.components.find((c) => c.key === "hrvBalance");
+    };
+
+    // A steady week sits at baseline.
+    expect(balance(baseline())?.score).toBe(70);
+
+    // One crashed night in the week barely moves it.
+    const oneBad = baseline();
+    oneBad[0] = { ...oneBad[0]!, hrv: 25 };
+    expect(balance(oneBad)?.score).toBeGreaterThanOrEqual(65);
+
+    // A week of suppressed HRV reads low even when tonight is normal.
+    const suppressed = baseline(20).map((r, i) =>
+      i < 6 ? { ...r, hrv: 38 } : r,
+    );
+    const week = balance(suppressed);
+    expect(week?.level).toBe("low");
+    // The low nights sit in the 30-day baseline too, so "usual" eases to 50.
+    expect(week?.detail).toBe("38 ms typical vs 50 ms usual");
+
+    // Needs three nights in the week.
+    const sparse = baseline().map((r, i) => (i < 6 ? { ...r, hrv: null } : r));
+    expect(balance(sparse)).toBeUndefined();
+  });
+
+  it("treats one slightly short night gently and a short week harder", () => {
+    const sleepScore = (minutes: number, rows = baseline()) => {
+      const result = computeDailyReadiness(
+        [...rows, checkin(TODAY, { hrv: 55, sleepDurationMinutes: minutes })],
+        TODAY,
+      );
+      if (result.status !== "scored") throw new Error("expected a score");
+      const score = (key: string) =>
+        result.components.find((c) => c.key === key)?.score;
+      return { sleep: score("sleep"), week: score("sleepBalance") };
+    };
+
+    // 15 min short is free; 7.3 h is fair, not low; 6 h is low.
+    expect(sleepScore(465).sleep).toBe(70);
+    expect(sleepScore(438)).toEqual({ sleep: 62, week: 70 });
+    expect(sleepScore(360).sleep).toBe(39);
+    // Floored at -3 SD so one very short night cannot zero the contributor.
+    expect(sleepScore(180).sleep).toBe(4);
+
+    // A full week at 7 h reads low on the 7-night average.
+    const shortWeek = baseline().map((r) => ({
+      ...r,
+      sleepDurationMinutes: 420,
+    }));
+    expect(sleepScore(420, shortWeek)).toEqual({ sleep: 57, week: 48 });
+  });
+
   it("honors a custom sleep target", () => {
     const result = computeDailyReadiness(
       [...baseline(), checkin(TODAY, { hrv: 55, sleepDurationMinutes: 420 })],
@@ -220,6 +280,7 @@ describe("computeDailyReadiness", () => {
     expect(best.score).toBe(100);
     expect(best.components.map((c) => c.key)).toEqual([
       "hrv",
+      "hrvBalance",
       "restingHeartRate",
       "sleep",
       "sleepBalance",

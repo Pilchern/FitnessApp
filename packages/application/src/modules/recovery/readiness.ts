@@ -11,12 +11,16 @@ import type {
  * How the number is made:
  * 1. Core signals become z-scores against your prior 30 days: HRV and heart
  *    rate (overnight readings when synced, else Apple's daily HRV and resting
- *    HR), last night's sleep and the 7-night average against the sleep target
- *    (credit above the target is capped), and wake-time consistency.
+ *    HR), the 7-night HRV average (steadier than one night of Apple's sparse
+ *    HRV samples; Plews et al. 2012/2013), last night's sleep and the 7-night average against the sleep target
+ *    (credit above the target is capped; the first 15 min short is free and
+ *    a single short night costs less than a short week), and wake-time
+ *    consistency.
  * 2. Their weighted mean maps to the score: a day exactly at baseline is 70,
  *    and SCORE_PER_Z points per unit. Simulated with your sleep spread (8.2 h,
  *    +/- 0.7) and assumed signal correlations, 90+ lands on about 8% of days
- *    and 100 on about 1%, before penalties and the calibration cap.
+ *    and 100 on about 1%, before penalties and the calibration cap. That was
+ *    the v2 weights; re-run it at the 2026-11-10 recalibration.
  * 3. Penalties that only ever subtract: wrist temperature above baseline,
  *    breathing rate above baseline, and a training-load spike (last 7 days
  *    against the 4-week average).
@@ -32,6 +36,7 @@ import type {
 
 export type ReadinessComponentKey =
   | "hrv"
+  | "hrvBalance"
   | "restingHeartRate"
   | "sleep"
   | "sleepBalance"
@@ -102,9 +107,19 @@ const SCORE_PER_Z = 22;
 const MIN_LN_HRV_SPREAD = 0.15;
 const MIN_HR_SPREAD_BPM = 3;
 const MIN_RESPIRATORY_SPREAD = 0.5;
-/** Sleep z: hours from target over these spreads, capped at +1. */
-const SLEEP_SPREAD_HOURS = 0.75;
-const SLEEP_BALANCE_SPREAD_HOURS = 0.4;
+/**
+ * Sleep z. Above target: hours over SURPLUS spread, capped at +1. Below: the
+ * first SLEEP_GRACE_HOURS short is free, then hours over DEFICIT spread,
+ * floored at -3. Basis: 7+ h is adequate for adults (AASM/SRS consensus,
+ * Watson 2015); real cost shows around 6 h, mostly when repeated (Van Dongen
+ * 2003), so one short night is gentle and the 7-night average is steeper.
+ * Last night: 7 h = -0.6, 6 h = -1.4. 7-night average: 7 h = -1.0.
+ */
+const SLEEP_GRACE_HOURS = 0.25;
+const SLEEP_SURPLUS_SPREAD_HOURS = 0.75;
+const SLEEP_DEFICIT_SPREAD_HOURS = 1.25;
+const SLEEP_BALANCE_SURPLUS_SPREAD_HOURS = 0.4;
+const SLEEP_BALANCE_DEFICIT_SPREAD_HOURS = 0.75;
 /** Wake-time SD at which consistency is neutral, and minutes per z. */
 const WAKE_SD_NEUTRAL_MIN = 45;
 const WAKE_SD_PER_Z_MIN = 20;
@@ -112,11 +127,12 @@ const CAPPED_SCORE = 49;
 const CALIBRATING_MAX_SCORE = 95;
 
 const WEIGHTS: Record<ReadinessComponentKey, number> = {
-  hrv: 0.35,
+  hrv: 0.3,
+  hrvBalance: 0.1,
   restingHeartRate: 0.2,
   sleep: 0.2,
   sleepBalance: 0.1,
-  wakeConsistency: 0.15,
+  wakeConsistency: 0.1,
 };
 
 /** Default session RPE when none was logged, by cardio kind. */
@@ -181,6 +197,17 @@ function component(
 ): ReadinessComponent & { z: number } {
   const score = clampScore(BASELINE_SCORE + SCORE_PER_Z * z);
   return { key, label, score, level: readinessLevel(score), detail, z };
+}
+
+function sleepZ(
+  sleptHours: number,
+  targetHours: number,
+  surplusSpread: number,
+  deficitSpread: number,
+) {
+  const diff = sleptHours - targetHours;
+  if (diff >= 0) return Math.min(1, diff / surplusSpread);
+  return clamp((diff + SLEEP_GRACE_HOURS) / deficitSpread, -3, 0);
 }
 
 function hasSignal(checkin: RecoveryCheckin) {
@@ -274,12 +301,13 @@ function pickSeries(
   const overnightPrior = present(prior.map(overnight));
   const today = overnight(day);
   if (today != null && overnightPrior.length >= MIN_BASELINE_DAYS) {
-    return { today, prior: overnightPrior, overnight: true };
+    return { today, prior: overnightPrior, overnight: true, read: overnight };
   }
   return {
     today: daily(day),
     prior: present(prior.map(daily)),
     overnight: false,
+    read: daily,
   };
 }
 
@@ -314,16 +342,37 @@ function scoreDay(
 
   const components: (ReadinessComponent & { z: number })[] = [];
 
+  const weekStart = addDays(day.checkinDate, -6);
+  const week = checkins.filter(
+    (c) => c.checkinDate >= weekStart && c.checkinDate <= day.checkinDate,
+  );
+
   if (hrv.today != null && hrv.prior.length >= MIN_BASELINE_DAYS) {
     const base = robustBaseline(hrv.prior.map(Math.log), MIN_LN_HRV_SPREAD);
+    const usual = Math.round(Math.exp(base.center));
     components.push(
       component(
         "hrv",
         hrv.overnight ? "HRV, overnight" : "HRV",
         (Math.log(hrv.today) - base.center) / base.spread,
-        `${Math.round(hrv.today)} ms vs ${Math.round(Math.exp(base.center))} ms usual`,
+        `${Math.round(hrv.today)} ms vs ${usual} ms usual`,
       ),
     );
+
+    // Same series as tonight's reading, so overnight and daily never mix.
+    // Median, so one artifact night cannot drag the week.
+    const weekLn = present(week.map(hrv.read)).map(Math.log);
+    if (weekLn.length >= 3) {
+      const typical = median(weekLn);
+      components.push(
+        component(
+          "hrvBalance",
+          "HRV, 7 nights",
+          (typical - base.center) / base.spread,
+          `${Math.round(Math.exp(typical))} ms typical vs ${usual} ms usual`,
+        ),
+      );
+    }
   }
 
   if (heartRate.today != null && heartRate.prior.length >= MIN_BASELINE_DAYS) {
@@ -344,16 +393,17 @@ function scoreDay(
       component(
         "sleep",
         "Sleep",
-        Math.min(1, (slept - sleepTarget) / SLEEP_SPREAD_HOURS),
+        sleepZ(
+          slept,
+          sleepTarget,
+          SLEEP_SURPLUS_SPREAD_HOURS,
+          SLEEP_DEFICIT_SPREAD_HOURS,
+        ),
         `${hours(day.sleepDurationMinutes)} h of ${sleepTarget} h`,
       ),
     );
   }
 
-  const weekStart = addDays(day.checkinDate, -6);
-  const week = checkins.filter(
-    (c) => c.checkinDate >= weekStart && c.checkinDate <= day.checkinDate,
-  );
   const weekSleep = present(week.map((c) => c.sleepDurationMinutes));
   if (weekSleep.length >= 3) {
     const avg = weekSleep.reduce((s, v) => s + v, 0) / weekSleep.length;
@@ -361,7 +411,12 @@ function scoreDay(
       component(
         "sleepBalance",
         "Sleep, 7 nights",
-        Math.min(1, (avg / 60 - sleepTarget) / SLEEP_BALANCE_SPREAD_HOURS),
+        sleepZ(
+          avg / 60,
+          sleepTarget,
+          SLEEP_BALANCE_SURPLUS_SPREAD_HOURS,
+          SLEEP_BALANCE_DEFICIT_SPREAD_HOURS,
+        ),
         `${hours(avg)} h average`,
       ),
     );
