@@ -130,7 +130,13 @@ export function CardioSessionList({
                       <span>Avg HR {session.avgHeartRate}</span>
                     ) : null}
                     {session.avgOutput != null ? (
-                      <span>Output {session.avgOutput}</span>
+                      <span>Avg {Math.round(session.avgOutput)} W</span>
+                    ) : null}
+                    {session.zone2HeartRate != null ? (
+                      <span>Z2 HR {session.zone2HeartRate}</span>
+                    ) : null}
+                    {session.best5MinWatts != null ? (
+                      <span>Best 5 min {session.best5MinWatts} W</span>
                     ) : null}
                     {session.rpe != null ? (
                       <span>RPE {session.rpe}</span>

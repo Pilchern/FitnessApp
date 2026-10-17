@@ -31,6 +31,8 @@ export type TrendNoteInput = {
     durationMinutes: number | null;
     plannedVsCompleted: string;
     sessionKind: string;
+    /** Median heart rate in the Zone 2 power band (rides with power). */
+    zone2HeartRate?: number | null;
   }[];
   bodyMetrics: { measuredOn: string; weightLb: number | null }[];
   recovery: {
@@ -50,6 +52,8 @@ const CARDIO_CHANGE_MIN = 15;
 const CARDIO_CHANGE_PCT = 0.15;
 const WEIGHT_STABLE_LB = 1;
 const RHR_CHANGE_BPM = 3;
+const ZONE2_HR_CHANGE_BPM = 3;
+const ZONE2_HR_RIDES = 3;
 
 function addDays(isoDate: string, days: number) {
   const date = new Date(`${isoDate}T12:00:00Z`);
@@ -150,6 +154,42 @@ function cardioNote(input: TrendNoteInput): TrendNote | null {
     key: "cardio",
     tone: delta > 0 ? "positive" : "attention",
     text: `Cardio is ${delta > 0 ? "up" : "down"} to ${now} min a week, from ${before}, over the last 4 weeks.`,
+  };
+}
+
+/**
+ * Heart rate at the same Zone 2 watts, last 4 weeks vs the 4 before (median
+ * per window). Lower at the same power is the aerobic fitness signal. Silent
+ * under 3 measured rides per window or a change under 3 bpm.
+ */
+function aerobicNote(input: TrendNoteInput): TrendNote | null {
+  const recentStart = addDays(input.today, -27);
+  const priorStart = addDays(input.today, -55);
+  const values = (from: string, to: string) =>
+    input.cardioSessions
+      .filter(
+        (s) =>
+          s.zone2HeartRate != null &&
+          s.sessionDate >= from &&
+          s.sessionDate <= to,
+      )
+      .map((s) => s.zone2HeartRate!);
+  const recent = values(recentStart, input.today);
+  const prior = values(priorStart, addDays(recentStart, -1));
+  if (recent.length < ZONE2_HR_RIDES || prior.length < ZONE2_HR_RIDES) {
+    return null;
+  }
+  const now = Math.round(median(recent));
+  const before = Math.round(median(prior));
+  const delta = now - before;
+  if (Math.abs(delta) < ZONE2_HR_CHANGE_BPM) return null;
+  return {
+    key: "aerobic",
+    tone: delta < 0 ? "positive" : "attention",
+    text:
+      delta < 0
+        ? `Heart rate at Zone 2 watts is down ${-delta} bpm (${now} from ${before}) over the last 4 weeks. Aerobic fitness is improving.`
+        : `Heart rate at Zone 2 watts is up ${delta} bpm (${now} from ${before}) over the last 4 weeks. Check sleep, heat and recovery before reading it as lost fitness.`,
   };
 }
 
@@ -261,6 +301,7 @@ export function buildTrendNotes(input: TrendNoteInput): TrendNote[] {
   const notes = [
     ...strengthNotes(input),
     cardioNote(input),
+    aerobicNote(input),
     restingHeartRateNote(input),
     wakeNote(input),
     weightNote(input),

@@ -33,15 +33,40 @@ function shiftIsoDate(isoDate: string, days: number): string {
 }
 
 /**
- * Measured fields a re-pushed import may refresh: power, and Zone 2 minutes.
+ * Measured fields a re-pushed import may refresh: power, the power-derived
+ * markers, and Zone 2 minutes.
  * Zone 2 measured by power is never replaced by a heart rate value, so a
  * Watch copy without power can't undo what the Peloton copy recorded.
  */
+type MeasuredRideFields = {
+  avgOutput?: number;
+  zone2Minutes?: number;
+  best5MinWatts?: number;
+  best20MinWatts?: number;
+  zone2HeartRate?: number;
+};
+
+const POWER_DERIVED_FIELDS = [
+  "best5MinWatts",
+  "best20MinWatts",
+  "zone2HeartRate",
+] as const;
+
 function measuredRidePatch(
   existing: CardioSession,
-  incoming: { avgOutput?: number | null; zone2Minutes?: number | null },
-): { avgOutput?: number; zone2Minutes?: number } | null {
-  const patch: { avgOutput?: number; zone2Minutes?: number } = {};
+  incoming: {
+    avgOutput?: number | null;
+    zone2Minutes?: number | null;
+    best5MinWatts?: number | null;
+    best20MinWatts?: number | null;
+    zone2HeartRate?: number | null;
+  },
+): MeasuredRideFields | null {
+  const patch: MeasuredRideFields = {};
+  for (const field of POWER_DERIVED_FIELDS) {
+    const value = incoming[field];
+    if (value != null && value !== existing[field]) patch[field] = value;
+  }
   const avgOutput = incoming.avgOutput;
   const incomingHasPower = avgOutput != null;
   if (avgOutput != null && avgOutput !== existing.avgOutput) {
@@ -79,6 +104,9 @@ const cardioSessionFields = {
   avgHeartRate: z.number().int().min(0).max(250).nullable().optional(),
   maxHeartRate: z.number().int().min(0).max(250).nullable().optional(),
   avgOutput: z.number().nonnegative().nullable().optional(),
+  best5MinWatts: z.number().int().min(0).max(2000).nullable().optional(),
+  best20MinWatts: z.number().int().min(0).max(2000).nullable().optional(),
+  zone2HeartRate: z.number().int().min(20).max(250).nullable().optional(),
   cadenceMin: z.number().int().min(0).nullable().optional(),
   cadenceMax: z.number().int().min(0).nullable().optional(),
   resistanceMin: z.number().nonnegative().nullable().optional(),
@@ -159,6 +187,9 @@ export const updateCardioSessionSchema = withCardioSessionRules(
       avgHeartRate: z.number().int().min(0).max(250).nullable().optional(),
       maxHeartRate: z.number().int().min(0).max(250).nullable().optional(),
       avgOutput: z.number().nonnegative().nullable().optional(),
+      best5MinWatts: z.number().int().min(0).max(2000).nullable().optional(),
+      best20MinWatts: z.number().int().min(0).max(2000).nullable().optional(),
+      zone2HeartRate: z.number().int().min(20).max(250).nullable().optional(),
       cadenceMin: z.number().int().min(0).nullable().optional(),
       cadenceMax: z.number().int().min(0).nullable().optional(),
       resistanceMin: z.number().nonnegative().nullable().optional(),
@@ -183,6 +214,9 @@ export const updateCardioSessionSchema = withCardioSessionRules(
           "avgHeartRate",
           "maxHeartRate",
           "avgOutput",
+          "best5MinWatts",
+          "best20MinWatts",
+          "zone2HeartRate",
           "cadenceMin",
           "cadenceMax",
           "resistanceMin",
@@ -384,6 +418,11 @@ export class CardioSessionService {
               ...(parsed.zone2Minutes != null
                 ? { zone2Minutes: parsed.zone2Minutes }
                 : {}),
+              ...Object.fromEntries(
+                POWER_DERIVED_FIELDS.filter(
+                  (field) => parsed[field] != null,
+                ).map((field) => [field, parsed[field]]),
+              ),
             }
           : {}),
       };

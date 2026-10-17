@@ -22,6 +22,12 @@ export type CardioSession = {
   avgHeartRate: number | null;
   maxHeartRate: number | null;
   avgOutput: number | null;
+  /** Best rolling 5 min average power, watts (VO2 trend proxy). */
+  best5MinWatts: number | null;
+  /** Best rolling 20 min average power, watts. */
+  best20MinWatts: number | null;
+  /** Median heart rate while in the Zone 2 power band, after warm-up. */
+  zone2HeartRate: number | null;
   cadenceMin: number | null;
   cadenceMax: number | null;
   resistanceMin: number | null;

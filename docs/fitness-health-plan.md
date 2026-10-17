@@ -72,6 +72,12 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 ## 5. Cardio
 
 - Zone 2 on the Peloton, 97-130 W (56-75% of FTP 173 W, last tested 2026-05-21). Conversational pace, about 65-75% max HR (Peloton's band; the app moved from 60-70% on 2026-10-13 after the first measured ride credited 16 of 30 min). Replace with a measured band after the PT bike test or an FTP retest. [doc]
+- How rides are measured (2026-10-17) [doc]:
+  - Bike is the original Peloton Bike (model PLTN-RB1VQ-2). Its watts are estimated from resistance, consistent ride to ride but possibly 10-30% off true power (forum and review reports). Zones as % of an FTP tested on this bike and trends are valid; absolute W/kg and formula VO2max estimates are not.
+  - Zone 2 minutes are credited by power (97-130 W) when Peloton writes power to Apple Health; heart rate is a fallback only. Apple Watch optical HR has proven unreliable on rides.
+  - Aerobic fitness trend: median heart rate at Zone 2 watts after a 10 min warm-up, 4-week windows. Valid once HR is trustworthy: buy a chest strap (Polar H10), pair it to the Peloton, and do not start a Watch workout. The app prefers Peloton-relayed HR over the Watch automatically.
+  - VO2 trend: best 5 min watts on max-effort rides (once VO2 work is cleared); confirm against the lab VO2max test around 2027-02.
+  - Retest FTP every 6-8 weeks and after any calibration, service or pedal change, then update `CURRENT_FTP_WATTS` in the app. Do not use Health Auto Export per-second workout data (payload too large for the webhook).
 - Full revolution, low resistance, seat high. Add resistance only if the next-morning swelling is unchanged. [doc]
 - Ramp, pending PT confirmation on 10/14 [assumed]:
   - This week and next: Mon 30 + Wed 30 + Fri 45 = 105 min

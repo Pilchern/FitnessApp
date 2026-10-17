@@ -481,6 +481,101 @@ describe("mapHealthAutoExport Zone 2 and daylight", () => {
     });
   });
 
+  // 40 one-minute readings: 10 min warm-up at 80 W, 25 min at 115 W with
+  // 5 min at 200 W in the middle, then 5 min at 90 W.
+  const longRide = (() => {
+    const at = (i: number) => {
+      const t = new Date(Date.UTC(2026, 9, 14, 22, 0) + i * 60000);
+      return `${t.toISOString().slice(0, 10)} ${t.toISOString().slice(11, 19)} +0000`;
+    };
+    const watts = (i: number) =>
+      i < 10 ? 80 : i >= 20 && i < 25 ? 200 : i < 35 ? 115 : 90;
+    const bpm = (i: number) => (i < 10 ? 110 : i >= 20 && i < 25 ? 150 : 125);
+    const minutes = Array.from({ length: 40 }, (_, i) => i);
+    return {
+      id: "long-1",
+      name: "Indoor Cycling",
+      start: at(0),
+      end: at(40),
+      duration: 2400,
+      cyclingPower: minutes.map((i) => ({
+        date: at(i),
+        qty: watts(i),
+        units: "W",
+        source: "Peloton",
+      })),
+      heartRateData: minutes.map((i) => ({
+        date: at(i),
+        Avg: bpm(i),
+        source: "Nick’s Apple Watch",
+      })),
+    };
+  })();
+
+  it("measures best 5 and 20 min power and heart rate at Zone 2 watts", () => {
+    const out = mapHealthAutoExport(
+      { data: { workouts: [longRide] } },
+      { zone2Bpm: [121, 140], zone2Watts: [97, 130] },
+    );
+    expect(out.workouts[0]).toMatchObject({
+      best_5min_watts: 200,
+      // Minutes 10-29: 15 at 115 W and 5 at 200 W.
+      best_20min_watts: 136,
+      zone2_heart_rate: 125,
+      heart_rate_sources: ["Nick’s Apple Watch"],
+      power_sources: ["Peloton"],
+    });
+  });
+
+  it("prefers strap heart rate relayed by Peloton over the Watch", () => {
+    const strap = longRide.heartRateData.map((p) => ({
+      ...p,
+      Avg: p.Avg! - 4,
+      source: "Peloton",
+    }));
+    const out = mapHealthAutoExport(
+      {
+        data: {
+          workouts: [
+            {
+              ...longRide,
+              heartRateData: [...longRide.heartRateData, ...strap],
+            },
+          ],
+        },
+      },
+      { zone2Watts: [97, 130] },
+    );
+    expect(out.workouts[0]?.zone2_heart_rate).toBe(121);
+  });
+
+  it("borrows the Watch copy's heart rate when Peloton's copy has only power", () => {
+    const peloton = { ...longRide, id: "PELO", heartRateData: undefined };
+    const watch = { ...longRide, id: "WATCH", cyclingPower: undefined };
+    const out = mapHealthAutoExport(
+      { data: { workouts: [watch, peloton] } },
+      { zone2Watts: [97, 130] },
+    );
+    expect(out.workouts).toHaveLength(1);
+    expect(out.workouts[0]).toMatchObject({
+      workout_id: "PELO",
+      zone2_heart_rate: 125,
+    });
+  });
+
+  it("skips heart rate at Zone 2 watts with under 10 minutes in the band", () => {
+    const short = {
+      ...longRide,
+      cyclingPower: longRide.cyclingPower.slice(0, 18),
+    };
+    const out = mapHealthAutoExport(
+      { data: { workouts: [short] } },
+      { zone2Watts: [97, 130] },
+    );
+    expect(out.workouts[0]).not.toHaveProperty("zone2_heart_rate");
+    expect(out.workouts[0]).not.toHaveProperty("best_20min_watts");
+  });
+
   it("sums hourly daylight between 05:00 and 09:59 per day", () => {
     const out = mapHealthAutoExport({
       data: {
