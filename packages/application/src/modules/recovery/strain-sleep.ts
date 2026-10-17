@@ -36,14 +36,24 @@ export function estimatedMaxHeartRate(age: number): number {
 }
 
 /**
- * Zone 2 as the plan defines it: about 65-75% of max HR, the same band
- * Peloton uses. 60-70% credited 16 of a 30 min ride Peloton scored as all
- * Zone 2 (owner call, 2026-10-13). Both are age estimates; swap in a measured
- * band once there is a bike test.
+ * Highest heart rate seen across the Strava history (192, reached on several
+ * separate activities), so a real ceiling rather than one optical spike.
+ * Null falls back to the age estimate. Max HR barely moves with detraining.
  */
-export function zone2HeartRateRange(age: number): [number, number] {
-  const max = estimatedMaxHeartRate(age);
-  return [Math.round(max * 0.65), Math.round(max * 0.75)];
+export const MEASURED_MAX_HEART_RATE: number | null = 192;
+
+export function maxHeartRateFor(age: number): number {
+  return MEASURED_MAX_HEART_RATE ?? estimatedMaxHeartRate(age);
+}
+
+/**
+ * Zone 2 as the plan defines it: 65-75% of max HR, the same band Peloton
+ * uses (set Peloton's max HR to the same number so the two agree). 60-70%
+ * credited 16 of a 30 min ride Peloton scored as all Zone 2 (owner call,
+ * 2026-10-13).
+ */
+export function zone2HeartRateRange(maxHeartRate: number): [number, number] {
+  return [Math.round(maxHeartRate * 0.65), Math.round(maxHeartRate * 0.75)];
 }
 
 /**

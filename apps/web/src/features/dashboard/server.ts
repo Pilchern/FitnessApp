@@ -8,7 +8,7 @@ import {
   buildPeerFitness,
   buildDailyStrain,
   buildSleepPlan,
-  estimatedMaxHeartRate,
+  maxHeartRateFor,
   ageOn,
   buildTrendNotes,
   buildWeeklyWeightTrend,
@@ -281,9 +281,7 @@ function buildStrainSleep(input: {
     input.birthDate && restingHeartRate != null
       ? buildDailyStrain(dates, input.cardio, input.strength, {
           restingHeartRate,
-          maxHeartRate: estimatedMaxHeartRate(
-            ageOn(input.birthDate, input.today),
-          ),
+          maxHeartRate: maxHeartRateFor(ageOn(input.birthDate, input.today)),
           sex: input.sex === "female" ? "female" : "male",
         })
       : null;
