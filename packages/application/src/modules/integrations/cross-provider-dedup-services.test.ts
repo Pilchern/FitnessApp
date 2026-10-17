@@ -487,6 +487,42 @@ describe("CardioSessionService.upsertImported same-provider twins", () => {
     expect(result.created).toBe(true);
   });
 
+  it("matches twin copies a couple of minutes apart in length on a long ride", async () => {
+    // Imported ride is 45 min; the stored Watch copy ran 3 min longer.
+    const repository = createCardioRepository([
+      storedAppleHealthRide({ durationMinutes: 48 }),
+    ]);
+    const service = new CardioSessionService(repository as never);
+
+    const result = await service.upsertImported(
+      userId,
+      importedAppleHealthRide,
+    );
+
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(result.session.id).toBe(twinId);
+  });
+
+  it("clears a stale Zone 2 heart rate when the power copy no longer reports one", async () => {
+    const repository = createCardioRepository([
+      storedAppleHealthRide({ avgOutput: 110, zone2HeartRate: 131 }),
+    ]);
+    repository.update.mockResolvedValue(storedAppleHealthRide());
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      avgOutput: 110,
+      zone2HeartRate: null,
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id: twinId,
+      userId,
+      zone2HeartRate: null,
+    });
+  });
+
   it("keeps a same-start ride of a different length", async () => {
     const repository = createCardioRepository([
       storedAppleHealthRide({ durationMinutes: 20 }),

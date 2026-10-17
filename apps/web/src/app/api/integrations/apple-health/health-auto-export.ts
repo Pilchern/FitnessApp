@@ -30,7 +30,8 @@ import type { WatchStrengthWorkout } from "@fitness-app/application";
  *   fields it lacks from the other copy.
  *
  * Zone 2: credited by the band `zone2CreditBy` names (power by default,
- * heart rate while the FTP is stale); the other band is the fallback.
+ * heart rate while the FTP is stale). Power mode falls back to heart rate;
+ * heart rate mode has no fallback.
  */
 
 type Quantity = { qty?: number; units?: string };
@@ -409,8 +410,8 @@ export type HealthAutoExportOptions = {
   /** Zone 2 power band, watts; wins over heart rate when a ride has power. */
   zone2Watts?: [number, number] | null;
   /**
-   * Which band credits Zone 2 minutes when a ride has both: "power" (default)
-   * or "heart_rate". The other is the fallback.
+   * Which band credits Zone 2 minutes: "power" (default, heart rate as the
+   * fallback) or "heart_rate" (no fallback).
    */
   zone2CreditBy?: "power" | "heart_rate";
 };
@@ -461,8 +462,9 @@ function timedPoints(
   });
 }
 
-function roundOrNull(value: number | null) {
-  return value == null ? null : Math.round(value);
+/** Rounded watts, or null when absent or above 2000 W (a sensor glitch). */
+function plausibleWatts(value: number | null) {
+  return value == null || value > 2000 ? null : Math.round(value);
 }
 
 function minutesInBand(points: TimedPoint[], [low, high]: [number, number]) {
@@ -499,8 +501,8 @@ export function powerSummary(
   return {
     avgWatts: Math.round(avgWatts),
     zone2Minutes: band ? Math.round(minutesInBand(points, band)) : null,
-    best5MinWatts: roundOrNull(bestRollingAverage(points, 5)),
-    best20MinWatts: roundOrNull(bestRollingAverage(points, 20)),
+    best5MinWatts: plausibleWatts(bestRollingAverage(points, 5)),
+    best20MinWatts: plausibleWatts(bestRollingAverage(points, 20)),
   };
 }
 
@@ -613,9 +615,11 @@ function mapWorkout(
   const heartRateZone2 = options.zone2Bpm
     ? zone2MinutesFromHeartRate(heartRate, options.zone2Bpm)
     : null;
+  // Heart rate mode has no power fallback: the power band is stale then, and
+  // a value from it would overwrite the stored heart rate value.
   const zone2 =
     options.zone2CreditBy === "heart_rate"
-      ? (heartRateZone2 ?? power?.zone2Minutes ?? null)
+      ? heartRateZone2
       : (power?.zone2Minutes ?? heartRateZone2);
   const zone2HeartRate =
     power && options.zone2Watts

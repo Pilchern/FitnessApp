@@ -1,4 +1,4 @@
-# Nick's fitness and health plan (as of Fri 2026-10-09)
+# Nick's fitness and health plan (as of Sat 2026-10-17)
 
 Purpose: single source of truth for Claude Code working on this repo. Facts are tagged [stated] (Nick said it), [doc] (from his AI-Lab notes), [built] (exists in the app/database now), or [assumed] (a call made on 2026-10-09, change freely).
 
@@ -7,7 +7,9 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 - ACL reconstruction (patellar tendon graft, BTB) with chondroplasty after a July 2026 injury. 2026-10-09 is post-op day 53 (about week 7.5). [doc]
 - Knee: flexion past 110 degrees, about 10 degrees short of the good knee; full extension. Cleared for goblet squats and band work. PT limit: no squatting past 90 degrees. [stated]
 - The graft is in its weakest biological window (ligamentization, roughly weeks 3-12). The plan loads progressively and early but avoids high-load terminal extension and anything impact until criteria are met. [doc]
-- Next surgeon visit: week of 2026-10-26. PT visit Wed 2026-10-14 to confirm the bike ramp and a list of loading questions. [doc]
+- PT progress note, Fri 2026-10-16 (surgery 2026-08-17, post-op week 8.5) [doc]: flexion 126 active / 130 passive, extension 0, quad strength 4/5 (right leg 5/5). In clinic: double-leg press 100 lb x20, single-leg 80 lb x20, 8 inch step-ups and eccentric step-downs, recumbent bike full revolutions. Still unable: running, jumping, uneven ground, step-over-step stair descent. Plan of care 2-3 visits a week for 12-14 weeks from 10/16; long-term goals in 16-18 weeks: 125 degree flexion, 5/5 strength, normal gait and stairs, walk 1 mile, return to golf.
+- Bike: resistance and duration as tolerated (PT, stated 2026-10-17). Stay seated: no standing climbs until strength is 5/5 or PT clears it [assumed; ask PT].
+- Next surgeon visit: week of 2026-10-26. [doc]
 - Goals: preserve muscle, fat loss once cleared, improve VO2max, long-term longevity framework from Attia's Outlive. Soft recomp, not a cut, until full training returns. [stated]
 - Work: Director of Marketplaces. Office Mon/Tue/Thu, WFH Wed/Fri. Leaves for the office by about 8:30 AM. PT is Wed and Fri 7:40 AM. [stated]
 - Equipment (all he has): barbell, plates, adjustable dumbbells, bands, bench, squat/power rack, Peloton bike. No leg press, leg extension, hamstring curl, cable or pulldown machine, treadmill, elliptical. [stated]
@@ -25,11 +27,11 @@ Lifts Mon/Wed/Fri. Cardio Tue/Thu/Sat. Sunday rest. [stated 2026-10-12, session 
 | Day | Work | Morning | Training | Notes |
 |---|---|---|---|---|
 | Mon | Office | Wake, light, Foundation Training, cold plunge, PT sheet round 1 | Lift: Push (upper) | Knee block (PT Tracker) first, then upper |
-| Tue | Office | Same stack | Bike Z2 30 min | Knee block day in PT Tracker; bike after it |
+| Tue | Office | Same stack | Bike Z2 40 min (as tolerated) | Knee block day in PT Tracker; bike after it |
 | Wed | WFH | PT 7:40, cold plunge after | Lift: Pull (upper, evening) | 2 walks |
-| Thu | Office | Same stack | Bike Z2 30 min | Knee block day in PT Tracker; bike after it |
+| Thu | Office | Same stack | Bike Z2 40 min (as tolerated) | Knee block day in PT Tracker; bike after it |
 | Fri | WFH | PT 7:40 | Lift: Arms (upper, evening) | Mobility 15 min |
-| Sat | Off | Same stack | Bike Z2 45 min (long ride) | Weekly review in the evening |
+| Sat | Off | Same stack | Bike Z2 60 min (long ride, as tolerated) | Weekly review in the evening |
 | Sun | Off | Walk 45-60 min outdoors | Rest | Meal prep, early bed |
 
 Daily non-negotiables: PT home sheet AM and PM (PT Tracker), 7,000 steps, protein about 180 g, fixed wake time, bed about 10:00 PM, alcohol under 7 drinks per week.
@@ -71,19 +73,20 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 
 ## 5. Cardio
 
-- Zone 2 on the Peloton, 97-130 W (56-75% of FTP 173 W, last tested 2026-05-21). Conversational pace, about 65-75% max HR (Peloton's band; the app moved from 60-70% on 2026-10-13 after the first measured ride credited 16 of 30 min). Replace with a measured band after the PT bike test or an FTP retest. [doc]
+- Zone 2 target: 125-144 bpm (65-75% of max HR 192), conversational pace. The power band 97-130 W (56-75% of FTP 173 W, tested 2026-05-21) is pre-injury and too high until a retest after surgeon clearance. [doc/stated]
 - How rides are measured (2026-10-17) [doc]:
   - Bike is the original Peloton Bike (model PLTN-RB1VQ-2). Its watts are estimated from resistance, consistent ride to ride but possibly 10-30% off true power (forum and review reports). Zones as % of an FTP tested on this bike and trends are valid; absolute W/kg and formula VO2max estimates are not.
-  - Zone 2 minutes are credited by heart rate: 65-75% of max HR 192 (highest HR across the Strava history, reached on several activities) = 125-144 bpm. Peloton's max HR set to 192 so its zones match until FTP is retested after surgeon clearance: the 173 W FTP is pre-injury, so its 97-130 W band sits above current Zone 2. Watts are still recorded on every ride. After the retest, update `CURRENT_FTP_WATTS` and set `ZONE2_CREDIT_BY` to "power". Do not lower FTP by guesswork.
-  - Rides as of 2026-10-17 are recovery level (about 50 W, average HR 109, 95% in Peloton's Zone 1). Watch HR matched Peloton's own reading, so the strap is a precision upgrade, not a fix. Build resistance toward Zone 2 heart rate only when next-morning swelling is unchanged.
+  - Zone 2 minutes are credited by heart rate, 125-144 bpm: 65-75% of max HR 192, the highest HR across the Strava history, reached on several activities (`MEASURED_MAX_HEART_RATE`). Set Peloton's max HR to 192 so its zones match. Heart rate is used until FTP is retested after surgeon clearance, because the 173 W FTP is pre-injury and its 97-130 W band sits above current Zone 2. Watts are still recorded on every ride. After the retest, update `CURRENT_FTP_WATTS` and set `ZONE2_CREDIT_BY` to "power". Do not lower FTP by guesswork.
+  - Peloton's heart rate comes from the Apple Watch, so Peloton and the app read one source.
+  - Rides as of 2026-10-17 are easy: 41-51 W. Heart rate at those watts swings widely: average 109 on a Saturday morning, 127 and 143 on weekday evening rides after the knee block (watts missing for the 143 ride). Either fatigue from the knee block and the workday, or optical error. A chest strap settles which, so it is worth buying; until then read heart-rate Zone 2 minutes on weekday rides with caution.
   - Aerobic fitness trend: median heart rate at Zone 2 watts after a 10 min warm-up, 4-week windows. Valid once HR is trustworthy: buy a chest strap (Polar H10), pair it to the Peloton, and do not start a Watch workout. The app prefers Peloton-relayed HR over the Watch automatically.
   - VO2 trend: best 5 min watts on max-effort rides (once VO2 work is cleared); confirm against the lab VO2max test around 2027-02.
   - Retest FTP every 6-8 weeks and after any calibration, service or pedal change, then update `CURRENT_FTP_WATTS` in the app. Do not use Health Auto Export per-second workout data (payload too large for the webhook).
-- Full revolution, low resistance, seat high. Add resistance only if the next-morning swelling is unchanged. [doc]
-- Ramp, pending PT confirmation on 10/14 [assumed]:
-  - This week and next: Mon 30 + Wed 30 + Fri 45 = 105 min
-  - Then 40 + 40 + 60 = 140 min
-  - Then 45 + 45 + 60 = 150 min (Attia minimum is about 3 hr/wk; Huberman 150-200)
+- Progression, resistance and duration as tolerated (PT 10/16) [stated/assumed]:
+  - Full revolution, seat high, seated. Raise cadence first (85-95 rpm), then resistance in 2-3 point steps, to hold 125-144 bpm in the main block. 10 min easy warm-up, 5 min cool-down; steady rides (Low Impact, Scenic, Just Ride), no Power Zone classes until FTP is retested.
+  - One change per ride (resistance or length, not both). Next morning: swelling and pain unchanged, keep or progress; swelling up or pain above 2/10, roll back to the last good level for 2-3 rides.
+  - Ride length about +10% a week at most: 40 + 40 + 60 = 140 min now (templates), then 45 + 45 + 60, toward 150+ min of Zone 2 (Attia about 3 hr/wk; Huberman 150-200).
+  - Hold, do not progress, when resting HR is up 3+ bpm, readiness is red, or Zone 2 heart rate creeps up at the same watts across a week.
 - VO2 work (4x4 at 184-208 W, recovery about 87 W) stays parked until the surgeon visit AND pain is 2/10 or less AND no swelling after Z2. Pre-injury this was a Saturday session.
 - Target structure [stated 2026-10-12]: three rides Tue/Thu/Sat, two Zone 2 and one VO2 4x4. Until the VO2 gate above is met, all three stay Zone 2 (the current templates). At the switch the VO2 ride goes on Tuesday [assumed: first ride of the week, the 4x4 is the shortest session on an office day, and Saturday stays the long Zone 2]. Two Z2 rides carry the weekly Z2 total, so the 150 min target means about 60 + 90 min, or accept less Z2 for the VO2 work.
 - No running, jumping or plyometrics. The patellar tendon is the weak link in a BTB graft; plyo needs a clinician sign-off.
@@ -122,10 +125,10 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 1. PT Tracker schedules loaded knee sessions Mon/Tue/Thu. Since the 2026-10-12 switch, Monday pairs the knee block with the Push lift and Tue/Thu pair it with the bike. The strength template notes still say "knee block first", which only applies on Monday now. PT Tracker was left unchanged.
 2. The AI-Lab Phase III plan lists lifts Mon/Tue/Thu (Push/Pull/Arms with knee blocks). Nick's instruction overrides: lifts Mon/Wed/Fri as of 2026-10-12 (was Tue/Thu/Sat from 2026-10-09). The AI-Lab docs have not been updated; edits need his approval.
 3. Resolved 2026-10-12: three rides, two Zone 2 plus one VO2 once cleared (section 5).
-4. Bike ramp and farmer carries wait on PT 10/14.
+4. Resolved 2026-10-17: bike resistance and duration as tolerated (PT). Farmer carries still need PT confirmation.
 5. Foundation Training and dead hangs were additions; Nick can drop either.
 
-## 10. PT visit ask list, Wed 2026-10-14
+## 10. PT visit ask list (from 2026-10-14; carry open items forward)
 
 - Quad dynamometry both legs; contralateral knee ROM measured.
 - Seated band knee extension 90-45 degrees: OK to load heavier?
@@ -133,7 +136,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 - Medicine ball weight for the chest squat.
 - Does the 10/9 sheet replace the 9/1 home program?
 - Single-leg press and Y-balance criteria; jog and plyo criteria.
-- Confirm the bike ramp (40/40/60 then 45/45/60) and standing carries.
+- Answered 10/16: bike resistance and duration as tolerated. Still to ask: standing carries; standing (out-of-saddle) climbs on the bike.
 - Routines: OK to add the left-leg-forward split-stance stretch (right hip flexor), seated figure-4 on the left, the woodpecker, and floor work (8-point plank, prone extension)? Until then they are left out of the mobility and Foundation routines.
 - Book the surgeon follow-up for the week of 10/26.
 

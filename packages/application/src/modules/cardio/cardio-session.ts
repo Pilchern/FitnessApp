@@ -41,9 +41,9 @@ function shiftIsoDate(isoDate: string, days: number): string {
 type MeasuredRideFields = {
   avgOutput?: number;
   zone2Minutes?: number;
-  best5MinWatts?: number;
-  best20MinWatts?: number;
-  zone2HeartRate?: number;
+  best5MinWatts?: number | null;
+  best20MinWatts?: number | null;
+  zone2HeartRate?: number | null;
 };
 
 const POWER_DERIVED_FIELDS = [
@@ -63,12 +63,16 @@ function measuredRidePatch(
   },
 ): MeasuredRideFields | null {
   const patch: MeasuredRideFields = {};
-  for (const field of POWER_DERIVED_FIELDS) {
-    const value = incoming[field];
-    if (value != null && value !== existing[field]) patch[field] = value;
-  }
   const avgOutput = incoming.avgOutput;
   const incomingHasPower = avgOutput != null;
+  // The power copy is authoritative for the power markers, so a value it no
+  // longer reports (e.g. under a new band) is cleared rather than left stale.
+  if (incomingHasPower) {
+    for (const field of POWER_DERIVED_FIELDS) {
+      const value = incoming[field] ?? null;
+      if (value !== existing[field]) patch[field] = value;
+    }
+  }
   if (avgOutput != null && avgOutput !== existing.avgOutput) {
     patch.avgOutput = avgOutput;
   }
