@@ -11,14 +11,16 @@ import type {
  * How the number is made:
  * 1. Core signals become z-scores against your prior 30 days: HRV and heart
  *    rate (overnight readings when synced, else Apple's daily HRV and resting
- *    HR), last night's sleep and the 7-night average against the sleep target
+ *    HR), the 7-night HRV average (steadier than one night of Apple's sparse
+ *    HRV samples; Plews et al. 2012/2013), last night's sleep and the 7-night average against the sleep target
  *    (credit above the target is capped; the first 15 min short is free and
  *    a single short night costs less than a short week), and wake-time
  *    consistency.
  * 2. Their weighted mean maps to the score: a day exactly at baseline is 70,
  *    and SCORE_PER_Z points per unit. Simulated with your sleep spread (8.2 h,
  *    +/- 0.7) and assumed signal correlations, 90+ lands on about 8% of days
- *    and 100 on about 1%, before penalties and the calibration cap.
+ *    and 100 on about 1%, before penalties and the calibration cap. That was
+ *    the v2 weights; re-run it at the 2026-11-10 recalibration.
  * 3. Penalties that only ever subtract: wrist temperature above baseline,
  *    breathing rate above baseline, and a training-load spike (last 7 days
  *    against the 4-week average).
@@ -34,6 +36,7 @@ import type {
 
 export type ReadinessComponentKey =
   | "hrv"
+  | "hrvBalance"
   | "restingHeartRate"
   | "sleep"
   | "sleepBalance"
@@ -124,11 +127,12 @@ const CAPPED_SCORE = 49;
 const CALIBRATING_MAX_SCORE = 95;
 
 const WEIGHTS: Record<ReadinessComponentKey, number> = {
-  hrv: 0.35,
+  hrv: 0.3,
+  hrvBalance: 0.1,
   restingHeartRate: 0.2,
   sleep: 0.2,
   sleepBalance: 0.1,
-  wakeConsistency: 0.15,
+  wakeConsistency: 0.1,
 };
 
 /** Default session RPE when none was logged, by cardio kind. */
@@ -297,12 +301,13 @@ function pickSeries(
   const overnightPrior = present(prior.map(overnight));
   const today = overnight(day);
   if (today != null && overnightPrior.length >= MIN_BASELINE_DAYS) {
-    return { today, prior: overnightPrior, overnight: true };
+    return { today, prior: overnightPrior, overnight: true, read: overnight };
   }
   return {
     today: daily(day),
     prior: present(prior.map(daily)),
     overnight: false,
+    read: daily,
   };
 }
 
@@ -337,16 +342,37 @@ function scoreDay(
 
   const components: (ReadinessComponent & { z: number })[] = [];
 
+  const weekStart = addDays(day.checkinDate, -6);
+  const week = checkins.filter(
+    (c) => c.checkinDate >= weekStart && c.checkinDate <= day.checkinDate,
+  );
+
   if (hrv.today != null && hrv.prior.length >= MIN_BASELINE_DAYS) {
     const base = robustBaseline(hrv.prior.map(Math.log), MIN_LN_HRV_SPREAD);
+    const usual = Math.round(Math.exp(base.center));
     components.push(
       component(
         "hrv",
         hrv.overnight ? "HRV, overnight" : "HRV",
         (Math.log(hrv.today) - base.center) / base.spread,
-        `${Math.round(hrv.today)} ms vs ${Math.round(Math.exp(base.center))} ms usual`,
+        `${Math.round(hrv.today)} ms vs ${usual} ms usual`,
       ),
     );
+
+    // Same series as tonight's reading, so overnight and daily never mix.
+    // Median, so one artifact night cannot drag the week.
+    const weekLn = present(week.map(hrv.read)).map(Math.log);
+    if (weekLn.length >= 3) {
+      const typical = median(weekLn);
+      components.push(
+        component(
+          "hrvBalance",
+          "HRV, 7 nights",
+          (typical - base.center) / base.spread,
+          `${Math.round(Math.exp(typical))} ms typical vs ${usual} ms usual`,
+        ),
+      );
+    }
   }
 
   if (heartRate.today != null && heartRate.prior.length >= MIN_BASELINE_DAYS) {
@@ -378,10 +404,6 @@ function scoreDay(
     );
   }
 
-  const weekStart = addDays(day.checkinDate, -6);
-  const week = checkins.filter(
-    (c) => c.checkinDate >= weekStart && c.checkinDate <= day.checkinDate,
-  );
   const weekSleep = present(week.map((c) => c.sleepDurationMinutes));
   if (weekSleep.length >= 3) {
     const avg = weekSleep.reduce((s, v) => s + v, 0) / weekSleep.length;

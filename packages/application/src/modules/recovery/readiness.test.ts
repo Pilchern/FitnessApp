@@ -98,6 +98,7 @@ describe("computeDailyReadiness", () => {
     expect(result.level).toBe("good");
     expect(result.components.map((c) => c.key)).toEqual([
       "hrv",
+      "hrvBalance",
       "restingHeartRate",
       "sleep",
       "sleepBalance",
@@ -197,6 +198,38 @@ describe("computeDailyReadiness", () => {
     expect(Math.abs(withOutlier.score - without.score)).toBeLessThanOrEqual(5);
   });
 
+  it("scores the 7-night HRV median, robust to one odd night", () => {
+    const balance = (rows: ReturnType<typeof baseline>) => {
+      const result = computeDailyReadiness(
+        [...rows, checkin(TODAY, { hrv: 55, restingHeartRate: 60 })],
+        TODAY,
+      );
+      if (result.status !== "scored") throw new Error("expected a score");
+      return result.components.find((c) => c.key === "hrvBalance");
+    };
+
+    // A steady week sits at baseline.
+    expect(balance(baseline())?.score).toBe(70);
+
+    // One crashed night in the week barely moves it.
+    const oneBad = baseline();
+    oneBad[0] = { ...oneBad[0]!, hrv: 25 };
+    expect(balance(oneBad)?.score).toBeGreaterThanOrEqual(65);
+
+    // A week of suppressed HRV reads low even when tonight is normal.
+    const suppressed = baseline(20).map((r, i) =>
+      i < 6 ? { ...r, hrv: 38 } : r,
+    );
+    const week = balance(suppressed);
+    expect(week?.level).toBe("low");
+    // The low nights sit in the 30-day baseline too, so "usual" eases to 50.
+    expect(week?.detail).toBe("38 ms typical vs 50 ms usual");
+
+    // Needs three nights in the week.
+    const sparse = baseline().map((r, i) => (i < 6 ? { ...r, hrv: null } : r));
+    expect(balance(sparse)).toBeUndefined();
+  });
+
   it("treats one slightly short night gently and a short week harder", () => {
     const sleepScore = (minutes: number, rows = baseline()) => {
       const result = computeDailyReadiness(
@@ -247,6 +280,7 @@ describe("computeDailyReadiness", () => {
     expect(best.score).toBe(100);
     expect(best.components.map((c) => c.key)).toEqual([
       "hrv",
+      "hrvBalance",
       "restingHeartRate",
       "sleep",
       "sleepBalance",
