@@ -26,6 +26,9 @@ function storedCardio(
     avgHeartRate: null,
     maxHeartRate: null,
     avgOutput: null,
+    best5MinWatts: null,
+    best20MinWatts: null,
+    zone2HeartRate: null,
     cadenceMin: null,
     cadenceMax: null,
     resistanceMin: null,
@@ -281,6 +284,38 @@ describe("CardioSessionService.upsertImported cross-provider handling", () => {
       userId,
       avgOutput: 118,
       zone2Minutes: 27,
+    });
+  });
+
+  it("refreshes the power-derived ride markers on re-push", async () => {
+    const repository = createCardioRepository([]);
+    repository.findByExternalId.mockResolvedValue(
+      storedCardio({
+        id: "44444444-4444-4444-8444-444444444444",
+        avgOutput: 118,
+        zone2Minutes: 27,
+      }),
+    );
+    repository.update.mockResolvedValue(
+      storedCardio({ id: "44444444-4444-4444-8444-444444444444" }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      avgOutput: 118,
+      zone2Minutes: 27,
+      best5MinWatts: 152,
+      best20MinWatts: 131,
+      zone2HeartRate: 126,
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id: "44444444-4444-4444-8444-444444444444",
+      userId,
+      best5MinWatts: 152,
+      best20MinWatts: 131,
+      zone2HeartRate: 126,
     });
   });
 

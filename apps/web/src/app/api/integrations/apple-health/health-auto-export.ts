@@ -67,9 +67,19 @@ type HaeWorkout = {
   maxHeartRate?: Quantity;
   heartRate?: { avg?: Quantity; max?: Quantity };
   /** Per-interval heart rate during the workout (v2 "heartRateData"). */
-  heartRateData?: { date?: string; Avg?: number; qty?: number }[];
+  heartRateData?: {
+    date?: string;
+    Avg?: number;
+    qty?: number;
+    source?: string;
+  }[];
   /** Per-sample power in watts (v2, "Include Workout Metrics"). Peloton writes it. */
-  cyclingPower?: { date?: string; qty?: number; units?: string }[];
+  cyclingPower?: {
+    date?: string;
+    qty?: number;
+    units?: string;
+    source?: string;
+  }[];
   activeEnergyBurned?: Quantity;
   activeEnergy?: Quantity;
 };
@@ -446,6 +456,10 @@ function timedPoints(
   });
 }
 
+function roundOrNull(value: number | null) {
+  return value == null ? null : Math.round(value);
+}
+
 function minutesInBand(points: TimedPoint[], [low, high]: [number, number]) {
   return points.reduce(
     (sum, p) => (p.value >= low && p.value <= high ? sum + p.span : sum),
@@ -460,7 +474,12 @@ function minutesInBand(points: TimedPoint[], [low, high]: [number, number]) {
 export function powerSummary(
   data: HaeWorkout["cyclingPower"],
   band: [number, number] | null,
-): { avgWatts: number; zone2Minutes: number | null } | null {
+): {
+  avgWatts: number;
+  zone2Minutes: number | null;
+  best5MinWatts: number | null;
+  best20MinWatts: number | null;
+} | null {
   const points = timedPoints(
     (data ?? [])
       .filter((p) => !p.units || /^w(atts?)?$/i.test(p.units))
@@ -475,7 +494,100 @@ export function powerSummary(
   return {
     avgWatts: Math.round(avgWatts),
     zone2Minutes: band ? Math.round(minutesInBand(points, band)) : null,
+    best5MinWatts: roundOrNull(bestRollingAverage(points, 5)),
+    best20MinWatts: roundOrNull(bestRollingAverage(points, 20)),
   };
+}
+
+const WATCH_SOURCE = /watch/i;
+
+/**
+ * Heart rate from one source. A chest strap paired to the Peloton reaches
+ * Apple Health through Peloton, so when any non-Watch readings exist the
+ * Watch's optical readings are dropped rather than blended with them.
+ */
+export function preferredHeartRate(
+  data: HaeWorkout["heartRateData"],
+): HaeWorkout["heartRateData"] {
+  const points = data ?? [];
+  const other = points.filter((p) => p.source && !WATCH_SOURCE.test(p.source));
+  return other.length >= 2 ? other : points;
+}
+
+function sourcesOf(data: { source?: string }[] | undefined): string[] {
+  return [
+    ...new Set((data ?? []).map((p) => p.source?.trim()).filter(Boolean)),
+  ] as string[];
+}
+
+/**
+ * Best average over any window of at least `minutes`, time-weighted. Null
+ * when the series is shorter than the window.
+ */
+function bestRollingAverage(points: TimedPoint[], minutes: number) {
+  let best: number | null = null;
+  for (let i = 0; i < points.length; i += 1) {
+    let span = 0;
+    let sum = 0;
+    for (let j = i; j < points.length && span < minutes; j += 1) {
+      span += points[j]!.span;
+      sum += points[j]!.value * points[j]!.span;
+    }
+    if (span < minutes * 0.95) break;
+    const avg = sum / span;
+    if (best == null || avg > best) best = avg;
+  }
+  return best;
+}
+
+const WARM_UP_MINUTES = 10;
+const MIN_ZONE2_HR_MINUTES = 10;
+
+/**
+ * Median heart rate over the minutes spent in the Zone 2 power band, after a
+ * 10 minute warm-up. Needs 10 such minutes. Falling over months at the same
+ * watts is the aerobic fitness signal.
+ */
+export function zone2HeartRateFromPower(
+  power: HaeWorkout["cyclingPower"],
+  heartRate: HaeWorkout["heartRateData"],
+  [low, high]: [number, number],
+): number | null {
+  const minuteOf = (date?: string) =>
+    Math.floor(Date.parse(toIsoDateTime(date) ?? "") / 60000);
+  const bpmByMinute = new Map<number, number[]>();
+  for (const p of heartRate ?? []) {
+    const minute = minuteOf(p.date);
+    const bpm = p.Avg ?? p.qty;
+    if (!Number.isFinite(minute) || !isFiniteNumber(bpm)) continue;
+    bpmByMinute.set(minute, [...(bpmByMinute.get(minute) ?? []), bpm]);
+  }
+  const wattsByMinute = new Map<number, number[]>();
+  for (const p of power ?? []) {
+    const minute = minuteOf(p.date);
+    if (!Number.isFinite(minute) || !isFiniteNumber(p.qty)) continue;
+    wattsByMinute.set(minute, [...(wattsByMinute.get(minute) ?? []), p.qty]);
+  }
+  const minutes = [...wattsByMinute.keys()].sort((a, b) => a - b);
+  if (minutes.length === 0) return null;
+  const mean = (values: number[]) =>
+    values.reduce((sum, v) => sum + v, 0) / values.length;
+  const inBand: number[] = [];
+  for (const minute of minutes) {
+    if (minute < minutes[0]! + WARM_UP_MINUTES) continue;
+    const watts = mean(wattsByMinute.get(minute)!);
+    const bpm = bpmByMinute.get(minute);
+    if (bpm && watts >= low && watts <= high) inBand.push(mean(bpm));
+  }
+  if (inBand.length < MIN_ZONE2_HR_MINUTES) return null;
+  inBand.sort((a, b) => a - b);
+  const mid = Math.floor(inBand.length / 2);
+  const median =
+    inBand.length % 2 === 0
+      ? (inBand[mid - 1]! + inBand[mid]!) / 2
+      : inBand[mid]!;
+  const bpm = Math.round(median);
+  return bpm >= 20 && bpm <= 250 ? bpm : null;
 }
 
 function mapWorkout(
@@ -492,11 +604,22 @@ function mapWorkout(
   const distance = quantity(workout.distance);
   const distanceUnits = workout.distance?.units as keyof typeof METERS;
   const power = powerSummary(workout.cyclingPower, options.zone2Watts ?? null);
+  const heartRate = preferredHeartRate(workout.heartRateData);
   const zone2 =
     power?.zone2Minutes ??
     (options.zone2Bpm
-      ? zone2MinutesFromHeartRate(workout.heartRateData, options.zone2Bpm)
+      ? zone2MinutesFromHeartRate(heartRate, options.zone2Bpm)
       : null);
+  const zone2HeartRate =
+    power && options.zone2Watts
+      ? zone2HeartRateFromPower(
+          workout.cyclingPower,
+          heartRate,
+          options.zone2Watts,
+        )
+      : null;
+  const heartRateSources = sourcesOf(workout.heartRateData);
+  const powerSources = sourcesOf(workout.cyclingPower);
 
   return {
     // Export v1 has no id; start time is unique per workout.
@@ -516,6 +639,17 @@ function mapWorkout(
         : undefined,
     source_name: "Health Auto Export",
     ...(power ? { avg_power_watts: power.avgWatts } : {}),
+    ...(power?.best5MinWatts != null
+      ? { best_5min_watts: power.best5MinWatts }
+      : {}),
+    ...(power?.best20MinWatts != null
+      ? { best_20min_watts: power.best20MinWatts }
+      : {}),
+    ...(zone2HeartRate != null ? { zone2_heart_rate: zone2HeartRate } : {}),
+    ...(heartRateSources.length > 0
+      ? { heart_rate_sources: heartRateSources }
+      : {}),
+    ...(powerSources.length > 0 ? { power_sources: powerSources } : {}),
     ...(zone2 != null
       ? {
           zone2_minutes:
@@ -555,6 +689,7 @@ export function dedupeOverlappingRides(
     distance_meters: winner.distance_meters ?? other.distance_meters,
     // Power-measured Zone 2 comes with the winner when it has power.
     zone2_minutes: winner.zone2_minutes ?? other.zone2_minutes,
+    zone2_heart_rate: winner.zone2_heart_rate ?? other.zone2_heart_rate,
   });
 
   for (const workout of [...workouts].sort((a, b) =>
@@ -626,6 +761,36 @@ function mapStrengthWorkout(workout: HaeWorkout): WatchStrengthWorkout | null {
   };
 }
 
+/**
+ * A ride copy with power but no heart rate series (Peloton) borrows the series
+ * of an overlapping copy that has one (the Watch), so heart rate at Zone 2
+ * power can be measured when the two apps split the data.
+ */
+function shareHeartRateAcrossCopies(workouts: HaeWorkout[]): HaeWorkout[] {
+  const rangeOfRaw = (w: HaeWorkout) => ({
+    start: Date.parse(toIsoDateTime(w.start) ?? ""),
+    end: Date.parse(toIsoDateTime(w.end) ?? ""),
+  });
+  const rides = workouts.filter(
+    (w) =>
+      w.name &&
+      RIDE_PATTERN.test(w.name) &&
+      (w.heartRateData?.length ?? 0) >= 2,
+  );
+  return workouts.map((w) => {
+    if (!w.cyclingPower?.length || (w.heartRateData?.length ?? 0) >= 2)
+      return w;
+    const a = rangeOfRaw(w);
+    const donor = rides.find((other) => {
+      const b = rangeOfRaw(other);
+      const overlap = Math.min(a.end, b.end) - Math.max(a.start, b.start);
+      const shorter = Math.min(a.end - a.start, b.end - b.start);
+      return other !== w && shorter > 0 && overlap > shorter / 2;
+    });
+    return donor ? { ...w, heartRateData: donor.heartRateData } : w;
+  });
+}
+
 export function mapHealthAutoExport(
   body: HealthAutoExportBody,
   options: HealthAutoExportOptions = {},
@@ -634,7 +799,7 @@ export function mapHealthAutoExport(
     body.data?.metrics ?? [],
   );
   const workouts = dedupeOverlappingRides(
-    (body.data?.workouts ?? [])
+    shareHeartRateAcrossCopies(body.data?.workouts ?? [])
       .map((w) => mapWorkout(w, options))
       .filter((w): w is AppleHealthWorkoutPayload => w != null),
   );

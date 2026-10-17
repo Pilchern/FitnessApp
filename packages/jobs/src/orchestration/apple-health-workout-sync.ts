@@ -32,7 +32,19 @@ export type AppleHealthWorkoutPayload = {
   zone2_minutes?: number;
   /** Average power in watts from the ride's power samples (Peloton). */
   avg_power_watts?: number;
+  /** Best rolling 5 and 20 minute average power, watts. */
+  best_5min_watts?: number;
+  best_20min_watts?: number;
+  /** Median heart rate in the Zone 2 power band after the warm-up. */
+  zone2_heart_rate?: number;
+  /** Apple Health sources of the heart rate and power samples (diagnostic). */
+  heart_rate_sources?: string[];
+  power_sources?: string[];
 };
+
+function roundedOrNull(value: number | undefined): number | null {
+  return value != null ? Math.round(value) : null;
+}
 
 export type SyncAppleHealthWorkoutsInput = {
   userId: UserId;
@@ -199,10 +211,10 @@ export class AppleHealthWorkoutSyncOrchestrator {
                   ? Math.round(payload.max_heart_rate)
                   : null,
               distanceMeters: payload.distance_meters ?? null,
-              avgOutput:
-                payload.avg_power_watts != null
-                  ? Math.round(payload.avg_power_watts)
-                  : null,
+              avgOutput: roundedOrNull(payload.avg_power_watts),
+              best5MinWatts: roundedOrNull(payload.best_5min_watts),
+              best20MinWatts: roundedOrNull(payload.best_20min_watts),
+              zone2HeartRate: roundedOrNull(payload.zone2_heart_rate),
               sportType: payload.workout_type,
               notes: payload.source_name
                 ? `Synced via Apple Health (${payload.source_name})`

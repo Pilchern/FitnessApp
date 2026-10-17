@@ -93,6 +93,44 @@ describe("buildTrendNotes", () => {
     expect(buildTrendNotes(input({ cardioSessions }))).toEqual([]);
   });
 
+  it("reports heart rate at Zone 2 watts falling between 4-week windows", () => {
+    // Same 30 min per window so only the aerobic note fires.
+    const z2 = (n: number, bpm: number) => ({
+      ...ride(n, 30),
+      zone2HeartRate: bpm,
+    });
+    const cardioSessions = [
+      z2(2, 128),
+      z2(9, 127),
+      z2(16, 129),
+      z2(30, 133),
+      z2(37, 132),
+      z2(44, 134),
+    ];
+    expect(buildTrendNotes(input({ cardioSessions }))).toEqual([
+      {
+        key: "aerobic",
+        tone: "positive",
+        text: "Heart rate at Zone 2 watts is down 5 bpm (128 from 133) over the last 4 weeks. Aerobic fitness is improving.",
+      },
+    ]);
+  });
+
+  it("stays quiet on fewer than 3 measured rides per window", () => {
+    const z2 = (n: number, bpm: number) => ({
+      ...ride(n, 30),
+      zone2HeartRate: bpm,
+    });
+    const cardioSessions = [
+      z2(2, 120),
+      z2(9, 121),
+      z2(30, 133),
+      z2(37, 132),
+      z2(44, 134),
+    ];
+    expect(buildTrendNotes(input({ cardioSessions }))).toEqual([]);
+  });
+
   it("calls a sub-1 lb monthly change steady", () => {
     const bodyMetrics = [
       { measuredOn: daysAgo(1), weightLb: 190.4 },
