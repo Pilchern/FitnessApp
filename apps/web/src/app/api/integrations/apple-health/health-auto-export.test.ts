@@ -426,6 +426,61 @@ describe("mapHealthAutoExport Zone 2 and daylight", () => {
     ).not.toHaveProperty("zone2_minutes");
   });
 
+  // Ten one-minute power readings: warm-up, eight in 97-130 W, cool-down.
+  const cyclingPower = [60, 100, 110, 118, 125, 130, 128, 115, 105, 70].map(
+    (watts, i) => ({
+      date: `2026-10-13 17:${String(i).padStart(2, "0")}:00 -0500`,
+      qty: watts,
+      units: "W",
+    }),
+  );
+
+  it("credits Zone 2 by power when the ride has power samples", () => {
+    const out = mapHealthAutoExport(
+      { data: { workouts: [{ ...ride, cyclingPower }] } },
+      { zone2Bpm: [110, 128], zone2Watts: [97, 130] },
+    );
+    expect(out.workouts[0]?.zone2_minutes).toBe(8);
+    expect(out.workouts[0]?.avg_power_watts).toBe(106);
+  });
+
+  it("falls back to heart rate when the ride has no power", () => {
+    const out = mapHealthAutoExport(
+      { data: { workouts: [ride] } },
+      { zone2Bpm: [110, 128], zone2Watts: [97, 130] },
+    );
+    expect(out.workouts[0]?.zone2_minutes).toBe(6);
+    expect(out.workouts[0]).not.toHaveProperty("avg_power_watts");
+  });
+
+  it("keeps the Peloton copy with power and borrows the Watch's heart rate", () => {
+    const watch = {
+      ...ride,
+      id: "WATCH",
+      avgHeartRate: { qty: 121, units: "bpm" },
+      maxHeartRate: { qty: 135, units: "bpm" },
+    };
+    const peloton = {
+      ...ride,
+      id: "PELO",
+      start: "2026-10-13 17:00:30 -0500",
+      heartRateData: undefined,
+      cyclingPower,
+    };
+    const out = mapHealthAutoExport(
+      { data: { workouts: [watch, peloton] } },
+      { zone2Bpm: [110, 128], zone2Watts: [97, 130] },
+    );
+    expect(out.workouts).toHaveLength(1);
+    expect(out.workouts[0]).toMatchObject({
+      workout_id: "PELO",
+      avg_power_watts: 106,
+      zone2_minutes: 8,
+      avg_heart_rate: 121,
+      max_heart_rate: 135,
+    });
+  });
+
   it("sums hourly daylight between 05:00 and 09:59 per day", () => {
     const out = mapHealthAutoExport({
       data: {

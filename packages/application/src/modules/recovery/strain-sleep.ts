@@ -46,6 +46,22 @@ export function zone2HeartRateRange(age: number): [number, number] {
   return [Math.round(max * 0.65), Math.round(max * 0.75)];
 }
 
+/**
+ * FTP from the 2026-05-21 Peloton test. Update after each retest (the plan
+ * calls for one every 6-8 weeks once structured riding resumes).
+ */
+export const CURRENT_FTP_WATTS = 173;
+
+/**
+ * Zone 2 by power, the plan's primary band: 56-75% of FTP (97-130 W at 173).
+ * Rides that carry power are credited by this band instead of heart rate.
+ */
+export function zone2PowerRange(
+  ftpWatts: number = CURRENT_FTP_WATTS,
+): [number, number] {
+  return [Math.round(ftpWatts * 0.56), Math.round(ftpWatts * 0.75)];
+}
+
 export function banisterTrimp(input: {
   minutes: number;
   avgHeartRate: number;

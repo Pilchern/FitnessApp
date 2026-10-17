@@ -32,6 +32,31 @@ function shiftIsoDate(isoDate: string, days: number): string {
   return anchored.toISOString().slice(0, 10);
 }
 
+/**
+ * Measured fields a re-pushed import may refresh: power, and Zone 2 minutes.
+ * Zone 2 measured by power is never replaced by a heart rate value, so a
+ * Watch copy without power can't undo what the Peloton copy recorded.
+ */
+function measuredRidePatch(
+  existing: CardioSession,
+  incoming: { avgOutput?: number | null; zone2Minutes?: number | null },
+): { avgOutput?: number; zone2Minutes?: number } | null {
+  const patch: { avgOutput?: number; zone2Minutes?: number } = {};
+  const avgOutput = incoming.avgOutput;
+  const incomingHasPower = avgOutput != null;
+  if (avgOutput != null && avgOutput !== existing.avgOutput) {
+    patch.avgOutput = avgOutput;
+  }
+  if (
+    incoming.zone2Minutes != null &&
+    incoming.zone2Minutes !== existing.zone2Minutes &&
+    (incomingHasPower || existing.avgOutput == null)
+  ) {
+    patch.zone2Minutes = incoming.zone2Minutes;
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
 const cardioSessionKindSchema = z.enum(["zone2", "vo2", "recovery", "other"]);
 const cardioSessionCompletionSchema = z.enum([
   "planned",
@@ -293,14 +318,14 @@ export class CardioSessionService {
       );
       if (existing) {
         // Apple Health re-posts the last week of rides, so a re-push can carry
-        // measured Zone 2 the first import lacked or a value from a changed
-        // band. Refresh just that field; everything else stays as stored.
-        const zone2Minutes = session.zone2Minutes;
-        if (zone2Minutes != null && zone2Minutes !== existing.zone2Minutes) {
+        // measured Zone 2 or power the first import lacked, or a value from a
+        // changed band. Refresh just those; everything else stays as stored.
+        const patch = measuredRidePatch(existing, session);
+        if (patch) {
           const updated = await this.update({
             id: existing.id,
             userId,
-            zone2Minutes,
+            ...patch,
           });
           return { created: false, session: updated };
         }
@@ -345,16 +370,25 @@ export class CardioSessionService {
     };
 
     // Same ride, same provider, new external id (Apple Health keeps one
-    // workout per writing app). Keep the stored row; borrow its distance if
-    // the stored copy has none.
+    // workout per writing app). Keep the stored row; borrow the distance,
+    // power and power-measured Zone 2 the stored copy lacks.
     const twin = findSameProviderCardioTwin(incoming, nearbyExisting);
     if (twin) {
-      if (twin.distanceMeters == null && parsed.distanceMeters != null) {
-        const updated = await this.update({
-          id: twin.id,
-          userId,
-          distanceMeters: parsed.distanceMeters,
-        });
+      const patch = {
+        ...(twin.distanceMeters == null && parsed.distanceMeters != null
+          ? { distanceMeters: parsed.distanceMeters }
+          : {}),
+        ...(twin.avgOutput == null && parsed.avgOutput != null
+          ? {
+              avgOutput: parsed.avgOutput,
+              ...(parsed.zone2Minutes != null
+                ? { zone2Minutes: parsed.zone2Minutes }
+                : {}),
+            }
+          : {}),
+      };
+      if (Object.keys(patch).length > 0) {
+        const updated = await this.update({ id: twin.id, userId, ...patch });
         return { created: false, session: updated };
       }
       return { created: false, session: twin };

@@ -252,6 +252,54 @@ describe("CardioSessionService.upsertImported cross-provider handling", () => {
     expect(repository.update).not.toHaveBeenCalled();
   });
 
+  it("refreshes power and power Zone 2 on a re-imported ride", async () => {
+    const repository = createCardioRepository([]);
+    repository.findByExternalId.mockResolvedValue(
+      storedCardio({
+        id: "33333333-3333-4333-8333-333333333333",
+        zone2Minutes: 16,
+        avgOutput: null,
+      }),
+    );
+    repository.update.mockResolvedValue(
+      storedCardio({
+        id: "33333333-3333-4333-8333-333333333333",
+        zone2Minutes: 27,
+        avgOutput: 118,
+      }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      zone2Minutes: 27,
+      avgOutput: 118,
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id: "33333333-3333-4333-8333-333333333333",
+      userId,
+      avgOutput: 118,
+      zone2Minutes: 27,
+    });
+  });
+
+  it("keeps power-measured Zone 2 when a re-push has only heart rate", async () => {
+    const repository = createCardioRepository([]);
+    repository.findByExternalId.mockResolvedValue(
+      storedCardio({ id: "existing-1", zone2Minutes: 27, avgOutput: 118 }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      zone2Minutes: 16,
+      avgOutput: null,
+    });
+
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
   it("widens the duplicate lookup to the adjacent days", async () => {
     const repository = createCardioRepository([]);
     const service = new CardioSessionService(repository as never);
@@ -341,6 +389,30 @@ describe("CardioSessionService.upsertImported same-provider twins", () => {
     });
     expect(repository.create).not.toHaveBeenCalled();
     expect(result.session.distanceMeters).toBe(8271);
+  });
+
+  it("copies power and power Zone 2 onto the stored copy from the twin", async () => {
+    const repository = createCardioRepository([
+      storedAppleHealthRide({ zone2Minutes: 16 }),
+    ]);
+    repository.update.mockResolvedValue(
+      storedAppleHealthRide({ zone2Minutes: 41, avgOutput: 116 }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      avgOutput: 116,
+      zone2Minutes: 41,
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id: twinId,
+      userId,
+      avgOutput: 116,
+      zone2Minutes: 41,
+    });
+    expect(repository.create).not.toHaveBeenCalled();
   });
 
   it("keeps a second ride that starts minutes later", async () => {
