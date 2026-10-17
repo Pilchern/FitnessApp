@@ -29,8 +29,8 @@ import type { WatchStrengthWorkout } from "@fitness-app/application";
  *   power, else heart rate, else the longer one, is kept, and it borrows the
  *   fields it lacks from the other copy.
  *
- * Zone 2: rides with power samples are credited by the watt band (the plan's
- * primary measure); rides without power fall back to the heart rate band.
+ * Zone 2: credited by the band `zone2CreditBy` names (power by default,
+ * heart rate while the FTP is stale); the other band is the fallback.
  */
 
 type Quantity = { qty?: number; units?: string };
@@ -408,6 +408,11 @@ export type HealthAutoExportOptions = {
   zone2Bpm?: [number, number] | null;
   /** Zone 2 power band, watts; wins over heart rate when a ride has power. */
   zone2Watts?: [number, number] | null;
+  /**
+   * Which band credits Zone 2 minutes when a ride has both: "power" (default)
+   * or "heart_rate". The other is the fallback.
+   */
+  zone2CreditBy?: "power" | "heart_rate";
 };
 
 /**
@@ -605,11 +610,13 @@ function mapWorkout(
   const distanceUnits = workout.distance?.units as keyof typeof METERS;
   const power = powerSummary(workout.cyclingPower, options.zone2Watts ?? null);
   const heartRate = preferredHeartRate(workout.heartRateData);
+  const heartRateZone2 = options.zone2Bpm
+    ? zone2MinutesFromHeartRate(heartRate, options.zone2Bpm)
+    : null;
   const zone2 =
-    power?.zone2Minutes ??
-    (options.zone2Bpm
-      ? zone2MinutesFromHeartRate(heartRate, options.zone2Bpm)
-      : null);
+    options.zone2CreditBy === "heart_rate"
+      ? (heartRateZone2 ?? power?.zone2Minutes ?? null)
+      : (power?.zone2Minutes ?? heartRateZone2);
   const zone2HeartRate =
     power && options.zone2Watts
       ? zone2HeartRateFromPower(

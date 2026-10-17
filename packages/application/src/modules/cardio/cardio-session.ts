@@ -404,27 +404,16 @@ export class CardioSessionService {
     };
 
     // Same ride, same provider, new external id (Apple Health keeps one
-    // workout per writing app). Keep the stored row; borrow the distance,
-    // power and power-measured Zone 2 the stored copy lacks.
+    // workout per writing app). Keep the stored row; borrow the distance it
+    // lacks, and take power, Zone 2 and the power markers from the copy that
+    // has power (refreshed on every re-push, so a changed band recomputes).
     const twin = findSameProviderCardioTwin(incoming, nearbyExisting);
     if (twin) {
       const patch = {
         ...(twin.distanceMeters == null && parsed.distanceMeters != null
           ? { distanceMeters: parsed.distanceMeters }
           : {}),
-        ...(twin.avgOutput == null && parsed.avgOutput != null
-          ? {
-              avgOutput: parsed.avgOutput,
-              ...(parsed.zone2Minutes != null
-                ? { zone2Minutes: parsed.zone2Minutes }
-                : {}),
-              ...Object.fromEntries(
-                POWER_DERIVED_FIELDS.filter(
-                  (field) => parsed[field] != null,
-                ).map((field) => [field, parsed[field]]),
-              ),
-            }
-          : {}),
+        ...(parsed.avgOutput != null ? measuredRidePatch(twin, parsed) : {}),
       };
       if (Object.keys(patch).length > 0) {
         const updated = await this.update({ id: twin.id, userId, ...patch });

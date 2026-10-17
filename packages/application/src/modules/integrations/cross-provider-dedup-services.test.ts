@@ -450,6 +450,28 @@ describe("CardioSessionService.upsertImported same-provider twins", () => {
     expect(repository.create).not.toHaveBeenCalled();
   });
 
+  it("refreshes Zone 2 on a twin that already has power when the power copy re-pushes", async () => {
+    const repository = createCardioRepository([
+      storedAppleHealthRide({ zone2Minutes: 1, avgOutput: 50 }),
+    ]);
+    repository.update.mockResolvedValue(
+      storedAppleHealthRide({ zone2Minutes: 3, avgOutput: 50 }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      avgOutput: 50,
+      zone2Minutes: 3,
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id: twinId,
+      userId,
+      zone2Minutes: 3,
+    });
+  });
+
   it("keeps a second ride that starts minutes later", async () => {
     const repository = createCardioRepository([
       storedAppleHealthRide({ startedAt: "2026-08-10T13:55:00.000Z" }),

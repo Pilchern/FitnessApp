@@ -13,6 +13,7 @@ import {
 import { getCachedUserProfile } from "@/lib/server/services";
 import {
   ageOn,
+  ZONE2_CREDIT_BY,
   zone2HeartRateRange,
   zone2PowerRange,
 } from "@fitness-app/application";
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
       ? zone2HeartRateRange(ageOn(profile.birthDate, today))
       : null,
     zone2Watts: zone2PowerRange(),
+    zone2CreditBy: ZONE2_CREDIT_BY,
   });
   if (
     mapped.dailyMetrics.length > MAX_WEBHOOK_ITEMS ||

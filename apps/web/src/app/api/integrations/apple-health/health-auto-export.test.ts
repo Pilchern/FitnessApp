@@ -444,6 +444,19 @@ describe("mapHealthAutoExport Zone 2 and daylight", () => {
     expect(out.workouts[0]?.avg_power_watts).toBe(106);
   });
 
+  it("credits Zone 2 by heart rate when told to, even with power", () => {
+    const out = mapHealthAutoExport(
+      { data: { workouts: [{ ...ride, cyclingPower }] } },
+      {
+        zone2Bpm: [110, 128],
+        zone2Watts: [97, 130],
+        zone2CreditBy: "heart_rate",
+      },
+    );
+    expect(out.workouts[0]?.zone2_minutes).toBe(6);
+    expect(out.workouts[0]?.avg_power_watts).toBe(106);
+  });
+
   it("falls back to heart rate when the ride has no power", () => {
     const out = mapHealthAutoExport(
       { data: { workouts: [ride] } },

@@ -56,6 +56,13 @@ export const CURRENT_FTP_WATTS = 173;
  * Zone 2 by power, the plan's primary band: 56-75% of FTP (97-130 W at 173).
  * Rides that carry power are credited by this band instead of heart rate.
  */
+/**
+ * Which band credits Zone 2 minutes. Heart rate until FTP is retested after
+ * surgeon clearance: the 173 W FTP predates the July 2026 ACL injury, so its
+ * watt band sits above current Zone 2. Switch to "power" with the new FTP.
+ */
+export const ZONE2_CREDIT_BY: "power" | "heart_rate" = "heart_rate";
+
 export function zone2PowerRange(
   ftpWatts: number = CURRENT_FTP_WATTS,
 ): [number, number] {
