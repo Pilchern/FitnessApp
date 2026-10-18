@@ -4,6 +4,7 @@ import {
   createAppleHealthSleepOrchestrator,
   createAppleHealthWebhookSecretLookup,
   createAppleHealthWorkoutOrchestrator,
+  createOvernightMetricsService,
 } from "@/lib/server/integrations";
 import { hasAppleHealthServerEnv } from "@/lib/server/env";
 import {
@@ -132,6 +133,16 @@ export async function POST(request: NextRequest) {
             items: mapped.sleep,
           })
         : null;
+    // After the sleep sync, so a night's bedtime and wake are on the row.
+    // Whichever of the two automations lands second sees both.
+    const overnight =
+      mapped.overnightSamples.length > 0 || mapped.sleep.length > 0
+        ? await createOvernightMetricsService().sync(
+            userId,
+            mapped.overnightSamples,
+            mapped.sleep.map((s) => s.date),
+          )
+        : 0;
     const workouts =
       mapped.workouts.length > 0
         ? await createAppleHealthWorkoutOrchestrator().syncWorkouts({
@@ -160,6 +171,7 @@ export async function POST(request: NextRequest) {
       ok: true,
       dailyMetrics: daily?.processedItemCount ?? 0,
       sleep: sleep?.processedItemCount ?? 0,
+      overnightNights: overnight,
       workouts: workouts?.processedItemCount ?? 0,
       habitsCompleted: habitsCompleted + daylightHabitsCompleted,
       strengthMerged,

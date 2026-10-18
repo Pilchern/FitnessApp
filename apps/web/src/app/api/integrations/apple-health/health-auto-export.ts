@@ -3,7 +3,11 @@ import type {
   AppleHealthSleepPayload,
   AppleHealthWorkoutPayload,
 } from "@fitness-app/jobs";
-import type { WatchStrengthWorkout } from "@fitness-app/application";
+import type {
+  OvernightMetric,
+  OvernightSample,
+  WatchStrengthWorkout,
+} from "@fitness-app/application";
 
 /**
  * Maps Health Auto Export's REST automation JSON ({ data: { metrics,
@@ -13,11 +17,13 @@ import type { WatchStrengthWorkout } from "@fitness-app/application";
  *
  * Overnight metrics: a second automation can send HRV, heart rate,
  * respiratory rate, blood oxygen and sleeping wrist temperature grouped by
- * hour. Hourly points from 23:00 to 05:59 local are averaged onto the wake
- * date's sleep_* fields (a fixed core-sleep window, so every night is measured
- * the same way and partial pushes are overwritten by fuller ones). A metric
- * counts as hourly when any point carries a clock time other than midnight or
- * two points share a date; daily HRV keeps feeding `hrv` as before.
+ * hour. HRV, heart rate, respiratory rate and SpO2 points between 18:00 and
+ * 13:59 come back as `overnightSamples`; the route stores them and averages
+ * each night over the time actually asleep (OvernightMetricsService).
+ * Sleeping wrist temperature, one reading a night, still lands on the wake
+ * date's sleep row here. A metric counts as intraday when any point carries a
+ * clock time other than midnight or two points share a date; daily HRV keeps
+ * feeding `hrv` as before.
  *
  * What is deliberately dropped:
  * - Weight and body fat: Withings syncs directly and outranks a relay.
@@ -97,6 +103,8 @@ export type MappedHealthAutoExport = {
   workouts: AppleHealthWorkoutPayload[];
   /** Watch strength workouts; merged into that day's lift session. */
   strengthWorkouts: WatchStrengthWorkout[];
+  /** Night-time vitals points, averaged over sleep once stored. */
+  overnightSamples: OvernightSample[];
 };
 
 /** HealthKit names: Traditional/Functional Strength Training, Core Training. */
@@ -167,8 +175,31 @@ const OVERNIGHT_METRICS = new Set([
   "apple_sleeping_wrist_temperature",
 ]);
 
-/** Hours (local) counted as overnight; 23:00 belongs to the next date. */
-const OVERNIGHT_HOURS = new Set([23, 0, 1, 2, 3, 4, 5]);
+/** Night-time vitals kept as samples: 18:00 to 13:59 local. */
+function isNightHour(hour: number) {
+  return hour >= 18 || hour < 14;
+}
+
+const SAMPLE_METRIC: Partial<Record<OvernightField, OvernightMetric>> = {
+  sleep_hrv_avg: "hrv",
+  sleep_avg_heart_rate: "heart_rate",
+  sleep_respiratory_rate: "respiratory_rate",
+  sleep_spo2_avg_pct: "spo2",
+};
+
+/** "2026-10-13 02:00:00 -0500" -> "2026-10-13T02:00:00" (wall clock). */
+function toLocalDateTime(value: string | undefined): string | null {
+  const match = value
+    ? /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::(\d{2}))?/.exec(value.trim())
+    : null;
+  return match ? `${match[1]}T${match[2]}:${match[3] ?? "00"}` : null;
+}
+
+/** Hourly when every point sits on the hour; otherwise single readings. */
+function bucketMinutes(metric: HaeMetric): 0 | 60 {
+  const times = (metric.data ?? []).map((p) => toLocalDateTime(p.date));
+  return times.length > 0 && times.every((t) => t?.endsWith(":00:00")) ? 60 : 0;
+}
 
 /** The local clock hour of "2026-10-13 02:00:00 -0500", or null. */
 function localHour(value: string | undefined): number | null {
@@ -245,14 +276,6 @@ function overnightValue(
   }
 }
 
-const OVERNIGHT_ROUNDING: Record<OvernightField, (v: number) => number> = {
-  sleep_hrv_avg: (v) => Math.round(v * 10) / 10,
-  sleep_avg_heart_rate: (v) => Math.round(v),
-  sleep_respiratory_rate: (v) => Math.round(v * 10) / 10,
-  sleep_spo2_avg_pct: (v) => Math.round(v * 10) / 10,
-  sleep_wrist_temp_c: (v) => Math.round(v * 100) / 100,
-};
-
 function mapDailyAndSleep(metrics: HaeMetric[]) {
   const daily = new Map<string, AppleHealthDailyMetricsPayload>();
   const sleep = new Map<string, AppleHealthSleepPayload>();
@@ -267,8 +290,9 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
     return row;
   };
 
-  // date -> field -> readings, averaged once every metric is read.
-  const overnight = new Map<string, Map<OvernightField, number[]>>();
+  // Wrist temperature: date -> readings, averaged once every metric is read.
+  const wristTemp = new Map<string, number[]>();
+  const overnightSamples: OvernightSample[] = [];
   const morningDaylight = new Map<string, number>();
 
   for (const metric of metrics) {
@@ -289,24 +313,30 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
       continue;
     }
     if (isIntraday(metric)) {
+      const bucket = bucketMinutes(metric);
       for (const point of metric.data ?? []) {
         const reading = overnightValue(name, metric.units, point);
         const hour = localHour(point.date);
-        const date = nightDate(point.date);
-        if (!reading || hour == null || !date) continue;
+        if (!reading || hour == null) continue;
         // Wrist temperature is one reading per night, whenever it is stamped.
-        if (
-          reading.field !== "sleep_wrist_temp_c" &&
-          !OVERNIGHT_HOURS.has(hour)
-        ) {
+        if (reading.field === "sleep_wrist_temp_c") {
+          const date = nightDate(point.date);
+          if (date)
+            wristTemp.set(date, [
+              ...(wristTemp.get(date) ?? []),
+              reading.value,
+            ]);
           continue;
         }
-        const fields = overnight.get(date) ?? new Map();
-        overnight.set(date, fields);
-        fields.set(reading.field, [
-          ...(fields.get(reading.field) ?? []),
-          reading.value,
-        ]);
+        const sampleMetric = SAMPLE_METRIC[reading.field];
+        const sampleLocal = toLocalDateTime(point.date);
+        if (!sampleMetric || !sampleLocal || !isNightHour(hour)) continue;
+        overnightSamples.push({
+          metric: sampleMetric,
+          sampleLocal,
+          bucketMinutes: bucket,
+          value: Math.round(reading.value * 100) / 100,
+        });
       }
       if (OVERNIGHT_METRICS.has(name)) continue;
     }
@@ -370,15 +400,13 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
     }
   }
 
-  for (const [date, fields] of overnight) {
-    const row = sleepFor(date);
-    for (const [field, values] of fields) {
-      const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
-      row[field] = OVERNIGHT_ROUNDING[field](mean);
-    }
+  for (const [date, values] of wristTemp) {
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    sleepFor(date).sleep_wrist_temp_c = Math.round(mean * 100) / 100;
   }
 
   return {
+    overnightSamples,
     morningDaylight: [...morningDaylight.entries()].map(([date, minutes]) => ({
       date,
       minutes: Math.round(minutes),
@@ -806,9 +834,8 @@ export function mapHealthAutoExport(
   body: HealthAutoExportBody,
   options: HealthAutoExportOptions = {},
 ): MappedHealthAutoExport {
-  const { dailyMetrics, sleep, morningDaylight } = mapDailyAndSleep(
-    body.data?.metrics ?? [],
-  );
+  const { dailyMetrics, sleep, morningDaylight, overnightSamples } =
+    mapDailyAndSleep(body.data?.metrics ?? []);
   const workouts = dedupeOverlappingRides(
     shareHeartRateAcrossCopies(body.data?.workouts ?? [])
       .map((w) => mapWorkout(w, options))
@@ -817,5 +844,12 @@ export function mapHealthAutoExport(
   const strengthWorkouts = (body.data?.workouts ?? [])
     .map(mapStrengthWorkout)
     .filter((w): w is WatchStrengthWorkout => w != null);
-  return { dailyMetrics, sleep, morningDaylight, workouts, strengthWorkouts };
+  return {
+    dailyMetrics,
+    sleep,
+    morningDaylight,
+    workouts,
+    strengthWorkouts,
+    overnightSamples,
+  };
 }

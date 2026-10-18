@@ -29,6 +29,11 @@ export type RecoveryCheckin = {
   sleepAvgHeartRate: number | null;
   /** Absolute sleeping wrist temperature, Celsius (Apple Watch). */
   sleepWristTempC: number | null;
+  /**
+   * The window the overnight vitals above were averaged over: "sleep"
+   * (bedtime to wake) or "fixed" (23:00-05:59). Null on older rows.
+   */
+  overnightWindow: "sleep" | "fixed" | null;
   coldPlungeCompleted: boolean | null;
   source: CanonicalRecordSource;
   createdAt: IsoDateTime;

@@ -35,6 +35,7 @@ function checkin(
     sleepHrvAvg: null,
     sleepAvgHeartRate: null,
     sleepWristTempC: null,
+    overnightWindow: null,
     bedtimeLocal: null,
     wakeTimeLocal: null,
     coldPlungeCompleted: null,
@@ -378,6 +379,22 @@ describe("computeDailyReadiness", () => {
     expect(hr?.label).toBe("Resting HR");
     expect(result.adjustments).toEqual([]);
     expect(result.level).toBe("good");
+
+    // Averaged over the time asleep, a late night's readings are used.
+    const aligned = computeDailyReadiness(
+      [
+        ...rows,
+        { ...late, overnightWindow: "sleep" as const, sleepAvgHeartRate: 53 },
+      ],
+      TODAY,
+    );
+    if (aligned.status !== "scored") throw new Error("expected a score");
+    expect(
+      aligned.components.find((c) => c.key === "restingHeartRate")?.detail,
+    ).toBe("53 bpm vs 52 usual");
+    expect(aligned.components.find((c) => c.key === "hrv")?.label).toBe(
+      "HRV, overnight",
+    );
 
     // 23:20 is still inside the clean window.
     const onTime = computeDailyReadiness(

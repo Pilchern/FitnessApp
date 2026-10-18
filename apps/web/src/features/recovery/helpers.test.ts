@@ -34,6 +34,7 @@ const synced = {
   sleepHrvAvg: null,
   sleepAvgHeartRate: null,
   sleepWristTempC: null,
+  overnightWindow: null,
   coldPlungeCompleted: null,
   source: {
     sourceType: "imported",
