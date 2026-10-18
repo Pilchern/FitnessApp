@@ -30,7 +30,10 @@ export type InsightEngineInput = {
   /** Per-user exercise catalog overrides (TD-021), checked before the built-in catalog when classifying strength sets. */
   exerciseOverrides?: ReadonlyMap<string, ExerciseCatalogEntry>;
   now?: Date;
+  /** IANA zone the user lives in; "today" and week boundaries are judged on their clock. Defaults to UTC. */
   timezone?: string;
+  /** Profile week start (0 = Sunday, 1 = Monday), matching how weekly reviews are keyed. Defaults to Monday. */
+  weekStartsOn?: 0 | 1;
   plan?: TrainingPlan;
 };
 
@@ -69,6 +72,31 @@ function addDaysUtc(value: Date, days: number) {
   const next = new Date(value);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
+}
+
+function lastCompletedWeekStart(input: InsightEngineInput) {
+  return getLastCompletedWeekStart(
+    input.now ?? new Date(),
+    input.weekStartsOn ?? 1,
+    input.timezone || "UTC",
+  );
+}
+
+/**
+ * The `days` whole days ending yesterday on the user's clock. Today is left
+ * out because it is still in progress: with Mon/Wed/Fri lifting, a 14-day
+ * window that includes an unlogged Wednesday holds two push days and one pull
+ * day, and the push/pull rule fired every Wednesday morning.
+ */
+function completedDaysRange(input: InsightEngineInput, days: number) {
+  const today = getZonedDate(input.timezone || "UTC", input.now ?? new Date());
+  today.setUTCHours(12, 0, 0, 0);
+  const end = addDaysUtc(today, -1);
+
+  return {
+    rangeStart: toIsoDateUtc(addDaysUtc(end, -(days - 1))),
+    rangeEnd: toIsoDateUtc(end),
+  };
 }
 
 function makeInsight(
@@ -139,7 +167,7 @@ function buildWeekSummary(weekStart: IsoDate, input: InsightEngineInput) {
 }
 
 function evaluateCardioBelowTarget(input: InsightEngineInput) {
-  const weekStart = getLastCompletedWeekStart(input.now);
+  const weekStart = lastCompletedWeekStart(input);
   const review = getReviewForWeek(input.weeklyReviews, weekStart);
   const summary = review?.summary ?? buildWeekSummary(weekStart, input);
   const ridesCompleted = summary.ridesCompleted ?? 0;
@@ -394,7 +422,7 @@ function hasLoggedDataForWeek(weekStart: IsoDate, input: InsightEngineInput) {
 }
 
 function evaluateMissingWeeklyReview(input: InsightEngineInput) {
-  const weekStart = getLastCompletedWeekStart(input.now);
+  const weekStart = lastCompletedWeekStart(input);
   const latestReview = getReviewForWeek(
     getCompletedWeeklyReviews(input.weeklyReviews),
     weekStart,
@@ -445,7 +473,7 @@ function weekTargets(
 }
 
 function evaluateZone2BelowTarget(input: InsightEngineInput) {
-  const weekStart = getLastCompletedWeekStart(input.now);
+  const weekStart = lastCompletedWeekStart(input);
   const review = getReviewForWeek(input.weeklyReviews, weekStart);
   const summary = review?.summary ?? buildWeekSummary(weekStart, input);
   const zone2Minutes = summary.zone2Minutes ?? 0;
@@ -477,7 +505,7 @@ function evaluateZone2BelowTarget(input: InsightEngineInput) {
 }
 
 function evaluateConsecutiveStrengthMissed(input: InsightEngineInput) {
-  const weekStart = getLastCompletedWeekStart(input.now);
+  const weekStart = lastCompletedWeekStart(input);
   const previousWeekStart = toIsoDate(
     addDays(new Date(`${weekStart}T12:00:00`), -7),
   );
@@ -515,7 +543,7 @@ function evaluateConsecutiveStrengthMissed(input: InsightEngineInput) {
 }
 
 function evaluateSleepBelowTarget(input: InsightEngineInput) {
-  const weekStart = getLastCompletedWeekStart(input.now);
+  const weekStart = lastCompletedWeekStart(input);
   const review = getReviewForWeek(input.weeklyReviews, weekStart);
   const summary = review?.summary ?? buildWeekSummary(weekStart, input);
   const sleepAverageHours = summary.sleepAverageHours;
@@ -542,7 +570,7 @@ function evaluateSleepBelowTarget(input: InsightEngineInput) {
 }
 
 function evaluateAlcoholElevated(input: InsightEngineInput) {
-  const weekStart = getLastCompletedWeekStart(input.now);
+  const weekStart = lastCompletedWeekStart(input);
   const review = getReviewForWeek(input.weeklyReviews, weekStart);
   const summary = review?.summary ?? buildWeekSummary(weekStart, input);
   const alcoholTotal = summary.alcoholTotal;
@@ -610,7 +638,7 @@ function evaluateWeightTrendingUp(input: InsightEngineInput) {
 }
 
 function evaluateStrongWeek(input: InsightEngineInput) {
-  const weekStart = getLastCompletedWeekStart(input.now);
+  const weekStart = lastCompletedWeekStart(input);
   const review = getReviewForWeek(input.weeklyReviews, weekStart);
   const summary = review?.summary ?? buildWeekSummary(weekStart, input);
 
@@ -644,9 +672,7 @@ function evaluateStrongWeek(input: InsightEngineInput) {
 }
 
 function evaluateMuscleGroupNeglected(input: InsightEngineInput) {
-  const now = input.now ?? new Date();
-  const rangeEnd = toIsoDate(now);
-  const rangeStart = toIsoDate(addDays(now, -6));
+  const { rangeStart, rangeEnd } = completedDaysRange(input, 7);
 
   const summary = computeMuscleGroupVolume(
     input.strengthSessions,
@@ -723,9 +749,7 @@ function evaluateMuscleGroupNeglected(input: InsightEngineInput) {
 }
 
 function evaluatePushPullImbalance(input: InsightEngineInput) {
-  const now = input.now ?? new Date();
-  const rangeEnd = toIsoDate(now);
-  const rangeStart = toIsoDate(addDays(now, -13));
+  const { rangeStart, rangeEnd } = completedDaysRange(input, 14);
 
   const summary = computeMuscleGroupVolume(
     input.strengthSessions,

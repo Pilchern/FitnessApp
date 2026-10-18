@@ -302,6 +302,32 @@ describe("weekly review aggregation", () => {
       getLastCompletedWeekStart(new Date("2026-03-31T12:00:00-05:00")),
     ).toBe("2026-03-23");
   });
+
+  describe("getLastCompletedWeekStart in the user's timezone", () => {
+    // 2026-10-18 is a Sunday. 01:00Z on the 18th is Saturday 20:00 CDT;
+    // 01:00Z on the 19th is Sunday 20:00 CDT, still inside the Chicago week
+    // that started Monday 2026-10-12, though UTC has already reached Monday.
+    const saturdayEveningChicago = new Date("2026-10-18T01:00:00Z");
+    const sundayEveningChicago = new Date("2026-10-19T01:00:00Z");
+
+    it("treats Sunday evening in Chicago as part of the in-progress Monday week", () => {
+      expect(
+        getLastCompletedWeekStart(saturdayEveningChicago, 1, "America/Chicago"),
+      ).toBe("2026-10-05");
+      expect(
+        getLastCompletedWeekStart(sundayEveningChicago, 1, "America/Chicago"),
+      ).toBe("2026-10-05");
+    });
+
+    it("rolls Sunday-start weeks over on the Chicago calendar, not UTC's", () => {
+      expect(
+        getLastCompletedWeekStart(saturdayEveningChicago, 0, "America/Chicago"),
+      ).toBe("2026-10-04");
+      expect(
+        getLastCompletedWeekStart(sundayEveningChicago, 0, "America/Chicago"),
+      ).toBe("2026-10-11");
+    });
+  });
 });
 
 describe("weekly review scoring", () => {

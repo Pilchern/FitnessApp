@@ -95,10 +95,28 @@ export function getCurrentWeekRangeForUser(
   return { weekStart: isoStart, weekEnd: isoEnd };
 }
 
+/**
+ * Start of the most recent fully finished week. Pass `timezone` to judge
+ * "today" on the user's wall clock: without it the server's local time is
+ * used, which on Vercel is UTC, so Sunday 20:00 in Chicago (Monday 01:00Z)
+ * would already count the in-progress week as completed.
+ */
 export function getLastCompletedWeekStart(
   referenceDate = new Date(),
   weekStartsOn: 0 | 1 = 1,
+  timezone?: string,
 ) {
+  if (timezone !== undefined) {
+    const { weekStart } = getCurrentWeekRangeForUser(
+      timezone,
+      weekStartsOn,
+      referenceDate,
+    );
+    const lastWeekStart = new Date(`${weekStart}T12:00:00Z`);
+    lastWeekStart.setUTCDate(lastWeekStart.getUTCDate() - 7);
+    return lastWeekStart.toISOString().slice(0, 10);
+  }
+
   const base = new Date(referenceDate);
   base.setHours(12, 0, 0, 0);
 
