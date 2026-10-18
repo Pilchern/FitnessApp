@@ -19,6 +19,7 @@ function sixMonthsAgoIsoDate() {
 type ProfileRow = {
   user_id: string;
   timezone: string | null;
+  week_starts_on: 0 | 1 | null;
 };
 
 export async function GET(request: NextRequest) {
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
 
   const { data: profiles, error } = await adminClient
     .from("profiles")
-    .select("user_id, timezone");
+    .select("user_id, timezone, week_starts_on");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -114,6 +115,7 @@ export async function GET(request: NextRequest) {
         liftsCompletedByWeek: Object.fromEntries(liftPairs),
         now: new Date(),
         timezone,
+        weekStartsOn: profile.week_starts_on ?? 1,
       });
 
       return profile.user_id;

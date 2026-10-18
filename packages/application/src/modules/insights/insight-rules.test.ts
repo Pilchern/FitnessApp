@@ -1296,6 +1296,45 @@ describe("insight rules", () => {
         ]),
       ).toBeUndefined();
     });
+
+    it("stays quiet on a Wednesday morning for a steady Mon push / Wed pull / Fri arms split", () => {
+      // Three weeks of Mon Push, Wed Pull, Fri Arms (curls = pull,
+      // triceps = push). Today is Wednesday 2026-10-14, 08:00 in Chicago,
+      // and today's pull session isn't logged yet. A window that included
+      // today held two push days and one pull day and fired every Wednesday.
+      const history: StrengthSession[] = [];
+      for (const monday of ["2026-09-28", "2026-10-05", "2026-10-12"]) {
+        history.push(sets(monday, "Barbell Bench Press", 8, 165));
+      }
+      for (const wednesday of ["2026-09-30", "2026-10-07"]) {
+        history.push(sets(wednesday, "Barbell Row", 8, 135));
+      }
+      for (const friday of ["2026-10-02", "2026-10-09"]) {
+        history.push(
+          makeStrengthSession(friday, [
+            ...[1, 2, 3].map((n) =>
+              makeStrengthSet({ exerciseName: "Barbell Curl", setNumber: n }),
+            ),
+            ...[1, 2, 3].map((n) =>
+              makeStrengthSet({
+                exerciseName: "Tricep Extension",
+                setNumber: n,
+              }),
+            ),
+          ]),
+        );
+      }
+
+      const insight = buildInsights(
+        emptyInput({
+          strengthSessions: history,
+          now: new Date("2026-10-14T13:00:00Z"),
+          timezone: "America/Chicago",
+        }),
+      ).find((i) => i.insightType === "push_pull_imbalance");
+
+      expect(insight).toBeUndefined();
+    });
   });
 
   // ── Rule: deload_suggested ───────────────────────────────────────────────
@@ -1502,6 +1541,57 @@ describe("insight rules", () => {
       expect(
         insights.find((i) => i.insightType === "missing_weekly_review"),
       ).toBeUndefined();
+    });
+
+    // Sunday 2026-10-18 20:00 in Chicago is already Monday 01:00 in UTC.
+    const SUNDAY_EVENING_CHICAGO = new Date("2026-10-19T01:00:00Z");
+
+    it("judges last week on the user's clock, not UTC's, on Sunday evening", () => {
+      // Data only in the Chicago week still in progress (Mon 10-12 .. Sun
+      // 10-18). On UTC that week looked finished and the nag fired for it.
+      const insights = buildInsights(
+        emptyInput({
+          cardioSessions: [makeCardioSession("2026-10-14")],
+          now: SUNDAY_EVENING_CHICAGO,
+          timezone: "America/Chicago",
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "missing_weekly_review"),
+      ).toBeUndefined();
+    });
+
+    it("targets the week before the in-progress Chicago week", () => {
+      const insight = buildInsights(
+        emptyInput({
+          cardioSessions: [makeCardioSession("2026-10-07")],
+          now: SUNDAY_EVENING_CHICAGO,
+          timezone: "America/Chicago",
+        }),
+      ).find((i) => i.insightType === "missing_weekly_review");
+      expect(insight?.insightDate).toBe("2026-10-05");
+    });
+
+    it("keys the week on the profile's weekStartsOn", () => {
+      const insight = buildInsights(
+        emptyInput({
+          cardioSessions: [makeCardioSession("2026-10-07")],
+          now: SUNDAY_EVENING_CHICAGO,
+          timezone: "America/Chicago",
+          weekStartsOn: 0,
+        }),
+      ).find((i) => i.insightType === "missing_weekly_review");
+      // Sunday-start: 2026-10-18 begins a new week, so 10-11..10-17 is done.
+      expect(insight).toBeUndefined();
+      const sundayWeek = buildInsights(
+        emptyInput({
+          cardioSessions: [makeCardioSession("2026-10-12")],
+          now: SUNDAY_EVENING_CHICAGO,
+          timezone: "America/Chicago",
+          weekStartsOn: 0,
+        }),
+      ).find((i) => i.insightType === "missing_weekly_review");
+      expect(sundayWeek?.insightDate).toBe("2026-10-11");
     });
   });
 

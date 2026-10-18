@@ -67,7 +67,199 @@ class FakeInsightRepository implements InsightRepository {
   async dismiss(): Promise<void> {}
 
   async archive(): Promise<void> {}
+
+  async retireRuleInsights(): Promise<void> {}
 }
+
+/**
+ * Keeps rows in memory and follows the repository contract: inserts new keys
+ * as active, refreshes the content of an existing active row, and never
+ * touches status on conflict.
+ */
+class InMemoryInsightRepository implements InsightRepository {
+  public rows: PersistedInsight[] = [];
+  public retiredIds: string[] = [];
+  private nextId = 1;
+
+  async upsertMany(
+    insights: UpsertInsightInput[],
+  ): Promise<PersistedInsight[]> {
+    return insights.map((input) => {
+      const existing = this.rows.find(
+        (row) =>
+          row.userId === input.userId &&
+          row.insightType === input.insightType &&
+          row.insightDate === input.insightDate,
+      );
+      if (existing) {
+        if (existing.status === "active") {
+          existing.title = input.title;
+          existing.body = input.body;
+          existing.evidence = input.evidence;
+        }
+        return existing;
+      }
+      const row = makePersistedInsight({
+        id: `row-${this.nextId++}`,
+        userId: input.userId,
+        insightType: input.insightType,
+        insightDate: input.insightDate,
+        title: input.title,
+        body: input.body,
+        evidence: input.evidence,
+        sourceKind: input.sourceKind,
+      });
+      this.rows.push(row);
+      return row;
+    });
+  }
+
+  async listActive(userId: string): Promise<PersistedInsight[]> {
+    return this.rows.filter(
+      (row) => row.userId === userId && row.status === "active",
+    );
+  }
+
+  async dismiss(): Promise<void> {}
+
+  async archive(): Promise<void> {}
+
+  async retireRuleInsights(ids: string[], userId: string): Promise<void> {
+    for (const row of this.rows) {
+      if (
+        ids.includes(row.id) &&
+        row.userId === userId &&
+        row.status === "active" &&
+        row.sourceKind === "rule"
+      ) {
+        row.status = "archived";
+        this.retiredIds.push(row.id);
+      }
+    }
+  }
+}
+
+function makeRuleInsight(
+  insightType: Insight["insightType"],
+  insightDate: string,
+  explanation: string,
+): Insight {
+  return {
+    id: `${insightType}:${insightDate}`,
+    insightType,
+    insightDate,
+    title: "Rule title",
+    explanation,
+    recommendedNextAction: "Next action.",
+    severity: "caution",
+    evidence: { note: explanation },
+    sourceKind: "rule",
+  };
+}
+
+describe("InsightOrchestrator.generateAndPersist — rule insight freshness", () => {
+  it("retires rule insights that stopped firing and refreshes the text of ones that still fire", async () => {
+    const repository = new InMemoryInsightRepository();
+    repository.rows = [
+      makePersistedInsight({
+        id: "recovery",
+        insightType: "poor_recovery_trend",
+        insightDate: "2026-10-15",
+        body: "Old recovery text.",
+      }),
+      makePersistedInsight({
+        id: "sleep",
+        insightType: "sleep_below_target",
+        insightDate: "2026-10-05",
+        body: "Average sleep was 6.1h. Next action.",
+      }),
+      makePersistedInsight({
+        id: "ai",
+        insightType: "trend",
+        insightDate: "2026-10-14",
+        sourceKind: "ai",
+        createdAt: "2026-10-18T11:30:00.000Z",
+      }),
+      makePersistedInsight({
+        id: "dismissed",
+        insightType: "missing_weekly_review",
+        insightDate: "2026-10-05",
+        status: "dismissed",
+        dismissedAt: "2026-10-13T12:00:00.000Z",
+      }),
+    ];
+
+    // This run, sleep still fires with new numbers; recovery has cleared.
+    let ruleOutput = [
+      makeRuleInsight(
+        "sleep_below_target",
+        "2026-10-05",
+        "Average sleep was 6.4h.",
+      ),
+    ];
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      makeAiService(),
+      () => ruleOutput,
+    );
+
+    const result = await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: new Date("2026-10-18T12:00:00.000Z"),
+    });
+
+    expect(result.map((i) => i.id).sort()).toEqual(["ai", "sleep"]);
+    expect(result.find((i) => i.id === "sleep")?.body).toBe(
+      "Average sleep was 6.4h. Next action.",
+    );
+    expect(repository.retiredIds).toEqual(["recovery"]);
+    expect(repository.rows.find((r) => r.id === "recovery")?.status).toBe(
+      "archived",
+    );
+    // The AI insight and the user's dismissal are untouched.
+    expect(repository.rows.find((r) => r.id === "ai")?.status).toBe("active");
+    expect(repository.rows.find((r) => r.id === "dismissed")?.status).toBe(
+      "dismissed",
+    );
+
+    // A dismissed rule insight that fires again stays dismissed.
+    ruleOutput = [
+      makeRuleInsight("missing_weekly_review", "2026-10-05", "Still missing."),
+    ];
+    const second = await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: new Date("2026-10-18T12:05:00.000Z"),
+    });
+    expect(second.map((i) => i.id)).toEqual(["ai"]);
+    expect(repository.rows.find((r) => r.id === "dismissed")?.status).toBe(
+      "dismissed",
+    );
+  });
+
+  it("stamps AI insights with the user's calendar date, not UTC's", async () => {
+    const repository = new InMemoryInsightRepository();
+    const aiService = makeAiService([
+      { insightType: "trend", title: "Title", body: "Body", severity: "info" },
+    ]);
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
+
+    // Sunday 2026-10-18 20:00 in Chicago is Monday 01:00 UTC.
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: new Date("2026-10-19T01:00:00.000Z"),
+      timezone: "America/Chicago",
+    });
+
+    expect(repository.rows[0]?.insightDate).toBe("2026-10-18");
+  });
+});
 
 function noRuleInsights(): Insight[] {
   return [];

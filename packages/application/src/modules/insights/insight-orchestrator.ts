@@ -6,6 +6,11 @@ import type {
   UpsertInsightInput,
 } from "./insight-repository";
 import type { AiInsightService } from "./ai-insight-service";
+import { getZonedDate } from "../../shared/timezone";
+
+function insightKey(insightType: string, insightDate: string) {
+  return `${insightType}:${insightDate}`;
+}
 
 export type OrchestratorInput = InsightEngineInput & {
   userId: string;
@@ -46,7 +51,14 @@ export class InsightOrchestrator {
     let aiUpserts: UpsertInsightInput[] = [];
     if (this.aiService && (await this.isAiInsightStale(userId, input.now))) {
       const aiInsights = await this.aiService.generateInsights(engineInput);
-      const today = new Date().toISOString().slice(0, 10);
+      // The user's calendar date, not UTC's: an evening run in Chicago is
+      // already tomorrow in UTC.
+      const today = getZonedDate(
+        input.timezone || "UTC",
+        input.now ?? new Date(),
+      )
+        .toISOString()
+        .slice(0, 10);
       aiUpserts = aiInsights.map((insight) => ({
         userId,
         insightType: insight.insightType,
@@ -63,7 +75,30 @@ export class InsightOrchestrator {
       await this.repository.upsertMany(allUpserts);
     }
 
-    return this.repository.listActive(userId);
+    // A rule insight is only true while its rule keeps firing. Retire active
+    // rule insights this run did not produce, so a condition that has cleared
+    // (sleep recovered, review completed) stops showing on the dashboard.
+    // AI insights and anything the user dismissed are left alone.
+    const firedRuleKeys = new Set(
+      ruleUpserts.map((u) => insightKey(u.insightType, u.insightDate)),
+    );
+    const active = await this.repository.listActive(userId);
+    const staleRuleIds = new Set(
+      active
+        .filter(
+          (insight) =>
+            insight.sourceKind === "rule" &&
+            !firedRuleKeys.has(
+              insightKey(insight.insightType, insight.insightDate),
+            ),
+        )
+        .map((insight) => insight.id),
+    );
+    if (staleRuleIds.size > 0) {
+      await this.repository.retireRuleInsights([...staleRuleIds], userId);
+    }
+
+    return active.filter((insight) => !staleRuleIds.has(insight.id));
   }
 
   /**

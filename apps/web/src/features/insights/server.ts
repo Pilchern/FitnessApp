@@ -69,6 +69,7 @@ export async function getInsightsData() {
     liftsCompletedByWeek: Object.fromEntries(liftPairs),
     now: new Date(),
     timezone,
+    weekStartsOn: profile?.weekStartsOn ?? 1,
   });
 
   return { insights, topInsights: insights.slice(0, 3) };
