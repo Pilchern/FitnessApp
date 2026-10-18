@@ -206,6 +206,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     recovery,
   });
 
+  const trendNotes = buildTrendNotes({
+    today,
+    strengthSessions,
+    cardioSessions: cardioLast8Weeks,
+    bodyMetrics: recentBody,
+    recovery,
+    wakeTarget: NICK_TRAINING_PLAN.wakeTimeTarget ?? null,
+  });
+  // Plan section 5: resting HR up 3+ bpm means hold bike progression.
+  const holdProgression = trendNotes.some(
+    (n) => n.key === "rhr" && n.tone === "attention",
+  );
+
   return {
     today,
     readiness,
@@ -220,6 +233,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     readinessCall: readinessCall(
       readiness.status === "scored" ? readiness.level : null,
       todayItems,
+      { holdProgression },
     ),
     todayItems,
     zone2Minutes: buildCardioWeeklyTotals(cardioThisWeek).zone2Minutes,
@@ -233,14 +247,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       : null,
     latestReview,
     topInsights: (insightData?.topInsights ?? []).slice(0, 2),
-    trendNotes: buildTrendNotes({
-      today,
-      strengthSessions,
-      cardioSessions: cardioLast8Weeks,
-      bodyMetrics: recentBody,
-      recovery,
-      wakeTarget: NICK_TRAINING_PLAN.wakeTimeTarget ?? null,
-    }),
+    trendNotes,
     habits: {
       items: habitItems,
       takenTodayIds: habitLogs

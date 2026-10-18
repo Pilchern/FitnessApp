@@ -202,6 +202,7 @@ export type ReadinessLevelOrNone = "good" | "fair" | "low" | null;
 export function readinessCall(
   level: ReadinessLevelOrNone,
   todayItems: Pick<WeekPlanItem, "kind" | "done">[],
+  options: { holdProgression?: boolean } = {},
 ): string {
   const pending = todayItems.filter((i) => !i.done);
   if (todayItems.length > 0 && pending.length === 0) {
@@ -217,6 +218,11 @@ export function readinessCall(
     if (kind === "strength") return "Lift as planned.";
     if (kind === "cardio") return "Ride as planned.";
     return "Nothing scheduled today.";
+  }
+
+  // Resting HR up this week: a good score still holds the ride (plan section 5).
+  if (level === "good" && kind === "cardio" && options.holdProgression) {
+    return "Resting HR is up this week: ride at last ride's settings, 125-144 bpm. No progression.";
   }
 
   const calls: Record<

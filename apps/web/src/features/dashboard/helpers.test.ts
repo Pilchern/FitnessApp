@@ -261,6 +261,16 @@ describe("readinessCall", () => {
     expect(readinessCall("low", [ride])).toMatch(/last good settings/);
   });
 
+  it("holds the ride on a good day when resting HR is up", () => {
+    expect(readinessCall("good", [ride], { holdProgression: true })).toMatch(
+      /^Resting HR is up this week.*No progression/,
+    );
+    // Lifts are not bike progression; the hold leaves them alone.
+    expect(readinessCall("good", [lift], { holdProgression: true })).toMatch(
+      /^Good day to lift/,
+    );
+  });
+
   it("handles rest days, finished sessions and no score", () => {
     expect(readinessCall("low", [])).toBe(
       "Rest day. Easy walk, protect tonight's sleep.",
