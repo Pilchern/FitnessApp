@@ -8,12 +8,15 @@ import {
   groupSetsByExercise,
   isTimedSet,
   parseStrengthDraft,
+  readyToAddLoad,
   renumberSets,
+  repRangeTop,
   selectSetsToSave,
   shiftIsoDate,
   showsTimedWeight,
   startingDuration,
   startingWeight,
+  templateRepTop,
 } from "./helpers";
 
 function set(
@@ -348,5 +351,80 @@ describe("display and date helpers", () => {
     expect(shiftIsoDate("2026-11-02", -6)).toBe("2026-10-27");
     expect(shiftIsoDate("2026-03-01", -1)).toBe("2026-02-28");
     expect(shiftIsoDate("2026-10-12", 0)).toBe("2026-10-12");
+  });
+});
+
+describe("readyToAddLoad", () => {
+  const at = (weight: number | null, reps: number | null) => ({
+    weight,
+    reps,
+    durationSeconds: null,
+  });
+
+  it("is true when every working set hit the top of the range", () => {
+    expect(readyToAddLoad([at(165, 8), at(165, 8), at(165, 9)], 8)).toBe(true);
+    expect(readyToAddLoad([at(30, 12), at(30, 12), at(30, 12)], "8-12")).toBe(
+      true,
+    );
+  });
+
+  it("ignores warm-ups", () => {
+    expect(
+      readyToAddLoad(
+        [{ ...at(95, 5), isWarmup: true }, at(165, 8), at(165, 8)],
+        8,
+      ),
+    ).toBe(true);
+  });
+
+  it("is false when one set fell short", () => {
+    expect(readyToAddLoad([at(165, 8), at(165, 8), at(165, 7)], 8)).toBe(false);
+    expect(readyToAddLoad([at(30, 12), at(30, 11)], "8-12")).toBe(false);
+  });
+
+  it("is false with mixed weights or no logged weight", () => {
+    expect(readyToAddLoad([at(165, 8), at(160, 8), at(165, 8)], 8)).toBe(false);
+    expect(readyToAddLoad([at(null, 3), at(null, 3)], 3)).toBe(false);
+  });
+
+  it("is false without a target or last sets", () => {
+    expect(readyToAddLoad([at(165, 8)], null)).toBe(false);
+    expect(readyToAddLoad([at(165, 8)], "")).toBe(false);
+    expect(readyToAddLoad(undefined, 8)).toBe(false);
+    expect(readyToAddLoad([], 8)).toBe(false);
+  });
+
+  it("is false for timed and distance sets", () => {
+    expect(
+      readyToAddLoad([{ weight: 20, reps: null, durationSeconds: 60 }], 1),
+    ).toBe(false);
+    expect(
+      readyToAddLoad([{ weight: 20, reps: 10, durationSeconds: 30 }], 10),
+    ).toBe(false);
+    expect(
+      readyToAddLoad(
+        [{ weight: 50, reps: 10, durationSeconds: null, distanceMeters: 20 }],
+        10,
+      ),
+    ).toBe(false);
+  });
+});
+
+describe("rep targets", () => {
+  it("reads the top of a range or a single number", () => {
+    expect(repRangeTop("8-12")).toBe(12);
+    expect(repRangeTop("18–20")).toBe(20);
+    expect(repRangeTop("10")).toBe(10);
+    expect(repRangeTop(15)).toBe(15);
+    expect(repRangeTop("12-8")).toBeNull();
+    expect(repRangeTop("AMRAP")).toBeNull();
+    expect(repRangeTop(null)).toBeNull();
+  });
+
+  it("takes the top from a template note range that includes the target", () => {
+    expect(templateRepTop(18, "18-20")).toBe(20);
+    expect(templateRepTop(15, "last 2-3 reps hard")).toBe(15);
+    expect(templateRepTop(10, null)).toBe(10);
+    expect(templateRepTop(null, "8-12")).toBeNull();
   });
 });

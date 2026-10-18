@@ -14,12 +14,14 @@ import {
   groupSetsByExercise,
   isTimedSet,
   parseStrengthDraft,
+  readyToAddLoad,
   showsTimedWeight,
   renumberSets,
   selectSetsToSave,
   startingDuration,
   startingWeight,
   STRENGTH_DRAFT_KEY,
+  templateRepTop,
   toStrengthFormValues,
   type LastExercisePerformance,
   type StrengthDraft,
@@ -187,6 +189,7 @@ export function StrengthQuickForm({
     {},
   );
   const [planNotes, setPlanNotes] = useState<string | null>(null);
+  const [repTops, setRepTops] = useState<Record<string, number>>({});
   const [newExercise, setNewExercise] = useState("");
   const [restSeconds, setRestSeconds] = useState(90);
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
@@ -231,6 +234,14 @@ export function StrengthQuickForm({
           .map((ex) => [exerciseKey(ex.exerciseName), ex.notes as string]),
       ),
     );
+    setRepTops(
+      Object.fromEntries(
+        plan.exercises.flatMap((ex) => {
+          const top = templateRepTop(ex.targetReps, ex.notes);
+          return top != null ? [[exerciseKey(ex.exerciseName), top]] : [];
+        }),
+      ),
+    );
     setValues((current) => ({
       ...current,
       sessionName: planRequest.name,
@@ -267,9 +278,11 @@ export function StrengthQuickForm({
     if (mode !== "create" || !draftChecked.current) return;
     const named = values.sets.some((set) => set.exerciseName.trim());
     writeDraft(
-      named ? { savedAt: Date.now(), values, exerciseNotes, planNotes } : null,
+      named
+        ? { savedAt: Date.now(), values, exerciseNotes, planNotes, repTops }
+        : null,
     );
-  }, [mode, values, exerciseNotes, planNotes]);
+  }, [mode, values, exerciseNotes, planNotes, repTops]);
 
   useEffect(() => {
     if (mode !== "create") return;
@@ -281,6 +294,7 @@ export function StrengthQuickForm({
       setValues(draft.values);
       setExerciseNotes(draft.exerciseNotes);
       setPlanNotes(draft.planNotes);
+      setRepTops(draft.repTops ?? {});
       setRestoredAt(draft.savedAt);
     }
     draftChecked.current = true;
@@ -292,6 +306,7 @@ export function StrengthQuickForm({
     setValues(toStrengthFormValues(null));
     setExerciseNotes({});
     setPlanNotes(null);
+    setRepTops({});
     setRestEndsAt(null);
     setRestoredAt(null);
   }
@@ -585,6 +600,8 @@ export function StrengthQuickForm({
           if (!first || !group.name.trim()) return null;
           const last = lastByExercise[group.key];
           const timed = isTimedSet(first);
+          const addLoad =
+            !timed && readyToAddLoad(last?.sets, repTops[group.key]);
           const timedWeight = timed && showsTimedWeight(first);
           const groupDone = group.indexes.filter(
             (i) => values.sets[i]?.done,
@@ -609,6 +626,15 @@ export function StrengthQuickForm({
                     <p className="mt-0.5 text-xs text-ink/60">
                       Last ({formatStrengthDate(last.sessionDate)}):{" "}
                       {formatLastPerformance(last)}
+                      {addLoad ? (
+                        <span className="ml-1.5 inline-block rounded-full border border-pine/20 bg-pine/10 px-2 py-0.5 text-xs font-semibold text-pine">
+                          Add weight
+                          <span className="sr-only">
+                            : every set last time reached {repTops[group.key]}{" "}
+                            reps, the top of the range
+                          </span>
+                        </span>
+                      ) : null}
                     </p>
                   ) : null}
                 </div>
