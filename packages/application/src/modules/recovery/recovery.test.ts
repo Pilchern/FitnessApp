@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildRecoveryHrvTrend,
   buildRecoveryRestingHeartRateTrend,
   buildRecoverySleepTrend,
   buildRecoverySummary,
@@ -259,6 +260,18 @@ describe("recovery helpers", () => {
       averageRestingHeartRate: 56,
       averageHrv: 47,
     });
+  });
+
+  it("shows overnight HRV, falling back to the daily reading", () => {
+    const rows = [
+      makeCheckin({ checkinDate: "2026-10-10", hrv: 40, sleepHrvAvg: null }),
+      makeCheckin({ checkinDate: "2026-10-11", hrv: null, sleepHrvAvg: 80 }),
+      makeCheckin({ checkinDate: "2026-10-12", hrv: 45, sleepHrvAvg: 90 }),
+    ];
+    expect(buildRecoverySummary(rows).averageHrv).toBe(70);
+    expect(buildRecoveryHrvTrend(rows).map((p) => p.value)).toEqual([
+      40, 80, 90,
+    ]);
   });
 
   it("builds sparse-safe trends by filtering missing values", () => {

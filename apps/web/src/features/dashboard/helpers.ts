@@ -202,6 +202,7 @@ export type ReadinessLevelOrNone = "good" | "fair" | "low" | null;
 export function readinessCall(
   level: ReadinessLevelOrNone,
   todayItems: Pick<WeekPlanItem, "kind" | "done">[],
+  options: { holdProgression?: boolean } = {},
 ): string {
   const pending = todayItems.filter((i) => !i.done);
   if (todayItems.length > 0 && pending.length === 0) {
@@ -219,6 +220,11 @@ export function readinessCall(
     return "Nothing scheduled today.";
   }
 
+  // Resting HR up this week: a good score still holds the ride (plan section 5).
+  if (level === "good" && kind === "cardio" && options.holdProgression) {
+    return "Resting HR is up this week: ride at last ride's settings, 125-144 bpm. No progression.";
+  }
+
   const calls: Record<
     "good" | "fair" | "low",
     Record<"strength" | "cardio" | "rest", string>
@@ -226,19 +232,21 @@ export function readinessCall(
     good: {
       strength:
         "Good day to lift. Add load where you hit the top of the range last time.",
-      cardio: "Ride as planned.",
-      rest: "Rest day as planned.",
+      cardio:
+        "Ride. Knee fine this morning? Make one change: cadence first, then 2-3 points of resistance.",
+      rest: "Rest day: 45-60 min outdoor walk.",
     },
     fair: {
-      strength: "Lift as planned, but keep weights where they were today.",
-      cardio: "Ride as planned and keep it conversational.",
-      rest: "Rest day. An easy walk is fine.",
+      strength: "Lift as planned, at the weights you used last time.",
+      cardio: "Ride at last ride's settings, 125-144 bpm. No progression.",
+      rest: "Rest day: an easy 45-60 min walk.",
     },
     low: {
       strength:
-        "Go light: main lifts only, cut the accessories, or swap for an easy spin.",
-      cardio: "Keep the ride short and easy, or rest.",
-      rest: "Rest day. Protect tonight's sleep.",
+        "Go light: main lifts only, cut the accessories. Knee block and PT sheet as usual.",
+      cardio:
+        "Ride easy at your last good settings, or shorten it. No progression.",
+      rest: "Rest day. Easy walk, protect tonight's sleep.",
     },
   };
   return calls[level][kind];
