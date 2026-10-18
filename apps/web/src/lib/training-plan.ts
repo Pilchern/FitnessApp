@@ -2,17 +2,16 @@ import type { TrainingPlan } from "@fitness-app/application";
 
 /**
  * Nick's current plan (rehab phase after ACL reconstruction, surgeon visit
- * week of 2026-10-26). Update after PT confirms the bike ramp (10/14) and
- * again at surgical clearance.
+ * week of 2026-10-26). Update again at surgical clearance.
  *
- * Zone 2 target: 30 + 30 + 45 = 105 min now; 140 after the 40/40/60 ramp,
+ * Zone 2 target: 40 + 40 + 60 = 140 min now (PT 10/16, "as tolerated");
  * 150 after 45/45/60. The dashboard Plan card, the weekly review and the
  * insight rules all read the target from the cardio templates (via the stored
  * weekly summary); this constant is only the fallback for a week with no
  * review yet. After a ramp change, edit the templates; keep this in step.
  */
 export const NICK_TRAINING_PLAN: TrainingPlan = {
-  weeklyZone2TargetMinutes: 105,
+  weeklyZone2TargetMinutes: 140,
   longZone2Weekday: null,
   vo2Required: false,
   cardioDaysLabel: "Tuesday, Thursday, and Saturday",

@@ -9,6 +9,7 @@ import {
   buildDailyStrain,
   buildSleepPlan,
   maxHeartRateFor,
+  MEASURED_MAX_HEART_RATE,
   ageOn,
   buildTrendNotes,
   buildWeeklyWeightTrend,
@@ -205,6 +206,19 @@ export async function getDashboardData(): Promise<DashboardData> {
     recovery,
   });
 
+  const trendNotes = buildTrendNotes({
+    today,
+    strengthSessions,
+    cardioSessions: cardioLast8Weeks,
+    bodyMetrics: recentBody,
+    recovery,
+    wakeTarget: NICK_TRAINING_PLAN.wakeTimeTarget ?? null,
+  });
+  // Plan section 5: resting HR up 3+ bpm means hold bike progression.
+  const holdProgression = trendNotes.some(
+    (n) => n.key === "rhr" && n.tone === "attention",
+  );
+
   return {
     today,
     readiness,
@@ -219,6 +233,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     readinessCall: readinessCall(
       readiness.status === "scored" ? readiness.level : null,
       todayItems,
+      { holdProgression },
     ),
     todayItems,
     zone2Minutes: buildCardioWeeklyTotals(cardioThisWeek).zone2Minutes,
@@ -232,14 +247,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       : null,
     latestReview,
     topInsights: (insightData?.topInsights ?? []).slice(0, 2),
-    trendNotes: buildTrendNotes({
-      today,
-      strengthSessions,
-      cardioSessions: cardioLast8Weeks,
-      bodyMetrics: recentBody,
-      recovery,
-      wakeTarget: NICK_TRAINING_PLAN.wakeTimeTarget ?? null,
-    }),
+    trendNotes,
     habits: {
       items: habitItems,
       takenTodayIds: habitLogs
@@ -277,11 +285,17 @@ function buildStrainSleep(input: {
   const rhr = [...input.restingHeartRates].sort((a, b) => a - b);
   const restingHeartRate =
     rhr.length >= 7 ? rhr[Math.floor(rhr.length / 2)]! : null;
+  // Measured max HR (the same one Zone 2 uses) wins over the age estimate.
+  const maxHeartRate =
+    MEASURED_MAX_HEART_RATE ??
+    (input.birthDate
+      ? maxHeartRateFor(ageOn(input.birthDate, input.today))
+      : null);
   const strain =
-    input.birthDate && restingHeartRate != null
+    maxHeartRate != null && restingHeartRate != null
       ? buildDailyStrain(dates, input.cardio, input.strength, {
           restingHeartRate,
-          maxHeartRate: maxHeartRateFor(ageOn(input.birthDate, input.today)),
+          maxHeartRate,
           sex: input.sex === "female" ? "female" : "male",
         })
       : null;
@@ -295,11 +309,12 @@ function buildStrainSleep(input: {
   });
   return {
     strain,
-    missing: !input.birthDate
-      ? "birth date"
-      : restingHeartRate == null
-        ? "a week of resting heart rate"
-        : null,
+    missing:
+      maxHeartRate == null
+        ? "birth date"
+        : restingHeartRate == null
+          ? "a week of resting heart rate"
+          : null,
     sleep,
   };
 }

@@ -249,7 +249,7 @@ function restingHeartRateNote(input: TrendNoteInput): TrendNote | null {
     text:
       delta < 0
         ? `Resting heart rate is ${-delta} bpm below your usual this week.`
-        : `Resting heart rate is ${delta} bpm above your usual this week. Illness, alcohol, heat or hard training can all do this.`,
+        : `Resting heart rate is ${delta} bpm above your usual this week. Illness, alcohol, heat or hard training can all do this. Hold bike progression until it settles.`,
   };
 }
 
