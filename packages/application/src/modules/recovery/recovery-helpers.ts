@@ -51,7 +51,7 @@ export function buildRecoverySummary(
     .filter((value): value is number => value != null);
 
   const hrvValues = checkins
-    .map((checkin) => checkin.hrv)
+    .map(nightHrv)
     .filter((value): value is number => value != null);
 
   return {
@@ -90,10 +90,22 @@ export function buildRecoveryRestingHeartRateTrend(
   );
 }
 
+/**
+ * The night's HRV for display: the overnight average (averaged over sleep
+ * since 2026-10-18), else the daily reading. Since the HRV export went
+ * hourly, daily `hrv` is no longer written, so reading it alone left the
+ * recovery page blank.
+ */
+export function nightHrv(
+  checkin: Pick<RecoveryCheckin, "sleepHrvAvg" | "hrv">,
+): number | null {
+  return checkin.sleepHrvAvg ?? checkin.hrv;
+}
+
 export function buildRecoveryHrvTrend(checkins: RecoveryCheckin[]) {
   return buildSparseTrendSeries(
     checkins,
     (checkin) => checkin.checkinDate,
-    (checkin) => checkin.hrv,
+    nightHrv,
   );
 }

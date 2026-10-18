@@ -197,6 +197,77 @@ export function formatLastPerformance(last: LastExercisePerformance) {
   return parts.filter(Boolean).join(", ");
 }
 
+const REP_RANGE_PATTERN = /(\d+)\s*[-–]\s*(\d+)/;
+
+/** Top of a rep target: "8-12" -> 12, "10" or 10 -> 10; null when missing or unreadable. */
+export function repRangeTop(
+  target: number | string | null | undefined,
+): number | null {
+  if (typeof target === "number") {
+    return Number.isInteger(target) && target > 0 ? target : null;
+  }
+  if (typeof target !== "string") return null;
+  const range = target.match(REP_RANGE_PATTERN);
+  if (range) {
+    const low = Number(range[1]);
+    const high = Number(range[2]);
+    return high >= low && high > 0 ? high : null;
+  }
+  const single = target.trim();
+  return /^\d+$/.test(single) && Number(single) > 0 ? Number(single) : null;
+}
+
+/**
+ * Top of the rep range for a template exercise. Templates store one target
+ * (Lateral Raise 4x18); a range written in its notes ("18-20") that includes
+ * that target sets the top instead.
+ */
+export function templateRepTop(
+  targetReps: number | null,
+  notes: string | null,
+): number | null {
+  const range = notes?.match(REP_RANGE_PATTERN);
+  if (range && targetReps != null) {
+    const low = Number(range[1]);
+    const high = Number(range[2]);
+    if (low <= targetReps && targetReps <= high) return high;
+  }
+  return repRangeTop(targetReps);
+}
+
+/**
+ * Plan load rule: "hit the top of the rep range on all sets, then add weight
+ * next session". True only when every working set last time reached the top
+ * of the range at one logged weight. Timed or distance work, bodyweight sets,
+ * mixed weights, or a missing target never qualify. Does not pick a load.
+ */
+export function readyToAddLoad(
+  lastSets:
+    | {
+        weight: number | null;
+        reps: number | null;
+        durationSeconds?: number | null;
+        distanceMeters?: number | null;
+        isWarmup?: boolean;
+      }[]
+    | undefined,
+  targetReps: number | string | null | undefined,
+): boolean {
+  const top = repRangeTop(targetReps);
+  const working = (lastSets ?? []).filter((set) => !set.isWarmup);
+  if (top == null || working.length === 0) return false;
+  const weight = working[0]?.weight;
+  if (weight == null || weight <= 0) return false;
+  return working.every(
+    (set) =>
+      set.durationSeconds == null &&
+      set.distanceMeters == null &&
+      set.weight === weight &&
+      set.reps != null &&
+      set.reps >= top,
+  );
+}
+
 /** Rep gap beyond which last time's load is not a fair start for the plan. */
 const REP_MISMATCH_LIMIT = 3;
 
@@ -321,6 +392,8 @@ export type StrengthDraft = {
   values: StrengthFormValues;
   exerciseNotes: Record<string, string>;
   planNotes: string | null;
+  /** Top of each loaded plan exercise's rep range, by exercise key. */
+  repTops?: Record<string, number>;
 };
 
 export const STRENGTH_DRAFT_KEY = "fitness-app:strength-draft:v1";
@@ -349,6 +422,7 @@ export function parseStrengthDraft(
       ...draft,
       exerciseNotes: draft.exerciseNotes ?? {},
       planNotes: draft.planNotes ?? null,
+      repTops: draft.repTops ?? {},
     };
   } catch {
     return null;

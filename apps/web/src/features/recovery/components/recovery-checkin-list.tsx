@@ -57,7 +57,10 @@ export function RecoveryCheckinList({ checkins }: RecoveryCheckinListProps) {
             checkin.restingHeartRate != null
               ? `RHR ${checkin.restingHeartRate}`
               : null,
-            checkin.hrv != null ? `HRV ${Math.round(checkin.hrv)}` : null,
+            // Overnight HRV first; daily HRV stopped once the export went hourly.
+            (checkin.sleepHrvAvg ?? checkin.hrv) != null
+              ? `HRV ${Math.round((checkin.sleepHrvAvg ?? checkin.hrv)!)}`
+              : null,
             checkin.readinessLevel != null
               ? `Ready ${checkin.readinessLevel}/10`
               : null,

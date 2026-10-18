@@ -495,7 +495,7 @@ function evaluateZone2BelowTarget(input: InsightEngineInput) {
     severity,
     "Zone 2 time fell short",
     `${zone2Minutes} min logged vs. ${zone2Target} min weekly target.`,
-    `Aim for your planned sessions at a conversational pace to reach ${zone2Target} minutes.`,
+    `Ride the planned sessions at 125-144 bpm toward ${zone2Target} minutes. Don't catch up: add no more than about 10% ride time next week.`,
     {
       weekStart,
       zone2Minutes,
@@ -532,7 +532,7 @@ function evaluateConsecutiveStrengthMissed(input: InsightEngineInput) {
     "warning",
     "No strength sessions in 2 weeks",
     "Strength work dropped off for two consecutive weeks.",
-    "Two sessions of 45+ minutes per week maintains muscle. Schedule them before the week starts.",
+    "Three upper-body sessions a week (Mon/Wed/Fri) keep the rebuild on track. Schedule them before the week starts.",
     {
       weekStart,
       previousWeekStart,
@@ -560,7 +560,7 @@ function evaluateSleepBelowTarget(input: InsightEngineInput) {
     severity,
     "Sleep below target last week",
     `Average sleep was ${sleepAverageHours}h. The target is 7+ hours.`,
-    "Prioritize an earlier bedtime — even 30 minutes earlier compounded across a week adds 3.5 hours.",
+    "Hold wake at 6:30 (give or take 30 min), phone-free from 8:30 PM, and go to bed when sleepy, not before 9:45.",
     {
       weekStart,
       sleepAverageHours,
@@ -628,7 +628,7 @@ function evaluateWeightTrendingUp(input: InsightEngineInput) {
     "caution",
     "Weight trending up",
     `Weight has increased ${delta} lb over the past 4 weeks.`,
-    "Review calorie intake and cardio output. A small deficit of 200–300 kcal/day is sustainable.",
+    "Faster than the +0.25-0.5 lb/week rebuild pace. Trim the surplus and keep protein at 180 g. No cut until full training returns.",
     {
       weekStarts: last4.map((r) => r.weekStart),
       weights: ordered,
