@@ -247,21 +247,25 @@ describe("readinessCall", () => {
 
   it("tells a good day to train and progress load", () => {
     expect(readinessCall("good", [lift])).toMatch(/^Good day to lift/);
-    expect(readinessCall("good", [ride])).toBe("Ride as planned.");
+    expect(readinessCall("good", [ride])).toMatch(/one change: cadence first/);
   });
 
   it("holds load on a fair day and trims accessories on a low one", () => {
-    expect(readinessCall("fair", [lift])).toMatch(
-      /keep weights where they were/,
+    expect(readinessCall("fair", [lift])).toMatch(/weights you used last time/);
+    expect(readinessCall("fair", [ride])).toMatch(/No progression/);
+    // Plan section 4: never cut the knee block.
+    expect(readinessCall("low", [lift])).toMatch(
+      /cut the accessories\. Knee block and PT sheet as usual/,
     );
-    expect(readinessCall("low", [lift])).toMatch(/cut the accessories/);
-    expect(readinessCall("low", [ride])).toBe(
-      "Keep the ride short and easy, or rest.",
-    );
+    // Plan section 5: hold on a red day, do not skip.
+    expect(readinessCall("low", [ride])).toMatch(/last good settings/);
   });
 
   it("handles rest days, finished sessions and no score", () => {
-    expect(readinessCall("low", [])).toBe("Rest day. Protect tonight's sleep.");
+    expect(readinessCall("low", [])).toBe(
+      "Rest day. Easy walk, protect tonight's sleep.",
+    );
+    expect(readinessCall("good", [])).toBe("Rest day: 45-60 min outdoor walk.");
     expect(readinessCall("good", [{ ...lift, done: true }])).toBe(
       "Today's session is done. Recover well tonight.",
     );
