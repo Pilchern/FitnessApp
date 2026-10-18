@@ -100,6 +100,7 @@ function createExistingCheckin(overrides: Record<string, unknown> = {}) {
     sleepHrvAvg: null,
     sleepAvgHeartRate: null,
     sleepWristTempC: null,
+    overnightWindow: null,
     coldPlungeCompleted: null,
     source: {
       sourceType: "manual" as const,
@@ -560,6 +561,36 @@ describe("AppleHealthSleepSyncOrchestrator", () => {
         wakeTimeLocal: "06:20",
       }),
     );
+  });
+
+  it("marks ready-made overnight vitals as the fixed window", async () => {
+    const connection = createConnection();
+    const stores = createStores(connection);
+    const vitals = { date: "2026-07-17", sleep_avg_heart_rate: 55 };
+    const sleepOnly = { date: "2026-07-18", sleep_duration_minutes: 470 };
+    const rawImportEventStore = createRawImportEventStore([
+      { id: "raw-6", date: "2026-07-17", payload: vitals },
+      { id: "raw-7", date: "2026-07-18", payload: sleepOnly },
+    ]);
+    const repository = createRepository(
+      createExistingCheckin({ overnightWindow: "sleep" }),
+    );
+
+    await createOrchestrator(repository, rawImportEventStore, stores).syncSleep(
+      {
+        userId: connection.userId,
+        triggerType: "webhook",
+        items: [vitals, sleepOnly],
+      },
+    );
+
+    const [[withVitals], [withoutVitals]] = repository.update.mock.calls as [
+      [Record<string, unknown>],
+      [Record<string, unknown>],
+    ];
+    expect(withVitals.overnightWindow).toBe("fixed");
+    // Sleep times alone leave the window as the overnight service set it.
+    expect(withoutVitals).not.toHaveProperty("overnightWindow");
   });
 
   it("isolates a per-item failure and keeps processing the rest of the batch", async () => {

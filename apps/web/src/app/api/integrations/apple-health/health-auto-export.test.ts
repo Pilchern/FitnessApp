@@ -351,21 +351,107 @@ describe("mapHealthAutoExport overnight (hourly) metrics", () => {
     },
   };
 
-  it("averages the 23:00-05:59 hours onto the wake date's sleep fields", () => {
+  it("returns night-time vitals as samples and wrist temperature on the wake date", () => {
     const out = mapHealthAutoExport(body);
+    // Averaging over sleep happens once stored (OvernightMetricsService).
     expect(out.sleep).toEqual([
+      { date: "2026-10-13", sleep_wrist_temp_c: 34.5 },
+    ]);
+    expect(out.overnightSamples).toEqual([
+      // 15:00 is daytime and dropped; 07:00 is kept for a late wake.
       {
-        date: "2026-10-13",
-        sleep_hrv_avg: 70,
-        sleep_avg_heart_rate: 54,
-        sleep_respiratory_rate: 14.5,
-        sleep_spo2_avg_pct: 96.5,
-        sleep_wrist_temp_c: 34.5,
+        metric: "hrv",
+        sampleLocal: "2026-10-12T23:00:00",
+        bucketMinutes: 60,
+        value: 60,
+      },
+      {
+        metric: "hrv",
+        sampleLocal: "2026-10-13T02:00:00",
+        bucketMinutes: 60,
+        value: 70,
+      },
+      {
+        metric: "hrv",
+        sampleLocal: "2026-10-13T05:00:00",
+        bucketMinutes: 60,
+        value: 80,
+      },
+      {
+        metric: "hrv",
+        sampleLocal: "2026-10-13T07:00:00",
+        bucketMinutes: 60,
+        value: 20,
+      },
+      {
+        metric: "heart_rate",
+        sampleLocal: "2026-10-13T01:00:00",
+        bucketMinutes: 60,
+        value: 52,
+      },
+      {
+        metric: "heart_rate",
+        sampleLocal: "2026-10-13T03:00:00",
+        bucketMinutes: 60,
+        value: 55,
+      },
+      {
+        metric: "heart_rate",
+        sampleLocal: "2026-10-13T12:00:00",
+        bucketMinutes: 60,
+        value: 95,
+      },
+      {
+        metric: "respiratory_rate",
+        sampleLocal: "2026-10-13T01:00:00",
+        bucketMinutes: 60,
+        value: 14,
+      },
+      {
+        metric: "respiratory_rate",
+        sampleLocal: "2026-10-13T04:00:00",
+        bucketMinutes: 60,
+        value: 15,
+      },
+      {
+        metric: "spo2",
+        sampleLocal: "2026-10-13T02:00:00",
+        bucketMinutes: 60,
+        value: 96,
+      },
+      {
+        metric: "spo2",
+        sampleLocal: "2026-10-13T03:00:00",
+        bucketMinutes: 60,
+        value: 97,
       },
     ]);
     // Hourly HRV never overwrites the daily `hrv` the baseline is built on.
     expect(out.sleep[0]).not.toHaveProperty("hrv");
     expect(out.dailyMetrics).toEqual([]);
+  });
+
+  it("keeps HRV readings off the hour as single readings", () => {
+    const out = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "heart_rate_variability",
+            units: "ms",
+            data: [
+              { date: "2026-10-13 02:31:05 -0500", qty: 62 },
+              { date: "2026-10-13 05:12:40 -0500", qty: 70 },
+            ],
+          },
+        ],
+      },
+    });
+    expect(
+      out.overnightSamples.map((s) => [s.sampleLocal, s.bucketMinutes]),
+    ).toEqual([
+      ["2026-10-13T02:31:05", 0],
+      ["2026-10-13T05:12:40", 0],
+    ]);
   });
 
   it("still treats one point per day at midnight as daily HRV", () => {

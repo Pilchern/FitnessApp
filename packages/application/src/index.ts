@@ -17,6 +17,7 @@ export * from "./modules/insights/insight-orchestrator";
 export * from "./modules/journal/journal-entry";
 export * from "./modules/recovery/recovery-checkin";
 export * from "./modules/recovery/recovery-helpers";
+export * from "./modules/recovery/overnight-metrics";
 export * from "./modules/recovery/readiness";
 export * from "./modules/recovery/strain-sleep";
 export * from "./modules/insights/trend-notes";

@@ -54,6 +54,19 @@ export type SyncAppleHealthSleepResult = {
   failedItemCount: number;
 };
 
+/**
+ * True when the payload carries ready-made overnight vitals (the Shortcut
+ * webhook). Those are not averaged over sleep, so the row is marked fixed.
+ */
+function hasOvernightVitals(payload: AppleHealthSleepPayload) {
+  return (
+    payload.sleep_hrv_avg != null ||
+    payload.sleep_avg_heart_rate != null ||
+    payload.sleep_respiratory_rate != null ||
+    payload.sleep_spo2_avg_pct != null
+  );
+}
+
 function toError(error: unknown) {
   if (error instanceof Error) {
     return error;
@@ -235,6 +248,9 @@ export class AppleHealthSleepSyncOrchestrator {
                 payload.sleep_wrist_temp_c ??
                 existing.sleepWristTempC ??
                 undefined,
+              ...(hasOvernightVitals(payload)
+                ? { overnightWindow: "fixed" as const }
+                : {}),
               // Fill-only: a time typed on the check-in stays, and a later
               // push (by-day aggregates include naps) cannot move it.
               ...(existing.bedtimeLocal == null && payload.bedtime_local
@@ -288,6 +304,7 @@ export class AppleHealthSleepSyncOrchestrator {
               sleepHrvAvg: payload.sleep_hrv_avg ?? null,
               sleepAvgHeartRate: payload.sleep_avg_heart_rate ?? null,
               sleepWristTempC: payload.sleep_wrist_temp_c ?? null,
+              overnightWindow: hasOvernightVitals(payload) ? "fixed" : null,
               bedtimeLocal: payload.bedtime_local ?? null,
               wakeTimeLocal: payload.wake_time_local ?? null,
               source: {

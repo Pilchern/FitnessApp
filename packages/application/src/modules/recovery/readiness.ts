@@ -24,8 +24,9 @@ import type {
  * 3. Penalties that only ever subtract: wrist temperature above baseline,
  *    breathing rate above baseline, and a training-load spike (last 7 days
  *    against the 4-week average).
- * 4. Guards: overnight HR, HRV and breathing rate are skipped on a night
- *    sleep started after 23:30 (the fixed window caught awake time), and no
+ * 4. Guards: overnight HR, HRV and breathing rate are averaged over the
+ *    time asleep (overnight-metrics.ts); on older fixed-window rows they are
+ *    skipped when sleep started after 23:30 (awake time), and no
  *    single signal counts past +/- 3 z.
  * 5. Caps: soreness 8+ or a self-rating of 4 or less caps at 49. 100 needs
  *    every core signal at or above baseline, no penalty, and a settled
@@ -127,10 +128,11 @@ const SLEEP_BALANCE_DEFICIT_SPREAD_HOURS = 0.75;
 const WAKE_SD_NEUTRAL_MIN = 45;
 const WAKE_SD_PER_Z_MIN = 20;
 /**
- * Overnight readings average a fixed 23:00-05:59 window. Fall asleep after
- * 23:30 and that window holds awake time, which reads as a high heart rate
- * and low HRV, so the night's overnight HR, HRV and breathing rate are not
- * used (today or in the baseline).
+ * Older rows (and nights before sleep synced) average a fixed 23:00-05:59
+ * window. Fall asleep after 23:30 and that window holds awake time, which
+ * reads as a high heart rate and low HRV, so on those rows the night's
+ * overnight HR, HRV and breathing rate are not used (today or in the
+ * baseline). Rows averaged over the sleep window are always used.
  */
 const LATEST_CLEAN_BEDTIME_MIN = 23 * 60 + 30;
 /** Bedtimes before noon are after midnight. */
@@ -226,13 +228,15 @@ function sleepZ(
 }
 
 /**
- * An overnight-window reading, or null when the Watch recorded no sleep that
- * night (the window is awake or off-wrist) or sleep started after 23:30.
+ * An overnight reading, or null when the Watch recorded no sleep that night
+ * (the window is awake or off-wrist), or when a fixed-window average met a
+ * bedtime after 23:30.
  */
 function overnightReading(checkin: RecoveryCheckin, value: number | null) {
   if (checkin.sleepDurationMinutes == null) return null;
   const bedtime = clockMinutes(checkin.bedtimeLocal);
   if (
+    checkin.overnightWindow !== "sleep" &&
     bedtime != null &&
     (bedtime > LATEST_CLEAN_BEDTIME_MIN || bedtime < NOON_MIN)
   ) {

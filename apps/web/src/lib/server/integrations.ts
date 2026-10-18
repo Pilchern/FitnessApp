@@ -5,6 +5,7 @@ import {
   BodyMetricService,
   CardioSessionService,
   IntegrationStatusService,
+  OvernightMetricsService,
 } from "@fitness-app/application";
 import {
   SupabaseBodyMetricRepository,
@@ -14,6 +15,7 @@ import {
   SupabaseIntegrationConnectionRepository,
   SupabaseIntegrationCredentialRepository,
   SupabaseIntegrationStatusRepository,
+  SupabaseOvernightSampleRepository,
   SupabaseRawImportEventRepository,
   SupabaseRecoveryCheckinRepository,
   SupabaseSyncJobRunRepository,
@@ -81,6 +83,19 @@ export function createAppleHealthSleepOrchestrator() {
     new SupabaseSyncJobRunRepository(client),
     new SupabaseImportBatchRepository(client),
     new SupabaseRawImportEventRepository(client),
+  );
+}
+
+/**
+ * Stores Health Auto Export's night-time vitals and averages each night over
+ * the time asleep. Admin client: the webhook has no user session.
+ */
+export function createOvernightMetricsService() {
+  const client = createSupabaseAdminClient();
+
+  return new OvernightMetricsService(
+    new SupabaseOvernightSampleRepository(client),
+    new SupabaseRecoveryCheckinRepository(client),
   );
 }
 
