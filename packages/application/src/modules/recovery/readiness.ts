@@ -24,7 +24,10 @@ import type {
  * 3. Penalties that only ever subtract: wrist temperature above baseline,
  *    breathing rate above baseline, and a training-load spike (last 7 days
  *    against the 4-week average).
- * 4. Caps: soreness 8+ or a self-rating of 4 or less caps at 49. 100 needs
+ * 4. Guards: overnight HR, HRV and breathing rate are skipped on a night
+ *    sleep started after 23:30 (the fixed window caught awake time), and no
+ *    single signal counts past +/- 3 z.
+ * 5. Caps: soreness 8+ or a self-rating of 4 or less caps at 49. 100 needs
  *    every core signal at or above baseline, no penalty, and a settled
  *    baseline; a calibrating baseline tops out at 95.
  *
@@ -123,6 +126,17 @@ const SLEEP_BALANCE_DEFICIT_SPREAD_HOURS = 0.75;
 /** Wake-time SD at which consistency is neutral, and minutes per z. */
 const WAKE_SD_NEUTRAL_MIN = 45;
 const WAKE_SD_PER_Z_MIN = 20;
+/**
+ * Overnight readings average a fixed 23:00-05:59 window. Fall asleep after
+ * 23:30 and that window holds awake time, which reads as a high heart rate
+ * and low HRV, so the night's overnight HR, HRV and breathing rate are not
+ * used (today or in the baseline).
+ */
+const LATEST_CLEAN_BEDTIME_MIN = 23 * 60 + 30;
+/** Bedtimes before noon are after midnight. */
+const NOON_MIN = 12 * 60;
+/** One signal's z is held to +/- this, so one odd reading cannot sink the day. */
+const MAX_COMPONENT_Z = 3;
 const CAPPED_SCORE = 49;
 const CALIBRATING_MAX_SCORE = 95;
 
@@ -195,6 +209,7 @@ function component(
   z: number,
   detail: string,
 ): ReadinessComponent & { z: number } {
+  z = clamp(z, -MAX_COMPONENT_Z, MAX_COMPONENT_Z);
   const score = clampScore(BASELINE_SCORE + SCORE_PER_Z * z);
   return { key, label, score, level: readinessLevel(score), detail, z };
 }
@@ -208,6 +223,22 @@ function sleepZ(
   const diff = sleptHours - targetHours;
   if (diff >= 0) return Math.min(1, diff / surplusSpread);
   return clamp((diff + SLEEP_GRACE_HOURS) / deficitSpread, -3, 0);
+}
+
+/**
+ * An overnight-window reading, or null when the Watch recorded no sleep that
+ * night (the window is awake or off-wrist) or sleep started after 23:30.
+ */
+function overnightReading(checkin: RecoveryCheckin, value: number | null) {
+  if (checkin.sleepDurationMinutes == null) return null;
+  const bedtime = clockMinutes(checkin.bedtimeLocal);
+  if (
+    bedtime != null &&
+    (bedtime > LATEST_CLEAN_BEDTIME_MIN || bedtime < NOON_MIN)
+  ) {
+    return null;
+  }
+  return value != null && value > 0 ? value : null;
 }
 
 function hasSignal(checkin: RecoveryCheckin) {
@@ -322,21 +353,17 @@ function scoreDay(
     (c) => c.checkinDate < day.checkinDate && c.checkinDate >= windowStart,
   );
   const positive = (v: number | null) => (v != null && v > 0 ? v : null);
-  // Overnight readings only count on nights the Watch recorded sleep; without
-  // it the 23:00-05:59 window is awake (or off-wrist) heart rate.
-  const slept = (c: RecoveryCheckin, v: number | null) =>
-    c.sleepDurationMinutes != null ? positive(v) : null;
 
   const hrv = pickSeries(
     day,
     prior,
-    (c) => slept(c, c.sleepHrvAvg),
+    (c) => overnightReading(c, c.sleepHrvAvg),
     (c) => positive(c.hrv),
   );
   const heartRate = pickSeries(
     day,
     prior,
-    (c) => slept(c, c.sleepAvgHeartRate),
+    (c) => overnightReading(c, c.sleepAvgHeartRate),
     (c) => c.restingHeartRate,
   );
 
@@ -518,20 +545,20 @@ function buildAdjustments(
 
   // Breathing rate is very steady night to night; past 1.5 robust SDs above
   // baseline, 8 points per SD, capped at 20.
-  const priorResp = present(prior.map((c) => c.sleepRespiratoryRate));
-  if (
-    day.sleepRespiratoryRate != null &&
-    priorResp.length >= MIN_BASELINE_DAYS
-  ) {
+  const priorResp = present(
+    prior.map((c) => overnightReading(c, c.sleepRespiratoryRate)),
+  );
+  const respiratoryRate = overnightReading(day, day.sleepRespiratoryRate);
+  if (respiratoryRate != null && priorResp.length >= MIN_BASELINE_DAYS) {
     const base = robustBaseline(priorResp, MIN_RESPIRATORY_SPREAD);
-    const z = (day.sleepRespiratoryRate - base.center) / base.spread;
+    const z = (respiratoryRate - base.center) / base.spread;
     const points = Math.min(20, Math.round((z - 1.5) * 8));
     if (points > 0) {
       adjustments.push({
         key: "respiratoryRate",
         label: "Breathing rate",
         points,
-        detail: `${day.sleepRespiratoryRate.toFixed(1)}/min vs ${base.center.toFixed(1)} usual`,
+        detail: `${respiratoryRate.toFixed(1)}/min vs ${base.center.toFixed(1)} usual`,
       });
     }
   }

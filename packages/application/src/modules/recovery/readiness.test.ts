@@ -354,6 +354,66 @@ describe("computeDailyReadiness", () => {
     expect(hr?.detail).toBe("60 bpm vs 61 usual");
   });
 
+  it("skips overnight readings when sleep started after 23:30", () => {
+    const rows = settledBaseline().map((r) => ({
+      ...r,
+      bedtimeLocal: "22:00",
+      sleepHrvAvg: 70,
+      sleepAvgHeartRate: 52,
+      sleepRespiratoryRate: 14,
+    }));
+    // A 00:15 bedtime: the 23:00-05:59 window caught an awake hour.
+    const late = checkin(TODAY, {
+      restingHeartRate: 60,
+      sleepDurationMinutes: 450,
+      bedtimeLocal: "00:15",
+      sleepHrvAvg: 40,
+      sleepAvgHeartRate: 85,
+      sleepRespiratoryRate: 17,
+    });
+    const result = computeDailyReadiness([...rows, late], TODAY);
+    if (result.status !== "scored") throw new Error("expected a score");
+    expect(result.components.find((c) => c.key === "hrv")).toBeUndefined();
+    const hr = result.components.find((c) => c.key === "restingHeartRate");
+    expect(hr?.label).toBe("Resting HR");
+    expect(result.adjustments).toEqual([]);
+    expect(result.level).toBe("good");
+
+    // 23:20 is still inside the clean window.
+    const onTime = computeDailyReadiness(
+      [...rows, { ...late, bedtimeLocal: "23:20" }],
+      TODAY,
+    );
+    if (onTime.status !== "scored") throw new Error("expected a score");
+    expect(
+      onTime.components.find((c) => c.key === "restingHeartRate")?.label,
+    ).toBe("Heart rate, overnight");
+  });
+
+  it("holds one extreme signal to 3 z so it cannot zero the day", () => {
+    const rows = settledBaseline();
+    const day = checkin(TODAY, {
+      hrv: 55,
+      restingHeartRate: 60,
+      sleepDurationMinutes: 480,
+      wakeTimeLocal: "06:30",
+    });
+    const spike = computeDailyReadiness(
+      [...rows, { ...day, restingHeartRate: 90 }],
+      TODAY,
+    );
+    const high = computeDailyReadiness(
+      [...rows, { ...day, restingHeartRate: 70 }],
+      TODAY,
+    );
+    if (spike.status !== "scored" || high.status !== "scored") {
+      throw new Error("expected scores");
+    }
+    // 10 bpm over is already past 3 z; 30 bpm over costs no more.
+    expect(spike.score).toBe(high.score);
+    expect(spike.score).toBeGreaterThanOrEqual(50);
+  });
+
   it("scores wake-time consistency over the last 7 days", () => {
     const rows = settledBaseline().map((r, i) => ({
       ...r,
