@@ -985,14 +985,16 @@ def template_def(day_rows, title):
         if r["measure"] == "reps" and r["rmin"] != r["rmax"] and not r["gate"]:
             bits.append(f"{r['rmin']}-{r['rmax']} reps.")
         if r["side"] == PER_LEG and r["measure"] == "reps":
-            bits.append("Per leg, left first.")
+            bits.append("Per leg." if "Left first" in (r["notes"] or "") else "Per leg, left first.")
         if r["side"] == PER_SIDE and r["measure"] == "reps":
             bits.append("Per side.")
         if r["name"] == "Split Squat (to 90°)":
             bits.append("From week 11: rear foot elevated.")
-        if r["ready"] == "normal":
+        if r["ready"] == "normal" and "Normal knee check" not in (r["notes"] or ""):
             bits.append("Normal knee check only.")
-        bits.append(r["cue"])
+        if r["notes"] and not r["gate"]:
+            bits.append(r["notes"])
+        bits.append(CUES[name])
         exercises.append({
             "exerciseName": name,
             "exerciseOrder": len(exercises) + 1,
@@ -1107,3 +1109,56 @@ for b in BLOCKS:
                     total += r["smax"]
     if sess:
         print(f"  quad sets/wk {b['name']}: {total}")
+
+# ---------------------------------------------------------------- live staging
+# The Supabase connector takes SQL as text, so the JSON goes up in pieces to a
+# private schema (not exposed by the API), each checked by md5, and one small
+# atomic statement applies the seed from there. Same data, same logic.
+import hashlib
+
+stage = {"sessions": jdump(sess_json), "cues": cue_json}
+for b in BLOCKS:
+    rows = [e for e in ex_json if e["k"] == CODES[b["name"]]]
+    if rows:
+        stage[f"ex_{CODES[b['name']]}"] = jdump(rows)
+tmpl_literals = {}
+for day, (title, rows) in zip((1, 3, 5), B1):
+    blob = json.dumps(template_def(rows, title), ensure_ascii=False)
+    stage[f"tmpl_{day}"] = blob
+    tmpl_literals[day] = q(blob) + "::jsonb"
+
+apply_sql = "\n".join(p for _, p in parts)
+apply_sql = apply_sql.replace(f"$j${jdump(sess_json)}$j$::jsonb",
+                              "(select body::jsonb from seed_staging.v1 where part = 'sessions')")
+apply_sql = apply_sql.replace(f"$j${cue_json}$j$::jsonb",
+                              "(select body::jsonb from seed_staging.v1 where part = 'cues')")
+apply_sql = apply_sql.replace(
+    f"$j${jdump(ex_json)}$j$::jsonb",
+    "(select jsonb_agg(e) from seed_staging.v1 st, jsonb_array_elements(st.body::jsonb) e "
+    "where st.part like 'ex\\_%')")
+for day, lit in tmpl_literals.items():
+    assert lit in apply_sql
+    apply_sql = apply_sql.replace(lit, f"(select body::jsonb from seed_staging.v1 where part = 'tmpl_{day}')")
+assert "$j$" not in apply_sql
+md5_checks = " or ".join(
+    f"(part = {q(k)} and md5(body) <> {q(hashlib.md5(v.encode()).hexdigest())})" for k, v in stage.items())
+apply_sql = f"""do $$ begin
+  if (select count(*) from seed_staging.v1) <> {len(stage)} or exists (
+    select 1 from seed_staging.v1 where {md5_checks}
+  ) then raise exception 'v1 seed: staged data does not match the generator'; end if;
+end $$;
+""" + apply_sql
+stage_dir = OUT_CHUNKS / "stage"
+stage_dir.mkdir(parents=True, exist_ok=True)
+(stage_dir / "00_create.sql").write_text(
+    "create schema if not exists seed_staging;\n"
+    "revoke all on schema seed_staging from public, anon, authenticated;\n"
+    "create table if not exists seed_staging.v1 (part text primary key, body text not null);\n")
+for i, (k, v) in enumerate(stage.items(), start=1):
+    assert "$s$" not in v
+    (stage_dir / f"{i:02d}_{k}.sql").write_text(
+        f"insert into seed_staging.v1 values ('{k}', $s${v}$s$)\n"
+        f"on conflict (part) do update set body = excluded.body;\n")
+(stage_dir / "90_apply.sql").write_text(apply_sql)
+(stage_dir / "99_drop.sql").write_text("drop schema seed_staging cascade;\n")
+print("staging parts:", {k: len(v) for k, v in stage.items()}, "apply bytes:", len(apply_sql))
