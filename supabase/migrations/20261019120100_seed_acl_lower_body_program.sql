@@ -1,165 +1,177 @@
 -- Seeds the post-op program, gates, settings and the daily ROM habit for the
--- app's single owner.
+-- app's single owner (the first profile).
 --
--- Idempotent: every insert is keyed on a natural unique key (or "where not
--- exists") and does nothing when the row exists, so a rerun adds only what
--- is missing and never overwrites edits made in the app. No-op on a database
--- without a profile. No loads are written: leg loads come from the
--- progression engine, upper loads from what was last logged.
-do $$
-declare
-  uid uuid;
-  pid uuid;
-  b_onramp uuid;
-  b1 uuid;
-  b_deload1 uuid;
-  b2 uuid;
-  b_deload2 uuid;
-  b3 uuid;
-begin
-  select user_id into uid from public.profiles order by created_at limit 1;
-  if uid is null then
-    return;
-  end if;
+-- Plain statements, no DO block (the Supabase MCP connector times out on
+-- DO blocks). Safe to rerun: every insert is keyed on a natural unique key
+-- (or "where not exists") and does nothing when the row exists, so a rerun
+-- adds only what is missing and never overwrites edits made in the app.
+-- No-op on a database without a profile. No loads are written: leg loads
+-- come from the progression engine, upper loads from what was last logged.
 
-  -- Program -----------------------------------------------------------------
-  insert into public.training_programs
-    (user_id, name, week_anchor_date, return_to_sport_week, test_day_url, notes)
-  values (
-    uid,
-    'ACL return',
-    date '2026-08-17',
-    39,
-    'https://nick-pt-tracker.vercel.app',
-    'Left ACL reconstruction (BTB). Weeks count from the surgery date. Strength tests, gait and return-to-sport gates live in the PT Tracker.'
-  )
-  on conflict (user_id, name) do nothing;
+-- Program -------------------------------------------------------------------
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.training_programs
+  (user_id, name, week_anchor_date, return_to_sport_week, test_day_url, notes)
+select o.uid, 'ACL return', date '2026-08-17', 39,
+  'https://nick-pt-tracker.vercel.app',
+  'Left ACL reconstruction (BTB). Weeks count from the surgery date. Strength tests, gait and return-to-sport gates live in the PT Tracker.'
+from o
+on conflict (user_id, name) do nothing;
 
-  select id into pid from public.training_programs
-  where user_id = uid and name = 'ACL return';
+-- Gates (manual toggles in Settings) ----------------------------------------
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.program_gates (user_id, gate_key, label, earliest_on)
+select o.uid, g.gate_key, g.label, g.earliest_on
+from o
+cross join (values
+    ('barbell', 'Barbell cleared', null),
+    ('depth_past_90', 'Depth past 90°', null),
+    ('full_range_knee_extension', 'Full-range knee extension', null),
+    ('nordic', 'Nordic curl', null),
+    ('jog', 'Jog', date '2026-10-26'),
+    ('plyo', 'Plyo (single-leg)', date '2026-11-09'),
+    ('golf_short_game', 'Golf short game', null),
+    ('golf_full_swing', 'Golf full swing', null),
+    ('cutting', 'Cutting', null),
+    ('return_to_sport', 'Return to sport', date '2027-05-17')
+) as g(gate_key, label, earliest_on)
+on conflict (user_id, gate_key) do nothing;
 
-  -- Gates (manual toggles in Settings) --------------------------------------
-  insert into public.program_gates (user_id, gate_key, label, earliest_on)
-  values
-    (uid, 'barbell', 'Barbell cleared', null),
-    (uid, 'depth_past_90', 'Depth past 90°', null),
-    (uid, 'full_range_knee_extension', 'Full-range knee extension', null),
-    (uid, 'nordic', 'Nordic curl', null),
-    (uid, 'jog', 'Jog', date '2026-10-26'),
-    (uid, 'plyo', 'Plyo (single-leg)', date '2026-11-09'),
-    (uid, 'golf_short_game', 'Golf short game', null),
-    (uid, 'golf_full_swing', 'Golf full swing', null),
-    (uid, 'cutting', 'Cutting', null),
-    (uid, 'return_to_sport', 'Return to sport', date '2027-05-17')
-  on conflict (user_id, gate_key) do nothing;
-
-  -- Blocks --------------------------------------------------------------------
-  insert into public.program_blocks
-    (user_id, program_id, name, start_week, end_week,
-     sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes)
-  values
-    (uid, pid, 'On-ramp', 9, 9, 2, 3, 12, 12, 3,
+-- Blocks ----------------------------------------------------------------------
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.program_blocks
+  (user_id, program_id, name, start_week, end_week,
+   sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes)
+select o.uid, p.id, b.name, b.start_week, b.end_week,
+  b.sets_min, b.sets_max, b.reps_min, b.reps_max, b.rir, b.rep_scheme, b.notes
+from o
+join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
+cross join (values
+    ('On-ramp', 9, 9, 2, 3, 12, 12, 3,
      '2–3 x 12 @ RIR 3–4', 'First loaded leg week. Learn the movements; leave reps in the tank.'),
-    (uid, pid, 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2,
+    ('Block 1 Build', 10, 12, 3, 4, 10, 12, 2,
      '3–4 x 10–12 @ RIR 2', null),
-    (uid, pid, 'Deload + Test', 13, 13, null, null, null, null, null,
+    ('Deload + Test', 13, 13, null, null, null, null, null,
      'Block 1 minus 1 set, no load increases', 'Retest in the PT Tracker this week.'),
-    (uid, pid, 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2,
+    ('Block 2 Strength', 14, 17, 4, 4, 6, 8, 2,
      '4 x 6–8 @ RIR 2', null),
-    (uid, pid, 'Deload', 18, 18, null, null, null, null, null,
+    ('Deload', 18, 18, null, null, null, null, null,
      'Block 2 minus 1 set, no load increases', null),
-    (uid, pid, 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2,
+    ('Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2,
      '4–5 x 3–5 @ RIR 2', null),
-    (uid, pid, 'Block 4 Sport Prep', 23, 38, null, null, null, null, null,
+    ('Block 4 Sport Prep', 23, 38, null, null, null, null, null,
      'Alternating 4-week strength / power waves', 'Sessions to be added (Phase C).'),
-    (uid, pid, 'Return to Sport + Maintenance', 39, 520, null, null, null, null, null,
+    ('Return to Sport + Maintenance', 39, 520, null, null, null, null, null,
      'Maintenance', 'Sessions to be added (Phase C).')
-  on conflict (program_id, name) do nothing;
+) as b(name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir, rep_scheme, notes)
+on conflict (program_id, name) do nothing;
 
-  select id into b_onramp from public.program_blocks where program_id = pid and name = 'On-ramp';
-  select id into b1 from public.program_blocks where program_id = pid and name = 'Block 1 Build';
-  select id into b_deload1 from public.program_blocks where program_id = pid and name = 'Deload + Test';
-  select id into b2 from public.program_blocks where program_id = pid and name = 'Block 2 Strength';
-  select id into b_deload2 from public.program_blocks where program_id = pid and name = 'Deload';
-  select id into b3 from public.program_blocks where program_id = pid and name = 'Block 3 Heavy + Power';
+-- Deloads run the block before them (minus a set, no increases).
+update public.program_blocks d
+set sessions_from_block_id = src.id
+from public.program_blocks src
+where d.program_id = src.program_id
+  and d.sessions_from_block_id is null
+  and ((d.name = 'Deload + Test' and src.name = 'Block 1 Build')
+    or (d.name = 'Deload' and src.name = 'Block 2 Strength'))
+  and d.program_id in (
+    select p.id from public.training_programs p
+    where p.name = 'ACL return'
+      and p.user_id = (select user_id from public.profiles order by created_at limit 1)
+  );
 
-  -- Deloads run the block before them (minus a set, no increases).
-  update public.program_blocks set sessions_from_block_id = b1
-  where id = b_deload1 and sessions_from_block_id is null;
-  update public.program_blocks set sessions_from_block_id = b2
-  where id = b_deload2 and sessions_from_block_id is null;
+-- Weeks 9-38; deload flags on 13 and 18 --------------------------------------
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.program_weeks (user_id, program_id, week_number, is_deload)
+select o.uid, p.id, w, w in (13, 18)
+from o
+join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
+cross join generate_series(9, 38) as w
+on conflict (program_id, week_number) do nothing;
 
-  -- Weeks 9-38; deload flags on 13 and 18 ------------------------------------
-  insert into public.program_weeks (user_id, program_id, week_number, is_deload)
-  select uid, pid, w, w in (13, 18)
-  from generate_series(9, 38) as w
-  on conflict (program_id, week_number) do nothing;
+-- Sessions: the same week shape in On-ramp and Blocks 1-3 ---------------------
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.program_sessions
+  (user_id, block_id, day_of_week, sort_order, session_type, name,
+   ride_kind, minutes_min, minutes_max, structure, notes)
+select o.uid, b.id, s.day, s.sort, s.kind, s.name,
+  s.ride, s.min_m, s.max_m, s.structure, s.notes
+from o
+join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
+join public.program_blocks b on b.program_id = p.id
+  and b.name in ('On-ramp', 'Block 1 Build', 'Block 2 Strength', 'Block 3 Heavy + Power')
+cross join (values
+  (1::smallint, 0::smallint, 'lift', 'Heavy legs + Push', null::text, null::smallint, null::smallint, null::text,
+   'Legs first, then Push. Seated or supported DB work; on and off the bench leading with the right leg.'),
+  (3::smallint, 0::smallint, 'lift', 'Single-leg + Pull', null, null, null, null,
+   'PT this morning. Legs, then Pull, then the balance and gait finish.'),
+  (5::smallint, 0::smallint, 'lift', 'Quad isolation + Arms', null, null, null, null,
+   'PT this morning. Quad work first, then Arms.'),
+  (2::smallint, 1::smallint, 'peloton', 'Peloton Zone 2', 'zone2', 30::smallint, 45::smallint, null, null),
+  (6::smallint, 1::smallint, 'peloton', 'Peloton Zone 2 (long)', 'zone2', 45::smallint, 60::smallint, null, null),
+  (0::smallint, 0::smallint, 'test', 'Test day + walk', null, null, null,
+   'Strength and gait tests in the PT Tracker, then an easy walk.', null)
+) as s(day, sort, kind, name, ride, min_m, max_m, structure, notes)
+on conflict (block_id, day_of_week, sort_order) do nothing;
 
-  -- Sessions: the same week shape in On-ramp and Blocks 1-3 -------------------
-  insert into public.program_sessions
-    (user_id, block_id, day_of_week, sort_order, session_type, name,
-     ride_kind, minutes_min, minutes_max, structure, notes)
-  select uid, b.id, s.day, s.sort, s.kind, s.name,
-    s.ride, s.min_m, s.max_m, s.structure, s.notes
-  from (values (b_onramp), (b1), (b2), (b3)) as b(id)
-  cross join (values
-    (1::smallint, 0::smallint, 'lift', 'Heavy legs + Push', null::text, null::smallint, null::smallint, null::text,
-     'Legs first, then Push. Seated or supported DB work; on and off the bench leading with the right leg.'),
-    (3::smallint, 0::smallint, 'lift', 'Single-leg + Pull', null, null, null, null,
-     'PT this morning. Legs, then Pull, then the balance and gait finish.'),
-    (5::smallint, 0::smallint, 'lift', 'Quad isolation + Arms', null, null, null, null,
-     'PT this morning. Quad work first, then Arms.'),
-    (2::smallint, 1::smallint, 'peloton', 'Peloton Zone 2', 'zone2', 30::smallint, 45::smallint, null, null),
-    (6::smallint, 1::smallint, 'peloton', 'Peloton Zone 2 (long)', 'zone2', 45::smallint, 60::smallint, null, null),
-    (0::smallint, 0::smallint, 'test', 'Test day + walk', null, null, null,
-     'Strength and gait tests in the PT Tracker, then an easy walk.', null)
-  ) as s(day, sort, kind, name, ride, min_m, max_m, structure, notes)
-  on conflict (block_id, day_of_week, sort_order) do nothing;
+-- Thursday: Zone 2 in the On-ramp, seated climb intervals from week 10.
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.program_sessions
+  (user_id, block_id, day_of_week, sort_order, session_type, name,
+   ride_kind, minutes_min, minutes_max, structure)
+select o.uid, b.id, 4, 1, 'peloton',
+  case when b.name = 'On-ramp' then 'Peloton Zone 2' else 'Peloton climb intervals' end,
+  case when b.name = 'On-ramp' then 'zone2' else 'climb_intervals' end,
+  case when b.name = 'On-ramp' then 30 else 45 end,
+  45,
+  case when b.name = 'On-ramp' then null
+    else '10 min warm-up; 5 x 3 min seated, cadence 60–70, RPE 7, 3 min easy between; cool-down.' end
+from o
+join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
+join public.program_blocks b on b.program_id = p.id
+  and b.name in ('On-ramp', 'Block 1 Build', 'Block 2 Strength', 'Block 3 Heavy + Power')
+on conflict (block_id, day_of_week, sort_order) do nothing;
 
-  -- Thursday: Zone 2 in the On-ramp, seated climb intervals from week 10.
-  insert into public.program_sessions
-    (user_id, block_id, day_of_week, sort_order, session_type, name,
-     ride_kind, minutes_min, minutes_max, structure)
-  select uid, b.id, 4, 1, 'peloton',
-    case when b.id = b_onramp then 'Peloton Zone 2' else 'Peloton climb intervals' end,
-    case when b.id = b_onramp then 'zone2' else 'climb_intervals' end,
-    case when b.id = b_onramp then 30 else 45 end,
-    45,
-    case when b.id = b_onramp then null
-      else '10 min warm-up; 5 x 3 min seated, cadence 60–70, RPE 7, 3 min easy between; cool-down.' end
-  from (values (b_onramp), (b1), (b2), (b3)) as b(id)
-  on conflict (block_id, day_of_week, sort_order) do nothing;
+-- Walk-jog (hidden until the jog gate is cleared): Tue/Sat before the ride.
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.program_sessions
+  (user_id, block_id, day_of_week, sort_order, session_type, name,
+   minutes_min, minutes_max, structure, gate_key, notes)
+select o.uid, b.id, d.day, 0, 'walk_jog', 'Walk-jog', 12, 20,
+  'Start at 1 min jog / 1 min walk x 6.', 'jog',
+  'Ride after it is cut to 15–20 min.'
+from o
+join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
+join public.program_blocks b on b.program_id = p.id
+  and b.name in ('Block 1 Build', 'Block 2 Strength', 'Block 3 Heavy + Power')
+cross join (values (2::smallint), (6::smallint)) as d(day)
+on conflict (block_id, day_of_week, sort_order) do nothing;
 
-  -- Walk-jog (hidden until the jog gate is cleared): Tue/Sat before the ride.
-  insert into public.program_sessions
-    (user_id, block_id, day_of_week, sort_order, session_type, name,
-     minutes_min, minutes_max, structure, gate_key, notes)
-  select uid, b.id, d.day, 0, 'walk_jog', 'Walk-jog', 12, 20,
-    'Start at 1 min jog / 1 min walk x 6.', 'jog',
-    'Ride after it is cut to 15–20 min.'
-  from (values (b1), (b2), (b3)) as b(id)
-  cross join (values (2::smallint), (6::smallint)) as d(day)
-  on conflict (block_id, day_of_week, sort_order) do nothing;
-
-  -- Exercise slots, the same in On-ramp and Blocks 1-3 ------------------------
-  -- Numbers are Block 1's. Loaded leg lifts (follows_block) take the block's
-  -- sets/reps/RIR in the On-ramp and Blocks 2-3 instead. Order: legs 0-19,
-  -- upper 30-39, the Wednesday balance and gait finish 40+.
-  insert into public.program_exercises
-    (user_id, program_session_id, exercise_order, exercise_name, block_part,
-     primary_muscle, readiness_requirement, measure, side_mode, load_kind,
-     sets_min, sets_max, reps_min, reps_max, rir_target, seconds_target, tempo,
-     gate_key, substitute_name, substitute_load_kind, from_week, until_week, notes)
-  select uid, ps.id, e.ord, e.name, e.part,
-    e.muscle, e.readiness, e.measure, e.side, e.load,
-    case when e.follows_block and ps.block_id <> b1 then null else e.sets_min end,
-    case when e.follows_block and ps.block_id <> b1 then null else e.sets_max end,
-    case when e.follows_block and ps.block_id <> b1 then null else e.reps_min end,
-    case when e.follows_block and ps.block_id <> b1 then null else e.reps_max end,
-    e.rir, e.secs, e.tempo, e.gate, e.sub, e.sub_load, e.from_week, e.until_week, e.notes
-  from public.program_sessions ps
-  join (values
-    -- Monday: heavy legs, then Push
+-- Exercise slots, the same in On-ramp and Blocks 1-3 ---------------------------
+-- Numbers are Block 1's. Loaded leg lifts (follows_block) take the block's
+-- sets/reps/RIR in the On-ramp and Blocks 2-3 instead. Order: legs 0-19,
+-- upper 30-39, the Wednesday balance and gait finish 40+.
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.program_exercises
+  (user_id, program_session_id, exercise_order, exercise_name, block_part,
+   primary_muscle, readiness_requirement, measure, side_mode, load_kind,
+   sets_min, sets_max, reps_min, reps_max, rir_target, seconds_target, tempo,
+   gate_key, substitute_name, substitute_load_kind, from_week, until_week, notes)
+select o.uid, ps.id, e.ord, e.name, e.part,
+  e.muscle, e.readiness, e.measure, e.side, e.load,
+  case when e.follows_block and b.name <> 'Block 1 Build' then null else e.sets_min end,
+  case when e.follows_block and b.name <> 'Block 1 Build' then null else e.sets_max end,
+  case when e.follows_block and b.name <> 'Block 1 Build' then null else e.reps_min end,
+  case when e.follows_block and b.name <> 'Block 1 Build' then null else e.reps_max end,
+  e.rir, e.secs, e.tempo, e.gate, e.sub, e.sub_load, e.from_week, e.until_week, e.notes
+from o
+join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
+join public.program_blocks b on b.program_id = p.id
+  and b.name in ('On-ramp', 'Block 1 Build', 'Block 2 Strength', 'Block 3 Heavy + Power')
+join public.program_sessions ps on ps.block_id = b.id
+  and ps.sort_order = 0 and ps.session_type = 'lift'
+join (values
+  -- Monday: heavy legs, then Push
     (1::smallint, 0::smallint, 'Barbell Pin Squat (to 90°)', 'legs', 'quads', 'any', 'reps', 'bilateral', 'barbell',
       4::smallint, 4::smallint, 10::smallint, 10::smallint, null::numeric, null::smallint, null::text,
       'barbell', 'Goblet Box Squat (to 90°)', 'dumbbell', null::smallint, null::smallint,
@@ -241,22 +253,27 @@ begin
     (5::smallint, 33::smallint, 'Band Anti-Rotation Press', 'upper', null, 'any', 'reps', 'bilateral', 'band',
       3::smallint, 3::smallint, 10::smallint, 10::smallint, null, null, null, null, null, null, null, null,
       'Pallof press, 10 per side. Stand, or kneel on the right knee only.', false)
-  ) as e(day, ord, name, part, muscle, readiness, measure, side, load,
-         sets_min, sets_max, reps_min, reps_max, rir, secs, tempo,
-         gate, sub, sub_load, from_week, until_week, notes, follows_block)
-    on ps.day_of_week = e.day and ps.sort_order = 0 and ps.session_type = 'lift'
-  where ps.user_id = uid and ps.block_id in (b_onramp, b1, b2, b3)
-  on conflict (program_session_id, exercise_order) do nothing;
+) as e(day, ord, name, part, muscle, readiness, measure, side, load,
+       sets_min, sets_max, reps_min, reps_max, rir, secs, tempo,
+       gate, sub, sub_load, from_week, until_week, notes, follows_block)
+  on ps.day_of_week = e.day
+on conflict (program_session_id, exercise_order) do nothing;
 
-  -- Gated slots for Blocks 2-3 (hidden or greyed until cleared) --------------
-  insert into public.program_exercises
-    (user_id, program_session_id, exercise_order, exercise_name, block_part,
-     primary_muscle, readiness_requirement, measure, side_mode, load_kind,
-     sets_min, sets_max, reps_min, reps_max, gate_key, notes)
-  select uid, ps.id, g.ord, g.name, 'legs', g.muscle, g.readiness, 'reps', g.side, g.load,
-    g.sets_min, g.sets_max, g.reps_min, g.reps_max, g.gate, g.notes
-  from public.program_sessions ps
-  join (values
+-- Gated slots for Blocks 2-3 (hidden or greyed until cleared) ----------------
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.program_exercises
+  (user_id, program_session_id, exercise_order, exercise_name, block_part,
+   primary_muscle, readiness_requirement, measure, side_mode, load_kind,
+   sets_min, sets_max, reps_min, reps_max, gate_key, notes)
+select o.uid, ps.id, g.ord, g.name, 'legs', g.muscle, g.readiness, 'reps', g.side, g.load,
+  g.sets_min, g.sets_max, g.reps_min, g.reps_max, g.gate, g.notes
+from o
+join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
+join public.program_blocks b on b.program_id = p.id
+  and b.name in ('Block 2 Strength', 'Block 3 Heavy + Power')
+join public.program_sessions ps on ps.block_id = b.id
+  and ps.sort_order = 0 and ps.session_type = 'lift'
+join (values
     (1::smallint, 4::smallint, 'Front Squat (full depth)', 'quads', 'any', 'bilateral', 'barbell',
       null::smallint, null::smallint, null::smallint, null::smallint, 'depth_past_90', 'Or a deep goblet squat.', 2),
     (3::smallint, 4::smallint, 'Nordic Curl (eccentric)', 'hamstrings', 'any', 'bilateral', 'bodyweight',
@@ -279,51 +296,54 @@ begin
       3::smallint, 3::smallint, 5::smallint, 5::smallint, 'plyo', 'Left first. Stick each landing 2 s.', 3),
     (5::smallint, 17::smallint, 'Lateral Bound', null, 'normal', 'per_leg', 'bodyweight',
       3::smallint, 3::smallint, 5::smallint, 5::smallint, 'plyo', 'Stick each landing.', 3)
-  ) as g(day, ord, name, muscle, readiness, side, load,
-         sets_min, sets_max, reps_min, reps_max, gate, notes, first_block)
-    on ps.day_of_week = g.day and ps.sort_order = 0 and ps.session_type = 'lift'
-  where ps.user_id = uid
-    and (ps.block_id = b3 or (ps.block_id = b2 and g.first_block = 2))
-  on conflict (program_session_id, exercise_order) do nothing;
+) as g(day, ord, name, muscle, readiness, side, load,
+       sets_min, sets_max, reps_min, reps_max, gate, notes, first_block)
+  on ps.day_of_week = g.day
+where b.name = 'Block 3 Heavy + Power' or g.first_block = 2
+on conflict (program_session_id, exercise_order) do nothing;
 
-  -- Daily ROM check as a habit (the existing habits list) ---------------------
-  insert into public.supplements (user_id, name, kind)
-  select uid, 'ROM check 5 min (prone hang, heel slides)', 'habit'
-  where not exists (
-    select 1 from public.supplements
-    where user_id = uid and name = 'ROM check 5 min (prone hang, heel slides)'
-      and deleted_at is null
-  );
+-- Daily ROM check as a habit (the existing habits list) -----------------------
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.supplements (user_id, name, kind)
+select o.uid, 'ROM check 5 min (prone hang, heel slides)', 'habit'
+from o
+where not exists (
+  select 1 from public.supplements s
+  where s.user_id = o.uid and s.name = 'ROM check 5 min (prone hang, heel slides)'
+    and s.deleted_at is null
+);
 
-  -- Targets and thresholds (edit in Settings) --------------------------------
-  insert into public.training_settings
-    (user_id, key, value, text_value, label, unit, group_name, sort_order)
-  values
-    (uid, 'barbell_step_lb', 5, null, 'Barbell increase', 'lb', 'Progression', 10),
-    (uid, 'dumbbell_fine_step_lb', 2.5, null, 'Dumbbell step up to the limit below', 'lb', 'Progression', 20),
-    (uid, 'dumbbell_fine_limit_lb', 25, null, 'Dumbbell fine-step limit', 'lb', 'Progression', 30),
-    (uid, 'dumbbell_coarse_step_lb', 5, null, 'Dumbbell step above the limit', 'lb', 'Progression', 40),
-    (uid, 'cuff_step_lb', 2.5, null, 'Ankle cuff increase', 'lb', 'Progression', 50),
-    (uid, 'progression_min_rir', 2, null, 'Min reps in reserve on every set to add load', 'RIR', 'Progression', 60),
-    (uid, 'sleep_min_hours_for_increase', 6.5, null, 'No load increase below this sleep average', 'h', 'Progression', 70),
-    (uid, 'sleep_average_nights', 3, null, 'Nights in that sleep average', 'nights', 'Progression', 80),
-    (uid, 'hard_set_max_rir', 4, null, 'A hard set is at or under this RIR', 'RIR', 'Progression', 90),
-    (uid, 'quad_sets_min', 12, null, 'Weekly hard quad sets, low end', 'sets', 'Progression', 100),
-    (uid, 'quad_sets_max', 16, null, 'Weekly hard quad sets, high end', 'sets', 'Progression', 110),
-    (uid, 'readiness_normal_max_pain', 2, null, 'Normal day: graft pain at or under', '/10', 'Knee check', 10),
-    (uid, 'readiness_knee_off_above_pain', 3, null, 'Knee day off: graft pain above', '/10', 'Knee check', 20),
-    (uid, 'knee_off_streak_days', 2, null, 'Knee-off days in a row before "go back a week"', 'days', 'Knee check', 30),
-    (uid, 'knee_off_block_minutes', 15, null, 'ROM + walk block on a knee day off', 'min', 'Knee check', 40),
-    (uid, 'ortho_name', null, 'OrthoIllinois', 'Red flag: who to call', null, 'Knee check', 50),
-    (uid, 'ortho_phone', null, null, 'Red flag: phone number', null, 'Knee check', 60),
-    (uid, 'walk_jog_start_run_min', 1, null, 'Walk-jog start: jog interval', 'min', 'Walk-jog', 10),
-    (uid, 'walk_jog_start_walk_min', 1, null, 'Walk-jog start: walk interval', 'min', 'Walk-jog', 20),
-    (uid, 'walk_jog_start_rounds', 6, null, 'Walk-jog start: rounds', 'rounds', 'Walk-jog', 30),
-    (uid, 'walk_jog_step_min', 1, null, 'Add running per session, low end', 'min', 'Walk-jog', 40),
-    (uid, 'walk_jog_step_max', 2, null, 'Add running per session, high end', 'min', 'Walk-jog', 50),
-    (uid, 'walk_jog_rest_days', 2, null, 'Days off running after a non-normal check', 'days', 'Walk-jog', 60),
-    (uid, 'ride_after_walk_jog_min', 15, null, 'Ride after walk-jog, shortest', 'min', 'Walk-jog', 70),
-    (uid, 'ride_after_walk_jog_max', 20, null, 'Ride after walk-jog, longest', 'min', 'Walk-jog', 80)
-  on conflict (user_id, key) do nothing;
-end
-$$;
+-- Targets and thresholds (edit in Settings) ------------------------------------
+with o as (select user_id as uid from public.profiles order by created_at limit 1)
+insert into public.training_settings
+  (user_id, key, value, text_value, label, unit, group_name, sort_order)
+select o.uid, t.key, t.value, t.text_value, t.label, t.unit, t.group_name, t.sort_order
+from o
+cross join (values
+    ('barbell_step_lb', 5, null, 'Barbell increase', 'lb', 'Progression', 10),
+    ('dumbbell_fine_step_lb', 2.5, null, 'Dumbbell step up to the limit below', 'lb', 'Progression', 20),
+    ('dumbbell_fine_limit_lb', 25, null, 'Dumbbell fine-step limit', 'lb', 'Progression', 30),
+    ('dumbbell_coarse_step_lb', 5, null, 'Dumbbell step above the limit', 'lb', 'Progression', 40),
+    ('cuff_step_lb', 2.5, null, 'Ankle cuff increase', 'lb', 'Progression', 50),
+    ('progression_min_rir', 2, null, 'Min reps in reserve on every set to add load', 'RIR', 'Progression', 60),
+    ('sleep_min_hours_for_increase', 6.5, null, 'No load increase below this sleep average', 'h', 'Progression', 70),
+    ('sleep_average_nights', 3, null, 'Nights in that sleep average', 'nights', 'Progression', 80),
+    ('hard_set_max_rir', 4, null, 'A hard set is at or under this RIR', 'RIR', 'Progression', 90),
+    ('quad_sets_min', 12, null, 'Weekly hard quad sets, low end', 'sets', 'Progression', 100),
+    ('quad_sets_max', 16, null, 'Weekly hard quad sets, high end', 'sets', 'Progression', 110),
+    ('readiness_normal_max_pain', 2, null, 'Normal day: graft pain at or under', '/10', 'Knee check', 10),
+    ('readiness_knee_off_above_pain', 3, null, 'Knee day off: graft pain above', '/10', 'Knee check', 20),
+    ('knee_off_streak_days', 2, null, 'Knee-off days in a row before "go back a week"', 'days', 'Knee check', 30),
+    ('knee_off_block_minutes', 15, null, 'ROM + walk block on a knee day off', 'min', 'Knee check', 40),
+    ('ortho_name', null, 'OrthoIllinois', 'Red flag: who to call', null, 'Knee check', 50),
+    ('ortho_phone', null, null, 'Red flag: phone number', null, 'Knee check', 60),
+    ('walk_jog_start_run_min', 1, null, 'Walk-jog start: jog interval', 'min', 'Walk-jog', 10),
+    ('walk_jog_start_walk_min', 1, null, 'Walk-jog start: walk interval', 'min', 'Walk-jog', 20),
+    ('walk_jog_start_rounds', 6, null, 'Walk-jog start: rounds', 'rounds', 'Walk-jog', 30),
+    ('walk_jog_step_min', 1, null, 'Add running per session, low end', 'min', 'Walk-jog', 40),
+    ('walk_jog_step_max', 2, null, 'Add running per session, high end', 'min', 'Walk-jog', 50),
+    ('walk_jog_rest_days', 2, null, 'Days off running after a non-normal check', 'days', 'Walk-jog', 60),
+    ('ride_after_walk_jog_min', 15, null, 'Ride after walk-jog, shortest', 'min', 'Walk-jog', 70),
+    ('ride_after_walk_jog_max', 20, null, 'Ride after walk-jog, longest', 'min', 'Walk-jog', 80)
+) as t(key, value, text_value, label, unit, group_name, sort_order)
+on conflict (user_id, key) do nothing;

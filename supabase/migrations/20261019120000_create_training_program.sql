@@ -317,41 +317,94 @@ alter table public.cardio_sessions
 -- ---------------------------------------------------------------------------
 -- updated_at triggers, indexes, grants, RLS
 -- ---------------------------------------------------------------------------
-do $$
-declare
-  t text;
-begin
-  foreach t in array array[
-    'training_programs', 'program_blocks', 'program_weeks',
-    'program_gates', 'program_sessions', 'program_exercises',
-    'program_session_outcomes', 'training_settings'
-  ]
-  loop
-    execute format('drop trigger if exists set_%1$s_updated_at on public.%1$I', t);
-    execute format(
-      'create trigger set_%1$s_updated_at before update on public.%1$I '
-      'for each row execute function public.set_updated_at()', t);
+-- Plain statements, no DO block (the Supabase MCP connector times out on DO).
+drop trigger if exists set_training_programs_updated_at on public.training_programs;
+create trigger set_training_programs_updated_at before update on public.training_programs for each row execute function public.set_updated_at();
+grant select, insert, update on public.training_programs to authenticated;
+alter table public.training_programs enable row level security;
+drop policy if exists "training_programs_select_own" on public.training_programs;
+create policy "training_programs_select_own" on public.training_programs for select to authenticated using (public.owns_row(user_id));
+drop policy if exists "training_programs_insert_own" on public.training_programs;
+create policy "training_programs_insert_own" on public.training_programs for insert to authenticated with check (public.owns_row(user_id));
+drop policy if exists "training_programs_update_own" on public.training_programs;
+create policy "training_programs_update_own" on public.training_programs for update to authenticated using (public.owns_row(user_id)) with check (public.owns_row(user_id));
 
-    execute format('grant select, insert, update on public.%I to authenticated', t);
-    execute format('alter table public.%I enable row level security', t);
+drop trigger if exists set_program_blocks_updated_at on public.program_blocks;
+create trigger set_program_blocks_updated_at before update on public.program_blocks for each row execute function public.set_updated_at();
+grant select, insert, update on public.program_blocks to authenticated;
+alter table public.program_blocks enable row level security;
+drop policy if exists "program_blocks_select_own" on public.program_blocks;
+create policy "program_blocks_select_own" on public.program_blocks for select to authenticated using (public.owns_row(user_id));
+drop policy if exists "program_blocks_insert_own" on public.program_blocks;
+create policy "program_blocks_insert_own" on public.program_blocks for insert to authenticated with check (public.owns_row(user_id));
+drop policy if exists "program_blocks_update_own" on public.program_blocks;
+create policy "program_blocks_update_own" on public.program_blocks for update to authenticated using (public.owns_row(user_id)) with check (public.owns_row(user_id));
 
-    execute format('drop policy if exists "%1$s_select_own" on public.%1$I', t);
-    execute format(
-      'create policy "%1$s_select_own" on public.%1$I for select to authenticated '
-      'using (public.owns_row(user_id))', t);
+drop trigger if exists set_program_weeks_updated_at on public.program_weeks;
+create trigger set_program_weeks_updated_at before update on public.program_weeks for each row execute function public.set_updated_at();
+grant select, insert, update on public.program_weeks to authenticated;
+alter table public.program_weeks enable row level security;
+drop policy if exists "program_weeks_select_own" on public.program_weeks;
+create policy "program_weeks_select_own" on public.program_weeks for select to authenticated using (public.owns_row(user_id));
+drop policy if exists "program_weeks_insert_own" on public.program_weeks;
+create policy "program_weeks_insert_own" on public.program_weeks for insert to authenticated with check (public.owns_row(user_id));
+drop policy if exists "program_weeks_update_own" on public.program_weeks;
+create policy "program_weeks_update_own" on public.program_weeks for update to authenticated using (public.owns_row(user_id)) with check (public.owns_row(user_id));
 
-    execute format('drop policy if exists "%1$s_insert_own" on public.%1$I', t);
-    execute format(
-      'create policy "%1$s_insert_own" on public.%1$I for insert to authenticated '
-      'with check (public.owns_row(user_id))', t);
+drop trigger if exists set_program_gates_updated_at on public.program_gates;
+create trigger set_program_gates_updated_at before update on public.program_gates for each row execute function public.set_updated_at();
+grant select, insert, update on public.program_gates to authenticated;
+alter table public.program_gates enable row level security;
+drop policy if exists "program_gates_select_own" on public.program_gates;
+create policy "program_gates_select_own" on public.program_gates for select to authenticated using (public.owns_row(user_id));
+drop policy if exists "program_gates_insert_own" on public.program_gates;
+create policy "program_gates_insert_own" on public.program_gates for insert to authenticated with check (public.owns_row(user_id));
+drop policy if exists "program_gates_update_own" on public.program_gates;
+create policy "program_gates_update_own" on public.program_gates for update to authenticated using (public.owns_row(user_id)) with check (public.owns_row(user_id));
 
-    execute format('drop policy if exists "%1$s_update_own" on public.%1$I', t);
-    execute format(
-      'create policy "%1$s_update_own" on public.%1$I for update to authenticated '
-      'using (public.owns_row(user_id)) with check (public.owns_row(user_id))', t);
-  end loop;
-end
-$$;
+drop trigger if exists set_program_sessions_updated_at on public.program_sessions;
+create trigger set_program_sessions_updated_at before update on public.program_sessions for each row execute function public.set_updated_at();
+grant select, insert, update on public.program_sessions to authenticated;
+alter table public.program_sessions enable row level security;
+drop policy if exists "program_sessions_select_own" on public.program_sessions;
+create policy "program_sessions_select_own" on public.program_sessions for select to authenticated using (public.owns_row(user_id));
+drop policy if exists "program_sessions_insert_own" on public.program_sessions;
+create policy "program_sessions_insert_own" on public.program_sessions for insert to authenticated with check (public.owns_row(user_id));
+drop policy if exists "program_sessions_update_own" on public.program_sessions;
+create policy "program_sessions_update_own" on public.program_sessions for update to authenticated using (public.owns_row(user_id)) with check (public.owns_row(user_id));
+
+drop trigger if exists set_program_exercises_updated_at on public.program_exercises;
+create trigger set_program_exercises_updated_at before update on public.program_exercises for each row execute function public.set_updated_at();
+grant select, insert, update on public.program_exercises to authenticated;
+alter table public.program_exercises enable row level security;
+drop policy if exists "program_exercises_select_own" on public.program_exercises;
+create policy "program_exercises_select_own" on public.program_exercises for select to authenticated using (public.owns_row(user_id));
+drop policy if exists "program_exercises_insert_own" on public.program_exercises;
+create policy "program_exercises_insert_own" on public.program_exercises for insert to authenticated with check (public.owns_row(user_id));
+drop policy if exists "program_exercises_update_own" on public.program_exercises;
+create policy "program_exercises_update_own" on public.program_exercises for update to authenticated using (public.owns_row(user_id)) with check (public.owns_row(user_id));
+
+drop trigger if exists set_program_session_outcomes_updated_at on public.program_session_outcomes;
+create trigger set_program_session_outcomes_updated_at before update on public.program_session_outcomes for each row execute function public.set_updated_at();
+grant select, insert, update on public.program_session_outcomes to authenticated;
+alter table public.program_session_outcomes enable row level security;
+drop policy if exists "program_session_outcomes_select_own" on public.program_session_outcomes;
+create policy "program_session_outcomes_select_own" on public.program_session_outcomes for select to authenticated using (public.owns_row(user_id));
+drop policy if exists "program_session_outcomes_insert_own" on public.program_session_outcomes;
+create policy "program_session_outcomes_insert_own" on public.program_session_outcomes for insert to authenticated with check (public.owns_row(user_id));
+drop policy if exists "program_session_outcomes_update_own" on public.program_session_outcomes;
+create policy "program_session_outcomes_update_own" on public.program_session_outcomes for update to authenticated using (public.owns_row(user_id)) with check (public.owns_row(user_id));
+
+drop trigger if exists set_training_settings_updated_at on public.training_settings;
+create trigger set_training_settings_updated_at before update on public.training_settings for each row execute function public.set_updated_at();
+grant select, insert, update on public.training_settings to authenticated;
+alter table public.training_settings enable row level security;
+drop policy if exists "training_settings_select_own" on public.training_settings;
+create policy "training_settings_select_own" on public.training_settings for select to authenticated using (public.owns_row(user_id));
+drop policy if exists "training_settings_insert_own" on public.training_settings;
+create policy "training_settings_insert_own" on public.training_settings for insert to authenticated with check (public.owns_row(user_id));
+drop policy if exists "training_settings_update_own" on public.training_settings;
+create policy "training_settings_update_own" on public.training_settings for update to authenticated using (public.owns_row(user_id)) with check (public.owns_row(user_id));
 
 create index if not exists program_blocks_program_idx
   on public.program_blocks (program_id, start_week)
