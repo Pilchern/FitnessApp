@@ -47,6 +47,8 @@
 
 ## Current weak spots
 
+- Supabase MCP connector (2026-10-19): `execute_sql` and `apply_migration` hold any statement with DROP (and a plain single-table UPDATE) for a user confirmation that a headless session never sees, so the call times out at 60 s and nothing runs; the request never reaches Postgres (nothing in the postgres logs). Large scripts are not the problem, and neither are DO blocks without DROP. Insert ... on conflict do update and UPDATE ... FROM go through. Also: a failing guard like `select ('msg')::int where cond` errors at plan time even when `cond` is false (constant folding); make the cast depend on an aggregate (`... having cond`). The program v1 seed was staged in `seed_staging` and run from there; that schema is still in live (private, not exposed by the API, execute revoked from anon/authenticated) and should be dropped from the Supabase SQL editor: `drop schema seed_staging cascade;`.
+
 - Watch strength merge assumes each Health Auto Export push carries whole days (its default export range). A push carrying only one of two same-day strength workouts would set that day's duration from that one workout until the next full push.
 
 - Weekly review auto-finalize had never written a review because live lacked the review columns (fixed 2026-10-12, session 8). Confirm a review appears after the next Monday 08:00 UTC run.
