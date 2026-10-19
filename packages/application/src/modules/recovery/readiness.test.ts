@@ -4,6 +4,7 @@ import {
   buildReadinessHistory,
   buildTrainingLoad,
   computeDailyReadiness,
+  plannedWeeklyLoad,
 } from "../../index";
 
 function checkin(
@@ -511,6 +512,37 @@ describe("computeDailyReadiness", () => {
     const load = spiked.adjustments.find((a) => a.key === "trainingLoad");
     expect(load?.detail).toBe("last 7 days 2.3x your 4-week average");
     expect(load?.points).toBe(15);
+  });
+
+  it("does not count ramping up to the plan's weekly load as a spike", () => {
+    const rows = settledBaseline();
+    const day = checkin(TODAY, {
+      hrv: 55,
+      restingHeartRate: 60,
+      sleepDurationMinutes: 480,
+    });
+    // Light Zone 2 for four weeks, then the plan's three lifts last week.
+    const light = Array.from({ length: 28 }, (_, i) => i)
+      .filter((i) => i % 7 === 1 || i % 7 === 3 || i % 7 === 5)
+      .map((i) => ({
+        sessionDate: shift(TODAY, -(i + 1)),
+        sessionKind: "zone2" as const,
+        durationMinutes: 15,
+        rpe: null,
+        plannedVsCompleted: "completed" as const,
+      }));
+    const lifts = [1, 3, 5].map((d) => ({
+      sessionDate: shift(TODAY, -d),
+      durationMinutes: 60,
+    }));
+    const planned = plannedWeeklyLoad({ liftsPerWeek: 3, zone2Minutes: 140 });
+    expect(planned).toBe(1640);
+    const result = computeDailyReadiness([...rows, day], TODAY, {
+      trainingLoad: buildTrainingLoad(light, lifts),
+      plannedWeeklyLoad: planned,
+    });
+    if (result.status !== "scored") throw new Error("expected a score");
+    expect(result.adjustments).toEqual([]);
   });
 });
 

@@ -23,7 +23,7 @@ import type {
  *    the v2 weights; re-run it at the 2026-11-10 recalibration.
  * 3. Penalties that only ever subtract: wrist temperature above baseline,
  *    breathing rate above baseline, and a training-load spike (last 7 days
- *    against the 4-week average).
+ *    against the 4-week average, floored at the plan's weekly load).
  * 4. Guards: overnight HR, HRV and breathing rate are averaged over the
  *    time asleep (overnight-metrics.ts); on older fixed-window rows they are
  *    skipped when sleep started after 23:30 (awake time), and no
@@ -98,6 +98,12 @@ export type ReadinessOptions = {
   sleepTargetHours?: number;
   /** Daily training load covering at least the 28 days before the scored day. */
   trainingLoad?: TrainingLoadDay[];
+  /**
+   * The plan's prescribed weekly load (see plannedWeeklyLoad). The 4-week
+   * average never counts as lower than this, so ramping up to the plan, or
+   * starting to log it, does not read as a spike.
+   */
+  plannedWeeklyLoad?: number;
 };
 
 const BASELINE_WINDOW_DAYS = 30;
@@ -155,6 +161,21 @@ const WEIGHTS: Record<ReadinessComponentKey, number> = {
 const DEFAULT_CARDIO_RPE = { zone2: 4, recovery: 2, vo2: 8, other: 5 } as const;
 const DEFAULT_STRENGTH_RPE = 6;
 const DEFAULT_STRENGTH_MINUTES = 60;
+
+/**
+ * Weekly load of the plan as written, in the same units as buildTrainingLoad:
+ * lifts at the default strength RPE and length, Zone 2 at the default Zone 2
+ * RPE.
+ */
+export function plannedWeeklyLoad(plan: {
+  liftsPerWeek: number;
+  zone2Minutes: number;
+}) {
+  return (
+    plan.liftsPerWeek * DEFAULT_STRENGTH_RPE * DEFAULT_STRENGTH_MINUTES +
+    plan.zone2Minutes * DEFAULT_CARDIO_RPE.zone2
+  );
+}
 
 export function readinessLevel(score: number): ReadinessLevel {
   if (score >= 67) return "good";
@@ -484,7 +505,12 @@ function scoreDay(
     };
   }
 
-  const adjustments = buildAdjustments(day, prior, options.trainingLoad);
+  const adjustments = buildAdjustments(
+    day,
+    prior,
+    options.trainingLoad,
+    options.plannedWeeklyLoad,
+  );
 
   const totalWeight = components.reduce((s, c) => s + WEIGHTS[c.key], 0);
   const z =
@@ -528,6 +554,7 @@ function buildAdjustments(
   day: RecoveryCheckin,
   prior: RecoveryCheckin[],
   trainingLoad: TrainingLoadDay[] | undefined,
+  plannedWeeklyLoad = 0,
 ): ReadinessAdjustment[] {
   const adjustments: ReadinessAdjustment[] = [];
 
@@ -569,7 +596,9 @@ function buildAdjustments(
 
   // Acute:chronic load. The last 7 days against the 4-week weekly average,
   // both ending the day before (today's session has not happened yet). Needs
-  // three weeks of history; past 1.3x, 3 points per 0.1, capped at 15.
+  // three weeks of history; past 1.3x, 3 points per 0.1, capped at 15. The
+  // 4-week average is floored at the plan's weekly load: a small denominator
+  // makes the ratio blow up (Lolli 2019), and doing the plan is not a spike.
   if (trainingLoad && trainingLoad.length > 0) {
     const end = day.checkinDate;
     const sum = (from: string) =>
@@ -577,7 +606,10 @@ function buildAdjustments(
         .filter((d) => d.date >= from && d.date < end)
         .reduce((s, d) => s + d.load, 0);
     const acute = sum(addDays(end, -7));
-    const chronicWeekly = sum(addDays(end, -28)) / 4;
+    const chronicWeekly = Math.max(
+      sum(addDays(end, -28)) / 4,
+      plannedWeeklyLoad,
+    );
     const hasHistory = trainingLoad[0]!.date <= addDays(end, -21);
     if (hasHistory && chronicWeekly > 0) {
       const ratio = acute / chronicWeekly;

@@ -30,6 +30,11 @@ export const moduleNavigationItems = [
     description: "Daily nutrition habits.",
   },
   {
+    href: "/weekly-review",
+    title: "Weekly review",
+    description: "Score last week and set next week.",
+  },
+  {
     href: "/insights",
     title: "Insights",
     description: "Trends and coaching tips.",

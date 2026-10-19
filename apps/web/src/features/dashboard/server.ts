@@ -5,6 +5,7 @@ import {
   buildCardioWeeklyTotals,
   buildReadinessHistory,
   buildTrainingLoad,
+  plannedWeeklyLoad,
   buildPeerFitness,
   buildDailyStrain,
   buildSleepPlan,
@@ -19,6 +20,7 @@ import {
 } from "@fitness-app/application";
 import {
   EARLIEST_BEDTIME,
+  LIFTS_PER_WEEK,
   NICK_TRAINING_PLAN,
   SLEEP_TARGET_HOURS,
 } from "@/lib/training-plan";
@@ -185,6 +187,10 @@ export async function getDashboardData(): Promise<DashboardData> {
   const readinessOptions = {
     sleepTargetHours: SLEEP_TARGET_HOURS,
     trainingLoad: buildTrainingLoad(cardioLast8Weeks, strengthSessions),
+    plannedWeeklyLoad: plannedWeeklyLoad({
+      liftsPerWeek: LIFTS_PER_WEEK,
+      zone2Minutes: NICK_TRAINING_PLAN.weeklyZone2TargetMinutes,
+    }),
   };
   const readiness = computeDailyReadiness(recovery, today, readinessOptions);
 
