@@ -139,7 +139,7 @@ export function ProgramProgress({
   progress,
 }: Pick<ProgramPageData, "hardSets" | "hardSetTarget" | "progress">) {
   const current = hardSets[hardSets.length - 1];
-  const quads = (w: (typeof hardSets)[number]) => w.count.byMuscle.quads ?? 0;
+  const quads = (w: (typeof hardSets)[number]) => w.count.quadSets;
   const max = Math.max(hardSetTarget.max, ...hardSets.map(quads));
   return (
     <section className={card}>
@@ -276,6 +276,32 @@ export function ProgramGatesSummary({
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+/** The program's global rules (Settings › Program targets edits them). */
+export function ProgramRules({
+  rules,
+  version,
+}: {
+  rules: string[];
+  version: string | null;
+}) {
+  if (rules.length === 0) return null;
+  return (
+    <section className={card}>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-display text-lg text-ink">Rules</h2>
+        {version ? (
+          <span className="text-xs text-ink/50">{version}</span>
+        ) : null}
+      </div>
+      <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-ink/80">
+        {rules.map((rule) => (
+          <li key={rule}>{rule}</li>
+        ))}
+      </ol>
     </section>
   );
 }

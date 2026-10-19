@@ -113,6 +113,28 @@ describe("formatPrescription", () => {
       }),
     ).toBe("5 x 5 s, peak N per leg");
   });
+
+  it("formats per-side and distance work (program v1)", () => {
+    expect(
+      formatPrescription({
+        sets: 3,
+        scheme: { ...scheme, repsMin: 10, repsMax: 10, rirTarget: null },
+        exercise: { ...exercise, sideMode: "per_side" },
+      }),
+    ).toBe("3 x 10 per side");
+    expect(
+      formatPrescription({
+        sets: 3,
+        scheme,
+        exercise: {
+          ...exercise,
+          measure: "distance",
+          sideMode: "per_side",
+          distanceMetersTarget: 30,
+        },
+      }),
+    ).toBe("3 x 30 m per side");
+  });
 });
 
 describe("small display rules", () => {

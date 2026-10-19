@@ -19,7 +19,10 @@ import {
   type ProgramSettings,
 } from "./program-settings";
 import {
+  FIND_LOAD_REASON,
   programExerciseKey,
+  pullUpLoadCue,
+  suggestHoldSeconds,
   suggestLoad,
   type LoadSuggestion,
   type ProgressionSet,
@@ -37,6 +40,7 @@ export type LoggerPlanExercise = {
   sideMode?: SideMode;
   measure?: ExerciseMeasure;
   targetSeconds?: number | null;
+  targetDistanceMeters?: number | null;
   /** Program leg work: the logger uses `targetWeight` as is. */
   program?: boolean;
   suggestion?: LoadSuggestion;
@@ -73,6 +77,7 @@ export function lastSetsByExercise(
           rir: set.rir,
           isWarmup: set.isWarmup,
           side: set.side ?? null,
+          durationSeconds: set.durationSeconds ?? null,
           peakForceNewtons: set.peakForceNewtons ?? null,
         },
       ]);
@@ -98,7 +103,12 @@ function suggestionCue(s: LoadSuggestion) {
 
 export type UpperTemplateExercise = Omit<
   LoggerPlanExercise,
-  "sideMode" | "measure" | "targetSeconds" | "program" | "suggestion"
+  | "sideMode"
+  | "measure"
+  | "targetSeconds"
+  | "targetDistanceMeters"
+  | "program"
+  | "suggestion"
 >;
 
 export type BuildLiftPlanInput = {
@@ -113,12 +123,27 @@ export type BuildLiftPlanInput = {
   settings?: ProgramSettings;
 };
 
+/** "Per side." for per-side work (logged as one row per set). */
+function sideNote(p: PlannedExercise) {
+  return p.exercise.sideMode === "per_side" ? "Per side." : null;
+}
+
+/** Holds that progress by +5 s: not gait drills, balance or conditioning. */
+function progressesByTime(p: PlannedExercise) {
+  return (
+    p.exercise.measure === "time" &&
+    p.exercise.category !== "mobility" &&
+    p.exercise.category !== "conditioning"
+  );
+}
+
 function legExercise(
   p: PlannedExercise,
   input: BuildLiftPlanInput,
   settings: ProgramSettings,
 ): LoggerPlanExercise {
   const tempo = p.exercise.tempo ? `Tempo ${p.exercise.tempo}.` : null;
+  const cue = p.exercise.cue;
   const base = {
     exerciseName: p.name,
     exerciseOrder: 0,
@@ -128,17 +153,48 @@ function legExercise(
     measure: p.exercise.measure,
     program: true as const,
   };
-  if (p.exercise.measure !== "reps") {
+  const history = input.history[programExerciseKey(p.name)];
+  if (p.exercise.measure === "distance") {
     return {
       ...base,
       targetReps: null,
       targetWeight: null,
       targetRir: null,
-      targetSeconds: p.exercise.secondsTarget,
-      notes: [tempo, p.exercise.notes].filter(Boolean).join(" ") || null,
+      targetSeconds: null,
+      targetDistanceMeters: p.exercise.distanceMetersTarget,
+      notes:
+        [sideNote(p), cue, p.exercise.notes].filter(Boolean).join(" ") || null,
     };
   }
-  const history = input.history[programExerciseKey(p.name)];
+  if (p.exercise.measure !== "reps") {
+    const hold = progressesByTime(p)
+      ? suggestHoldSeconds({
+          targetSeconds: p.exercise.secondsTarget,
+          lastSets: history?.sets ?? [],
+          readiness: input.readiness,
+          isDeload: input.info.isDeload,
+          sleepAverageHours: input.sleepAverageHours ?? null,
+          settings,
+        })
+      : null;
+    return {
+      ...base,
+      targetReps: null,
+      targetWeight: null,
+      targetRir: null,
+      targetSeconds: hold?.seconds ?? p.exercise.secondsTarget,
+      notes:
+        [
+          hold && hold.kind !== "start" ? hold.reason : null,
+          sideNote(p),
+          tempo,
+          cue,
+          p.exercise.notes,
+        ]
+          .filter(Boolean)
+          .join(" ") || null,
+    };
+  }
   const suggestion = suggestLoad({
     loadKind: p.loadKind,
     scheme: p.scheme,
@@ -157,27 +213,55 @@ function legExercise(
     targetWeight: suggestion.load,
     targetSeconds: null,
     suggestion,
-    notes: [suggestionCue(suggestion), tempo, p.exercise.notes]
+    notes: [
+      suggestionCue(suggestion),
+      sideNote(p),
+      tempo,
+      cue,
+      p.exercise.notes,
+    ]
       .filter(Boolean)
       .join(" "),
   };
 }
 
-/** Upper rows run as logged: the logger prefills last time's load. */
-function upperExercise(p: PlannedExercise): LoggerPlanExercise {
+/**
+ * Upper rows run as logged: the logger prefills last time's load. A loaded
+ * lift with no history says "Find load"; bodyweight pull-ups and chin-ups
+ * say when to add load. Timed rows prefill seconds.
+ */
+function upperExercise(
+  p: PlannedExercise,
+  input: BuildLiftPlanInput,
+  settings: ProgramSettings,
+): LoggerPlanExercise {
   const { repsMin, repsMax } = p.scheme;
+  const history = input.history[programExerciseKey(p.name)];
+  const timed = p.exercise.measure === "time";
   const range =
-    repsMin != null && repsMax != null && repsMin !== repsMax
+    !timed && repsMin != null && repsMax != null && repsMin !== repsMax
       ? `${repsMin}-${repsMax} reps.`
       : null;
+  const loaded = p.loadKind !== "bodyweight" && p.loadKind !== "band";
+  const findLoad =
+    !timed && loaded && (history?.sets.length ?? 0) === 0
+      ? FIND_LOAD_REASON
+      : null;
+  const pullUp = pullUpLoadCue(p.name, history?.sets ?? [], settings);
   return {
     exerciseName: p.name,
     exerciseOrder: 0,
     targetSets: p.sets,
-    targetReps: repsMax,
+    targetReps: timed ? null : repsMax,
     targetWeight: null,
-    targetRir: p.scheme.rirTarget,
-    notes: [range, p.exercise.notes].filter(Boolean).join(" ") || null,
+    targetRir: timed ? null : p.scheme.rirTarget,
+    ...(timed
+      ? { measure: "time" as const, targetSeconds: p.exercise.secondsTarget }
+      : {}),
+    notes:
+      [findLoad, pullUp, range, sideNote(p), p.exercise.cue, p.exercise.notes]
+        .filter(Boolean)
+        .join(" ") || null,
   };
 }
 
@@ -207,7 +291,7 @@ export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
     });
   }
   for (const p of planned.exercises.filter(isPlannedToday)) {
-    if (p.part === "upper") rows.push(upperExercise(p));
+    if (p.part === "upper") rows.push(upperExercise(p, input, settings));
     else if (!planned.legBlockReplaced)
       rows.push(legExercise(p, input, settings));
   }
@@ -220,6 +304,7 @@ export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
       info.isDeload ? " · Deload: one set fewer, no load increases." : "."
     }`,
     status ? `Knee check: ${status.label}. ${status.detail}` : null,
+    settings.warmUp ? `Warm-up (8 min): ${settings.warmUp}.` : null,
     planned.session.notes,
     input.upper?.notes ?? null,
   ]

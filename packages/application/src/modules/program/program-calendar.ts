@@ -1,6 +1,7 @@
 import type {
   IsoDate,
   ProgramBlock,
+  ProgramGate,
   ProgramWeek,
   TrainingProgram,
 } from "@fitness-app/domain";
@@ -41,16 +42,61 @@ export function weekDateRange(anchorDate: IsoDate, week: number) {
   return { start, end: addDays(start, 6) };
 }
 
-/** The block whose week range holds `week`; null outside every block. */
-export function blockForWeek(
-  blocks: ProgramBlock[],
+/** Cleared from its date on; an unknown gate key stays locked. */
+export function isGateCleared(
+  gates: Pick<ProgramGate, "gateKey" | "clearedOn">[],
+  gateKey: string | null,
+  date: IsoDate,
+) {
+  if (gateKey == null) return true;
+  const gate = gates.find((g) => g.gateKey === gateKey);
+  return gate?.clearedOn != null && gate.clearedOn <= date;
+}
+
+type BlockForSelection = Pick<ProgramBlock, "id" | "startWeek" | "endWeek"> &
+  Partial<
+    Pick<
+      ProgramBlock,
+      "activation" | "gateKey" | "fallbackBlockId" | "activatedOn"
+    >
+  >;
+
+/**
+ * The block that runs on `date` (post-op `week`):
+ * - A manual block (the triathlon placeholder) runs from its activation
+ *   date; the latest activated one wins.
+ * - Otherwise the block whose week range holds `week`. A gate block (return
+ *   to sport) only runs once its gate is cleared; until then its fallback
+ *   block runs (or nothing, without one).
+ * Null outside every block.
+ */
+export function blockForWeek<B extends BlockForSelection>(
+  blocks: B[],
   week: number,
-): ProgramBlock | null {
-  return (
+  gates: Pick<ProgramGate, "gateKey" | "clearedOn">[] = [],
+  date: IsoDate | null = null,
+): B | null {
+  if (date != null) {
+    const manual = blocks
+      .filter(
+        (b) =>
+          b.activation === "manual" &&
+          b.activatedOn != null &&
+          b.activatedOn <= date,
+      )
+      .sort((a, b) => (b.activatedOn ?? "").localeCompare(a.activatedOn ?? ""));
+    if (manual[0]) return manual[0];
+  }
+  const inRange =
     [...blocks]
+      .filter((b) => b.activation !== "manual")
       .sort((a, b) => a.startWeek - b.startWeek)
-      .find((b) => week >= b.startWeek && week <= b.endWeek) ?? null
-  );
+      .find((b) => week >= b.startWeek && week <= b.endWeek) ?? null;
+  if (!inRange || inRange.activation !== "gate") return inRange;
+  if (date != null && isGateCleared(gates, inRange.gateKey ?? null, date)) {
+    return inRange;
+  }
+  return blocks.find((b) => b.id === inRange.fallbackBlockId) ?? null;
 }
 
 export function isDeloadWeek(weeks: ProgramWeek[], week: number) {
@@ -69,17 +115,18 @@ export type ProgramWeekInfo = {
 };
 
 export function programWeekInfo(
-  program: Pick<TrainingProgram, "weekAnchorDate" | "blocks" | "weeks">,
+  program: Pick<TrainingProgram, "weekAnchorDate" | "blocks" | "weeks"> &
+    Partial<Pick<TrainingProgram, "gates">>,
   date: IsoDate,
 ): ProgramWeekInfo {
   const week = postOpWeek(program.weekAnchorDate, date);
-  const block = blockForWeek(program.blocks, week);
+  const block = blockForWeek(program.blocks, week, program.gates ?? [], date);
   const { start, end } = weekDateRange(program.weekAnchorDate, week);
   return {
     week,
     block,
     isDeload: isDeloadWeek(program.weeks, week),
-    weekIndexInBlock: block ? week - block.startWeek : 0,
+    weekIndexInBlock: block ? Math.max(0, week - block.startWeek) : 0,
     dayOfWeek: dayOfWeekOf(date),
     weekStart: start,
     weekEnd: end,
@@ -103,6 +150,7 @@ export function programMilestones(
   >,
 ): ProgramMilestone[] {
   const milestones = [...program.blocks]
+    .filter((b) => b.activation !== "manual")
     .sort((a, b) => a.startWeek - b.startWeek)
     .map((b) => ({
       label: b.name,

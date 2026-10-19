@@ -12,6 +12,7 @@ import type {
 } from "@fitness-app/domain";
 import {
   addDays,
+  isGateCleared,
   programWeekInfo,
   type ProgramWeekInfo,
 } from "./program-calendar";
@@ -31,15 +32,16 @@ export const KNEE_OFF_BLOCK = {
   notes: "Heel slides, prone hang, quad sets, then an easy walk.",
 } as const;
 
-/** Cleared from its date on; an unknown gate key stays locked. */
-export function isGateCleared(
+/** The first of an exercise's gates still closed on `date`; null when all are clear. */
+export function closedGate(
   gates: Pick<ProgramGate, "gateKey" | "clearedOn">[],
-  gateKey: string | null,
+  exercise: Pick<ProgramExercise, "gateKey" | "extraGateKey">,
   date: IsoDate,
-) {
-  if (gateKey == null) return true;
-  const gate = gates.find((g) => g.gateKey === gateKey);
-  return gate?.clearedOn != null && gate.clearedOn <= date;
+): string | null {
+  for (const key of [exercise.gateKey, exercise.extraGateKey ?? null]) {
+    if (key != null && !isGateCleared(gates, key, date)) return key;
+  }
+  return null;
 }
 
 function gateLabel(gates: ProgramGate[], key: string) {
@@ -89,11 +91,12 @@ export type PlanContext = {
 };
 
 /**
- * Gate first: a closed gate shows the substitute, or greys the exercise out.
- * On a repeat-loads (hold) day gated work is off too, even once cleared (the
+ * Gate first: a closed gate (either of two) shows the substitute, with its
+ * own rep range when it has one, or greys the exercise out. On a
+ * repeat-loads (hold) day gated work is off too, even once cleared (the
  * substitute runs instead when there is one). Then readiness: "normal only"
- * work (landing prep) waits for a normal check. Deloads take a set off leg
- * work only.
+ * work (landing prep, plyos) waits for a normal check. Deloads take one set
+ * off everything and halve plyo sets.
  */
 export function planExercise(
   exercise: ProgramExercise,
@@ -104,7 +107,8 @@ export function planExercise(
   const sets = plannedSetCount(
     scheme,
     ctx.weekIndexInBlock,
-    ctx.isDeload && part === "legs",
+    ctx.isDeload,
+    exercise.category ?? null,
   );
   const base = {
     exercise,
@@ -115,15 +119,28 @@ export function planExercise(
     sets,
   };
 
-  const gateClosed = !isGateCleared(ctx.gates, exercise.gateKey, ctx.date);
-  const holdOff = ctx.readiness === "hold" && exercise.gateKey != null;
+  const closed = closedGate(ctx.gates, exercise, ctx.date);
+  const gateClosed = closed != null;
+  const holdOff =
+    ctx.readiness === "hold" &&
+    (exercise.gateKey != null || exercise.extraGateKey != null);
   if (gateClosed || holdOff) {
     if (exercise.substituteName) {
+      const ownReps =
+        exercise.substituteRepsMin != null ||
+        exercise.substituteRepsMax != null;
       return {
         ...base,
         status: "substitute",
         name: exercise.substituteName,
         loadKind: exercise.substituteLoadKind ?? exercise.loadKind,
+        scheme: ownReps
+          ? {
+              ...scheme,
+              repsMin: exercise.substituteRepsMin ?? exercise.substituteRepsMax,
+              repsMax: exercise.substituteRepsMax ?? exercise.substituteRepsMin,
+            }
+          : scheme,
         lockedReason: null,
       };
     }
@@ -131,7 +148,7 @@ export function planExercise(
       ...base,
       status: gateClosed ? "locked" : "readiness_hidden",
       lockedReason: gateClosed
-        ? `Waiting on gate: ${gateLabel(ctx.gates, exercise.gateKey ?? "")}`
+        ? `Waiting on gate: ${gateLabel(ctx.gates, closed)}`
         : "Off on a repeat-loads day",
     };
   }
@@ -167,6 +184,13 @@ export function inWeekWindow(
 export function isPlannedToday(p: PlannedExercise) {
   return p.status === "active" || p.status === "substitute";
 }
+
+export const RIDE_KIND_LABEL: Record<RideKind, string> = {
+  zone2: "Zone 2",
+  climb_intervals: "Climb intervals",
+  threshold_intervals: "4 x 4 min intervals",
+  vo2_intervals: "VO2 max intervals",
+};
 
 export type PlannedRide = {
   kind: RideKind;
@@ -291,7 +315,7 @@ export function buildDayPlan(
         structure: session.structure,
         note: null,
       };
-      if (readiness === "knee_off" && ride.kind === "climb_intervals") {
+      if (readiness === "knee_off" && ride.kind !== "zone2") {
         ride = {
           ...ride,
           kind: "zone2",

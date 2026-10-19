@@ -58,10 +58,19 @@ export function formatPrescription(
     exercise: Pick<
       PlannedExercise["exercise"],
       "measure" | "sideMode" | "secondsTarget" | "tempo"
-    >;
+    > &
+      Partial<Pick<PlannedExercise["exercise"], "distanceMetersTarget">>;
   },
 ): string {
-  const perLeg = p.exercise.sideMode === "per_leg" ? " per leg" : "";
+  const perLeg =
+    p.exercise.sideMode === "per_leg"
+      ? " per leg"
+      : p.exercise.sideMode === "per_side"
+        ? " per side"
+        : "";
+  if (p.exercise.measure === "distance") {
+    return `${p.sets} x ${p.exercise.distanceMetersTarget ?? "?"} m${perLeg}`;
+  }
   if (p.exercise.measure === "time") {
     const seconds = p.exercise.secondsTarget;
     const time =

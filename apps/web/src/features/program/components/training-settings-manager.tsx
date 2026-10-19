@@ -11,7 +11,11 @@ const TEXT_KEYS = new Set([
   "calendar_lift_time",
   "calendar_peloton_time",
   "calendar_test_time",
+  "warm_up",
+  "program_rules",
 ]);
+/** Long text: edited in a text area. */
+const LONG_TEXT_KEYS = new Set(["warm_up", "program_rules"]);
 
 function SettingRow({ setting }: { setting: TrainingSetting }) {
   const [state, action, pending] = useActionState(
@@ -31,35 +35,54 @@ function SettingRow({ setting }: { setting: TrainingSetting }) {
         >
           {setting.label}
         </label>
-        <div className="flex items-center gap-2">
-          <input
-            id={`setting-${setting.key}`}
-            name="value"
-            inputMode={
-              text
-                ? setting.key === "ortho_phone"
-                  ? "tel"
-                  : "text"
-                : "decimal"
-            }
-            defaultValue={
-              text ? (setting.textValue ?? "") : (setting.value ?? "")
-            }
-            className="h-11 min-w-0 flex-1 rounded-xl border border-ink/10 bg-white px-3 text-base text-ink"
-          />
-          {setting.unit ? (
-            <span className="w-12 shrink-0 text-xs text-ink/55">
-              {setting.unit}
-            </span>
-          ) : null}
-          <button
-            type="submit"
-            disabled={pending}
-            className="h-11 shrink-0 rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink disabled:opacity-60"
-          >
-            {state.saved && !pending ? "Saved" : "Save"}
-          </button>
-        </div>
+        {LONG_TEXT_KEYS.has(setting.key) ? (
+          <div className="space-y-2">
+            <textarea
+              id={`setting-${setting.key}`}
+              name="value"
+              rows={setting.key === "program_rules" ? 8 : 3}
+              defaultValue={setting.textValue ?? ""}
+              className="w-full rounded-xl border border-ink/10 bg-white px-3 py-2 text-base text-ink"
+            />
+            <button
+              type="submit"
+              disabled={pending}
+              className="h-11 rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink disabled:opacity-60"
+            >
+              {state.saved && !pending ? "Saved" : "Save"}
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <input
+              id={`setting-${setting.key}`}
+              name="value"
+              inputMode={
+                text
+                  ? setting.key === "ortho_phone"
+                    ? "tel"
+                    : "text"
+                  : "decimal"
+              }
+              defaultValue={
+                text ? (setting.textValue ?? "") : (setting.value ?? "")
+              }
+              className="h-11 min-w-0 flex-1 rounded-xl border border-ink/10 bg-white px-3 text-base text-ink"
+            />
+            {setting.unit ? (
+              <span className="w-12 shrink-0 text-xs text-ink/55">
+                {setting.unit}
+              </span>
+            ) : null}
+            <button
+              type="submit"
+              disabled={pending}
+              className="h-11 shrink-0 rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink disabled:opacity-60"
+            >
+              {state.saved && !pending ? "Saved" : "Save"}
+            </button>
+          </div>
+        )}
         {error ? <p className="text-xs text-ember">{error}</p> : null}
       </form>
     </li>

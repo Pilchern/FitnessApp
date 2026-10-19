@@ -7,6 +7,7 @@ import {
   ProgramGatesSummary,
   ProgramMilestones,
   ProgramProgress,
+  ProgramRules,
   ProgramWeekView,
 } from "@/features/program/components/program-sections";
 
@@ -60,6 +61,10 @@ export default async function ProgramPage() {
           />
           <ProgramMilestones milestones={data.milestones} />
           <ProgramGatesSummary gates={data.gates} />
+          <ProgramRules
+            rules={data.program.rules}
+            version={data.program.version}
+          />
         </div>
       </div>
     </div>

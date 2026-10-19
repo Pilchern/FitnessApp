@@ -8,7 +8,7 @@ import { AdherenceBanners, Scorecard, StreakLine } from "./adherence";
 import { STATUS_LABEL } from "../helpers";
 import { KneeCheckPanel } from "./knee-check-panel";
 import { RedFlagControl, SkipControl } from "./session-outcome-controls";
-import type { WalkJogAdvice } from "@fitness-app/application";
+import { RIDE_KIND_LABEL, type WalkJogAdvice } from "@fitness-app/application";
 
 function walkJogLine(advice: WalkJogAdvice) {
   if (advice.action === "rest") {
@@ -30,7 +30,7 @@ function rideLine(session: ProgramSessionView) {
         ? `${ride.minutesMin} min`
         : `${ride.minutesMin}–${ride.minutesMax} min`
       : null;
-  const kind = ride.kind === "zone2" ? "Zone 2" : "Climb intervals";
+  const kind = RIDE_KIND_LABEL[ride.kind];
   return [kind, minutes].filter(Boolean).join(", ");
 }
 
@@ -79,6 +79,9 @@ export function ProgramSessionList({
           <div className="flex flex-wrap items-baseline justify-between gap-x-3">
             <span className="text-sm font-semibold text-ink">
               {s.name}
+              {s.isOptional ? (
+                <span className="font-normal text-ink/60"> (optional)</span>
+              ) : null}
               {s.upperTemplateName ? (
                 <span className="font-normal text-ink/60">
                   {" "}
@@ -102,6 +105,9 @@ export function ProgramSessionList({
           </div>
           {s.type === "walk_jog" && s.visible && walkJog ? (
             <p className="text-xs text-ink/70">{walkJogLine(walkJog)}</p>
+          ) : null}
+          {s.structure && s.visible && s.type !== "walk_jog" ? (
+            <p className="text-xs text-ink/60">{s.structure}</p>
           ) : null}
           {!s.visible && s.hiddenReason ? (
             <p className="text-xs text-ink/60">{s.hiddenReason}</p>
@@ -141,6 +147,11 @@ export function ProgramSessionList({
                     <span className="tabular-nums">
                       {off ? e.lockedReason : e.prescription}
                     </span>
+                    {e.cue && !off ? (
+                      <span className="w-full text-[0.7rem] text-ink/50">
+                        {e.cue}
+                      </span>
+                    ) : null}
                   </li>
                 );
               })}
@@ -194,6 +205,13 @@ export function ProgramTodayCard({
         status={today.kneeStatus}
         required={today.hasLift}
       />
+
+      {lift && today.warmUp ? (
+        <p className="rounded-2xl bg-pine/5 px-4 py-3 text-xs text-ink/75">
+          <span className="font-semibold text-ink">Warm-up, 8 min: </span>
+          {today.warmUp}
+        </p>
+      ) : null}
 
       {snapshot ? <AdherenceBanners snapshot={snapshot} /> : null}
 

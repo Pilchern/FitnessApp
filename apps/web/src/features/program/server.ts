@@ -91,6 +91,8 @@ function sessionViews(
       hiddenReason: s.hiddenReason,
       legBlockReplaced: s.legBlockReplaced,
       ride: s.ride,
+      structure: s.ride ? null : s.session.structure,
+      isOptional: s.session.isOptional,
       notes: s.session.notes,
       upperTemplateName:
         templates.find((t) => t.id === s.session.upperTemplateId)?.name ?? null,
@@ -103,6 +105,7 @@ function sessionViews(
         status: p.status,
         lockedReason: p.lockedReason,
         prescription: formatPrescription(p),
+        cue: p.exercise.cue,
       })),
     };
   });
@@ -205,6 +208,7 @@ export async function loadProgramContext(
       .map((r) => ({
         date: r.sessionDate,
         runMinutes: r.runMinutes as number,
+        walkMinutes: r.walkMinutes ?? null,
       })),
   };
 }
@@ -249,6 +253,7 @@ function buildToday(ctx: ProgramContext): {
             settings,
           })
         : null,
+      warmUp: settings.warmUp || null,
     },
   };
 }
@@ -412,7 +417,15 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
     .filter((p) => p.points.length > 0);
 
   return {
-    program: { name: program.name, testDayUrl: program.testDayUrl },
+    program: {
+      name: program.name,
+      version: program.version,
+      testDayUrl: program.testDayUrl,
+      rules: settings.programRules
+        .split("\n")
+        .map((r) => r.trim())
+        .filter(Boolean),
+    },
     today: todayView,
     week,
     milestones: programMilestones(program).map((m) => ({
