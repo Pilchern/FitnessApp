@@ -41,7 +41,7 @@ Daily non-negotiables: PT home sheet AM and PM (PT Tracker), 8,000 steps, protei
 
 ## 4. Strength (program v2, legs and upper together)
 
-Current [stated 2026-10-19]: program v2.1 (`supabase/generators/program_v2.py`; v2 seeded live 2026-10-19, v2.1 seed `20261020150000` pending owner approval to apply) replaces v1 and the pre-v1 Push/Pull/Arms lists. The /program page and the /strength program card follow it; the Mon/Wed/Fri templates were rebuilt from v2 Block 1 and are only the fallback when the program card is not showing. "Knee block first" below means the leg work.
+Current [stated 2026-10-19]: program v2.1 (`supabase/generators/program_v2.py`; v2.1 seed `20261020150000` live since 2026-10-19) replaces v1 and the pre-v1 Push/Pull/Arms lists. The /program page and the /strength program card follow it; the Mon/Wed/Fri templates were rebuilt from v2 Block 1 and are only the fallback when the program card is not showing. "Knee block first" below means the leg work.
 
 Rules: knee block (PT Tracker) first while fresh, then upper. Seated or supported DB work only; no standing heavy presses or unsupported bent-over rows yet. Pull-ups/chin-ups: reach the bar from the bench, step down onto the bench with the RIGHT leg, then the floor; no jumping or dropping. If that feels unsafe, use band pulldowns. Bench: feet flat, do not tuck the left foot under the bench. Get on/off benches and the floor leading with the right leg; do not kneel on the left. Load rule: last 2-3 reps hard, form clean, knee pain 3/10 or less; hit the top of the rep range on all sets, then add weight next session. Add load before reps, never both in one week.
 
