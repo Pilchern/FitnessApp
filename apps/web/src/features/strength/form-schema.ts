@@ -10,6 +10,14 @@ const parsedStrengthSetSchema = z.object({
   isWarmup: z.boolean().optional().default(false),
   durationSeconds: parseOptionalNumber(z.number().int().min(0), "Duration"),
   distanceMeters: parseOptionalNumber(z.number().min(0), "Distance"),
+  side: z.preprocess(
+    (value) => (value === "" ? null : value),
+    z.enum(["left", "right"]).nullable().optional(),
+  ),
+  peakForceNewtons: parseOptionalNumber(
+    z.number().min(0).max(5000),
+    "Peak force",
+  ),
   notes: optionalString,
 });
 

@@ -21,3 +21,4 @@ export * from "./repositories/sync-job-run-repository";
 export * from "./repositories/training-template-repository";
 export * from "./repositories/weekly-review-repository";
 export * from "./repositories/insight-repository";
+export * from "./repositories/program-repository";

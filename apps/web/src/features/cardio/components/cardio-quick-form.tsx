@@ -309,6 +309,72 @@ export function CardioQuickForm({
           </label>
 
           <label className="grid gap-2 text-sm font-medium text-ink">
+            Output (kJ)
+            <input
+              className={fieldClassName()}
+              name="totalOutputKj"
+              inputMode="decimal"
+              placeholder="Peloton total"
+              value={values.totalOutputKj}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  totalOutputKj: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.totalOutputKj ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.totalOutputKj}
+              </p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Run min (walk-jog)
+            <input
+              className={fieldClassName()}
+              name="runMinutes"
+              inputMode="decimal"
+              placeholder="Total jogging"
+              value={values.runMinutes}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  runMinutes: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.runMinutes ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.runMinutes}
+              </p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Walk min (walk-jog)
+            <input
+              className={fieldClassName()}
+              name="walkMinutes"
+              inputMode="decimal"
+              placeholder="Total walking"
+              value={values.walkMinutes}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  walkMinutes: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.walkMinutes ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.walkMinutes}
+              </p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
             RPE
             <input
               className={fieldClassName()}

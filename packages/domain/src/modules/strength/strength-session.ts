@@ -14,6 +14,10 @@ export type StrengthExerciseSet = {
   isWarmup: boolean;
   durationSeconds: number | null;
   distanceMeters: number | null;
+  /** Per-leg sets only; absent or null for bilateral and older sets. */
+  side?: "left" | "right" | null;
+  /** Isometric peak force, newtons. */
+  peakForceNewtons?: number | null;
   notes: string | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

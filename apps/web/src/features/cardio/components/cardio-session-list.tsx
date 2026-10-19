@@ -129,6 +129,15 @@ export function CardioSessionList({
                     {session.avgHeartRate != null ? (
                       <span>Avg HR {session.avgHeartRate}</span>
                     ) : null}
+                    {session.runMinutes != null ? (
+                      <span>
+                        Run {session.runMinutes} / walk{" "}
+                        {session.walkMinutes ?? 0} min
+                      </span>
+                    ) : null}
+                    {session.totalOutputKj != null ? (
+                      <span>{Math.round(session.totalOutputKj)} kJ</span>
+                    ) : null}
                     {session.avgOutput != null ? (
                       <span>Avg {Math.round(session.avgOutput)} W</span>
                     ) : null}

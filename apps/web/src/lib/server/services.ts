@@ -13,6 +13,7 @@ import {
   JournalEntryService,
   NutritionLogService,
   NutritionTargetService,
+  ProgramService,
   RecoveryCheckinService,
   StrengthSessionService,
   StrengthSessionSummaryService,
@@ -33,6 +34,7 @@ import {
   SupabaseInsightRepository,
   SupabaseJournalEntryRepository,
   SupabaseNutritionLogRepository,
+  SupabaseProgramRepository,
   SupabaseRecoveryCheckinRepository,
   SupabaseStrengthSessionRepository,
   SupabaseStrengthSessionSummaryRepository,
@@ -146,6 +148,9 @@ export const createCoreServices = cache(async function createCoreServices(
   const exerciseOverrideService = new ExerciseOverrideService(
     new SupabaseExerciseOverrideRepository(resolvedClient),
   );
+  const programService = new ProgramService(
+    new SupabaseProgramRepository(resolvedClient),
+  );
 
   // No journalService: the journal is out of the nav (2026-10-12), so the
   // Monday run no longer drafts a weekly-reflection entry nobody reads.
@@ -178,6 +183,7 @@ export const createCoreServices = cache(async function createCoreServices(
     supplementLogService,
     dailyActivityService,
     exerciseOverrideService,
+    programService,
     insightRepository,
     insightOrchestrator,
     aiWeeklyReviewService,

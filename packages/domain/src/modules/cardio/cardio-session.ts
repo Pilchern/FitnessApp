@@ -22,6 +22,11 @@ export type CardioSession = {
   avgHeartRate: number | null;
   maxHeartRate: number | null;
   avgOutput: number | null;
+  /** Total output as the bike shows it, kJ. Absent on rows before 2026-10-19. */
+  totalOutputKj?: number | null;
+  /** Walk-jog: total minutes running and walking. */
+  runMinutes?: number | null;
+  walkMinutes?: number | null;
   /** Best rolling 5 min average power, watts (VO2 trend proxy). */
   best5MinWatts: number | null;
   /** Best rolling 20 min average power, watts. */

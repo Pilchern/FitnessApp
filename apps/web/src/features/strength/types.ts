@@ -8,6 +8,7 @@ import type {
   TrainingTemplate,
 } from "@fitness-app/domain";
 
+import type { StrengthProgramPlan } from "@/features/program/types";
 import type { LastExercisePerformance } from "./helpers";
 
 export type StrengthPageData = {
@@ -22,6 +23,8 @@ export type StrengthPageData = {
   exerciseOverrides: ExerciseMuscleGroupOverride[];
   unclassifiedExerciseNames: string[];
   todaysScheduledTemplate: TrainingTemplate | null;
+  /** Today's program lift (legs + upper), when the program has one. */
+  programPlan: StrengthProgramPlan | null;
   lastByExercise: Record<string, LastExercisePerformance>;
   /** Newest `createdAt` across sessions; tells the logger its draft was saved. */
   latestCreatedAt: string | null;
@@ -47,6 +50,10 @@ export type StrengthSetFormValue = {
   isWarmup: boolean;
   durationSeconds: string;
   distanceMeters: string;
+  /** Per-leg sets: which leg. Absent or "" on bilateral sets. */
+  side?: "left" | "right" | "";
+  /** Isometric sets: peak newtons. Present (even "") marks a force set. */
+  peakForceNewtons?: string;
   notes: string;
   /** Local logging state; unticked sets are dropped on save once any is ticked. */
   done?: boolean;

@@ -56,6 +56,9 @@ const strengthSetRowSchema = z.object({
   is_warmup: z.boolean(),
   duration_seconds: z.number().int().nullable(),
   distance_meters: z.number().nullable(),
+  // Optional so rows read before the program migration still parse.
+  side: z.enum(["left", "right"]).nullable().optional(),
+  peak_force_newtons: z.number().nullable().optional(),
   notes: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -79,6 +82,8 @@ function mapStrengthSetRow(row: StrengthSetRow): StrengthExerciseSet {
     isWarmup: row.is_warmup,
     durationSeconds: row.duration_seconds,
     distanceMeters: row.distance_meters,
+    side: row.side ?? null,
+    peakForceNewtons: row.peak_force_newtons ?? null,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -156,6 +161,11 @@ function toStrengthSetInsert(
     is_warmup: input.isWarmup ?? false,
     duration_seconds: input.durationSeconds ?? null,
     distance_meters: input.distanceMeters ?? null,
+    // Only sent when set, so bilateral saves work before the column exists.
+    ...(input.side ? { side: input.side } : {}),
+    ...(input.peakForceNewtons != null
+      ? { peak_force_newtons: input.peakForceNewtons }
+      : {}),
     notes: input.notes ?? null,
   };
 }

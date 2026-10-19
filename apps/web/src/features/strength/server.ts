@@ -12,6 +12,7 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
+import { getStrengthProgramPlan } from "@/features/program/server";
 import { buildLastByExercise, exerciseKey, shiftIsoDate } from "./helpers";
 import type { StrengthDetailData, StrengthPageData } from "./types";
 
@@ -52,6 +53,16 @@ export async function getStrengthPageData(
       exerciseOverrideService.listActive({ userId: user.id }),
     ]);
 
+  // Additive: if the program cannot load, the logger still works as before.
+  let programPlan = null;
+  if (!editSessionId) {
+    try {
+      programPlan = await getStrengthProgramPlan(sessions);
+    } catch (error) {
+      console.error("Program plan failed to load", error);
+    }
+  }
+
   const todaysScheduledTemplate =
     strengthTemplates.find((t) => t.scheduledDayOfWeek === todayDayOfWeek) ??
     null;
@@ -88,6 +99,7 @@ export async function getStrengthPageData(
     exerciseOverrides,
     unclassifiedExerciseNames,
     todaysScheduledTemplate,
+    programPlan,
     lastByExercise: buildLastByExercise(sessions),
     latestCreatedAt: sessions.reduce<string | null>(
       (latest, s) =>

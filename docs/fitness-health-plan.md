@@ -18,6 +18,7 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 
 - FitnessApp (this repo, Supabase "Fitness App"): lifts, cardio, recovery, habits, nutrition checks, weekly review, body metrics. Upper-body training and cardio live here.
 - PT Tracker (separate app, repo Pilchern/PT-Tracker, Vercel nick-pt-tracker): knee rehab home exercises, kneecap/swelling gating, loaded knee sessions. Do NOT merge it into FitnessApp and do not duplicate knee exercises here.
+- Changed 2026-10-19 [stated]: loaded leg training now lives in FitnessApp as a data-driven post-op program (blocks by post-op week, legs first on Mon/Wed/Fri then the upper template, 3-tap knee check, gates, progression). The PT Tracker keeps strength tests, gait data and return-to-sport gates; the Sunday test day links out to it. Still do not merge the apps. Open: whether the PT Tracker's Mon/Tue/Thu loaded knee blocks should stop now that legs run here (avoid doubling volume).
 - AI-Lab (local files, ~/AI-Lab): life OS notes. Edits to its context/ files need Nick's approval. No JumpFly client data in personal repos.
 
 ## 3. Weekly schedule (current phase, through about 10/26)

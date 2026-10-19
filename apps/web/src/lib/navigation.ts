@@ -5,6 +5,11 @@ export const moduleNavigationItems = [
     description: "Your week at a glance.",
   },
   {
+    href: "/program",
+    title: "Program",
+    description: "Post-op week, today's session and progress.",
+  },
+  {
     href: "/cardio",
     title: "Cardio",
     description: "Rides and Zone 2 sessions.",

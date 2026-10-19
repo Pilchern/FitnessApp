@@ -17,6 +17,12 @@ export const cardioSessionFormSchema = z.object({
     "Max heart rate",
   ),
   avgOutput: parseOptionalNumber(z.number().min(0), "Average output"),
+  runMinutes: parseOptionalNumber(z.number().min(0).max(600), "Run minutes"),
+  walkMinutes: parseOptionalNumber(z.number().min(0).max(600), "Walk minutes"),
+  totalOutputKj: parseOptionalNumber(
+    z.number().min(0).max(5000),
+    "Total output",
+  ),
   cadenceMin: parseOptionalNumber(z.number().int().min(0), "Cadence min"),
   cadenceMax: parseOptionalNumber(z.number().int().min(0), "Cadence max"),
   resistanceMin: parseOptionalNumber(z.number().min(0), "Resistance min"),

@@ -159,7 +159,10 @@ export async function StrengthDetailScreen({
                         W<span className="sr-only">arm-up</span>
                       </span>
                     ) : (
-                      set.setNumber
+                      <>
+                        {set.side ? (set.side === "left" ? "L " : "R ") : ""}
+                        {set.setNumber}
+                      </>
                     )}
                   </td>
                   <td className="py-3 pr-4">
@@ -168,7 +171,11 @@ export async function StrengthDetailScreen({
                         ? formatDuration(set.durationSeconds)
                         : "--")}
                   </td>
-                  <td className="py-3 pr-4">{set.weight ?? "--"}</td>
+                  <td className="py-3 pr-4">
+                    {set.peakForceNewtons != null
+                      ? `${set.peakForceNewtons} N`
+                      : (set.weight ?? "--")}
+                  </td>
                   <td className="py-3 pr-4">{set.rir ?? "--"}</td>
                   <td className="py-3">{set.notes ?? "--"}</td>
                 </tr>
