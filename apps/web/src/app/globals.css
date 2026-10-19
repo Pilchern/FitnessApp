@@ -68,3 +68,9 @@ summary {
   font-weight: 650;
   letter-spacing: -0.02em;
 }
+
+/* Safari draws its own disclosure triangle on <summary> even with
+   list-style: none; the rows and cards draw their own chevron. */
+summary.list-none::-webkit-details-marker {
+  display: none;
+}

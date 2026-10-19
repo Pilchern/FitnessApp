@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { WeeklyReview } from "@fitness-app/domain";
-import type { WeekPlan } from "../helpers";
+import { stripDayPrefix, type WeekPlan } from "../helpers";
 
 type WeekPlanCardProps = {
   plan: WeekPlan;
@@ -61,7 +61,7 @@ export function WeekPlanCard({
                     href={item.kind === "strength" ? "/strength" : "/cardio"}
                     className="flex-1 text-sm text-ink hover:text-pine"
                   >
-                    {item.name}
+                    {stripDayPrefix(item.name)}
                     {day.isToday ? (
                       <span className="ml-2 rounded-full bg-pine/10 px-2 py-0.5 text-xs text-pine">
                         Today

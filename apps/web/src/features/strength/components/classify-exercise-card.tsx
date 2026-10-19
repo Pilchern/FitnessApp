@@ -137,6 +137,58 @@ export function ClassifyExerciseCard({
     return null;
   }
 
+  const overrideList = (
+    <div className="mt-3 space-y-2">
+      {overrides.map((override) => (
+        <div
+          key={override.id}
+          className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 bg-sand/30 px-4 py-2 text-sm"
+        >
+          <span className="truncate text-ink/80">
+            {override.exerciseName}
+            <span className="ml-2 text-ink/45">
+              {override.muscleGroup} · {override.movementPattern} ·{" "}
+              {override.category}
+            </span>
+          </span>
+          <form action={archiveExerciseOverrideAction}>
+            <input type="hidden" name="id" value={override.id} />
+            <button
+              type="submit"
+              className="shrink-0 rounded-full border border-ember/20 px-3 py-1 text-xs font-semibold text-ember transition hover:bg-ember/10"
+            >
+              Remove
+            </button>
+          </form>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Nothing to classify: the saved classifications are reference only, so
+  // keep them folded away instead of a full card on every visit.
+  if (unclassifiedExerciseNames.length === 0) {
+    return (
+      <details className="group rounded-[1.75rem] border border-ink/10 bg-white/80 px-6 shadow-panel">
+        <summary className="flex h-14 cursor-pointer list-none items-center justify-between text-sm font-semibold text-ink">
+          <span>
+            Exercise classifications{" "}
+            <span className="font-normal text-ink/55">{overrides.length}</span>
+          </span>
+          <span className="text-ink/50 group-open:hidden">+</span>
+          <span className="hidden text-ink/50 group-open:inline">−</span>
+        </summary>
+        <div className="pb-5">
+          <p className="text-sm text-ink/60">
+            Every exercise you&apos;ve logged is classified. These are the ones
+            you taught the app.
+          </p>
+          {overrideList}
+        </div>
+      </details>
+    );
+  }
+
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
       <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
@@ -151,48 +203,18 @@ export function ClassifyExerciseCard({
         muscle-group balance and push:pull ratio.
       </p>
 
-      {unclassifiedExerciseNames.length > 0 ? (
-        <div className="mt-5 space-y-3">
-          {unclassifiedExerciseNames.map((name) => (
-            <ClassifyExerciseRow key={name} exerciseName={name} />
-          ))}
-        </div>
-      ) : (
-        <p className="mt-5 text-sm text-ink/60">
-          Every exercise you&apos;ve logged is already classified.
-        </p>
-      )}
+      <div className="mt-5 space-y-3">
+        {unclassifiedExerciseNames.map((name) => (
+          <ClassifyExerciseRow key={name} exerciseName={name} />
+        ))}
+      </div>
 
       {overrides.length > 0 ? (
         <div className="mt-6 border-t border-ink/10 pt-5">
           <h3 className="text-sm font-semibold text-ink">
             Your classifications
           </h3>
-          <div className="mt-3 space-y-2">
-            {overrides.map((override) => (
-              <div
-                key={override.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-ink/10 bg-sand/30 px-4 py-2 text-sm"
-              >
-                <span className="truncate text-ink/80">
-                  {override.exerciseName}
-                  <span className="ml-2 text-ink/45">
-                    {override.muscleGroup} · {override.movementPattern} ·{" "}
-                    {override.category}
-                  </span>
-                </span>
-                <form action={archiveExerciseOverrideAction}>
-                  <input type="hidden" name="id" value={override.id} />
-                  <button
-                    type="submit"
-                    className="shrink-0 rounded-full border border-ember/20 px-3 py-1 text-xs font-semibold text-ember transition hover:bg-ember/10"
-                  >
-                    Remove
-                  </button>
-                </form>
-              </div>
-            ))}
-          </div>
+          {overrideList}
         </div>
       ) : null}
     </section>

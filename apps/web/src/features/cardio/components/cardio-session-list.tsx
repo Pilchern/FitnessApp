@@ -81,124 +81,115 @@ export function CardioSessionList({
   }
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            History
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">
-            Recent workouts
-          </h2>
-        </div>
-        <div className="text-sm text-ink/65">{sessions.length} total</div>
+    <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="font-display text-lg text-ink">Recent workouts</h2>
+        <div className="text-sm text-ink/55">{sessions.length} total</div>
       </div>
 
-      <div className="mt-5 space-y-4">
+      {/* One row per workout; tap for the rest of the numbers, edit and delete. */}
+      <ul className="mt-3 divide-y divide-ink/10">
         {visible.map((session) => {
           const templateName = findTemplateName(session, templates);
+          const title = templateName ?? formatSessionKind(session.sessionKind);
+          const summary = [
+            session.durationMinutes != null
+              ? `${session.durationMinutes} min`
+              : null,
+            session.avgHeartRate != null ? `HR ${session.avgHeartRate}` : null,
+          ].filter(Boolean);
+          const details = [
+            session.sportType ? formatSportType(session.sportType) : null,
+            session.runMinutes != null
+              ? `Run ${session.runMinutes} / walk ${session.walkMinutes ?? 0} min`
+              : null,
+            session.totalOutputKj != null
+              ? `${Math.round(session.totalOutputKj)} kJ`
+              : null,
+            session.avgOutput != null
+              ? `Avg ${Math.round(session.avgOutput)} W`
+              : null,
+            session.zone2HeartRate != null
+              ? `Z2 HR ${session.zone2HeartRate}`
+              : null,
+            session.best5MinWatts != null
+              ? `Best 5 min ${session.best5MinWatts} W`
+              : null,
+            session.rpe != null ? `RPE ${session.rpe}` : null,
+            session.distanceMeters != null
+              ? `${(session.distanceMeters / 1000).toFixed(1)} km`
+              : null,
+          ].filter(Boolean);
+          const notCompleted = session.plannedVsCompleted !== "completed";
 
           return (
-            <article
-              key={session.id}
-              className="rounded-[1.5rem] border border-ink/10 bg-sand/40 p-5"
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-semibold text-ink">
-                      {templateName ?? formatSessionKind(session.sessionKind)}
-                    </h3>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${sessionStatusClassName(session.plannedVsCompleted)}`}
-                    >
-                      {formatCompletionLabel(session.plannedVsCompleted)}
+            <li key={session.id}>
+              <details className="group">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-2">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-ink">
+                      {formatCardioDate(session.sessionDate)}
                     </span>
-                    {session.sportType ? (
-                      <span className="rounded-full border border-ink/15 bg-sand px-2 py-0.5 text-xs font-medium text-ink/70">
-                        {formatSportType(session.sportType)}
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
-                    <span>{formatCardioDate(session.sessionDate)}</span>
-                    {session.durationMinutes != null ? (
-                      <span>{session.durationMinutes} min</span>
-                    ) : null}
-                    {session.avgHeartRate != null ? (
-                      <span>Avg HR {session.avgHeartRate}</span>
-                    ) : null}
-                    {session.runMinutes != null ? (
-                      <span>
-                        Run {session.runMinutes} / walk{" "}
-                        {session.walkMinutes ?? 0} min
-                      </span>
-                    ) : null}
-                    {session.totalOutputKj != null ? (
-                      <span>{Math.round(session.totalOutputKj)} kJ</span>
-                    ) : null}
-                    {session.avgOutput != null ? (
-                      <span>Avg {Math.round(session.avgOutput)} W</span>
-                    ) : null}
-                    {session.zone2HeartRate != null ? (
-                      <span>Z2 HR {session.zone2HeartRate}</span>
-                    ) : null}
-                    {session.best5MinWatts != null ? (
-                      <span>Best 5 min {session.best5MinWatts} W</span>
-                    ) : null}
-                    {session.rpe != null ? (
-                      <span>RPE {session.rpe}</span>
-                    ) : null}
-                    {session.distanceMeters != null ? (
-                      <span>
-                        {(session.distanceMeters / 1000).toFixed(1)} km
-                      </span>
-                    ) : null}
-                  </div>
-
+                    <span className="block truncate text-xs text-ink/55">
+                      {title}
+                      {notCompleted ? (
+                        <span
+                          className={`ml-2 rounded-full border px-1.5 py-px text-[0.65rem] font-semibold uppercase tracking-wide ${sessionStatusClassName(session.plannedVsCompleted)}`}
+                        >
+                          {formatCompletionLabel(session.plannedVsCompleted)}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right text-sm text-ink/65">
+                    {summary.length > 0 ? summary.join(" · ") : "No data"}
+                  </span>
+                </summary>
+                <div className="space-y-3 pb-4 text-sm text-ink/70">
+                  {details.length > 0 ? <p>{details.join(" · ")}</p> : null}
                   {session.intervalStructure ? (
-                    <p className="text-sm text-ink/75">
-                      {session.intervalStructure}
-                    </p>
+                    <p>{session.intervalStructure}</p>
                   ) : null}
-
                   {session.notes ? (
-                    <p className="text-sm leading-6 text-ink/75">
-                      {session.notes}
-                    </p>
+                    <p className="text-ink/80">{session.notes}</p>
                   ) : null}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Link
-                    href={`/cardio?edit=${session.id}`}
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
-                  >
-                    Edit
-                  </Link>
-                  <form
-                    action={deleteCardioSessionAction}
-                    onSubmit={(event) => {
-                      if (!window.confirm("Delete this workout?")) {
-                        event.preventDefault();
-                      }
-                    }}
-                  >
-                    <input type="hidden" name="id" value={session.id} />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center justify-center rounded-full border border-ember/20 px-4 text-sm font-semibold text-ember transition hover:bg-ember/10"
+                  <div className="flex items-center gap-4">
+                    <Link
+                      href={`/cardio?edit=${session.id}`}
+                      className="inline-flex min-h-10 items-center font-semibold text-pine hover:underline"
                     >
-                      Delete
-                    </button>
-                  </form>
+                      Edit
+                    </Link>
+                    <form
+                      action={deleteCardioSessionAction}
+                      onSubmit={(event) => {
+                        if (!window.confirm("Delete this workout?")) {
+                          event.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="id" value={session.id} />
+                      <button
+                        type="submit"
+                        className="inline-flex min-h-10 items-center font-semibold text-ember hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                    {session.source.sourceType !== "manual" ? (
+                      <span className="ml-auto text-xs text-ink/45">
+                        {session.source.sourceProvider === "apple_health"
+                          ? "Apple Health"
+                          : session.source.sourceProvider}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </article>
+              </details>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {sessions.length > PAGE_SIZE ? (
         <div className="mt-5 flex justify-center">

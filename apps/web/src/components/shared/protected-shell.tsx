@@ -14,14 +14,16 @@ type ProtectedShellProps = {
 };
 
 // Bottom tab bar on phones: the four screens used daily, plus a More sheet.
-const primaryHrefs = ["/dashboard", "/strength", "/cardio", "/recovery"];
+// Cardio lives in More: rides sync from Apple Health, so it is rarely opened.
+const primaryHrefs = ["/dashboard", "/program", "/strength", "/recovery"];
 
-// 24x24 stroke icons for the tab bar (home, dumbbell, heart pulse, moon, dots).
+// 24x24 stroke icons for the tab bar (home, calendar check, dumbbell, moon, dots).
 const tabIconPaths: Record<string, string> = {
   "/dashboard":
     "M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z",
   "/strength": "M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11",
-  "/cardio": "M3 12h4l2-5 4 10 2-5h6M20.8 8.6A5 5 0 0 0 12 5a5 5 0 0 0-8.8 3.6",
+  "/program":
+    "M8 3v3M16 3v3M4 9h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM8.5 14.5l2 2 4-4",
   "/recovery": "M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
 };

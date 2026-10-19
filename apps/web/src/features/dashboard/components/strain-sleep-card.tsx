@@ -1,3 +1,4 @@
+import { MethodNote } from "@/components/shared/method-note";
 import type { StrainSleep } from "../types";
 
 type StrainSleepCardProps = {
@@ -102,13 +103,13 @@ export function StrainSleepCard({ data }: StrainSleepCardProps) {
         ) : null}
       </ul>
 
-      <p className="mt-4 text-xs leading-5 text-ink/50">
+      <MethodNote>
         Strain is Banister TRIMP from each session&apos;s average heart rate, on
         the app&apos;s own 0-21 scale (Whoop&apos;s formula is not public).
         Sleep need is 7.5 h asleep (8 h in bed to a 6:00 wake), plus up to 45
         min after a hard day and half of the last three nights&apos; shortfall.
         Lights-out never earlier than 9:30 PM, per the plan.
-      </p>
+      </MethodNote>
     </section>
   );
 }

@@ -111,21 +111,34 @@ export function TrainingSettingsManager({
         The progression engine, knee check and walk-jog read these. Blank uses
         the default.
       </p>
-      {groups.map((group) => (
-        <div key={group} className="mt-4">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-pine">
-            {group}
-          </h3>
-          <ul className="divide-y divide-ink/10">
-            {settings
-              .filter((s) => s.groupName === group)
-              .sort((a, b) => a.sortOrder - b.sortOrder)
-              .map((s) => (
-                <SettingRow key={s.key} setting={s} />
-              ))}
-          </ul>
-        </div>
-      ))}
+      {/* Groups fold closed: about 6 phone screens of fields when open. */}
+      <div className="mt-3 divide-y divide-ink/10 border-t border-ink/10">
+        {groups.map((group) => {
+          const rows = settings
+            .filter((s) => s.groupName === group)
+            .sort((a, b) => a.sortOrder - b.sortOrder);
+          return (
+            <details key={group} className="group">
+              <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-ink">
+                <span>
+                  {group}
+                  <span className="ml-2 font-normal text-ink/50">
+                    {rows.length}
+                  </span>
+                </span>
+                <span className="text-ink/40 transition group-open:rotate-180">
+                  ▾
+                </span>
+              </summary>
+              <ul className="divide-y divide-ink/10 pb-2">
+                {rows.map((s) => (
+                  <SettingRow key={s.key} setting={s} />
+                ))}
+              </ul>
+            </details>
+          );
+        })}
+      </div>
     </section>
   );
 }

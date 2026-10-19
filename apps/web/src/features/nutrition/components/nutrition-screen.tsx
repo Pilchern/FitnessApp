@@ -20,7 +20,7 @@ export async function NutritionScreen({
     <div className="space-y-4 lg:space-y-6">
       <PageHeader
         title="Nutrition"
-        subtitle="Daily checks: protein, plan adherence, fiber. No calorie counting."
+        subtitle="Protein first, then the daily checks. Calories are optional."
       />
 
       <NutritionSummaryCards summary={data.summary} targets={data.targets} />

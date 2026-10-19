@@ -7,6 +7,7 @@ import {
   buildWeekPlan,
   formatZonedIsoDate,
   readinessCall,
+  stripDayPrefix,
   summarizeDailyActivity,
 } from "./helpers";
 
@@ -281,5 +282,19 @@ describe("readinessCall", () => {
     );
     expect(readinessCall(null, [ride])).toBe("Ride as planned.");
     expect(readinessCall(null, [])).toBe("Nothing scheduled today.");
+  });
+});
+
+describe("stripDayPrefix", () => {
+  it("drops a leading weekday the row already shows", () => {
+    expect(stripDayPrefix("Mon Heavy legs + Push")).toBe("Heavy legs + Push");
+    expect(stripDayPrefix("Tue Bike Z2 (40 min)")).toBe("Bike Z2 (40 min)");
+    expect(stripDayPrefix("Thursday Bike Z2")).toBe("Bike Z2");
+  });
+
+  it("leaves names without a leading day alone", () => {
+    expect(stripDayPrefix("Monster walk")).toBe("Monster walk");
+    expect(stripDayPrefix("Sun")).toBe("Sun");
+    expect(stripDayPrefix("Peloton Zone 2")).toBe("Peloton Zone 2");
   });
 });

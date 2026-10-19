@@ -33,9 +33,9 @@ async function loadAdherence() {
 }
 
 /**
- * Answers three questions top to bottom: what to do today (readiness and the
- * planned session), how the week is going (plan and habits), and what has
- * changed (trend notes, body).
+ * Answers three questions top to bottom: what to do today (readiness, the
+ * planned session, habits), how the week is going (plan, strain and sleep),
+ * and what has changed (trend notes, body).
  */
 export default async function DashboardPage() {
   const [data, programToday, adherence] = await Promise.all([
@@ -62,13 +62,31 @@ export default async function DashboardPage() {
     }),
   );
 
+  const habits = (
+    <SupplementChecklist
+      supplements={data.habits.items}
+      takenSupplementIds={data.habits.takenTodayIds}
+      logDate={data.habits.logDate}
+      returnTo="/dashboard"
+      weekCounts={data.habits.weekCounts}
+      itemNotes={stepHabitNotes}
+      itemLinks={routineLinks}
+      labels={{
+        eyebrow: "Daily habits",
+        title: "Today's habits",
+        empty: "No habits yet.",
+        hint: "Saves as you tap. The count is days done in the last 7.",
+        save: "Save habits",
+      }}
+      action={logSupplementsAction}
+    />
+  );
+
+  // Phone order: readiness, today's session, habits (tapped daily), the week,
+  // then the slower-moving cards. Desktop pairs them in two columns.
   return (
     <div className="space-y-4 lg:space-y-6">
       <h1 className="sr-only">Dashboard</h1>
-
-      {programToday ? (
-        <ProgramTodayCard today={programToday} snapshot={adherence} />
-      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
         <TodayCard
@@ -76,40 +94,33 @@ export default async function DashboardPage() {
           readiness={data.readiness}
           history={data.readinessHistory}
           call={data.readinessCall}
-          todayItems={data.todayItems}
+          // The program card carries Start lift / Log ride when it loads.
+          todayItems={programToday ? [] : data.todayItems}
           feelToday={data.feelToday}
           stepsToday={stepsToday}
         />
+        {programToday ? (
+          <ProgramTodayCard today={programToday} snapshot={adherence} />
+        ) : (
+          habits
+        )}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+        {programToday ? habits : null}
         <div className="space-y-4 lg:space-y-6">
-          <StrainSleepCard data={data.strainSleep} />
           <WeekPlanCard
             plan={data.weekPlan}
             zone2Minutes={data.zone2Minutes}
             latestReview={data.latestReview}
           />
+          <StrainSleepCard data={data.strainSleep} />
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
-        <SupplementChecklist
-          supplements={data.habits.items}
-          takenSupplementIds={data.habits.takenTodayIds}
-          logDate={data.habits.logDate}
-          returnTo="/dashboard"
-          weekCounts={data.habits.weekCounts}
-          itemNotes={stepHabitNotes}
-          itemLinks={routineLinks}
-          labels={{
-            eyebrow: "Daily habits",
-            title: "Today's habits",
-            empty: "No habits yet.",
-            hint: "Saves as you tap. The count is days done in the last 7.",
-            save: "Save habits",
-          }}
-          action={logSupplementsAction}
-        />
+        <TrendNotesCard notes={data.trendNotes} insights={data.topInsights} />
         <div className="space-y-4 lg:space-y-6">
-          <TrendNotesCard notes={data.trendNotes} insights={data.topInsights} />
           <BodySnapshotCard
             today={data.today}
             latestWeightLb={data.latestWeightLb}

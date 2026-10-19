@@ -47,107 +47,104 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
   }
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            History
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">
-            Recent measurements
-          </h2>
-        </div>
-        <div className="text-sm text-ink/65">{metrics.length} total</div>
+    <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="font-display text-lg text-ink">History</h2>
+        <div className="text-sm text-ink/55">{metrics.length} total</div>
       </div>
 
-      <div className="mt-5 space-y-4">
-        {visible.map((metric) => (
-          <article
-            key={metric.id}
-            className="rounded-[1.5rem] border border-ink/10 bg-sand/40 p-5"
-          >
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-semibold text-ink">
+      {/* One row per day; tap for the full composition, edit and delete. */}
+      <ul className="mt-3 divide-y divide-ink/10">
+        {visible.map((metric) => {
+          const summary = [
+            metric.weightLb != null
+              ? formatBodyValue(metric.weightLb, "lb")
+              : null,
+            metric.bodyFatPct != null
+              ? formatBodyValue(metric.bodyFatPct, "%")
+              : null,
+            metric.waistIn != null
+              ? `Waist ${formatBodyValue(metric.waistIn, "in")}`
+              : null,
+          ].filter(Boolean);
+          const details = [
+            metric.muscleMassLb != null
+              ? `Muscle ${formatBodyValue(metric.muscleMassLb, "lb")}`
+              : null,
+            metric.fatFreeMassLb != null
+              ? `Fat-free ${formatBodyValue(metric.fatFreeMassLb, "lb")}`
+              : null,
+            metric.boneMassLb != null
+              ? `Bone ${formatBodyValue(metric.boneMassLb, "lb")}`
+              : null,
+            metric.hydrationPct != null
+              ? `Hydration ${formatBodyValue(metric.hydrationPct, "%")}`
+              : null,
+            metric.visceralFatIndex != null
+              ? `Visceral fat ${metric.visceralFatIndex}`
+              : null,
+            metric.waistHipIn != null
+              ? `Waist (hip) ${formatBodyValue(metric.waistHipIn, "in")}`
+              : null,
+            metric.waistGutIn != null
+              ? `Waist (gut) ${formatBodyValue(metric.waistGutIn, "in")}`
+              : null,
+          ].filter(Boolean);
+          const fromWithings =
+            metric.source.sourceType === "imported" &&
+            metric.source.sourceProvider === "withings";
+
+          return (
+            <li key={metric.id}>
+              <details className="group">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-2">
+                  <span className="text-sm font-medium text-ink">
                     {formatBodyDate(metric.measuredOn)}
-                  </h3>
-                  {metric.source.sourceType === "imported" &&
-                  metric.source.sourceProvider === "withings" ? (
-                    <span className="rounded-full border border-ink/10 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-ink/65">
-                      Withings
-                    </span>
+                  </span>
+                  <span className="text-right text-sm text-ink/65">
+                    {summary.length > 0 ? summary.join(" · ") : "No data"}
+                  </span>
+                </summary>
+                <div className="space-y-3 pb-4 text-sm text-ink/70">
+                  {details.length > 0 ? <p>{details.join(" · ")}</p> : null}
+                  {metric.notes ? (
+                    <p className="text-ink/80">{metric.notes}</p>
                   ) : null}
+                  <div className="flex items-center gap-4">
+                    <Link
+                      href={`/body?edit=${metric.id}`}
+                      className="inline-flex min-h-10 items-center font-semibold text-pine hover:underline"
+                    >
+                      Edit
+                    </Link>
+                    <form
+                      action={deleteBodyMetricAction}
+                      onSubmit={(event) => {
+                        if (!window.confirm("Delete this entry?")) {
+                          event.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="id" value={metric.id} />
+                      <button
+                        type="submit"
+                        className="inline-flex min-h-10 items-center font-semibold text-ember hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                    {fromWithings ? (
+                      <span className="ml-auto text-xs text-ink/45">
+                        Withings
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-
-                <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
-                  {metric.weightLb != null ? (
-                    <span>{`Weight ${formatBodyValue(metric.weightLb, "lb")}`}</span>
-                  ) : null}
-                  {metric.waistIn != null ? (
-                    <span>{`Waist ${formatBodyValue(metric.waistIn, "in")}`}</span>
-                  ) : null}
-                  {metric.waistHipIn != null ? (
-                    <span>{`Waist (hip) ${formatBodyValue(metric.waistHipIn, "in")}`}</span>
-                  ) : null}
-                  {metric.waistGutIn != null ? (
-                    <span>{`Waist (gut) ${formatBodyValue(metric.waistGutIn, "in")}`}</span>
-                  ) : null}
-                  {metric.bodyFatPct != null ? (
-                    <span>{`Body fat ${formatBodyValue(metric.bodyFatPct, "%")}`}</span>
-                  ) : null}
-                  {metric.muscleMassLb != null ? (
-                    <span>{`Muscle ${formatBodyValue(metric.muscleMassLb, "lb")}`}</span>
-                  ) : null}
-                  {metric.fatFreeMassLb != null ? (
-                    <span>{`Fat-free mass ${formatBodyValue(metric.fatFreeMassLb, "lb")}`}</span>
-                  ) : null}
-                  {metric.boneMassLb != null ? (
-                    <span>{`Bone mass ${formatBodyValue(metric.boneMassLb, "lb")}`}</span>
-                  ) : null}
-                  {metric.hydrationPct != null ? (
-                    <span>{`Hydration ${formatBodyValue(metric.hydrationPct, "%")}`}</span>
-                  ) : null}
-                  {metric.visceralFatIndex != null ? (
-                    <span>{`Visceral fat ${metric.visceralFatIndex}`}</span>
-                  ) : null}
-                </div>
-
-                {metric.notes ? (
-                  <p className="text-sm leading-6 text-ink/75">
-                    {metric.notes}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Link
-                  href={`/body?edit=${metric.id}`}
-                  className="inline-flex h-10 items-center justify-center rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
-                >
-                  Edit
-                </Link>
-                <form
-                  action={deleteBodyMetricAction}
-                  onSubmit={(event) => {
-                    if (!window.confirm("Delete this entry?")) {
-                      event.preventDefault();
-                    }
-                  }}
-                >
-                  <input type="hidden" name="id" value={metric.id} />
-                  <button
-                    type="submit"
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-ember/20 px-4 text-sm font-semibold text-ember transition hover:bg-ember/10"
-                  >
-                    Delete
-                  </button>
-                </form>
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
+              </details>
+            </li>
+          );
+        })}
+      </ul>
 
       {metrics.length > PAGE_SIZE ? (
         <div className="mt-5 flex justify-center">

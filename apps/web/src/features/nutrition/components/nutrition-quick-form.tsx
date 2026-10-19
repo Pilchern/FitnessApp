@@ -20,7 +20,9 @@ type NutritionQuickFormProps = {
 const initialState: NutritionActionState = {};
 
 function fieldClassName() {
-  return "h-11 rounded-2xl border border-ink/10 bg-white px-4 text-sm text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20";
+  // w-full + min-w-0: the default input width overflowed the two-column
+  // Fuel grid on a phone.
+  return "h-11 w-full min-w-0 rounded-2xl border border-ink/10 bg-white px-4 text-sm text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20";
 }
 
 function textAreaClassName() {
@@ -86,7 +88,7 @@ export function NutritionQuickForm({
           <p className="col-span-2 text-xs font-semibold uppercase tracking-[0.18em] text-pine">
             Fuel today
           </p>
-          <label className="grid gap-2 text-sm font-medium text-ink">
+          <label className="grid min-w-0 gap-2 text-sm font-medium text-ink">
             Protein (g)
             <input
               className={fieldClassName()}
@@ -107,7 +109,7 @@ export function NutritionQuickForm({
               </p>
             ) : null}
           </label>
-          <label className="grid gap-2 text-sm font-medium text-ink">
+          <label className="grid min-w-0 gap-2 text-sm font-medium text-ink">
             Calories (optional)
             <input
               className={fieldClassName()}
@@ -266,7 +268,7 @@ export function NutritionQuickForm({
                 }))
               }
             />
-            Junk leakage (check if junk was consumed)
+            Had junk food (leave unchecked if not)
           </label>
 
           <label className="flex items-center gap-3 text-sm font-medium text-ink cursor-pointer">
