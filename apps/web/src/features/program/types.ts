@@ -31,6 +31,8 @@ export type ProgramExerciseView = {
   lockedReason: string | null;
   /** "3 x 10–12 @ RIR 2", "3 x 20 s per leg", "5 x 5 s, peak N per leg". */
   prescription: string;
+  /** One-line coaching cue. */
+  cue: string | null;
 };
 
 export type ProgramSessionView = {
@@ -43,6 +45,9 @@ export type ProgramSessionView = {
   ride: PlannedRide | null;
   exercises: ProgramExerciseView[];
   upperTemplateName: string | null;
+  /** Session structure (test day, golf, runs); rides use `ride`. */
+  structure: string | null;
+  isOptional: boolean;
   notes: string | null;
   /** An explicit skip or red-flag stop logged for this date. */
   outcome: Pick<ProgramSessionOutcome, "outcome" | "reason"> | null;
@@ -73,6 +78,8 @@ export type ProgramToday = {
   sleepMinHours: number;
   /** Next walk-jog, once the jog gate is cleared. */
   walkJog: WalkJogAdvice | null;
+  /** Lift-day warm-up, items separated by "; ". */
+  warmUp: string | null;
 };
 
 export type ProgramWeekDay = {
@@ -91,7 +98,13 @@ export type ExerciseProgressView = {
 };
 
 export type ProgramPageData = {
-  program: { name: string; testDayUrl: string | null } | null;
+  program: {
+    name: string;
+    version: string | null;
+    testDayUrl: string | null;
+    /** The program's global rules, one per line. */
+    rules: string[];
+  } | null;
   today: ProgramToday | null;
   week: ProgramWeekDay[];
   milestones: (ProgramMilestone & { past: boolean })[];

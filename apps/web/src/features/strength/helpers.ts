@@ -573,7 +573,10 @@ export function planExerciseSets(
         rir: !timed && ex.targetRir != null ? String(ex.targetRir) : "",
         isWarmup: false,
         durationSeconds: seconds,
-        distanceMeters: "",
+        distanceMeters:
+          ex.measure === "distance" && ex.targetDistanceMeters != null
+            ? String(ex.targetDistanceMeters)
+            : "",
         notes: "",
         done: false,
         ...(side ? { side } : {}),

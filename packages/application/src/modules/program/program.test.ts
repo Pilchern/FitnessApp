@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { StrengthSession } from "@fitness-app/domain";
 import {
   blockForWeek,
+  isGateCleared,
   postOpWeek,
   programMilestones,
   programWeekInfo,
@@ -32,7 +33,6 @@ import {
 import {
   buildDayPlan,
   inWeekWindow,
-  isGateCleared,
   planExercise,
   prescribedRepsMaxOn,
   programWeekDates,
@@ -643,7 +643,8 @@ describe("weekly hard leg sets and progress", () => {
     });
     // 2 goblet + 1 left knee extension; warm-up, right leg, RIR 5, timed and
     // upper-body sets do not count; the next week is outside the range.
-    expect(count).toEqual({ total: 3, byMuscle: { quads: 3 } });
+    // No exercise here is flagged counts_as_quad_set.
+    expect(count).toEqual({ total: 3, byMuscle: { quads: 3 }, quadSets: 0 });
   });
 
   it("tracks left vs right loads per session", () => {
@@ -1018,16 +1019,44 @@ describe("Phase A: upper rows and the leg block", () => {
     return p;
   }
 
-  it("keeps upper sets on a deload week and takes one off leg work", () => {
+  it("takes one set off everything on a deload week (program v1)", () => {
     const p = withGate(programWithUpper(), "barbell_squat", "2026-10-01");
     const plan = buildDayPlan(p, "2026-11-16", "normal").sessions[0]!;
     const sets = Object.fromEntries(
       plan.exercises.map((e) => [e.name, e.sets]),
     );
-    expect(sets).toMatchObject({ "Barbell Pin Squat": 3, "Lateral Raise": 3 });
+    expect(sets).toMatchObject({ "Barbell Pin Squat": 3, "Lateral Raise": 2 });
   });
 
   it("leaves upper loads to the logger's history prefill, with the range in the notes", () => {
+    const p = programWithUpper();
+    const day = buildDayPlan(p, "2026-10-26", "normal");
+    const plan = buildLiftLoggerPlan({
+      program: p,
+      planned: day.sessions[0]!,
+      info: day.info,
+      readiness: "normal",
+      history: {
+        "lateral raise": {
+          sessionDate: "2026-10-16",
+          sets: [{ weight: 10, reps: 15, rir: 2 }],
+        },
+      },
+      upper: null,
+    });
+    const raise = plan.exercises.find(
+      (e) => e.exerciseName === "Lateral Raise",
+    )!;
+    expect(raise).toMatchObject({
+      targetWeight: null,
+      targetReps: 20,
+      targetSets: 3,
+      notes: "15-20 reps.",
+    });
+    expect(raise.program).toBeUndefined();
+  });
+
+  it("marks a loaded upper lift with no history as Find load", () => {
     const p = programWithUpper();
     const day = buildDayPlan(p, "2026-10-26", "normal");
     const plan = buildLiftLoggerPlan({
@@ -1041,13 +1070,7 @@ describe("Phase A: upper rows and the leg block", () => {
     const raise = plan.exercises.find(
       (e) => e.exerciseName === "Lateral Raise",
     )!;
-    expect(raise).toMatchObject({
-      targetWeight: null,
-      targetReps: 20,
-      targetSets: 3,
-      notes: "15-20 reps.",
-    });
-    expect(raise.program).toBeUndefined();
+    expect(raise.notes).toMatch(/^Find load/);
   });
 
   it("keeps upper work on a knee day off and swaps every leg row for the ROM block", () => {

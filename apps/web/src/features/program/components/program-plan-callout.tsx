@@ -51,6 +51,13 @@ export function ProgramPlanCallout({
         required
       />
 
+      {today.warmUp ? (
+        <p className="text-xs text-ink/70">
+          <span className="font-semibold text-ink">Warm-up, 8 min: </span>
+          {today.warmUp}
+        </p>
+      ) : null}
+
       {lift ? (
         <div className="flex flex-wrap items-center gap-2">
           <SkipControl session={lift} date={today.today} />

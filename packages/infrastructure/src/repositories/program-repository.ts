@@ -32,6 +32,7 @@ const programRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
   name: z.string(),
+  version: z.string().nullable().optional(),
   week_anchor_date: z.string(),
   return_to_sport_week: num,
   test_day_url: z.string().nullable(),
@@ -50,6 +51,11 @@ const blockRowSchema = z.object({
   rir_target: num,
   rep_scheme: z.string().nullable(),
   sessions_from_block_id: z.string().uuid().nullable(),
+  // Optional with defaults: rows read before the v1 migration lack them.
+  activation: z.enum(["week", "gate", "manual"]).optional().default("week"),
+  gate_key: z.string().nullable().optional().default(null),
+  fallback_block_id: z.string().uuid().nullable().optional().default(null),
+  activated_on: z.string().nullable().optional().default(null),
   notes: z.string().nullable(),
 });
 
@@ -73,14 +79,26 @@ const sessionRowSchema = z.object({
   block_id: z.string().uuid(),
   day_of_week: z.number(),
   sort_order: z.number(),
-  session_type: z.enum(["lift", "peloton", "run", "test", "rest", "walk_jog"]),
+  session_type: z.enum([
+    "lift",
+    "peloton",
+    "run",
+    "test",
+    "rest",
+    "walk_jog",
+    "walk",
+    "golf",
+  ]),
   name: z.string(),
   upper_template_id: z.string().uuid().nullable(),
-  ride_kind: z.enum(["zone2", "climb_intervals"]).nullable(),
+  ride_kind: z
+    .enum(["zone2", "climb_intervals", "threshold_intervals", "vo2_intervals"])
+    .nullable(),
   minutes_min: num,
   minutes_max: num,
   structure: z.string().nullable(),
   gate_key: z.string().nullable(),
+  is_optional: z.boolean().optional().default(false),
   notes: z.string().nullable(),
 });
 
@@ -92,14 +110,21 @@ const exerciseRowSchema = z.object({
   exercise_order: z.number(),
   exercise_name: z.string(),
   block_part: z.enum(["legs", "upper"]),
+  category: z
+    .enum(["main", "accessory", "plyo", "core", "conditioning", "mobility"])
+    .nullable()
+    .optional()
+    .default(null),
+  counts_as_quad_set: z.boolean().optional().default(false),
+  cue: z.string().nullable().optional().default(null),
   from_week: num,
   until_week: num,
   primary_muscle: z
     .enum(["quads", "hamstrings", "glutes", "calves", "adductors", "core"])
     .nullable(),
   readiness_requirement: z.enum(["any", "normal"]),
-  measure: z.enum(["reps", "time", "force"]),
-  side_mode: z.enum(["bilateral", "per_leg"]),
+  measure: z.enum(["reps", "time", "force", "distance"]),
+  side_mode: z.enum(["bilateral", "per_leg", "per_side"]),
   load_kind: loadKind,
   sets_min: num,
   sets_max: num,
@@ -107,10 +132,14 @@ const exerciseRowSchema = z.object({
   reps_max: num,
   rir_target: num,
   seconds_target: num,
+  distance_meters_target: num.optional().default(null),
   tempo: z.string().nullable(),
   gate_key: z.string().nullable(),
+  extra_gate_key: z.string().nullable().optional().default(null),
   substitute_name: z.string().nullable(),
   substitute_load_kind: loadKind.nullable(),
+  substitute_reps_min: num.optional().default(null),
+  substitute_reps_max: num.optional().default(null),
   notes: z.string().nullable(),
 });
 
@@ -172,6 +201,10 @@ function mapBlock(row: z.infer<typeof blockRowSchema>): ProgramBlock {
     rirTarget: row.rir_target,
     repScheme: row.rep_scheme,
     sessionsFromBlockId: row.sessions_from_block_id,
+    activation: row.activation,
+    gateKey: row.gate_key,
+    fallbackBlockId: row.fallback_block_id,
+    activatedOn: row.activated_on,
     notes: row.notes,
   };
 }
@@ -183,6 +216,9 @@ function mapExercise(row: z.infer<typeof exerciseRowSchema>): ProgramExercise {
     order: row.exercise_order,
     name: row.exercise_name,
     blockPart: row.block_part,
+    category: row.category,
+    countsAsQuadSet: row.counts_as_quad_set,
+    cue: row.cue,
     fromWeek: row.from_week,
     untilWeek: row.until_week,
     primaryMuscle: row.primary_muscle,
@@ -196,10 +232,14 @@ function mapExercise(row: z.infer<typeof exerciseRowSchema>): ProgramExercise {
     repsMax: row.reps_max,
     rirTarget: row.rir_target,
     secondsTarget: row.seconds_target,
+    distanceMetersTarget: row.distance_meters_target,
     tempo: row.tempo,
     gateKey: row.gate_key,
+    extraGateKey: row.extra_gate_key,
     substituteName: row.substitute_name,
     substituteLoadKind: row.substitute_load_kind,
+    substituteRepsMin: row.substitute_reps_min,
+    substituteRepsMax: row.substitute_reps_max,
     notes: row.notes,
   };
 }
@@ -221,6 +261,7 @@ function mapSession(
     minutesMax: row.minutes_max,
     structure: row.structure,
     gateKey: row.gate_key,
+    isOptional: row.is_optional,
     notes: row.notes,
     exercises,
   };
@@ -350,6 +391,7 @@ export class SupabaseProgramRepository implements ProgramRepository {
       id: program.id,
       userId: program.user_id,
       name: program.name,
+      version: program.version ?? null,
       weekAnchorDate: program.week_anchor_date,
       returnToSportWeek: program.return_to_sport_week,
       testDayUrl: program.test_day_url,

@@ -56,7 +56,31 @@ export type ProgramSettings = {
   lsiTarget2: number;
   lsiTarget3: number;
   walkingAsymmetryTargetPct: number;
+  // Program v1
+  holdStepSeconds: number;
+  pullUpLoadAtTotalReps: number;
+  /** Lift-day warm-up, items separated by "; ". */
+  warmUp: string;
+  /** The program's global rules, one per line. */
+  programRules: string;
 };
+
+export const DEFAULT_WARM_UP =
+  "Peloton easy 5 min; band TKE 15/leg; box squat bodyweight x10; glute bridge x10; leg swings 10/side";
+
+export const DEFAULT_PROGRAM_RULES = [
+  "Order: readiness check, warm-up, power/plyo, main leg lift, leg accessories, upper body, core/finisher.",
+  "Main lifts never to failure. Accessories may go to RIR 1.",
+  "Double progression: every set at the top of the range at the target RIR or better, then +5 lb barbell / next DB / +2.5 lb cuff / +5 s holds. Otherwise repeat.",
+  "Per-leg lifts: left first; its reps set the target; the right matches at the same load. Progress off the left only.",
+  "No load increase unless the knee check is normal, outside deloads, and 3-night sleep is 6.5 h or more.",
+  "Deload: one set off everything, no load increases, plyo volume halved.",
+  "Hard quad sets: 12-16 a week.",
+  "Zone 2: 150 min a week (rides and walks at Zone 2 heart rate). 8,000 steps and the 5-min ROM check daily.",
+  "Pull-ups: at 30 total reps across sets, add load (belt or DB between the feet).",
+  "No conventional deadlifts. No kneeling on the left knee (half-kneel on the right only).",
+  "Pull-ups: step down onto the bench with the right leg, never drop off the bar, until the plyo gate is cleared.",
+].join("\n");
 
 export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   barbellStepLb: 5,
@@ -107,6 +131,10 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   lsiTarget2: 80,
   lsiTarget3: 90,
   walkingAsymmetryTargetPct: 5,
+  holdStepSeconds: 5,
+  pullUpLoadAtTotalReps: 30,
+  warmUp: DEFAULT_WARM_UP,
+  programRules: DEFAULT_PROGRAM_RULES,
 };
 
 const TEXT_KEYS = new Set<keyof ProgramSettings>([
@@ -115,6 +143,8 @@ const TEXT_KEYS = new Set<keyof ProgramSettings>([
   "calendarLiftTime",
   "calendarPelotonTime",
   "calendarTestTime",
+  "warmUp",
+  "programRules",
 ]);
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 

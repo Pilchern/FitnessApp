@@ -353,13 +353,12 @@ export async function getWeeklyReviewData(
   const legExercises = program.sessions
     .flatMap((s) => s.exercises)
     .filter((e) => e.blockPart === "legs");
-  const quadSets =
-    weeklyHardLegSets(
-      activity.sessions,
-      legExerciseIndex(legExercises),
-      range,
-      settings.hardSetMaxRir,
-    ).byMuscle.quads ?? 0;
+  const quadSets = weeklyHardLegSets(
+    activity.sessions,
+    legExerciseIndex(legExercises),
+    range,
+    settings.hardSetMaxRir,
+  ).quadSets;
 
   const seen = new Set<string>();
   const mainLifts = (info.block ? sessionsForBlock(program, info.block) : [])

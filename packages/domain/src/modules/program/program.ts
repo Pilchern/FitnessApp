@@ -11,11 +11,27 @@ export type ProgramSessionType =
   | "run"
   | "test"
   | "rest"
-  | "walk_jog";
+  | "walk_jog"
+  | "walk"
+  | "golf";
 
-export type RideKind = "zone2" | "climb_intervals";
-export type ExerciseMeasure = "reps" | "time" | "force";
-export type SideMode = "bilateral" | "per_leg";
+export type RideKind =
+  | "zone2"
+  | "climb_intervals"
+  | "threshold_intervals"
+  | "vo2_intervals";
+export type ExerciseMeasure = "reps" | "time" | "force" | "distance";
+export type SideMode = "bilateral" | "per_leg" | "per_side";
+/** Library category: plyo halves on a deload; the rest lose one set. */
+export type ProgramExerciseCategory =
+  | "main"
+  | "accessory"
+  | "plyo"
+  | "core"
+  | "conditioning"
+  | "mobility";
+/** week: by post-op week. gate: by week once a gate clears. manual: from a set date. */
+export type BlockActivation = "week" | "gate" | "manual";
 export type LoadKind = "barbell" | "dumbbell" | "cuff" | "bodyweight" | "band";
 export type ReadinessRequirement = "any" | "normal";
 export type BlockPart = "legs" | "upper";
@@ -34,6 +50,11 @@ export type ProgramExercise = {
   name: string;
   /** legs: knee work (engine, deloads, knee-off swap). upper: runs as logged. */
   blockPart: BlockPart;
+  category: ProgramExerciseCategory | null;
+  /** Counts toward the weekly hard quad set target. */
+  countsAsQuadSet: boolean;
+  /** One-line coaching cue. */
+  cue: string | null;
   /** Only in these post-op weeks (inclusive); null = no limit. */
   fromWeek: number | null;
   untilWeek: number | null;
@@ -49,10 +70,16 @@ export type ProgramExercise = {
   repsMax: number | null;
   rirTarget: number | null;
   secondsTarget: number | null;
+  distanceMetersTarget: number | null;
   tempo: string | null;
   gateKey: string | null;
+  /** A second gate that must also be cleared. */
+  extraGateKey: string | null;
   substituteName: string | null;
   substituteLoadKind: LoadKind | null;
+  /** The fallback's own rep range; null = same as the exercise. */
+  substituteRepsMin: number | null;
+  substituteRepsMax: number | null;
   notes: string | null;
 };
 
@@ -70,6 +97,7 @@ export type ProgramSession = {
   minutesMax: number | null;
   structure: string | null;
   gateKey: string | null;
+  isOptional: boolean;
   notes: string | null;
   exercises: ProgramExercise[];
 };
@@ -87,6 +115,13 @@ export type ProgramBlock = {
   repScheme: string | null;
   /** A block with no sessions of its own runs this block's sessions. */
   sessionsFromBlockId: EntityId | null;
+  activation: BlockActivation;
+  /** activation "gate": the gate that opens the block. */
+  gateKey: string | null;
+  /** activation "gate": the block that runs until the gate clears. */
+  fallbackBlockId: EntityId | null;
+  /** activation "manual": runs from this date on. */
+  activatedOn: IsoDate | null;
   notes: string | null;
 };
 
@@ -111,6 +146,8 @@ export type TrainingProgram = {
   id: EntityId;
   userId: UserId;
   name: string;
+  /** "program v1, 2026-10-19". */
+  version: string | null;
   /** Week 0 starts on this date (the surgery date). */
   weekAnchorDate: IsoDate;
   returnToSportWeek: number | null;

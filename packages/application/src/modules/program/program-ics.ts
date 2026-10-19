@@ -1,6 +1,6 @@
 import type { IsoDate, TrainingProgram } from "@fitness-app/domain";
 import { addDays } from "./program-calendar";
-import { buildDayPlan } from "./program-plan";
+import { buildDayPlan, RIDE_KIND_LABEL } from "./program-plan";
 import {
   DEFAULT_PROGRAM_SETTINGS,
   type ProgramSettings,
@@ -77,14 +77,19 @@ export function programCalendarEvents(
             ? [settings.calendarPelotonTime, settings.calendarPelotonMinutes]
             : s.sessionType === "test"
               ? [settings.calendarTestTime, settings.calendarTestMinutes]
-              : null;
+              : s.sessionType === "run" || s.sessionType === "walk"
+                ? [
+                    settings.calendarPelotonTime,
+                    settings.calendarPelotonMinutes,
+                  ]
+                : null;
       if (!timing) continue;
       const exercises = planned.exercises
         .filter((e) => e.status === "active" || e.status === "substitute")
         .map((e) => e.name);
       const ride = planned.ride
         ? [
-            planned.ride.kind === "zone2" ? "Zone 2" : "Climb intervals",
+            RIDE_KIND_LABEL[planned.ride.kind],
             planned.ride.minutesMin != null
               ? `${planned.ride.minutesMin}–${planned.ride.minutesMax} min`
               : null,

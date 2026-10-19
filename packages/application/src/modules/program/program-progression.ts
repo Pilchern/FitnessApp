@@ -1,4 +1,5 @@
 import type {
+  ProgramExerciseCategory,
   IsoDate,
   KneeReadinessStatus,
   LoadKind,
@@ -113,16 +114,22 @@ export function effectiveScheme(
 
 /**
  * Sets to load: the low end in a block's first week, the high end after it.
- * Deload weeks take one set off the high end (never below 1).
+ * Deload weeks take one set off the high end (never below 1); plyo volume
+ * halves instead (rounded up).
  */
 export function plannedSetCount(
   scheme: Pick<PrescriptionScheme, "setsMin" | "setsMax">,
   weekIndexInBlock: number,
   isDeload: boolean,
+  category: ProgramExerciseCategory | null = null,
 ) {
   const low = scheme.setsMin ?? scheme.setsMax ?? 3;
   const high = scheme.setsMax ?? scheme.setsMin ?? 3;
-  if (isDeload) return Math.max(1, high - 1);
+  if (isDeload) {
+    return category === "plyo"
+      ? Math.max(1, Math.ceil(high / 2))
+      : Math.max(1, high - 1);
+  }
   return weekIndexInBlock <= 0 ? low : high;
 }
 
@@ -132,6 +139,7 @@ export type ProgressionSet = {
   rir: number | null;
   isWarmup?: boolean;
   side?: "left" | "right" | null;
+  durationSeconds?: number | null;
 };
 
 /** Working sets that drive progression: per-leg lifts go off the LEFT leg. */
@@ -240,9 +248,45 @@ export function sleepAverageHours(
 }
 
 /**
- * Next session's load. Increases only on a normal knee check, outside a
- * deload, and when recent sleep averages at least the setting (6.5 h); a
- * changed rep range (new block) starts from last block's best set.
+ * Why an earned increase is held back today, or null: only on a normal knee
+ * check, outside a deload, and when recent sleep averages at least the
+ * setting (6.5 h).
+ */
+export function progressionLock(
+  input: Pick<
+    SuggestLoadInput,
+    "readiness" | "isDeload" | "sleepAverageHours" | "settings"
+  >,
+): string | null {
+  const settings = input.settings ?? DEFAULT_PROGRAM_SETTINGS;
+  if (input.readiness !== "normal") {
+    return input.readiness == null
+      ? "Do the knee check first."
+      : "Knee check not normal: repeat last loads.";
+  }
+  if (input.isDeload) return "Deload week: no load increase.";
+  if (
+    input.sleepAverageHours != null &&
+    input.sleepAverageHours < settings.sleepMinHoursForIncrease
+  ) {
+    return `Sleep averaged ${input.sleepAverageHours.toFixed(1)} h over ${settings.sleepAverageNights} nights (under ${settings.sleepMinHoursForIncrease}): no load increase.`;
+  }
+  return null;
+}
+
+/** RIR an exercise must reach to earn an increase: its target, else the setting. */
+function earnRir(scheme: PrescriptionScheme, settings: ProgramSettings) {
+  return scheme.rirTarget ?? settings.progressionMinRir;
+}
+
+export const FIND_LOAD_REASON =
+  "Find load: work up to a weight you can lift for the top of the range at the target RIR, then log it.";
+
+/**
+ * Next session's load. Increases only when every set hit the top of the
+ * range at the target RIR or better, and `progressionLock` allows it; a
+ * changed rep range (new block) starts from last block's best set. No
+ * history: "Find load".
  */
 export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
   const settings = input.settings ?? DEFAULT_PROGRAM_SETTINGS;
@@ -252,23 +296,13 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
       load: null,
       kind: "start",
       held: false,
-      reason:
-        "No history yet. Pick a load you can lift for the top of the range at the target RIR.",
+      reason: FIND_LOAD_REASON,
     };
   }
 
   const lastLoad = Math.max(...working.map((s) => s.weight ?? 0));
-  const lock =
-    input.readiness !== "normal"
-      ? input.readiness == null
-        ? "Do the knee check first."
-        : "Knee check not normal: repeat last loads."
-      : input.isDeload
-        ? "Deload week: no load increase."
-        : input.sleepAverageHours != null &&
-            input.sleepAverageHours < settings.sleepMinHoursForIncrease
-          ? `Sleep averaged ${input.sleepAverageHours.toFixed(1)} h over ${settings.sleepAverageNights} nights (under ${settings.sleepMinHoursForIncrease}): no load increase.`
-          : null;
+  const lock = progressionLock(input);
+  const minRir = earnRir(input.scheme, settings);
 
   const loaded =
     input.loadKind !== "bodyweight" &&
@@ -298,11 +332,7 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
     }
   }
 
-  const earned = hitTopOfRange(
-    working,
-    input.scheme.repsMax,
-    settings.progressionMinRir,
-  );
+  const earned = hitTopOfRange(working, input.scheme.repsMax, minRir);
   if (!loaded) {
     return {
       load: lastLoad > 0 ? lastLoad : null,
@@ -319,7 +349,7 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
       load: next,
       kind: "increase",
       held: false,
-      reason: `Every set hit ${input.scheme.repsMax} with ${settings.progressionMinRir}+ in reserve: up to ${next}.`,
+      reason: `Every set hit ${input.scheme.repsMax} with ${minRir}+ in reserve: up to ${next}.`,
     };
   }
   return {
@@ -329,13 +359,86 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
     reason:
       earned && lock
         ? lock
-        : `Same load: not every set reached the top of the range at RIR ${settings.progressionMinRir}+.`,
+        : `Same load: not every set reached the top of the range at RIR ${minRir}+.`,
   };
+}
+
+export type HoldSuggestion = {
+  seconds: number | null;
+  kind: "increase" | "same" | "start";
+  held: boolean;
+  reason: string;
+};
+
+/**
+ * Holds progress like loads: every working set at or past the target time
+ * last session earns +5 s (setting) next time, under the same locks.
+ */
+export function suggestHoldSeconds(input: {
+  targetSeconds: number | null;
+  lastSets: ProgressionSet[];
+  readiness: KneeReadinessStatus | null;
+  isDeload: boolean;
+  sleepAverageHours?: number | null;
+  settings?: ProgramSettings;
+}): HoldSuggestion {
+  const settings = input.settings ?? DEFAULT_PROGRAM_SETTINGS;
+  const durations = progressionSets(input.lastSets)
+    .map((s) => s.durationSeconds ?? null)
+    .filter((d): d is number => d != null && d > 0);
+  if (durations.length === 0) {
+    return {
+      seconds: input.targetSeconds,
+      kind: "start",
+      held: false,
+      reason: "First time: hold for the target.",
+    };
+  }
+  const shortest = Math.min(...durations);
+  const base = Math.max(shortest, input.targetSeconds ?? 0);
+  const earned = input.targetSeconds == null || shortest >= input.targetSeconds;
+  const lock = progressionLock(input);
+  if (earned && !lock) {
+    const next = base + settings.holdStepSeconds;
+    return {
+      seconds: next,
+      kind: "increase",
+      held: false,
+      reason: `Every set held ${shortest} s: up to ${next} s.`,
+    };
+  }
+  return {
+    seconds: earned ? base : (input.targetSeconds ?? shortest),
+    kind: "same",
+    held: earned,
+    reason:
+      earned && lock ? lock : "Same hold: not every set reached the target.",
+  };
+}
+
+/** Bodyweight pull-ups and chin-ups: add load once total reps reach the setting. */
+export function pullUpLoadCue(
+  exerciseName: string,
+  lastSets: ProgressionSet[],
+  settings: Pick<
+    ProgramSettings,
+    "pullUpLoadAtTotalReps"
+  > = DEFAULT_PROGRAM_SETTINGS,
+): string | null {
+  if (!/\b(pull|chin)-?ups?\b/i.test(exerciseName)) return null;
+  const working = progressionSets(lastSets);
+  if (working.length === 0) return null;
+  if (working.some((s) => (s.weight ?? 0) > 0)) return null;
+  const total = working.reduce((sum, s) => sum + (s.reps ?? 0), 0);
+  return total >= settings.pullUpLoadAtTotalReps
+    ? `${total} total reps last time: add load (belt or DB between the feet).`
+    : null;
 }
 
 export type LegExerciseInfo = {
   primaryMuscle: ProgramMuscle | null;
   measure: ProgramExercise["measure"];
+  countsAsQuadSet: boolean;
 };
 
 export function programExerciseKey(name: string) {
@@ -344,14 +447,19 @@ export function programExerciseKey(name: string) {
 
 /** Program leg exercises by name (and their substitutes), for counting sets. */
 export function legExerciseIndex(
-  exercises: Pick<
+  exercises: (Pick<
     ProgramExercise,
     "name" | "primaryMuscle" | "measure" | "substituteName"
-  >[],
+  > &
+    Partial<Pick<ProgramExercise, "countsAsQuadSet">>)[],
 ): Map<string, LegExerciseInfo> {
   const index = new Map<string, LegExerciseInfo>();
   for (const ex of exercises) {
-    const info = { primaryMuscle: ex.primaryMuscle, measure: ex.measure };
+    const info = {
+      primaryMuscle: ex.primaryMuscle,
+      measure: ex.measure,
+      countsAsQuadSet: ex.countsAsQuadSet ?? false,
+    };
     index.set(programExerciseKey(ex.name), info);
     if (ex.substituteName) {
       index.set(programExerciseKey(ex.substituteName), info);
@@ -363,6 +471,8 @@ export function legExerciseIndex(
 export type HardSetCount = {
   total: number;
   byMuscle: Partial<Record<ProgramMuscle, number>>;
+  /** Hard sets of exercises flagged counts_as_quad_set: the 12-16 counter. */
+  quadSets: number;
 };
 
 /**
@@ -376,20 +486,24 @@ export function weeklyHardLegSets(
   range: { start: string; end: string },
   hardSetMaxRir: number = DEFAULT_PROGRAM_SETTINGS.hardSetMaxRir,
 ): HardSetCount {
-  const result: HardSetCount = { total: 0, byMuscle: {} };
+  const result: HardSetCount = { total: 0, byMuscle: {}, quadSets: 0 };
   for (const session of sessions) {
     if (session.sessionDate < range.start || session.sessionDate > range.end) {
       continue;
     }
     for (const set of session.sets) {
       const info = index.get(programExerciseKey(set.exerciseName));
-      if (!info || !info.primaryMuscle || info.measure !== "reps") continue;
+      if (!info || info.measure !== "reps") continue;
+      if (!info.primaryMuscle && !info.countsAsQuadSet) continue;
       if (set.isWarmup || set.side === "right") continue;
       if (set.reps == null || set.reps <= 0) continue;
       if (set.rir != null && set.rir > hardSetMaxRir) continue;
       result.total += 1;
-      result.byMuscle[info.primaryMuscle] =
-        (result.byMuscle[info.primaryMuscle] ?? 0) + 1;
+      if (info.countsAsQuadSet) result.quadSets += 1;
+      if (info.primaryMuscle) {
+        result.byMuscle[info.primaryMuscle] =
+          (result.byMuscle[info.primaryMuscle] ?? 0) + 1;
+      }
     }
   }
   return result;
