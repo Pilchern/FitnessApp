@@ -16,9 +16,21 @@ export const NICK_TRAINING_PLAN: TrainingPlan = {
   vo2Required: false,
   cardioDaysLabel: "Tuesday, Thursday, and Saturday",
   excludedMuscleGroups: ["quads", "hamstrings", "glutes", "calves"],
-  // Plan doc section 7: same wake time daily, 6:30 AM give or take 30 min.
-  wakeTimeTarget: "06:30",
+  // Plan doc section 7: same wake time daily, 5:30 AM give or take 30 min
+  // (moved from 6:30 on 2026-10-19: household is up at 5:30, sleep after
+  // that is fragmented).
+  wakeTimeTarget: "05:30",
 };
+
+/**
+ * Sleep target, hours asleep. In bed 9:30-10 PM to a 5:30 wake is about 8 h
+ * in bed (plan section 7: 8-9 h in bed), which is about 7.5 h asleep at the
+ * Watch's usual efficiency. Readiness and the sleep plan score against this.
+ */
+export const SLEEP_TARGET_HOURS = 7.5;
+
+/** Lights-out floor for the sleep plan: in bed from 9:30 PM (plan section 7). */
+export const EARLIEST_BEDTIME = "21:30";
 
 /** ACL reconstruction date (plan doc section 1: 2026-10-09 is post-op day 53). */
 export const SURGERY_DATE = "2026-08-17";

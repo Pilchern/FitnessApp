@@ -560,7 +560,7 @@ function evaluateSleepBelowTarget(input: InsightEngineInput) {
     severity,
     "Sleep below target last week",
     `Average sleep was ${sleepAverageHours}h. The target is 7+ hours.`,
-    "Hold wake at 6:30 (give or take 30 min), phone-free from 8:30 PM, and go to bed when sleepy, not before 9:45.",
+    "Hold wake at 5:30 (give or take 30 min), phone-free from 8:30 PM, and in bed by 9:30-10 PM.",
     {
       weekStart,
       sleepAverageHours,
