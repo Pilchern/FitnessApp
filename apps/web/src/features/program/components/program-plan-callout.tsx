@@ -53,8 +53,17 @@ export function ProgramPlanCallout({
 
       {today.warmUp ? (
         <p className="text-xs text-ink/70">
-          <span className="font-semibold text-ink">Warm-up, 8 min: </span>
+          <span className="font-semibold text-ink">Warm-up, 5 min: </span>
           {today.warmUp}
+          {today.gaitDrill ? (
+            <>
+              <br />
+              <span className="font-semibold text-ink">
+                Gait drill, 3 min:{" "}
+              </span>
+              {today.gaitDrill}
+            </>
+          ) : null}
         </p>
       ) : null}
 

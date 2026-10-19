@@ -75,9 +75,14 @@ export type ProgramSettings = {
   liftSessionMaxMinutes: number;
   /** New block: last block's top load x this, once per step down in reps. */
   newBlockLoadMultiplier: number;
-  /** 1 = add lateral raise 3 x 15-20 as A2 on Wednesday (program seed). */
+  /** 1 = add lateral raise 3 x 15-20 to Wednesday's A pair (program seed). */
   shoulderEmphasis: number;
+  /** Lift-day gait drill, after the warm-up. */
+  gaitDrill: string;
 };
+
+export const DEFAULT_GAIT_DRILL =
+  "Slow march, then step-throughs to a metronome at preferred cadence +5%.";
 
 export const DEFAULT_WARM_UP =
   "Peloton easy 3 min; band TKE 15/leg; bodyweight box squat x10; glute bridge x10";
@@ -163,7 +168,32 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   liftSessionMaxMinutes: 60,
   newBlockLoadMultiplier: 1.1,
   shoulderEmphasis: 0,
+  gaitDrill: DEFAULT_GAIT_DRILL,
 };
+
+/**
+ * Gates switched from Settings rather than cleared by PT: on while the
+ * setting is 1 or more. They are hidden from the gates list.
+ */
+export const SETTING_GATES: Partial<Record<string, keyof ProgramSettings>> = {
+  shoulder_emphasis: "shoulderEmphasis",
+};
+
+export function isSettingGate(gateKey: string) {
+  return gateKey in SETTING_GATES;
+}
+
+/** The gates with each settings-driven gate on or off per its setting. */
+export function applySettingGates<
+  G extends { gateKey: string; clearedOn: string | null },
+>(gates: G[], settings: ProgramSettings): G[] {
+  return gates.map((g) => {
+    const field = SETTING_GATES[g.gateKey];
+    if (!field) return g;
+    const on = Number(settings[field]) >= 1;
+    return { ...g, clearedOn: on ? "2000-01-01" : null };
+  });
+}
 
 const TEXT_KEYS = new Set<keyof ProgramSettings>([
   "orthoName",
@@ -173,6 +203,7 @@ const TEXT_KEYS = new Set<keyof ProgramSettings>([
   "calendarTestTime",
   "warmUp",
   "programRules",
+  "gaitDrill",
 ]);
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 

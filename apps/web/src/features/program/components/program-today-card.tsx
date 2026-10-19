@@ -236,8 +236,17 @@ export function ProgramTodayCard({
 
       {lift && today.warmUp ? (
         <p className="rounded-2xl bg-pine/5 px-4 py-3 text-xs text-ink/75">
-          <span className="font-semibold text-ink">Warm-up, 8 min: </span>
+          <span className="font-semibold text-ink">Warm-up, 5 min: </span>
           {today.warmUp}
+          {today.gaitDrill ? (
+            <>
+              <br />
+              <span className="font-semibold text-ink">
+                Gait drill, 3 min:{" "}
+              </span>
+              {today.gaitDrill}
+            </>
+          ) : null}
         </p>
       ) : null}
 

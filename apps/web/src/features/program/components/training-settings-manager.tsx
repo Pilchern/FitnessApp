@@ -13,9 +13,10 @@ const TEXT_KEYS = new Set([
   "calendar_test_time",
   "warm_up",
   "program_rules",
+  "gait_drill",
 ]);
 /** Long text: edited in a text area. */
-const LONG_TEXT_KEYS = new Set(["warm_up", "program_rules"]);
+const LONG_TEXT_KEYS = new Set(["warm_up", "program_rules", "gait_drill"]);
 
 function SettingRow({ setting }: { setting: TrainingSetting }) {
   const [state, action, pending] = useActionState(
