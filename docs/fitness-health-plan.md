@@ -164,7 +164,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 ## 14. What exists in the app now [built]
 
-- Dashboard (rebuilt 2026-10-12): Today card with a daily readiness score (Apple Health HRV and resting HR against your 30-day baseline, plus sleep; an estimate, not a medical measure) and a one-line call for today's planned session; Plan card (templates over the week, Done/Missed/Planned, Z2 vs template target); habits (tap saves); "What changed" trend notes (wake time vs 6:30 target, cardio, resting HR, weight, lifts); Body.
+- Dashboard (rebuilt 2026-10-12): Today card with a daily readiness score (v3, 2026-10-19: 7-night HRV trend, overnight heart rate and sleep against a 30-day baseline, scored only outside a normal band; wrist temperature, breathing rate and heart rate checked together; a one-tap how-you-feel at 35%; no training-load penalty; an estimate, not a medical measure) and a one-line call for today's planned session; Plan card (templates over the week, Done/Missed/Planned, Z2 vs template target); habits (tap saves); "What changed" trend notes (wake time vs 6:30 target, cardio, resting HR, weight, lifts); Body.
 - /strength: Today's plan callout; Load plan prefills sets; weight starts at the last logged working-set weight, with "Last (date): 165 x 8, 8, 7".
 - Live database seeded by hand: 3 strength templates (Mon Push, Wed Pull, Fri Arms), 3 cardio templates (Tue 30, Thu 30, Sat 45), 4 habits, protein target 180.
 - Schema: supplements.kind (supplement | habit), migration applied live.

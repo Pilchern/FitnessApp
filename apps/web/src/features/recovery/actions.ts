@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
@@ -167,6 +168,48 @@ export async function logSupplementsAction(
     // redirect per tick would navigate and jump the page.
     const returnTo = formData.get("returnTo");
     revalidatePath(returnTo === "/dashboard" ? "/dashboard" : "/recovery");
+    return {};
+  } catch (error) {
+    return parseActionError(error);
+  }
+}
+
+const feelSchema = z.object({
+  checkinDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  readinessLevel: z.coerce.number().int().min(1).max(10),
+});
+
+/**
+ * One tap on the dashboard: how you feel this morning, saved as the day's
+ * readiness rating. Merges into the synced row when it exists; the Apple
+ * Health sync later fills a row created here without touching the rating.
+ */
+export async function logFeelingAction(
+  _previousState: SupplementChecklistActionState,
+  formData: FormData,
+): Promise<SupplementChecklistActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const { checkinDate, readinessLevel } = feelSchema.parse({
+      checkinDate: formData.get("checkinDate"),
+      readinessLevel: formData.get("readinessLevel"),
+    });
+    const { recoveryService } = await createCoreServices();
+    const existing = await recoveryService.getByDate(user.id, checkinDate);
+    if (existing) {
+      await recoveryService.update({
+        id: existing.id,
+        userId: user.id,
+        readinessLevel,
+      });
+    } else {
+      await recoveryService.create({
+        userId: user.id,
+        checkinDate,
+        readinessLevel,
+      });
+    }
+    revalidatePath("/dashboard");
     return {};
   } catch (error) {
     return parseActionError(error);

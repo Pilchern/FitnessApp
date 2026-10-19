@@ -4,8 +4,6 @@ import {
   buildBodyMetricSummary,
   buildCardioWeeklyTotals,
   buildReadinessHistory,
-  buildTrainingLoad,
-  plannedWeeklyLoad,
   buildPeerFitness,
   buildDailyStrain,
   buildSleepPlan,
@@ -20,7 +18,6 @@ import {
 } from "@fitness-app/application";
 import {
   EARLIEST_BEDTIME,
-  LIFTS_PER_WEEK,
   NICK_TRAINING_PLAN,
   SLEEP_TARGET_HOURS,
 } from "@/lib/training-plan";
@@ -182,16 +179,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     cardioSessions: cardioThisWeek,
   });
   const todayItems = weekPlan.days.find((d) => d.isToday)?.items ?? [];
-  // Load needs the 28 days before each of the last 7: cardio covers 55 days,
-  // strength 90.
-  const readinessOptions = {
-    sleepTargetHours: SLEEP_TARGET_HOURS,
-    trainingLoad: buildTrainingLoad(cardioLast8Weeks, strengthSessions),
-    plannedWeeklyLoad: plannedWeeklyLoad({
-      liftsPerWeek: LIFTS_PER_WEEK,
-      zone2Minutes: NICK_TRAINING_PLAN.weeklyZone2TargetMinutes,
-    }),
-  };
+  const readinessOptions = { sleepTargetHours: SLEEP_TARGET_HOURS };
   const readiness = computeDailyReadiness(recovery, today, readinessOptions);
 
   const peerFitness = buildPeerFitness({
@@ -247,6 +235,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       { holdProgression },
     ),
     todayItems,
+    feelToday:
+      recovery.find((c) => c.checkinDate === today)?.readinessLevel ?? null,
     zone2Minutes: buildCardioWeeklyTotals(cardioThisWeek).zone2Minutes,
     weekPlan,
     latestWeightLb: bodyMetricSummary.latestWeightLb,

@@ -21,9 +21,6 @@ export const NICK_TRAINING_PLAN: TrainingPlan = {
   wakeTimeTarget: "06:00",
 };
 
-/** Upper-body lifts a week (Mon/Wed/Fri, plan doc). */
-export const LIFTS_PER_WEEK = 3;
-
 /**
  * Sleep target, hours asleep. In bed 9:30-10 PM to a 6:00 wake is 8-8.5 h
  * in bed (plan section 7: 8-9 h in bed), which is about 7.5 h asleep at the

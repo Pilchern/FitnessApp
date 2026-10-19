@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { readinessLevel, type DailyReadiness } from "@fitness-app/application";
 import type { WeekPlanItem } from "../helpers";
+import { FeelPicker } from "./feel-picker";
 
 type TodayCardProps = {
   today: string;
@@ -9,6 +10,8 @@ type TodayCardProps = {
   call: string;
   todayItems: WeekPlanItem[];
   stepsToday: number | null;
+  /** Today's logged how-you-feel rating, 1-10. */
+  feelToday: number | null;
 };
 
 const LEVEL_LABEL = { good: "Good", fair: "Fair", low: "Low" } as const;
@@ -37,6 +40,7 @@ export function TodayCard({
   call,
   todayItems,
   stepsToday,
+  feelToday,
 }: TodayCardProps) {
   const scored = readiness.status === "scored" ? readiness : null;
   const stale = readiness.date != null && readiness.date !== today;
@@ -90,6 +94,8 @@ export function TodayCard({
           ) : null}
         </div>
       </div>
+
+      <FeelPicker date={today} current={feelToday} />
 
       {todayItems.length > 0 || stepsToday != null ? (
         <ul className="mt-5 divide-y divide-ink/10 border-t border-ink/10">
@@ -148,20 +154,6 @@ export function TodayCard({
                 </span>
               </li>
             ))}
-            {scored.adjustments.map((a) => (
-              <li
-                key={a.key}
-                className="flex items-baseline justify-between gap-3 text-sm"
-              >
-                <span className="text-ink">{a.label}</span>
-                <span className="text-right text-ink/60">
-                  {a.detail}
-                  <span className="ml-2 font-semibold text-ember">
-                    −{a.points}
-                  </span>
-                </span>
-              </li>
-            ))}
             {scored.caps.map((cap) => (
               <li key={cap} className="text-sm text-ember">
                 Capped: {cap}
@@ -199,13 +191,15 @@ export function TodayCard({
             </div>
           ) : null}
           <p className="mt-4 text-xs leading-5 text-ink/50">
-            An estimate from Apple Health HRV, heart rate, sleep and wake time,
-            measured against your own last 30 days, less penalties for raised
-            wrist temperature, raised breathing rate or a training-load spike.
-            70 is a normal day for you; 100 needs every signal at or above your
-            usual. Not a medical measure.
+            Your 7-night HRV trend, overnight heart rate and sleep against your
+            own last 30 days, plus how you feel when you tap it (35%). Inside
+            your normal range scores about 80; only signals outside it move the
+            number. Wrist temperature, breathing rate and heart rate are checked
+            together: two up at once caps the day at fair. Training load is left
+            out on purpose; your heart rate and HRV already show how you are
+            handling it. An estimate, not a medical measure.
             {scored.calibrating
-              ? ` Baseline has ${scored.baselineDays} days so far; it steadies after about two weeks, and scores top out at 95 until then.`
+              ? ` HRV joins the score after 14 nights of baseline (${scored.baselineDays} so far): one night of Watch HRV is too noisy to act on.`
               : null}
           </p>
         </details>
