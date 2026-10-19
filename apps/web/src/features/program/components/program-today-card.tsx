@@ -10,6 +10,15 @@ import { KneeCheckPanel } from "./knee-check-panel";
 import { RedFlagControl, SkipControl } from "./session-outcome-controls";
 import { RIDE_KIND_LABEL, type WalkJogAdvice } from "@fitness-app/application";
 
+/** "Oct 26" from YYYY-MM-DD, without timezone drift. */
+function formatMonthDay(isoDate: string) {
+  return new Date(`${isoDate}T12:00:00Z`).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function walkJogLine(advice: WalkJogAdvice) {
   if (advice.action === "rest") {
     return `Rest from running (bike instead). Back on ${advice.resumeOn}.`;
@@ -42,6 +51,12 @@ export function ProgramHeaderLine({ today }: { today: ProgramToday }) {
         Post-op week {header.week}
         {header.blockName ? ` · ${header.blockName}` : ""}
       </p>
+      {header.nextBlock ? (
+        <p className="mt-0.5 text-xs text-ink/60">
+          Next block starts {formatMonthDay(header.nextBlock.date)} (
+          {header.nextBlock.name})
+        </p>
+      ) : null}
       {header.repScheme || header.isDeload ? (
         <p className="mt-0.5 text-xs text-ink/60">
           {header.isDeload ? "Deload: one set fewer, no load increases. " : ""}
@@ -112,6 +127,14 @@ export function ProgramSessionList({
           {!s.visible && s.hiddenReason ? (
             <p className="text-xs text-ink/60">{s.hiddenReason}</p>
           ) : null}
+          {s.visible && s.estimatedMinutes != null ? (
+            <p
+              className={`text-xs ${s.overBudget ? "font-medium text-ember" : "text-ink/60"}`}
+            >
+              About {s.estimatedMinutes} min
+              {s.overBudget ? " · over the lift time budget: trim it" : ""}
+            </p>
+          ) : null}
           {rideLine(s) ? (
             <p className="text-xs text-ink/70">{rideLine(s)}</p>
           ) : null}
@@ -137,6 +160,11 @@ export function ProgramSessionList({
                     className={`flex flex-wrap justify-between gap-x-2 text-xs ${off ? "text-ink/40" : "text-ink/75"}`}
                   >
                     <span className="min-w-0">
+                      {e.superset ? (
+                        <span className="mr-1 font-semibold tabular-nums text-ink/60">
+                          {e.superset}
+                        </span>
+                      ) : null}
                       {e.name}
                       {STATUS_LABEL[e.status] ? (
                         <span className="ml-1.5 rounded-full border border-ink/15 px-1.5 py-px text-[0.65rem] uppercase tracking-wide">

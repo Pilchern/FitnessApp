@@ -1,5 +1,5 @@
 import type { StrengthSession } from "@fitness-app/domain";
-import type { LoggerPlanExercise } from "@fitness-app/application";
+import type { LoggerPlanExercise, RestMeta } from "@fitness-app/application";
 import type { StrengthFormValues, StrengthSetFormValue } from "./types";
 
 export function createEmptyStrengthSet(
@@ -435,6 +435,8 @@ export type StrengthDraft = {
   planNotes: string | null;
   /** Top of each loaded plan exercise's rep range, by exercise key. */
   repTops?: Record<string, number>;
+  /** Program rows' rest rules (superset, side, category), by exercise key. */
+  restMeta?: RestMeta;
 };
 
 export const STRENGTH_DRAFT_KEY = "fitness-app:strength-draft:v1";
@@ -464,6 +466,7 @@ export function parseStrengthDraft(
       exerciseNotes: draft.exerciseNotes ?? {},
       planNotes: draft.planNotes ?? null,
       repTops: draft.repTops ?? {},
+      restMeta: draft.restMeta ?? {},
     };
   } catch {
     return null;

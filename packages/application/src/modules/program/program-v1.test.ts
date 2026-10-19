@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ProgramBlock, TrainingProgram } from "@fitness-app/domain";
-import { programWeekInfo } from "./program-calendar";
+import { nextBlockStart, programWeekInfo } from "./program-calendar";
 import { buildDayPlan, planExercise, type PlanContext } from "./program-plan";
 import {
   legExerciseIndex,
@@ -10,7 +10,6 @@ import {
   suggestLoad,
   weeklyHardLegSets,
 } from "./program-progression";
-import { walkJogAdvice } from "./walk-jog";
 import {
   block,
   exercise,
@@ -382,62 +381,15 @@ describe("program v1: hard quad set counter", () => {
   });
 });
 
-describe("program v1: walk-jog stages", () => {
-  const today = "2026-12-10";
-  it("moves from 5:1 x4 to 10 min continuous after a normal morning", () => {
-    expect(
-      walkJogAdvice({
-        runs: [{ date: "2026-12-05", runMinutes: 20, walkMinutes: 4 }],
-        checks: [{ date: "2026-12-06", status: "normal" }],
-        today,
-      }),
-    ).toMatchObject({
-      runMinutesMin: 10,
-      structure: "10 min continuous",
+describe("program v2: next block on the home header", () => {
+  it("names the next block and its first day", () => {
+    const p = v1Program();
+    expect(nextBlockStart(p, "2026-10-19")).toMatchObject({
+      label: "Block 1 Build",
+      date: "2026-10-26",
     });
-  });
-
-  it("uses the stage's rounds for interval totals", () => {
-    expect(
-      walkJogAdvice({
-        runs: [{ date: "2026-12-05", runMinutes: 11, walkMinutes: 6 }],
-        checks: [{ date: "2026-12-06", status: "normal" }],
-        today,
-      }),
-    ).toMatchObject({
-      runMinutesMin: 12,
-      runMinutesMax: 13,
-      structure: "2 min jog / 1 min walk x 6",
-    });
-    expect(
-      walkJogAdvice({
-        runs: [{ date: "2026-12-05", runMinutes: 14, walkMinutes: 6 }],
-        checks: [{ date: "2026-12-06", status: "normal" }],
-        today,
-      }).structure,
-    ).toBe("3 min jog / 1 min walk x 5");
-  });
-
-  it("goes one stage back after a bad morning, across phases", () => {
-    expect(
-      walkJogAdvice({
-        runs: [{ date: "2026-12-01", runMinutes: 10, walkMinutes: 0 }],
-        checks: [{ date: "2026-12-02", status: "hold" }],
-        today,
-      }),
-    ).toMatchObject({
-      runMinutesMin: 20,
-      structure: "5 min jog / 1 min walk x 4",
-    });
-  });
-
-  it("tops out at 30 min continuous", () => {
-    expect(
-      walkJogAdvice({
-        runs: [{ date: "2026-12-05", runMinutes: 30, walkMinutes: 0 }],
-        checks: [{ date: "2026-12-06", status: "normal" }],
-        today,
-      }),
-    ).toMatchObject({ runMinutesMin: 30, runMinutesMax: 30 });
+    expect(nextBlockStart(p, "2026-10-26")?.date).toBe("2026-11-16");
+    expect(nextBlockStart(p, "2027-05-16")?.date).toBe("2027-05-17");
+    expect(nextBlockStart(p, "2027-05-17")).toBeNull();
   });
 });

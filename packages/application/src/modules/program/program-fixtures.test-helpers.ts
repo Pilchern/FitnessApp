@@ -67,6 +67,8 @@ export function exercise(
     substituteLoadKind: null,
     substituteRepsMin: null,
     substituteRepsMax: null,
+    supersetGroup: null,
+    supersetOrder: null,
     notes: null,
     ...partial,
   };

@@ -63,23 +63,40 @@ export type ProgramSettings = {
   warmUp: string;
   /** The program's global rules, one per line. */
   programRules: string;
+  // Program v2: session time budget and rest
+  sessionWarmUpMinutes: number;
+  sessionGaitDrillMinutes: number;
+  sessionTransitionMinutes: number;
+  setWorkSeconds: number;
+  restMainSeconds: number;
+  restPairSeconds: number;
+  restAccessorySeconds: number;
+  restPlyoSeconds: number;
+  liftSessionMaxMinutes: number;
+  /** New block: last block's top load x this, once per step down in reps. */
+  newBlockLoadMultiplier: number;
+  /** 1 = add lateral raise 3 x 15-20 as A2 on Wednesday (program seed). */
+  shoulderEmphasis: number;
 };
 
 export const DEFAULT_WARM_UP =
-  "Peloton easy 5 min; band TKE 15/leg; box squat bodyweight x10; glute bridge x10; leg swings 10/side";
+  "Peloton easy 3 min; band TKE 15/leg; bodyweight box squat x10; glute bridge x10";
 
 export const DEFAULT_PROGRAM_RULES = [
-  "Order: readiness check, warm-up, power/plyo, main leg lift, leg accessories, upper body, core/finisher.",
+  "Order: readiness check, warm-up, gait drill, plyos/power, main pairs, accessories.",
+  "Supersets: alternate A1 and A2, rest after the pair. Per-leg work: left then right, no rest between.",
+  "Lift days: 55-60 min, at most 4 upper-body movements.",
   "Main lifts never to failure. Accessories may go to RIR 1.",
   "Double progression: every set at the top of the range at the target RIR or better, then +5 lb barbell / next DB / +2.5 lb cuff / +5 s holds. Otherwise repeat.",
   "Per-leg lifts: left first; its reps set the target; the right matches at the same load. Progress off the left only.",
   "No load increase unless the knee check is normal, outside deloads, and 3-night sleep is 6.5 h or more.",
   "Deload: one set off everything, no load increases, plyo volume halved.",
+  "New block: last block's top working load x 1.1 per step down in reps (suggested, editable).",
   "Hard quad sets: 12-16 a week.",
-  "Zone 2: 150 min a week (rides and walks at Zone 2 heart rate). 8,000 steps and the 5-min ROM check daily.",
+  "Zone 2: 150 min a week. 8,000 steps and the 5-min ROM check (prone hang, heel slides) daily.",
   "Pull-ups: at 30 total reps across sets, add load (belt or DB between the feet).",
   "No conventional deadlifts. No kneeling on the left knee (half-kneel on the right only).",
-  "Pull-ups: step down onto the bench with the right leg, never drop off the bar, until the plyo gate is cleared.",
+  "Pull-ups: step down onto the bench with the right leg, never drop off the bar, until the plyo_single gate is on.",
 ].join("\n");
 
 export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
@@ -114,7 +131,7 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   ptVisitsPerWeek: 2,
   executionBannerWeeks: 2,
   calendarLiftTime: "18:00",
-  calendarLiftMinutes: 80,
+  calendarLiftMinutes: 60,
   calendarPelotonTime: "18:00",
   calendarPelotonMinutes: 45,
   calendarTestTime: "09:00",
@@ -130,11 +147,22 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   lsiTarget1: 70,
   lsiTarget2: 80,
   lsiTarget3: 90,
-  walkingAsymmetryTargetPct: 5,
+  walkingAsymmetryTargetPct: 8,
   holdStepSeconds: 5,
   pullUpLoadAtTotalReps: 30,
   warmUp: DEFAULT_WARM_UP,
   programRules: DEFAULT_PROGRAM_RULES,
+  sessionWarmUpMinutes: 5,
+  sessionGaitDrillMinutes: 3,
+  sessionTransitionMinutes: 4,
+  setWorkSeconds: 40,
+  restMainSeconds: 150,
+  restPairSeconds: 90,
+  restAccessorySeconds: 60,
+  restPlyoSeconds: 60,
+  liftSessionMaxMinutes: 60,
+  newBlockLoadMultiplier: 1.1,
+  shoulderEmphasis: 0,
 };
 
 const TEXT_KEYS = new Set<keyof ProgramSettings>([

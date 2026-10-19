@@ -15,6 +15,9 @@ import {
   programSettingsFromRows,
   programWeekDates,
   programWeekInfo,
+  nextBlockStart,
+  estimatePlannedSession,
+  supersetLabel,
   sessionsForBlock,
   sleepAverageHours,
   walkJogAdvice,
@@ -64,7 +67,9 @@ export async function zonedToday(userId: string) {
 
 function headerFor(program: TrainingProgram, date: string): ProgramHeader {
   const info = programWeekInfo(program, date);
+  const next = nextBlockStart(program, date);
   return {
+    nextBlock: next ? { name: next.label, date: next.date } : null,
     week: info.week,
     blockName: info.block?.name ?? null,
     repScheme: info.block?.repScheme ?? null,
@@ -78,8 +83,10 @@ function sessionViews(
   plan: DayPlan,
   templates: TrainingTemplate[],
   outcomes: ProgramSessionOutcome[],
+  settings: ProgramSettings,
 ): ProgramSessionView[] {
   return plan.sessions.map((s) => {
+    const estimate = estimatePlannedSession(s, settings);
     const outcome = outcomes.find(
       (o) => o.programSessionId === s.session.id && o.date === plan.date,
     );
@@ -96,6 +103,8 @@ function sessionViews(
       notes: s.session.notes,
       upperTemplateName:
         templates.find((t) => t.id === s.session.upperTemplateId)?.name ?? null,
+      estimatedMinutes: estimate?.minutes ?? null,
+      overBudget: estimate?.overBudget ?? false,
       outcome: outcome
         ? { outcome: outcome.outcome, reason: outcome.reason }
         : null,
@@ -106,6 +115,7 @@ function sessionViews(
         lockedReason: p.lockedReason,
         prescription: formatPrescription(p),
         cue: p.exercise.cue,
+        superset: supersetLabel(p.exercise),
       })),
     };
   });
@@ -221,7 +231,7 @@ function buildToday(ctx: ProgramContext): {
   const kneeCheck = ctx.checks.find((c) => c.date === today) ?? null;
   const kneeStatus = ctx.statusOn(today);
   const plan = buildDayPlan(program, today, kneeStatus, settings);
-  const sessions = sessionViews(plan, ctx.templates, ctx.outcomes);
+  const sessions = sessionViews(plan, ctx.templates, ctx.outcomes, settings);
   const streak = kneeOffStreak(
     ctx.checks.map((c) => ({ date: c.date, status: ctx.statusOn(c.date) })),
     today,
@@ -353,17 +363,19 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
       dayOfWeek: plan.info.dayOfWeek,
       isToday: date === today,
       kneeStatus,
-      sessions: sessionViews(plan, ctx.templates, ctx.outcomes).map((s) => ({
-        ...s,
-        completion: sessionCompletion({
-          type: s.type,
-          date,
-          today,
-          liftDates,
-          rideDates,
-          outcome: s.outcome?.outcome ?? null,
+      sessions: sessionViews(plan, ctx.templates, ctx.outcomes, settings).map(
+        (s) => ({
+          ...s,
+          completion: sessionCompletion({
+            type: s.type,
+            date,
+            today,
+            liftDates,
+            rideDates,
+            outcome: s.outcome?.outcome ?? null,
+          }),
         }),
-      })),
+      ),
     };
   });
 

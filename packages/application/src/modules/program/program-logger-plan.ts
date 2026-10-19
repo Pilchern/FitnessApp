@@ -1,5 +1,6 @@
 import type {
   ExerciseMeasure,
+  ProgramExerciseCategory,
   KneeReadinessStatus,
   SideMode,
   StrengthSession,
@@ -18,6 +19,7 @@ import {
   DEFAULT_PROGRAM_SETTINGS,
   type ProgramSettings,
 } from "./program-settings";
+import { restAfterSet, type BudgetItem, type RestCall } from "./session-budget";
 import {
   FIND_LOAD_REASON,
   programExerciseKey,
@@ -41,9 +43,13 @@ export type LoggerPlanExercise = {
   measure?: ExerciseMeasure;
   targetSeconds?: number | null;
   targetDistanceMeters?: number | null;
-  /** Program leg work: the logger uses `targetWeight` as is. */
+  /** Program work: the logger uses `targetWeight` as is. */
   program?: boolean;
   suggestion?: LoadSuggestion;
+  /** Superset letter and position ("A", 1); null = straight sets. */
+  supersetGroup?: string | null;
+  supersetOrder?: number | null;
+  category?: ProgramExerciseCategory | null;
 };
 
 export type LoggerPlan = {
@@ -137,7 +143,7 @@ function progressesByTime(p: PlannedExercise) {
   );
 }
 
-function legExercise(
+function programRow(
   p: PlannedExercise,
   input: BuildLiftPlanInput,
   settings: ProgramSettings,
@@ -152,6 +158,9 @@ function legExercise(
     sideMode: p.exercise.sideMode,
     measure: p.exercise.measure,
     program: true as const,
+    supersetGroup: p.exercise.supersetGroup ?? null,
+    supersetOrder: p.exercise.supersetOrder ?? null,
+    category: p.exercise.category ?? null,
   };
   const history = input.history[programExerciseKey(p.name)];
   if (p.exercise.measure === "distance") {
@@ -202,11 +211,18 @@ function legExercise(
     lastRepsMax: history
       ? prescribedRepsMaxOn(input.program, p.name, history.sessionDate)
       : null,
+    repLadder: repLadder(input.program),
     readiness: input.readiness,
     isDeload: input.info.isDeload,
     sleepAverageHours: input.sleepAverageHours ?? null,
     settings,
   });
+  const pullUp = pullUpLoadCue(p.name, history?.sets ?? [], settings);
+  const { repsMin, repsMax } = p.scheme;
+  const range =
+    repsMin != null && repsMax != null && repsMin !== repsMax
+      ? `${repsMin}-${repsMax} reps.`
+      : null;
   return {
     ...base,
     targetReps: p.scheme.repsMax,
@@ -215,6 +231,8 @@ function legExercise(
     suggestion,
     notes: [
       suggestionCue(suggestion),
+      pullUp,
+      range,
       sideNote(p),
       tempo,
       cue,
@@ -225,51 +243,19 @@ function legExercise(
   };
 }
 
-/**
- * Upper rows run as logged: the logger prefills last time's load. A loaded
- * lift with no history says "Find load"; bodyweight pull-ups and chin-ups
- * say when to add load. Timed rows prefill seconds.
- */
-function upperExercise(
-  p: PlannedExercise,
-  input: BuildLiftPlanInput,
-  settings: ProgramSettings,
-): LoggerPlanExercise {
-  const { repsMin, repsMax } = p.scheme;
-  const history = input.history[programExerciseKey(p.name)];
-  const timed = p.exercise.measure === "time";
-  const range =
-    !timed && repsMin != null && repsMax != null && repsMin !== repsMax
-      ? `${repsMin}-${repsMax} reps.`
-      : null;
-  const loaded = p.loadKind !== "bodyweight" && p.loadKind !== "band";
-  const findLoad =
-    !timed && loaded && (history?.sets.length ?? 0) === 0
-      ? FIND_LOAD_REASON
-      : null;
-  const pullUp = pullUpLoadCue(p.name, history?.sets ?? [], settings);
-  return {
-    exerciseName: p.name,
-    exerciseOrder: 0,
-    targetSets: p.sets,
-    targetReps: timed ? null : repsMax,
-    targetWeight: null,
-    targetRir: timed ? null : p.scheme.rirTarget,
-    ...(timed
-      ? { measure: "time" as const, targetSeconds: p.exercise.secondsTarget }
-      : {}),
-    notes:
-      [findLoad, pullUp, range, sideNote(p), p.exercise.cue, p.exercise.notes]
-        .filter(Boolean)
-        .join(" ") || null,
-  };
+/** Rep tops of every block, for counting steps between rep ranges. */
+function repLadder(program: TrainingProgram) {
+  return program.blocks
+    .map((b) => b.repsMax)
+    .filter((v): v is number => v != null);
 }
 
 /**
- * Today's lift for the logger, in prescription order: leg work through the
- * progression engine, upper work prefilled from what was last logged. On a
- * knee day off every leg row is swapped for one ROM + walk block (upper
- * still runs). A linked upper template, if any, follows unchanged.
+ * Today's lift for the logger, in prescription order (supersets keep their
+ * letters): every row through the progression engine. On a knee day off
+ * every leg row is swapped for one ROM + walk block (upper still runs, its
+ * superset partners now straight sets). A linked upper template, if any,
+ * follows unchanged.
  */
 export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
   const { planned, info, readiness } = input;
@@ -291,9 +277,8 @@ export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
     });
   }
   for (const p of planned.exercises.filter(isPlannedToday)) {
-    if (p.part === "upper") rows.push(upperExercise(p, input, settings));
-    else if (!planned.legBlockReplaced)
-      rows.push(legExercise(p, input, settings));
+    if (p.part === "legs" && planned.legBlockReplaced) continue;
+    rows.push(programRow(p, input, settings));
   }
   const legs = rows;
   const upper = (input.upper?.exercises ?? []).map((ex) => ({ ...ex }));
@@ -304,7 +289,9 @@ export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
       info.isDeload ? " · Deload: one set fewer, no load increases." : "."
     }`,
     status ? `Knee check: ${status.label}. ${status.detail}` : null,
-    settings.warmUp ? `Warm-up (8 min): ${settings.warmUp}.` : null,
+    settings.warmUp
+      ? `Warm-up (${settings.sessionWarmUpMinutes} min): ${settings.warmUp}.`
+      : null,
     planned.session.notes,
     input.upper?.notes ?? null,
   ]
@@ -319,4 +306,60 @@ export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
       exerciseOrder: i,
     })),
   };
+}
+
+/** Program rows' rest rules by exercise key; other rows keep the manual timer. */
+export type RestMeta = Record<string, BudgetItem>;
+
+export function restMetaFromPlan(exercises: LoggerPlanExercise[]): RestMeta {
+  return Object.fromEntries(
+    exercises
+      .filter((ex) => ex.program)
+      .map((ex): [string, BudgetItem] => [
+        programExerciseKey(ex.exerciseName),
+        {
+          name: ex.exerciseName,
+          sets: ex.targetSets,
+          measure: ex.measure ?? "reps",
+          sideMode: ex.sideMode ?? "bilateral",
+          category: ex.category ?? null,
+          secondsTarget: ex.targetSeconds ?? null,
+          supersetGroup: ex.supersetGroup ?? null,
+          supersetOrder: ex.supersetOrder ?? null,
+        },
+      ]),
+  );
+}
+
+/**
+ * Rest after ticking set `index` in the logger (sets as they were before
+ * the tick), or null for a row with no program rest rule. Superset partners
+ * count only while they still have an unticked set, so the last round of an
+ * uneven pair rests like a straight set.
+ */
+export function restForTick(
+  sets: { exerciseName: string; side?: string | null; done?: boolean }[],
+  index: number,
+  meta: RestMeta,
+): RestCall | null {
+  const set = sets[index];
+  if (!set) return null;
+  const item = meta[programExerciseKey(set.exerciseName)];
+  if (!item) return null;
+  const side = set.side === "left" || set.side === "right" ? set.side : null;
+  const hasOpenSet = (name: string) =>
+    sets.some(
+      (s, i) =>
+        i !== index &&
+        !s.done &&
+        programExerciseKey(s.exerciseName) === programExerciseKey(name),
+    );
+  const group = item.supersetGroup
+    ? Object.values(meta).filter(
+        (m) =>
+          m.supersetGroup === item.supersetGroup &&
+          (m.name === item.name || hasOpenSet(m.name)),
+      )
+    : [item];
+  return restAfterSet({ item, side, group });
 }

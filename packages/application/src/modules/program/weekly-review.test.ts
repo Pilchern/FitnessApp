@@ -425,10 +425,10 @@ describe("calendar export", () => {
       "2026-11-01",
     );
     expect(events.map((e) => [e.date, e.start, e.minutes])).toEqual([
-      ["2026-10-26", "18:00", 80],
+      ["2026-10-26", "18:00", 60],
       ["2026-10-27", "18:00", 45],
       ["2026-10-29", "18:00", 45],
-      ["2026-10-30", "18:00", 80],
+      ["2026-10-30", "18:00", 60],
     ]);
     const open = programCalendarEvents(
       withGate(testProgram(), "jog", "2026-10-26"),

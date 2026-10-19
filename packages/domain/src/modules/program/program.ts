@@ -13,7 +13,8 @@ export type ProgramSessionType =
   | "rest"
   | "walk_jog"
   | "walk"
-  | "golf";
+  | "golf"
+  | "accessory";
 
 export type RideKind =
   | "zone2"
@@ -80,6 +81,10 @@ export type ProgramExercise = {
   /** The fallback's own rep range; null = same as the exercise. */
   substituteRepsMin: number | null;
   substituteRepsMax: number | null;
+  /** Superset letter (A, B, C...); null = straight sets. */
+  supersetGroup: string | null;
+  /** Position inside the superset (1, 2). */
+  supersetOrder: number | null;
   notes: string | null;
 };
 
