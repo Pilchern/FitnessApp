@@ -6,6 +6,7 @@ import {
   limbSymmetryPct,
   sessionCompletion,
   SKIP_LABELS,
+  ratioTone,
 } from "./helpers";
 import {
   isForceSet,
@@ -325,5 +326,15 @@ describe("skip labels", () => {
     ]) {
       expect(SKIP_LABELS[key]).toBeTruthy();
     }
+  });
+});
+
+describe("scorecard tone", () => {
+  it("marks met, short, or no data", () => {
+    expect(ratioTone(3, 3)).toBe("met");
+    expect(ratioTone(4, 3)).toBe("met");
+    expect(ratioTone(2, 3)).toBe("short");
+    expect(ratioTone(null, 2)).toBe("none");
+    expect(ratioTone(1, 0)).toBe("none");
   });
 });

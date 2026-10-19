@@ -172,3 +172,50 @@ export async function updateTrainingSettingAction(
     return parseActionError(error);
   }
 }
+
+const optionalNumber = z
+  .string()
+  .optional()
+  .transform((v) => (v == null || v.trim() === "" ? null : Number(v)))
+  .refine((v) => v == null || Number.isFinite(v), "Enter a number.");
+
+const checkinSchema = z.object({
+  weekStart: isoDate,
+  ptVisitsScheduled: optionalNumber,
+  ptVisitsAttended: optionalNumber,
+  quadLsiPct: optionalNumber,
+  walkingAsymmetryPct: optionalNumber,
+  notes: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim() !== "" ? v.trim() : null)),
+});
+
+/** Sunday review: PT visits, quad LSI and walking asymmetry for the week. */
+export async function saveWeeklyCheckinAction(
+  _previous: ProgramActionState,
+  formData: FormData,
+): Promise<ProgramActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const field = (name: string) => {
+      const v = formData.get(name);
+      return typeof v === "string" ? v : undefined;
+    };
+    const parsed = checkinSchema.parse({
+      weekStart: field("weekStart"),
+      ptVisitsScheduled: field("ptVisitsScheduled"),
+      ptVisitsAttended: field("ptVisitsAttended"),
+      quadLsiPct: field("quadLsiPct"),
+      walkingAsymmetryPct: field("walkingAsymmetryPct"),
+      notes: field("notes"),
+    });
+    const { programService } = await createCoreServices();
+    await programService.saveWeeklyCheckin({ userId: user.id, ...parsed });
+    revalidatePath("/program/review");
+    revalidateProgramViews();
+    return { saved: true };
+  } catch (error) {
+    return parseActionError(error);
+  }
+}

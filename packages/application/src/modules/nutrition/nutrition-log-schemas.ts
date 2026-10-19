@@ -15,6 +15,10 @@ const nutritionLogBaseSchema = z.object({
   junkLeakage: z.boolean().nullable().optional(),
   fiberTaken: z.boolean().nullable().optional(),
   alcoholCount: z.number().int().min(0).max(50).default(0),
+  proteinGrams: z.number().int().min(0).max(500).nullable().optional(),
+  calories: z.number().int().min(0).max(10000).nullable().optional(),
+  creatineTaken: z.boolean().nullable().optional(),
+  protein50By9am: z.boolean().nullable().optional(),
   notes: optionalTrimmedStringSchema,
 });
 
@@ -38,6 +42,10 @@ export const updateNutritionLogSchema = nutritionLogBaseSchema
         "junkLeakage",
         "fiberTaken",
         "alcoholCount",
+        "proteinGrams",
+        "calories",
+        "creatineTaken",
+        "protein50By9am",
         "notes",
       ]),
     {

@@ -1,5 +1,10 @@
 import Link from "next/link";
-import type { ProgramSessionView, ProgramToday } from "../types";
+import type {
+  AdherenceSnapshot,
+  ProgramSessionView,
+  ProgramToday,
+} from "../types";
+import { AdherenceBanners, Scorecard, StreakLine } from "./adherence";
 import { STATUS_LABEL } from "../helpers";
 import { KneeCheckPanel } from "./knee-check-panel";
 import { RedFlagControl, SkipControl } from "./session-outcome-controls";
@@ -149,6 +154,8 @@ export function ProgramSessionList({
 
 type ProgramTodayCardProps = {
   today: ProgramToday;
+  /** This week's scorecard and banners; null hides them. */
+  snapshot?: AdherenceSnapshot | null;
   /** The program page shows exercise detail; the dashboard keeps it short. */
   detailed?: boolean;
 };
@@ -156,7 +163,9 @@ type ProgramTodayCardProps = {
 export function ProgramTodayCard({
   today,
   detailed = false,
+  snapshot = null,
 }: ProgramTodayCardProps) {
+  const isSunday = new Date(`${today.today}T12:00:00Z`).getUTCDay() === 0;
   const hasRide = today.sessions.some((s) => s.type === "peloton" && s.visible);
   const lift = today.sessions.find((s) => s.type === "lift" && s.visible);
   const sleepLow =
@@ -185,6 +194,8 @@ export function ProgramTodayCard({
         status={today.kneeStatus}
         required={today.hasLift}
       />
+
+      {snapshot ? <AdherenceBanners snapshot={snapshot} /> : null}
 
       {today.showGoBackWeek ? (
         <div
@@ -215,6 +226,22 @@ export function ProgramTodayCard({
         walkJog={today.walkJog}
         controls
       />
+
+      {snapshot ? (
+        <div className="space-y-1.5">
+          <Scorecard adherence={snapshot.adherence} />
+          <StreakLine snapshot={snapshot} />
+        </div>
+      ) : null}
+
+      {isSunday ? (
+        <Link
+          href="/program/review"
+          className="inline-flex h-11 w-full items-center justify-center rounded-full bg-pine px-5 text-sm font-semibold text-white"
+        >
+          Sunday review
+        </Link>
+      ) : null}
 
       {today.hasLift || hasRide ? (
         <div className="flex flex-wrap items-center gap-2">

@@ -5,7 +5,13 @@ import type { TrainingSetting } from "@fitness-app/domain";
 import { updateTrainingSettingAction } from "../actions";
 
 /** Text settings; everything else is a number. */
-const TEXT_KEYS = new Set(["ortho_name", "ortho_phone"]);
+const TEXT_KEYS = new Set([
+  "ortho_name",
+  "ortho_phone",
+  "calendar_lift_time",
+  "calendar_peloton_time",
+  "calendar_test_time",
+]);
 
 function SettingRow({ setting }: { setting: TrainingSetting }) {
   const [state, action, pending] = useActionState(

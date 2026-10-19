@@ -17,6 +17,10 @@ function buildNutritionPayload(userId: string, formData: FormData) {
     junkLeakage: formData.get("junkLeakage"),
     fiberTaken: formData.get("fiberTaken"),
     alcoholCount: formData.get("alcoholCount"),
+    proteinGrams: formData.get("proteinGrams") ?? undefined,
+    calories: formData.get("calories") ?? undefined,
+    creatineTaken: formData.get("creatineTaken") ?? undefined,
+    protein50By9am: formData.get("protein50By9am") ?? undefined,
     notes: formData.get("notes"),
   });
 
@@ -30,6 +34,10 @@ function buildNutritionPayload(userId: string, formData: FormData) {
     junkLeakage: parsed.junkLeakage,
     fiberTaken: parsed.fiberTaken,
     alcoholCount: parsed.alcoholCount,
+    proteinGrams: parsed.proteinGrams,
+    calories: parsed.calories,
+    creatineTaken: parsed.creatineTaken,
+    protein50By9am: parsed.protein50By9am,
     notes: parsed.notes || null,
   };
 }

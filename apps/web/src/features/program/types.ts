@@ -1,4 +1,10 @@
 import type {
+  FocusMetric,
+  LiftWeekProgress,
+  NutritionWeek,
+  ReadinessCounts,
+  SleepWeek,
+  WeekAdherence,
   WalkJogAdvice,
   ExerciseProgressPoint,
   HardSetCount,
@@ -14,6 +20,7 @@ import type {
   ProgramGate,
   ProgramSessionOutcome,
   ProgramSessionType,
+  ProgramWeeklyCheckin,
 } from "@fitness-app/domain";
 import type { SessionCompletion } from "./helpers";
 
@@ -106,4 +113,52 @@ export type ProgramActionState = {
   saved?: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
+};
+
+export type AdherenceSnapshot = {
+  adherence: WeekAdherence;
+  liftStreakWeeks: number;
+  romStreakDays: number;
+  /** Leg sessions short two completed weeks running. */
+  executionBanner: boolean;
+  /** 7-day weight average rising too fast. */
+  surplusBanner: boolean;
+  waistDue: boolean;
+  lastWaistOn: string | null;
+};
+
+export type WeeklyReviewData = {
+  week: number;
+  currentWeek: number;
+  firstWeek: number;
+  weekStart: string;
+  weekEnd: string;
+  blockName: string | null;
+  nextBlock: { name: string; date: string } | null;
+  adherence: WeekAdherence;
+  liftStreakWeeks: number;
+  romStreakDays: number;
+  readiness: ReadinessCounts;
+  lifts: LiftWeekProgress[];
+  quadSets: { done: number; min: number; max: number };
+  nutrition: NutritionWeek;
+  weight: { sevenDayAvgLb: number | null; weekOverWeekLb: number | null };
+  sleep: SleepWeek;
+  quadLsiPct: number | null;
+  walkingAsymmetryPct: number | null;
+  focus: FocusMetric | null;
+  checkin: ProgramWeeklyCheckin | null;
+  trend: {
+    week: number;
+    quadLsiPct: number | null;
+    walkingAsymmetryPct: number | null;
+  }[];
+  targets: {
+    lsi: number[];
+    asymmetry: number;
+    sleepH: number;
+    proteinFlagG: number;
+  };
+  surplusBanner: boolean;
+  summaryText: string;
 };

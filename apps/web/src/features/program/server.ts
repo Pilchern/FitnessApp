@@ -55,7 +55,7 @@ const PROGRESS_POINTS = 8;
 const CHECK_LOOKBACK_DAYS = 21;
 const RUN_LOOKBACK_DAYS = 60;
 
-async function zonedToday(userId: string) {
+export async function zonedToday(userId: string) {
   const profile = await getCachedUserProfile(userId);
   return getZonedDate(profile?.timezone || "UTC")
     .toISOString()
@@ -130,7 +130,7 @@ function upperFor(
   };
 }
 
-type ProgramContext = {
+export type ProgramContext = {
   program: TrainingProgram;
   settings: ProgramSettings;
   today: string;
@@ -143,7 +143,7 @@ type ProgramContext = {
 };
 
 /** Everything the program screens share; null without an active program. */
-async function loadProgramContext(
+export async function loadProgramContext(
   extraOutcomeStart?: string,
 ): Promise<ProgramContext | null> {
   const user = await requireCurrentUser();

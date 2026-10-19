@@ -148,6 +148,16 @@ export type ProgramSessionOutcome = {
   notes: string | null;
 };
 
+/** Manual weekly entries for the Sunday review (week_start = Monday). */
+export type ProgramWeeklyCheckin = {
+  weekStart: IsoDate;
+  ptVisitsScheduled: number | null;
+  ptVisitsAttended: number | null;
+  quadLsiPct: number | null;
+  walkingAsymmetryPct: number | null;
+  notes: string | null;
+};
+
 /** One target or threshold row, edited in Settings. */
 export type TrainingSetting = {
   id: EntityId;

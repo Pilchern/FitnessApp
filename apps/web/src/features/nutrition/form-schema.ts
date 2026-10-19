@@ -51,6 +51,13 @@ export const nutritionLogFormSchema = z.object({
     z.number().int().min(0).max(50),
     "Alcohol count",
   ).transform((value) => value ?? 0),
+  proteinGrams: parseOptionalNumber(
+    z.number().int().min(0).max(500),
+    "Protein",
+  ),
+  calories: parseOptionalNumber(z.number().int().min(0).max(10000), "Calories"),
+  creatineTaken: parseBooleanCheckbox,
+  protein50By9am: parseBooleanCheckbox,
   notes: optionalString,
 });
 
