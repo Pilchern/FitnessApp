@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { readinessLevel, type DailyReadiness } from "@fitness-app/application";
-import type { WeekPlanItem } from "../helpers";
+import { stripDayPrefix, type WeekPlanItem } from "../helpers";
 import { FeelPicker } from "./feel-picker";
 
 type TodayCardProps = {
@@ -105,7 +105,9 @@ export function TodayCard({
                 href={item.kind === "strength" ? "/strength" : "/cardio"}
                 className="flex items-center justify-between gap-3 py-3 text-sm"
               >
-                <span className="font-medium text-ink">{item.name}</span>
+                <span className="font-medium text-ink">
+                  {stripDayPrefix(item.name)}
+                </span>
                 <span
                   className={
                     item.done ? "text-pine" : "font-semibold text-pine"

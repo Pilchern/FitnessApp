@@ -47,9 +47,10 @@ function ScoreButtonRow({
   onChange,
   ariaLabel,
 }: ScoreButtonRowProps) {
+  // Two even rows of five on a phone instead of a 7 + 3 wrap.
   return (
     <div
-      className="flex flex-wrap gap-1.5"
+      className="grid grid-cols-5 gap-1.5 sm:flex sm:flex-wrap"
       role="radiogroup"
       aria-label={ariaLabel}
     >
@@ -63,7 +64,7 @@ function ScoreButtonRow({
             role="radio"
             aria-checked={isSelected}
             onClick={() => onChange(isSelected ? "" : option)}
-            className={`h-10 w-10 min-w-[2.5rem] rounded-full border text-sm font-semibold transition ${
+            className={`h-11 rounded-xl border text-sm font-semibold transition sm:h-10 sm:w-10 sm:min-w-[2.5rem] sm:rounded-full ${
               isSelected
                 ? "border-pine bg-pine text-white ring-2 ring-pine/30"
                 : "border-ink/15 bg-white text-ink hover:border-pine/60 hover:text-pine"

@@ -1,3 +1,4 @@
+import { MethodNote } from "@/components/shared/method-note";
 import Link from "next/link";
 import type { PeerFitness } from "@fitness-app/application";
 
@@ -64,11 +65,11 @@ export function PeerFitnessCard({ peerFitness }: PeerFitnessCardProps) {
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-xs leading-5 text-ink/50">
+          <MethodNote label="Sources">
             VO2 max against FRIEND treadmill norms (Kaminsky 2022) for{" "}
             {peerFitness.ageBand}; resting HR against 92,457 wearable users
             (Quer 2020), by sex only. Apple Watch VO2 max is itself an estimate.
-          </p>
+          </MethodNote>
         </>
       )}
     </section>

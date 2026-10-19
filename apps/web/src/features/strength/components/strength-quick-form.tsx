@@ -493,7 +493,9 @@ export function StrengthQuickForm({
         ? `Finish workout · ${doneCount} of ${values.sets.length} sets`
         : "Save workout";
 
-  const showSaveBar = mode === "edit" || values.sets.length > 0;
+  // The logger always holds one blank set, so key off named exercises: an
+  // empty workout gets no bar and no 10rem of bottom padding.
+  const showSaveBar = mode === "edit" || hasNamedSets;
 
   return (
     <section className={`space-y-4 ${showSaveBar ? "pb-40" : ""}`}>

@@ -57,6 +57,17 @@ export type WeekPlan = {
   zone2TargetMinutes: number;
 };
 
+const LEADING_DAY =
+  /^(?:mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)(?:day|nesday|sday|rsday|urday)?\.?\s+(?=\S)/i;
+
+/**
+ * Template names start with their weekday ("Mon Heavy legs + Push"). Lists
+ * that already show the day drop it, so the row doesn't read "Mon Mon ...".
+ */
+export function stripDayPrefix(name: string): string {
+  return name.replace(LEADING_DAY, "");
+}
+
 function readTargetZone2Minutes(definition: unknown): number | null {
   if (typeof definition !== "object" || definition === null) return null;
   const value = (definition as { targetZone2Minutes?: unknown })

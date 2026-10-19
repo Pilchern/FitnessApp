@@ -34,123 +34,101 @@ export function StrengthSessionList({ sessions }: StrengthSessionListProps) {
   }
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            Strength history
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">Sessions</h2>
-        </div>
-        <div className="text-sm text-ink/65">{sessions.length} total</div>
+    <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 className="font-display text-lg text-ink">History</h2>
+        <div className="text-sm text-ink/55">{sessions.length} total</div>
       </div>
 
-      <div className="mt-5 space-y-4">
+      {/* One row per session; tap for exercises, View, Edit and Delete. */}
+      <ul className="mt-3 divide-y divide-ink/10">
         {visible.map((session) => {
           const uniqueExercises = [
             ...new Set(session.sets.map((set) => set.exerciseName)),
           ];
-          const exerciseCount = uniqueExercises.length;
-          const exercisePreview =
-            uniqueExercises.length <= 4
-              ? uniqueExercises.join(" · ")
-              : `${uniqueExercises.slice(0, 3).join(" · ")} +${uniqueExercises.length - 3} more`;
+          const summary = [
+            `${session.sets.length} set${session.sets.length !== 1 ? "s" : ""}`,
+            session.durationMinutes != null
+              ? `${session.durationMinutes} min`
+              : null,
+          ].filter(Boolean);
+          const details = [
+            session.avgHeartRate != null
+              ? `Avg HR ${session.avgHeartRate}`
+              : null,
+            session.activeEnergyKcal != null
+              ? `${session.activeEnergyKcal} kcal`
+              : null,
+            session.readinessPre != null
+              ? `Readiness ${session.readinessPre}/10`
+              : null,
+            session.completedAsPlanned ? null : "Adjusted",
+          ].filter(Boolean);
 
           return (
-            <article
-              key={session.id}
-              className="rounded-[1.5rem] border border-ink/10 bg-sand/40 p-5"
-            >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h3 className="text-lg font-semibold text-ink">
+            <li key={session.id}>
+              <details className="group">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-2">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium text-ink">
+                      {formatStrengthDate(session.sessionDate)}
+                    </span>
+                    <span className="block truncate text-xs text-ink/55">
                       {session.sessionName ?? "Strength session"}
-                    </h3>
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
-                        session.completedAsPlanned
-                          ? "border-pine/20 bg-pine/10 text-pine"
-                          : "border-amber-300/40 bg-amber-50 text-amber-700"
-                      }`}
-                    >
-                      {session.completedAsPlanned ? "On plan" : "Adjusted"}
                     </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-ink/75">
-                    <span>{formatStrengthDate(session.sessionDate)}</span>
-                    <span>
-                      {exerciseCount} exercise{exerciseCount !== 1 ? "s" : ""}
-                    </span>
-                    <span>
-                      {session.sets.length} set
-                      {session.sets.length !== 1 ? "s" : ""}
-                    </span>
-                    {session.durationMinutes != null ? (
-                      <span>{session.durationMinutes} min</span>
-                    ) : null}
-                    {session.avgHeartRate != null ? (
-                      <span>Avg HR {session.avgHeartRate}</span>
-                    ) : null}
-                    {session.activeEnergyKcal != null ? (
-                      <span>{session.activeEnergyKcal} kcal</span>
-                    ) : null}
-                    {session.readinessPre != null ? (
-                      <span>Readiness {session.readinessPre}/10</span>
-                    ) : null}
-                  </div>
-
-                  {exerciseCount > 0 ? (
-                    <p className="text-xs text-ink/55">{exercisePreview}</p>
+                  </span>
+                  <span className="shrink-0 text-right text-sm text-ink/65">
+                    {summary.join(" · ")}
+                  </span>
+                </summary>
+                <div className="space-y-3 pb-4 text-sm text-ink/70">
+                  {uniqueExercises.length > 0 ? (
+                    <p>{uniqueExercises.join(" · ")}</p>
                   ) : null}
-
+                  {details.length > 0 ? <p>{details.join(" · ")}</p> : null}
                   {session.notes ? (
-                    <p className="text-sm leading-6 text-ink/75">
-                      {session.notes}
-                    </p>
+                    <p className="text-ink/80">{session.notes}</p>
                   ) : null}
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <Link
-                    href={`/strength/${session.id}`}
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
-                  >
-                    View
-                  </Link>
-                  <Link
-                    href={`/strength?edit=${session.id}`}
-                    className="inline-flex h-10 items-center justify-center rounded-full border border-ink/15 px-4 text-sm font-semibold text-ink transition hover:border-pine hover:text-pine"
-                  >
-                    Edit
-                  </Link>
-                  <form
-                    action={deleteStrengthSessionAction}
-                    onSubmit={(event) => {
-                      if (
-                        !window.confirm(
-                          `Delete ${session.sessionName ?? "this session"} (${formatStrengthDate(session.sessionDate)})?`,
-                        )
-                      ) {
-                        event.preventDefault();
-                      }
-                    }}
-                  >
-                    <input type="hidden" name="id" value={session.id} />
-                    <button
-                      type="submit"
-                      className="inline-flex h-10 items-center justify-center rounded-full border border-ember/20 px-4 text-sm font-semibold text-ember transition hover:bg-ember/10"
+                  <div className="flex items-center gap-4">
+                    <Link
+                      href={`/strength/${session.id}`}
+                      className="inline-flex min-h-10 items-center font-semibold text-pine hover:underline"
                     >
-                      Delete
-                    </button>
-                  </form>
+                      View
+                    </Link>
+                    <Link
+                      href={`/strength?edit=${session.id}`}
+                      className="inline-flex min-h-10 items-center font-semibold text-pine hover:underline"
+                    >
+                      Edit
+                    </Link>
+                    <form
+                      action={deleteStrengthSessionAction}
+                      onSubmit={(event) => {
+                        if (
+                          !window.confirm(
+                            `Delete ${session.sessionName ?? "this session"} (${formatStrengthDate(session.sessionDate)})?`,
+                          )
+                        ) {
+                          event.preventDefault();
+                        }
+                      }}
+                    >
+                      <input type="hidden" name="id" value={session.id} />
+                      <button
+                        type="submit"
+                        className="inline-flex min-h-10 items-center font-semibold text-ember hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </form>
+                  </div>
                 </div>
-              </div>
-            </article>
+              </details>
+            </li>
           );
         })}
-      </div>
+      </ul>
 
       {sessions.length > PAGE_SIZE ? (
         <div className="mt-5 flex justify-center">
