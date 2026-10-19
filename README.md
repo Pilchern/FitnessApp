@@ -82,6 +82,14 @@ pnpm format:write
 
 **Change targets.** Settings -> Program targets edits `training_settings` rows: load steps (barbell 5, DB 2.5 to 25 lb then 5, cuff 2.5), min RIR to add load (2), the sleep cut-off for increases (6.5 h over 3 nights), hard-set RIR (4) and the weekly quad-set target (12-16), knee-check pain cut-offs (normal 2 or less, knee-off above 3), the knee-off streak (2 days), the knee-off ROM block (15 min), the red-flag contact and phone, and the walk-jog start, step and rest days. A blank value falls back to the built-in default. New keys go in as rows plus a field in `program-settings.ts`.
 
+## Training program, Phase B (adherence, fuel, sleep, body, Sunday review)
+
+**What changed.** Migration `20261019160000_phase_b_adherence_fuel_review.sql`: `nutrition_logs` gains `protein_grams`, `calories`, `creatine_taken`, `protein_50_by_9am` (the fast daily entry on /nutrition); new `program_weekly_checkins` (one row per week: PT visits scheduled/attended, quad LSI %, walking asymmetry %, notes); 23 more `training_settings` rows. Rules: `packages/application/src/modules/program/weekly-review.ts` (scorecard, streaks, execution banner, nutrition/sleep weeks, readiness counts, lift week-over-week, next week's focus, copyable summary) and `program-ics.ts` (calendar export). The weight surplus rule (`buildWeeklyWeightTrend`) now takes its rate and weeks from settings. Screens: the dashboard Program card shows the scorecard, streaks and the execution / surplus / waist prompts (and a Sunday review button on Sundays); `/program/review` is the Sunday review (`?week=N` for past weeks); `/api/program/calendar` downloads an .ics of planned sessions through the end of the current block (at most 16 weeks). Reused, not rebuilt: Withings weight and the 7-day average, the body form's waist at the navel, Apple Health sleep plus the recovery check-in's manual hours and quality, and the habits list for the daily ROM check.
+
+**Add a block.** Unchanged from Phase A (see above); the review and calendar read the same rows.
+
+**Change targets.** Settings -> Program targets now also has: Adherence (leg sessions, rides, ROM days, PT visits per week; weeks before the execution banner), Calendar (lift, Peloton and Sunday test start times as HH:MM and lengths), Nutrition (lift-day and rest-day calories, the 160 g protein flag; the 180 g protein target stays in Settings -> profile), Sleep and body (7 h sleep flag, surplus rate and weeks, waist interval), Review (LSI target lines 70/80/90, asymmetry target 5%).
+
 ## Current status
 
 Implemented now:

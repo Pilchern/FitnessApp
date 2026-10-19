@@ -131,3 +131,12 @@ export const SKIP_LABELS: Record<string, string> = {
   locking: "Locking",
   sharp_pain: "Sharp pain",
 };
+
+/** Scorecard colour: met the target, short of it, or no data yet. */
+export function ratioTone(
+  done: number | null | undefined,
+  target: number | null | undefined,
+): "met" | "short" | "none" {
+  if (done == null || target == null || target <= 0) return "none";
+  return done >= target ? "met" : "short";
+}

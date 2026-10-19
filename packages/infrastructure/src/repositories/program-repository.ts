@@ -13,11 +13,13 @@ import type {
   ProgramRepository,
   SaveKneeCheckInput,
   SaveOutcomeInput,
+  SaveWeeklyCheckinInput,
   SetGateClearedInput,
   UpdateSettingInput,
 } from "@fitness-app/application";
 import type {
   ProgramSessionOutcome,
+  ProgramWeeklyCheckin,
   TrainingSetting,
 } from "@fitness-app/domain";
 import { z } from "zod";
@@ -139,6 +141,15 @@ const settingRowSchema = z.object({
   unit: z.string().nullable(),
   group_name: z.string(),
   sort_order: z.number(),
+});
+
+const checkinRowSchema = z.object({
+  week_start: z.string(),
+  pt_visits_scheduled: num,
+  pt_visits_attended: num,
+  quad_lsi_pct: z.coerce.number().nullable(),
+  walking_asymmetry_pct: z.coerce.number().nullable(),
+  notes: z.string().nullable(),
 });
 
 const kneeRowSchema = z.object({
@@ -512,5 +523,51 @@ export class SupabaseProgramRepository implements ProgramRepository {
       .eq("key", input.key)
       .is("deleted_at", null);
     throwOnError(response.error, "Update training setting");
+  }
+
+  async listWeeklyCheckins(
+    userId: string,
+    fromWeekStart: string,
+    toWeekStart: string,
+  ): Promise<ProgramWeeklyCheckin[]> {
+    const response = await this.client
+      .from("program_weekly_checkins")
+      .select(
+        "week_start, pt_visits_scheduled, pt_visits_attended, quad_lsi_pct, walking_asymmetry_pct, notes",
+      )
+      .eq("user_id", userId)
+      .gte("week_start", fromWeekStart)
+      .lte("week_start", toWeekStart)
+      .is("deleted_at", null)
+      .order("week_start", { ascending: true });
+    throwOnError(response.error, "List weekly check-ins");
+    return checkinRowSchema
+      .array()
+      .parse(response.data ?? [])
+      .map((row) => ({
+        weekStart: row.week_start,
+        ptVisitsScheduled: row.pt_visits_scheduled,
+        ptVisitsAttended: row.pt_visits_attended,
+        quadLsiPct: row.quad_lsi_pct,
+        walkingAsymmetryPct: row.walking_asymmetry_pct,
+        notes: row.notes,
+      }));
+  }
+
+  async saveWeeklyCheckin(input: SaveWeeklyCheckinInput) {
+    const response = await this.client.from("program_weekly_checkins").upsert(
+      {
+        user_id: input.userId,
+        week_start: input.weekStart,
+        pt_visits_scheduled: input.ptVisitsScheduled,
+        pt_visits_attended: input.ptVisitsAttended,
+        quad_lsi_pct: input.quadLsiPct,
+        walking_asymmetry_pct: input.walkingAsymmetryPct,
+        notes: input.notes,
+        deleted_at: null,
+      },
+      { onConflict: "user_id,week_start" },
+    );
+    throwOnError(response.error, "Save weekly check-in");
   }
 }

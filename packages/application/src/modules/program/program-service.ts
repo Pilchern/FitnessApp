@@ -2,6 +2,7 @@ import type {
   IsoDate,
   KneeCheck,
   ProgramSessionOutcome,
+  ProgramWeeklyCheckin,
   TrainingProgram,
   TrainingSetting,
   UserId,
@@ -80,6 +81,29 @@ export const updateSettingSchema = z.object({
 
 export type UpdateSettingInput = z.infer<typeof updateSettingSchema>;
 
+export const saveWeeklyCheckinSchema = z
+  .object({
+    userId: uuidSchema,
+    weekStart: isoDateSchema,
+    ptVisitsScheduled: z.number().int().min(0).max(14).nullable(),
+    ptVisitsAttended: z.number().int().min(0).max(14).nullable(),
+    quadLsiPct: z.number().min(0).max(200).nullable(),
+    walkingAsymmetryPct: z.number().min(0).max(100).nullable(),
+    notes: z.string().trim().max(1000).nullable(),
+  })
+  .refine(
+    (v) =>
+      v.ptVisitsAttended == null ||
+      v.ptVisitsScheduled == null ||
+      v.ptVisitsAttended <= v.ptVisitsScheduled,
+    {
+      message: "Attended can't be more than scheduled.",
+      path: ["ptVisitsAttended"],
+    },
+  );
+
+export type SaveWeeklyCheckinInput = z.infer<typeof saveWeeklyCheckinSchema>;
+
 export interface ProgramRepository {
   /** The active program with blocks, weeks, sessions, exercises and gates. */
   getActiveProgram(userId: UserId): Promise<TrainingProgram | null>;
@@ -102,6 +126,12 @@ export interface ProgramRepository {
   clearOutcome(input: ClearOutcomeInput): Promise<void>;
   listSettings(userId: UserId): Promise<TrainingSetting[]>;
   updateSetting(input: UpdateSettingInput): Promise<void>;
+  listWeeklyCheckins(
+    userId: UserId,
+    fromWeekStart: IsoDate,
+    toWeekStart: IsoDate,
+  ): Promise<ProgramWeeklyCheckin[]>;
+  saveWeeklyCheckin(input: SaveWeeklyCheckinInput): Promise<void>;
 }
 
 export class ProgramService {
@@ -141,5 +171,23 @@ export class ProgramService {
 
   async updateSetting(input: unknown) {
     return this.repository.updateSetting(updateSettingSchema.parse(input));
+  }
+
+  async listWeeklyCheckins(
+    userId: UserId,
+    fromWeekStart: IsoDate,
+    toWeekStart: IsoDate,
+  ) {
+    return this.repository.listWeeklyCheckins(
+      userId,
+      fromWeekStart,
+      toWeekStart,
+    );
+  }
+
+  async saveWeeklyCheckin(input: unknown) {
+    return this.repository.saveWeeklyCheckin(
+      saveWeeklyCheckinSchema.parse(input),
+    );
   }
 }

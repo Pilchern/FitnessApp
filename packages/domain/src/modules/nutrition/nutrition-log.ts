@@ -10,6 +10,11 @@ export type NutritionLog = {
   junkLeakage: boolean | null;
   fiberTaken: boolean | null;
   alcoholCount: number;
+  /** Fast daily entry (absent on rows before 2026-10-19). */
+  proteinGrams?: number | null;
+  calories?: number | null;
+  creatineTaken?: boolean | null;
+  protein50By9am?: boolean | null;
   notes: string | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

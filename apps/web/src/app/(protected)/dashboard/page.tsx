@@ -10,6 +10,7 @@ import { BodySnapshotCard } from "@/features/dashboard/components/body-snapshot-
 import { PeerFitnessCard } from "@/features/dashboard/components/peer-fitness-card";
 import { StrainSleepCard } from "@/features/dashboard/components/strain-sleep-card";
 import { getProgramToday } from "@/features/program/server";
+import { getAdherenceSnapshot } from "@/features/program/weekly-server";
 import { ProgramTodayCard } from "@/features/program/components/program-today-card";
 
 /** The program card is additive: if it cannot load, the dashboard still does. */
@@ -22,15 +23,25 @@ async function loadProgramToday() {
   }
 }
 
+async function loadAdherence() {
+  try {
+    return await getAdherenceSnapshot();
+  } catch (error) {
+    console.error("Adherence snapshot failed to load", error);
+    return null;
+  }
+}
+
 /**
  * Answers three questions top to bottom: what to do today (readiness and the
  * planned session), how the week is going (plan and habits), and what has
  * changed (trend notes, body).
  */
 export default async function DashboardPage() {
-  const [data, programToday] = await Promise.all([
+  const [data, programToday, adherence] = await Promise.all([
     getDashboardData(),
     loadProgramToday(),
+    loadAdherence(),
   ]);
   const stepsToday = data.activity.stepsToday;
   const stepHabitNotes: Record<string, string> =
@@ -55,7 +66,9 @@ export default async function DashboardPage() {
     <div className="space-y-4 lg:space-y-6">
       <h1 className="sr-only">Dashboard</h1>
 
-      {programToday ? <ProgramTodayCard today={programToday} /> : null}
+      {programToday ? (
+        <ProgramTodayCard today={programToday} snapshot={adherence} />
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
         <TodayCard

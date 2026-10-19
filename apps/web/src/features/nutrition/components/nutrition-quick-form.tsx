@@ -82,6 +82,81 @@ export function NutritionQuickForm({
       <form action={formAction} className="mt-5 space-y-5">
         {values.id ? <input type="hidden" name="id" value={values.id} /> : null}
 
+        <div className="grid grid-cols-2 gap-3 rounded-[1.5rem] border border-pine/20 bg-pine/5 p-4">
+          <p className="col-span-2 text-xs font-semibold uppercase tracking-[0.18em] text-pine">
+            Fuel today
+          </p>
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Protein (g)
+            <input
+              className={fieldClassName()}
+              name="proteinGrams"
+              inputMode="numeric"
+              placeholder="180"
+              value={values.proteinGrams}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  proteinGrams: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.proteinGrams ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.proteinGrams}
+              </p>
+            ) : null}
+          </label>
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Calories (optional)
+            <input
+              className={fieldClassName()}
+              name="calories"
+              inputMode="numeric"
+              value={values.calories}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  calories: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.calories ? (
+              <p className="text-xs text-ember">{state.fieldErrors.calories}</p>
+            ) : null}
+          </label>
+          <label className="col-span-2 flex cursor-pointer items-center gap-3 text-sm font-medium text-ink">
+            <input
+              type="checkbox"
+              className={checkboxClassName()}
+              name="creatineTaken"
+              checked={values.creatineTaken}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  creatineTaken: event.target.checked,
+                }))
+              }
+            />
+            Creatine taken
+          </label>
+          <label className="col-span-2 flex cursor-pointer items-center gap-3 text-sm font-medium text-ink">
+            <input
+              type="checkbox"
+              className={checkboxClassName()}
+              name="protein50By9am"
+              checked={values.protein50By9am}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  protein50By9am: event.target.checked,
+                }))
+              }
+            />
+            50 g protein by 9 AM
+          </label>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className="grid gap-2 text-sm font-medium text-ink">
             Date

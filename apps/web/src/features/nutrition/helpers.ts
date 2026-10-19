@@ -21,6 +21,10 @@ export function toNutritionFormValues(
       junkLeakage: false,
       fiberTaken: false,
       alcoholCount: "0",
+      proteinGrams: "",
+      calories: "",
+      creatineTaken: false,
+      protein50By9am: false,
       notes: "",
     };
   }
@@ -34,6 +38,10 @@ export function toNutritionFormValues(
     junkLeakage: log.junkLeakage ?? false,
     fiberTaken: log.fiberTaken ?? false,
     alcoholCount: `${log.alcoholCount}`,
+    proteinGrams: log.proteinGrams != null ? `${log.proteinGrams}` : "",
+    calories: log.calories != null ? `${log.calories}` : "",
+    creatineTaken: log.creatineTaken ?? false,
+    protein50By9am: log.protein50By9am ?? false,
     notes: log.notes ?? "",
   };
 }

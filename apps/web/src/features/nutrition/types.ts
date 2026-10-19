@@ -29,5 +29,9 @@ export type NutritionFormValues = {
   junkLeakage: boolean;
   fiberTaken: boolean;
   alcoholCount: string;
+  proteinGrams: string;
+  calories: string;
+  creatineTaken: boolean;
+  protein50By9am: boolean;
   notes: string;
 };

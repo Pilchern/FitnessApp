@@ -154,7 +154,10 @@ function shiftIsoDate(isoDate: string, days: number) {
 export function buildWeeklyWeightTrend(
   metrics: Pick<BodyMetric, "measuredOn" | "weightLb">[],
   today: string,
+  options: { riseLbPerWeek?: number; weeks?: number } = {},
 ): WeeklyWeightTrend {
+  const riseLbPerWeek = options.riseLbPerWeek ?? SURPLUS_THROTTLE_LB_PER_WEEK;
+  const weeks = Math.max(1, Math.round(options.weeks ?? 2));
   const windowAverage = (weeksBack: number) => {
     const end = shiftIsoDate(today, -7 * weeksBack);
     const start = shiftIsoDate(end, -6);
@@ -173,24 +176,24 @@ export function buildWeeklyWeightTrend(
     };
   };
 
-  const windows = [0, 1, 2].map(windowAverage);
-  const [thisWeek, lastWeek, twoWeeksAgo] = windows.map((w) => w.avg);
+  // weeks + 1 windows: this week back to `weeks` weeks ago.
+  const windows = Array.from({ length: weeks + 1 }, (_, i) => windowAverage(i));
+  const averages = windows.map((w) => w.avg);
+  const thisWeek = averages[0];
   const enoughWeighIns = windows.every(
     (w) => w.count >= SURPLUS_THROTTLE_MIN_WEIGH_INS,
   );
   const delta = (a: number | null | undefined, b: number | null | undefined) =>
     a != null && b != null ? a - b : null;
-  const recent = delta(thisWeek, lastWeek);
-  const prior = delta(lastWeek, twoWeeksAgo);
+  const deltas = averages
+    .slice(0, weeks)
+    .map((avg, i) => delta(avg, averages[i + 1]));
+  const recent = deltas[0] ?? null;
 
   return {
     sevenDayAvgLb: thisWeek != null ? roundOneDecimal(thisWeek) : null,
     weekOverWeekLb: recent != null ? roundOneDecimal(recent) : null,
     surplusThrottle:
-      enoughWeighIns &&
-      recent != null &&
-      prior != null &&
-      recent > SURPLUS_THROTTLE_LB_PER_WEEK &&
-      prior > SURPLUS_THROTTLE_LB_PER_WEEK,
+      enoughWeighIns && deltas.every((d) => d != null && d > riseLbPerWeek),
   };
 }

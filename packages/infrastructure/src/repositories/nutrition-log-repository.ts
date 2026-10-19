@@ -24,6 +24,11 @@ const nutritionLogRowSchema = z.object({
   junk_leakage: z.boolean().nullable(),
   fiber_taken: z.boolean().nullable(),
   alcohol_count: z.number().int(),
+  // Optional so rows read before the Phase B migration still parse.
+  protein_grams: z.number().int().nullable().optional(),
+  calories: z.number().int().nullable().optional(),
+  creatine_taken: z.boolean().nullable().optional(),
+  protein_50_by_9am: z.boolean().nullable().optional(),
   notes: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -43,6 +48,10 @@ function mapRow(row: NutritionLogRow): NutritionLog {
     junkLeakage: row.junk_leakage,
     fiberTaken: row.fiber_taken,
     alcoholCount: row.alcohol_count,
+    proteinGrams: row.protein_grams ?? null,
+    calories: row.calories ?? null,
+    creatineTaken: row.creatine_taken ?? null,
+    protein50By9am: row.protein_50_by_9am ?? null,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -61,6 +70,17 @@ function toInsert(input: CreateNutritionLogInput) {
     fiber_taken: input.fiberTaken ?? null,
     alcohol_count: input.alcoholCount,
     notes: input.notes ?? null,
+    // Only sent when set, so logs save before the Phase B columns exist.
+    ...(input.proteinGrams != null
+      ? { protein_grams: input.proteinGrams }
+      : {}),
+    ...(input.calories != null ? { calories: input.calories } : {}),
+    ...(input.creatineTaken != null
+      ? { creatine_taken: input.creatineTaken }
+      : {}),
+    ...(input.protein50By9am != null
+      ? { protein_50_by_9am: input.protein50By9am }
+      : {}),
   };
 }
 
@@ -73,6 +93,10 @@ function toUpdate(input: UpdateNutritionLogInput) {
     junk_leakage: input.junkLeakage,
     fiber_taken: input.fiberTaken,
     alcohol_count: input.alcoholCount,
+    protein_grams: input.proteinGrams,
+    calories: input.calories,
+    creatine_taken: input.creatineTaken,
+    protein_50_by_9am: input.protein50By9am,
     notes: input.notes,
   });
 }

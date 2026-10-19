@@ -55,3 +55,5 @@ export * from "./modules/program/program-service";
 export * from "./modules/program/program-logger-plan";
 export * from "./modules/program/program-settings";
 export * from "./modules/program/walk-jog";
+export * from "./modules/program/weekly-review";
+export * from "./modules/program/program-ics";

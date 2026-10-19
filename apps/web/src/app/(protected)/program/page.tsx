@@ -1,5 +1,7 @@
 import { PageHeader } from "@/components/shared/page-header";
+import Link from "next/link";
 import { getProgramPageData } from "@/features/program/server";
+import { getAdherenceSnapshot } from "@/features/program/weekly-server";
 import { ProgramTodayCard } from "@/features/program/components/program-today-card";
 import {
   ProgramGatesSummary,
@@ -9,7 +11,13 @@ import {
 } from "@/features/program/components/program-sections";
 
 export default async function ProgramPage() {
-  const data = await getProgramPageData();
+  const [data, snapshot] = await Promise.all([
+    getProgramPageData(),
+    getAdherenceSnapshot().catch((error) => {
+      console.error("Adherence snapshot failed to load", error);
+      return null;
+    }),
+  ]);
 
   if (!data.program || !data.today) {
     return (
@@ -25,9 +33,23 @@ export default async function ProgramPage() {
   return (
     <div className="space-y-4 lg:space-y-6">
       <PageHeader title="Program" subtitle={data.program.name} />
+      <div className="flex flex-wrap gap-2 px-1">
+        <Link
+          href="/program/review"
+          className="inline-flex h-10 items-center rounded-full border border-ink/15 bg-white px-4 text-sm font-semibold text-ink"
+        >
+          Weekly review
+        </Link>
+        <a
+          href="/api/program/calendar"
+          className="inline-flex h-10 items-center rounded-full border border-ink/15 bg-white px-4 text-sm font-semibold text-ink"
+        >
+          Calendar (.ics)
+        </a>
+      </div>
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
         <div className="space-y-4 lg:space-y-6">
-          <ProgramTodayCard today={data.today} detailed />
+          <ProgramTodayCard today={data.today} detailed snapshot={snapshot} />
           <ProgramWeekView week={data.week} />
         </div>
         <div className="space-y-4 lg:space-y-6">
