@@ -144,6 +144,23 @@ function getReviewForWeek(weeklyReviews: WeeklyReview[], weekStart: IsoDate) {
   return weeklyReviews.find((review) => review.weekStart === weekStart) ?? null;
 }
 
+/**
+ * Strength sessions in the week. The callers only count weeks that have a
+ * review row, so fall back to the sessions already loaded; without this a
+ * week with lifts but no review read as zero.
+ */
+function liftsInWeek(weekStart: IsoDate, input: InsightEngineInput) {
+  const counted = input.liftsCompletedByWeek[weekStart];
+  if (counted != null) return counted;
+  const { weekEnd } = getWeekRangeFromStart(weekStart);
+  return input.strengthSessions.filter(
+    (s) =>
+      s.deletedAt == null &&
+      s.sessionDate >= weekStart &&
+      s.sessionDate <= weekEnd,
+  ).length;
+}
+
 function buildWeekSummary(weekStart: IsoDate, input: InsightEngineInput) {
   const { weekEnd } = getWeekRangeFromStart(weekStart);
   const bodyMetrics = input.bodyMetrics.filter(
@@ -162,7 +179,7 @@ function buildWeekSummary(weekStart: IsoDate, input: InsightEngineInput) {
     bodyMetrics,
     cardioSessions,
     recoveryCheckins,
-    liftsCompleted: input.liftsCompletedByWeek[weekStart] ?? 0,
+    liftsCompleted: liftsInWeek(weekStart, input),
   });
 }
 
@@ -416,7 +433,7 @@ function hasLoggedDataForWeek(weekStart: IsoDate, input: InsightEngineInput) {
     input.cardioSessions.some((session) => inWeek(session.sessionDate)) ||
     input.recoveryCheckins.some((checkin) => inWeek(checkin.checkinDate)) ||
     input.strengthSessions.some((session) => inWeek(session.sessionDate)) ||
-    (input.liftsCompletedByWeek[weekStart] ?? 0) > 0 ||
+    liftsInWeek(weekStart, input) > 0 ||
     input.weeklyReviews.some((review) => review.weekStart === weekStart)
   );
 }
@@ -514,13 +531,9 @@ function evaluateConsecutiveStrengthMissed(input: InsightEngineInput) {
   const prevReview = getReviewForWeek(input.weeklyReviews, previousWeekStart);
 
   const lastLifts =
-    lastReview?.summary.liftsCompleted ??
-    input.liftsCompletedByWeek[weekStart] ??
-    0;
+    lastReview?.summary.liftsCompleted ?? liftsInWeek(weekStart, input);
   const prevLifts =
-    prevReview?.summary.liftsCompleted ??
-    input.liftsCompletedByWeek[previousWeekStart] ??
-    0;
+    prevReview?.summary.liftsCompleted ?? liftsInWeek(previousWeekStart, input);
 
   if (lastLifts > 0 || prevLifts > 0) {
     return null;
@@ -560,7 +573,7 @@ function evaluateSleepBelowTarget(input: InsightEngineInput) {
     severity,
     "Sleep below target last week",
     `Average sleep was ${sleepAverageHours}h. The target is 7+ hours.`,
-    "Hold wake at 5:30 (give or take 30 min), phone-free from 8:30 PM, and in bed by 9:30-10 PM.",
+    "Hold wake at 6:00 (give or take 30 min), phone-free from 8:30 PM, and in bed by 9:30-10 PM.",
     {
       weekStart,
       sleepAverageHours,

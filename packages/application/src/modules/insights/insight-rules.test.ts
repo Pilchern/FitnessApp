@@ -791,6 +791,21 @@ describe("insight rules", () => {
       ).toBeUndefined();
     });
 
+    it("counts logged sessions when the week has no review", () => {
+      const insights = buildInsights(
+        emptyInput({
+          strengthSessions: [
+            makeStrengthSession("2026-03-30", []),
+            makeStrengthSession("2026-04-01", []),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "consecutive_strength_missed"),
+      ).toBeUndefined();
+    });
+
     it("fires when no review data exists (falls back to 0 lifts for both weeks)", () => {
       const insights = buildInsights(emptyInput({ now: TEST_NOW }));
       expect(
