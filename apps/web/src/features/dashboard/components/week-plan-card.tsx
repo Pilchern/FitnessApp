@@ -6,6 +6,8 @@ type WeekPlanCardProps = {
   plan: WeekPlan;
   zone2Minutes: number;
   latestReview: WeeklyReview | null;
+  /** The program's Sunday review when there is a program. */
+  reviewHref?: string;
 };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -14,6 +16,7 @@ export function WeekPlanCard({
   plan,
   zone2Minutes,
   latestReview,
+  reviewHref = "/weekly-review",
 }: WeekPlanCardProps) {
   const scheduled = plan.days.flatMap((d) => d.items);
   if (scheduled.length === 0) return null;
@@ -87,12 +90,12 @@ export function WeekPlanCard({
           )}
       </ul>
       <Link
-        href="/weekly-review"
+        href={reviewHref}
         className="mt-2 flex items-center justify-between border-t border-ink/10 pt-3 text-sm text-ink/70 hover:text-pine"
       >
         <span>
           Weekly review
-          {latestReview?.scoreDetails != null
+          {reviewHref === "/weekly-review" && latestReview?.scoreDetails != null
             ? ` · last score ${latestReview.scoreDetails.totalScore}/100`
             : ""}
         </span>

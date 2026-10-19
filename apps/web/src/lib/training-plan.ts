@@ -15,7 +15,8 @@ export const NICK_TRAINING_PLAN: TrainingPlan = {
   longZone2Weekday: null,
   vo2Required: false,
   cardioDaysLabel: "Tuesday, Thursday, and Saturday",
-  excludedMuscleGroups: ["quads", "hamstrings", "glutes", "calves"],
+  // Legs run in this app's program since 2026-10-19, so they count again.
+  excludedMuscleGroups: [],
   // Plan doc section 7: same wake time daily, 6:00 AM give or take 30 min
   // (6:30 until 2026-10-18, 5:30 for a day, 6:00 from 2026-10-19).
   wakeTimeTarget: "06:00",

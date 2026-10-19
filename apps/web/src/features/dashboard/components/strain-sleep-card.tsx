@@ -44,7 +44,9 @@ export function StrainSleepCard({ data }: StrainSleepCardProps) {
                 ? today.sessions
                     .map((s) => `${s.label} ${s.minutes} min`)
                     .join(", ")
-                : "No workouts yet"}
+                : today && today.unscored > 0
+                  ? `${today.unscored} logged, no heart rate yet`
+                  : "No workouts yet"}
           </div>
         </div>
         <div className="min-w-0">
