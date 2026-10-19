@@ -48,7 +48,7 @@ export function WeekPlanCard({
           .filter((d) => d.items.length > 0)
           .map((day) =>
             day.items.map((item) => {
-              const missed = day.isPast && !item.done;
+              const missed = day.isPast && !item.done && !item.skipped;
               return (
                 <li
                   key={`${day.date}-${item.templateId}`}
@@ -69,9 +69,17 @@ export function WeekPlanCard({
                     ) : null}
                   </Link>
                   <span
-                    className={`text-xs ${item.done ? "text-pine" : missed ? "text-ember" : "text-ink/50"}`}
+                    className={`text-xs ${item.done ? "font-semibold text-pine" : item.skipped || missed ? "text-ember" : "text-ink/50"}`}
                   >
-                    {item.done ? "Done" : missed ? "Missed" : "Planned"}
+                    {item.done
+                      ? "✓ Done"
+                      : item.skipped
+                        ? "Skipped"
+                        : missed
+                          ? "Missed"
+                          : day.isToday
+                            ? "To do"
+                            : ""}
                   </span>
                 </li>
               );

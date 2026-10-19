@@ -57,6 +57,8 @@ export type ProgramSessionView = {
   overBudget: boolean;
   /** An explicit skip or red-flag stop logged for this date. */
   outcome: Pick<ProgramSessionOutcome, "outcome" | "reason"> | null;
+  /** Done once logged (lifts and rides), else missed/today/planned. */
+  completion: SessionCompletion;
 };
 
 export type ProgramHeader = {
@@ -89,6 +91,10 @@ export type ProgramToday = {
   /** Lift-day warm-up, items separated by "; ". */
   warmUp: string | null;
   gaitDrill: string | null;
+  /** Today's logged strength session, for the "View" link once done. */
+  loggedLiftId: string | null;
+  /** The program week holding today, Monday to Sunday. */
+  week: ProgramWeekDay[];
 };
 
 export type ProgramWeekDay = {
@@ -96,7 +102,7 @@ export type ProgramWeekDay = {
   dayOfWeek: number;
   isToday: boolean;
   kneeStatus: KneeReadinessStatus | null;
-  sessions: (ProgramSessionView & { completion: SessionCompletion })[];
+  sessions: ProgramSessionView[];
 };
 
 export type ExerciseProgressView = {

@@ -41,6 +41,8 @@ export type WeekPlanItem = {
   kind: "strength" | "cardio";
   targetZone2Minutes: number | null;
   done: boolean;
+  /** A logged skip or red-flag stop: reads as a choice, not a miss. */
+  skipped?: boolean;
 };
 
 export type WeekPlanDay = {
@@ -167,6 +169,55 @@ export function buildWeekPlan(input: {
     if (slot) slot.done = true;
   }
 
+  return { days, zone2TargetMinutes };
+}
+
+/** One day of the program week, as the program screens build it. */
+export type ProgramWeekInput = {
+  date: string;
+  dayOfWeek: number;
+  isToday: boolean;
+  sessions: {
+    id: string;
+    type: string;
+    name: string;
+    visible: boolean;
+    completion: string;
+    ride: { kind: string; minutesMax: number | null } | null;
+  }[];
+}[];
+
+/**
+ * The dashboard week from the program (the source of truth), not the
+ * templates: lifts and rides only, done once logged, skips shown as skips.
+ * The Zone 2 target is the sum of this week's Zone 2 ride lengths.
+ */
+export function weekPlanFromProgram(
+  week: ProgramWeekInput,
+  today: string,
+): WeekPlan {
+  let zone2TargetMinutes = 0;
+  const days = week.map((day) => ({
+    date: day.date,
+    dayOfWeek: day.dayOfWeek,
+    isToday: day.isToday,
+    isPast: day.date < today,
+    items: day.sessions
+      .filter((s) => s.visible && (s.type === "lift" || s.type === "peloton"))
+      .map((s) => {
+        const zone2 =
+          s.ride?.kind === "zone2" ? (s.ride.minutesMax ?? null) : null;
+        if (zone2) zone2TargetMinutes += zone2;
+        return {
+          templateId: s.id,
+          name: s.name,
+          kind: s.type === "lift" ? ("strength" as const) : ("cardio" as const),
+          targetZone2Minutes: zone2,
+          done: s.completion === "done",
+          skipped: s.completion === "skipped" || s.completion === "stopped",
+        };
+      }),
+  }));
   return { days, zone2TargetMinutes };
 }
 

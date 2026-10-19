@@ -172,7 +172,10 @@ export function WeeklyReviewScreen({ data }: { data: WeeklyReviewData }) {
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
         <section className={`${card} space-y-3`}>
           <h2 className="font-display text-lg text-ink">Adherence</h2>
-          <Scorecard adherence={a} />
+          <Scorecard
+            adherence={a}
+            inProgress={data.week === data.currentWeek}
+          />
           <ul className="divide-y divide-ink/10">
             <Row
               label="Streaks"
