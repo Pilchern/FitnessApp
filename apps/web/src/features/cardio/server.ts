@@ -9,6 +9,8 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
+import { weekPlanFromProgram } from "@/features/dashboard/helpers";
+import { getProgramToday } from "@/features/program/server";
 import { buildCardioTemplatePresets, sumWeeklyZone2Target } from "./helpers";
 import type { CardioPageData } from "./types";
 
@@ -23,13 +25,21 @@ export async function getCardioPageData(
     profile?.weekStartsOn ?? 1,
   );
 
-  const [templates, sessions, editingSession] = await Promise.all([
-    trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
-    cardioService.listByDateRange({ userId: user.id }),
-    editSessionId
-      ? cardioService.getById(user.id, editSessionId)
-      : Promise.resolve(null),
-  ]);
+  const [templates, sessions, editingSession, programToday] = await Promise.all(
+    [
+      trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
+      cardioService.listByDateRange({ userId: user.id }),
+      editSessionId
+        ? cardioService.getById(user.id, editSessionId)
+        : Promise.resolve(null),
+      // The program sets the week's Zone 2 target (same as the dashboard); the
+      // templates are the fallback when it cannot load.
+      getProgramToday().catch((error) => {
+        console.error("Program failed to load for the cardio target", error);
+        return null;
+      }),
+    ],
+  );
 
   const currentWeekSessions = sessions.filter(
     (session) =>
@@ -40,7 +50,10 @@ export async function getCardioPageData(
     templates: buildCardioTemplatePresets(templates),
     sessions,
     weeklyTotals: buildCardioWeeklyTotals(currentWeekSessions),
-    zone2TargetMinutes: sumWeeklyZone2Target(templates),
+    zone2TargetMinutes: programToday
+      ? weekPlanFromProgram(programToday.week, programToday.today)
+          .zone2TargetMinutes
+      : sumWeeklyZone2Target(templates),
     editingSession,
     formError:
       editSessionId && !editingSession

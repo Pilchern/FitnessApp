@@ -48,15 +48,11 @@ export function BodyQuickForm({
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-            Quick add
-          </p>
-          <h2 className="mt-3 font-display text-2xl text-ink">
+          <h2 className="font-display text-lg text-ink">
             {mode === "edit" ? "Edit measurements" : "Log measurements"}
           </h2>
-          <p className="mt-2 text-sm leading-6 text-ink/75">
-            Weight, body fat, and muscle mass come from Withings. Log the tape
-            here: waist at the navel, monthly.
+          <p className="mt-1 text-sm text-ink/60">
+            Waist at the navel, monthly.
           </p>
         </div>
 

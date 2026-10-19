@@ -359,4 +359,9 @@ describe("scorecard tone", () => {
     expect(ratioTone(null, 2)).toBe("none");
     expect(ratioTone(1, 0)).toBe("none");
   });
+
+  it("does not paint a week still in progress as short", () => {
+    expect(ratioTone(1, 3, { inProgress: true })).toBe("none");
+    expect(ratioTone(3, 3, { inProgress: true })).toBe("met");
+  });
 });

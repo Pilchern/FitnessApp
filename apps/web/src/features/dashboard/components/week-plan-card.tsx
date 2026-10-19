@@ -6,6 +6,8 @@ type WeekPlanCardProps = {
   plan: WeekPlan;
   zone2Minutes: number;
   latestReview: WeeklyReview | null;
+  /** The program's Sunday review when there is a program. */
+  reviewHref?: string;
 };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -14,6 +16,7 @@ export function WeekPlanCard({
   plan,
   zone2Minutes,
   latestReview,
+  reviewHref = "/weekly-review",
 }: WeekPlanCardProps) {
   const scheduled = plan.days.flatMap((d) => d.items);
   if (scheduled.length === 0) return null;
@@ -48,7 +51,7 @@ export function WeekPlanCard({
           .filter((d) => d.items.length > 0)
           .map((day) =>
             day.items.map((item) => {
-              const missed = day.isPast && !item.done;
+              const missed = day.isPast && !item.done && !item.skipped;
               return (
                 <li
                   key={`${day.date}-${item.templateId}`}
@@ -69,9 +72,17 @@ export function WeekPlanCard({
                     ) : null}
                   </Link>
                   <span
-                    className={`text-xs ${item.done ? "text-pine" : missed ? "text-ember" : "text-ink/50"}`}
+                    className={`text-xs ${item.done ? "font-semibold text-pine" : item.skipped || missed ? "text-ember" : "text-ink/50"}`}
                   >
-                    {item.done ? "Done" : missed ? "Missed" : "Planned"}
+                    {item.done
+                      ? "✓ Done"
+                      : item.skipped
+                        ? "Skipped"
+                        : missed
+                          ? "Missed"
+                          : day.isToday
+                            ? "To do"
+                            : ""}
                   </span>
                 </li>
               );
@@ -79,12 +90,12 @@ export function WeekPlanCard({
           )}
       </ul>
       <Link
-        href="/weekly-review"
+        href={reviewHref}
         className="mt-2 flex items-center justify-between border-t border-ink/10 pt-3 text-sm text-ink/70 hover:text-pine"
       >
         <span>
           Weekly review
-          {latestReview?.scoreDetails != null
+          {reviewHref === "/weekly-review" && latestReview?.scoreDetails != null
             ? ` · last score ${latestReview.scoreDetails.totalScore}/100`
             : ""}
         </span>

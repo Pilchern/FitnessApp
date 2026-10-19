@@ -11,7 +11,7 @@ from pathlib import Path
 
 OUT_MIGRATION = Path(sys.argv[1])
 OUT_CHUNKS = Path(sys.argv[2])
-VERSION = "program v2, 2026-10-19"
+VERSION = "program v2.1, 2026-10-19"
 PROGRAM = "ACL return"
 
 # ---------------------------------------------------------------- library cues
@@ -174,8 +174,7 @@ def b1_wed():
            notes="1-arm, bench-supported."),
         ex(30, "Slider Hamstring Curl", L, "accessory", 3, (10, 12), ss="C1", muscle="hamstrings", rir=1),
         ex(31, "Face Pull", U, "accessory", 3, (15, 20), ss="C2", load=BAND, rir=2),
-        ex(40, "Dumbbell Curl", U, "accessory", 2, (12, 15), load=DB, rir=2,
-           notes="Optional: drop it if the session runs over time."),
+        ex(32, "Dumbbell Curl", U, "accessory", 2, (12, 15), ss="C3", load=DB, rir=2),
     ]
 
 
@@ -201,7 +200,7 @@ def b1_fri():
            load=DB, rir=2, notes=LEFT),
         ex(41, "Dumbbell Shoulder Press", U, "accessory", 3, (10, 12), ss="D2", load=DB, rir=2,
            notes="Seated."),
-        ex(50, "Tricep Extension", U, "accessory", 2, (12, 15), load=DB, rir=2, notes="Overhead DB."),
+        ex(42, "Tricep Extension", U, "accessory", 2, (12, 15), ss="D3", load=DB, rir=2, notes="Overhead DB."),
     ]
 
 
@@ -233,6 +232,8 @@ def b2_mon():
            muscle="hamstrings", tempo="5 s lowering", gate="nordic", sub="Slider Hamstring Curl",
            sub_load=BW, sub_reps=10, notes="Band-assisted from the rack. Fallback: slider curl 3 x 10."),
         ex(41, "Incline Dumbbell Press", U, "accessory", 3, (8, 10), ss="D2", load=DB, rir=2),
+        ex(42, "Single-Leg Calf Raise", L, "accessory", 3, (8, 12), ss="D3", muscle="calves",
+           side=PER_LEG, load=DB, rir=1, notes="Off a plate, heavy DB. Calf capacity for the return to running. " + LEFT),
     ]
 
 
@@ -243,16 +244,13 @@ def b2_wed():
            notes="Alternate legs. Front knee to 90° until depth_past_90 is cleared. " + LEFT),
         ex(11, "Pull-Up", U, "main", (4, 5), (4, 6), ss="A2", rir=1, notes="Add load at 30 total reps."),
         shoulder_emphasis(),
-        ex(20, "DB Step-Up (bench)", L, "main", 3, 8, ss="B1", muscle="quads", side=PER_LEG, load=DB,
-           rir=2, gate="depth_past_90", sub='DB Step-Up (12")', sub_load=DB,
-           notes='About 17". Fallback: 12" step with heavier DBs. ' + LEFT),
-        ex(21, "Dumbbell Row", U, "accessory", 4, (8, 10), ss="B2", load=DB, rir=2),
-        ex(30, 'Eccentric Lateral Step-Down (6")', L, "accessory", 3, 8, ss="C1", muscle="quads",
+        ex(20, 'Eccentric Lateral Step-Down (6")', L, "accessory", 2, 8, ss="B1", muscle="quads",
            side=PER_LEG, tempo="4 s lowering", notes="Skip if graft-site pain is above 2. " + LEFT),
-        ex(31, "Face Pull", U, "accessory", 3, (15, 20), ss="C2", load=BAND, rir=2),
-        ex(40, "DB Single-Leg RDL", L, "accessory", 3, 8, ss="D1", muscle="hamstrings", side=PER_LEG,
+        ex(21, "Dumbbell Row", U, "accessory", 3, (8, 10), ss="B2", load=DB, rir=2),
+        ex(30, "DB Single-Leg RDL", L, "accessory", 3, 8, ss="C1", muscle="hamstrings", side=PER_LEG,
            load=DB, rir=2, notes=LEFT),
-        ex(41, "Dumbbell Curl", U, "accessory", 3, (10, 12), ss="D2", load=DB, rir=2),
+        ex(31, "Face Pull", U, "accessory", 3, (15, 20), ss="C2", load=BAND, rir=2),
+        ex(32, "Dumbbell Curl", U, "accessory", 3, (10, 12), ss="C3", load=DB, rir=2),
     ]
 
 
@@ -266,13 +264,13 @@ def b2_fri():
            sub="Double-Leg Pogo (low)", sub_reps=10, notes=PLYO),
         ex(3, "Single-Leg Hop in Place", L, "plyo", 2, 10, ready="normal", side=PER_LEG,
            gate="plyo_single", notes=PLYO + " " + LEFT),
-        ex(10, "Front Squat", L, "main", 4, (6, 8), ss="A1", muscle="quads", load=BB, rir=2,
+        ex(10, "Front Squat", L, "main", 3, (6, 8), ss="A1", muscle="quads", load=BB, rir=2,
            gate="depth_past_90", gate2="barbell", sub="Heel-Elevated Goblet Squat (to 90°)",
-           sub_load=DB, sub_reps=8, notes="Fallback: heavy heel-elevated goblet squat to 90°, 4 x 8."),
-        ex(11, "Chin-Up", U, "main", 4, (4, 6), ss="A2", rir=1, notes="Add load at 30 total reps."),
-        ex(20, "Isometric Knee Extension (60°)", L, "accessory", 3, muscle="quads", measure="force",
+           sub_load=DB, sub_reps=8, notes="Fallback: heavy heel-elevated goblet squat to 90°, 3 x 8."),
+        ex(11, "Chin-Up", U, "main", 3, (4, 6), ss="A2", rir=1, notes="Add load at 30 total reps."),
+        ex(20, "Isometric Knee Extension (60°)", L, "accessory", 3, ss="B1", muscle="quads", measure="force",
            side=PER_LEG, secs=5, notes="Strapped, crane scale; log peak N. Alternate L/R. " + LEFT),
-        ex(21, "Isometric Knee Extension (90°)", L, "accessory", 3, muscle="quads", measure="force",
+        ex(21, "Isometric Knee Extension (90°)", L, "accessory", 3, ss="B2", muscle="quads", measure="force",
            side=PER_LEG, secs=5, notes="Strapped, crane scale; log peak N. Alternate L/R. " + LEFT),
         ex(30, "Spanish Squat", L, "accessory", 3, ss="C1", muscle="quads", measure="time", load=BAND,
            secs=45, notes="Heavier band."),
@@ -305,20 +303,22 @@ def b3_mon(main_sets=5, main_reps=(3, 5), rir=2, jump_sets=4):
            sub_load=BW, sub_reps=10),
         ex(41, "Dumbbell Shoulder Press", U, "accessory", 3, (6, 8), ss="D2", load=DB, rir=2,
            notes="Standing."),
+        ex(42, "Single-Leg Calf Raise", L, "accessory", 3, (8, 12), ss="D3", muscle="calves",
+           side=PER_LEG, load=DB, rir=1, notes="Off a plate, heavy DB. Calf capacity for the return to running. " + LEFT),
     ]
 
 
 def golf_prep(start):
     return [
-        ex(start, "Lead-Leg Posting Drill", L, "accessory", 3, 6, ss="C1", ready="normal",
+        ex(start, "Lead-Leg Posting Drill", L, "accessory", 2, 6, ss="C1", ready="normal",
            notes="Golf prep, left as lead: step and post onto the left, hold 2 s."),
-        ex(start + 1, "Band Step-and-Rotate", L, "accessory", 3, 6, ss="C2", ready="normal",
+        ex(start + 1, "Band Step-and-Rotate", L, "accessory", 2, 6, ss="C2", ready="normal",
            side=PER_SIDE, load=BAND, notes="Golf prep."),
         ex(start + 2, "Face Pull", U, "accessory", 3, (15, 20), ss="C3", load=BAND, rir=2),
     ]
 
 
-def b3_wed(rfess_sets=4, rfess_reps=5, rir=2, power_sets=3, pull=(5, (3, 5))):
+def b3_wed(rfess_sets=4, rfess_reps=5, rir=2, power_sets=3, pull=(4, (3, 5))):
     return [
         ex(0, "Single-Leg Broad Jump to Stick", L, "plyo", power_sets, 3, ready="normal", side=PER_LEG,
            gate="plyo_single", sub="Broad Jump to Stick", notes=PLYO + " " + LEFT),
@@ -329,11 +329,11 @@ def b3_wed(rfess_sets=4, rfess_reps=5, rir=2, power_sets=3, pull=(5, (3, 5))):
            notes="Heavy, alternate legs. Front knee to 90° until depth_past_90 is cleared. " + LEFT),
         ex(11, "Pull-Up", U, "main", pull[0], pull[1], ss="A2", rir=1, notes="Weighted."),
         shoulder_emphasis(),
-        ex(20, "DB Single-Leg RDL", L, "accessory", 4, 6, ss="B1", muscle="hamstrings", side=PER_LEG,
+        ex(20, "DB Single-Leg RDL", L, "accessory", 3, 6, ss="B1", muscle="hamstrings", side=PER_LEG,
            load=DB, rir=2, notes=LEFT),
-        ex(21, "Dumbbell Row", U, "accessory", 4, (6, 8), ss="B2", load=DB, rir=2),
+        ex(21, "Dumbbell Row", U, "accessory", 3, (6, 8), ss="B2", load=DB, rir=2),
     ] + golf_prep(30) + [
-        ex(40, "Dumbbell Curl", U, "accessory", 3, (8, 10), load=DB, rir=2),
+        ex(33, "Dumbbell Curl", U, "accessory", 3, (8, 10), ss="C4", load=DB, rir=2),
     ]
 
 
@@ -343,9 +343,9 @@ def friday_strength_tail(front_sets=4, front_reps=(4, 6), cgb=(4, (5, 6)), rir=2
            rir=rir, gate="depth_past_90", gate2="barbell", sub="Heel-Elevated Goblet Squat (to 90°)",
            sub_load=DB, notes=front_note or "Fallback: heavy heel-elevated goblet squat to 90°."),
         ex(11, "Chin-Up", U, "main", 4, (4, 6), ss="A2", rir=1, notes="Weighted."),
-        ex(20, "Isometric Knee Extension (60°)", L, "accessory", 3, muscle="quads", measure="force",
+        ex(20, "Isometric Knee Extension (60°)", L, "accessory", 3, ss="B1", muscle="quads", measure="force",
            side=PER_LEG, secs=5, notes="Strapped, crane scale; log peak N. Alternate L/R. " + LEFT),
-        ex(21, "Isometric Knee Extension (90°)", L, "accessory", 3, muscle="quads", measure="force",
+        ex(21, "Isometric Knee Extension (90°)", L, "accessory", 3, ss="B2", muscle="quads", measure="force",
            side=PER_LEG, secs=5, notes="Strapped, crane scale; log peak N. Alternate L/R. " + LEFT),
         ex(30, "Close-Grip Bench Press", U, "main", cgb[0], cgb[1], ss="C1", load=BB, rir=rir),
         ex(31, "Tricep Extension", U, "accessory", 3, 10, ss="C2", load=DB, rir=2, notes="Overhead DB."),
@@ -371,22 +371,21 @@ def strength_wave_mon(main_sets, main_reps):
 
 
 def strength_wave_wed(main_sets, main_reps):
-    return b3_wed(rfess_sets=main_sets, rfess_reps=main_reps, rir=1, power_sets=3,
+    # Heavy per-leg work: 4 sets is the cap (keeps A2 inside 12-16 quad sets a week).
+    return b3_wed(rfess_sets=min(main_sets, 4), rfess_reps=main_reps, rir=1, power_sets=3,
                   pull=(4, (4, 6)))
 
 
 def strength_wave_fri(main_sets, main_reps):
     return [
-        ex(0, 'Box Jump (18", step down)', L, "plyo", 3, 3, ready="normal", gate="plyo_double",
-           notes="Maintenance. " + PLYO),
         ex(1, 'Depth Drop to Stick (12")', L, "plyo", 3, 3, ready="normal", gate="plyo_double",
            notes="Maintenance. " + PLYO),
         ex(2, "45° Cut", L, "plyo", 4, 3, ready="normal", side=PER_SIDE, gate="cutting",
            sub="Deceleration Drill", notes="50% → 75% speed. Fallback: deceleration drill."),
         ex(3, "Shuffle-to-Sprint (10 m)", L, "plyo", 4, 1, ready="normal", gate="cutting",
            sub="Deceleration Drill"),
-    ] + friday_strength_tail(front_sets=main_sets, front_reps=main_reps,
-                             cgb=(main_sets, main_reps), rir=1)
+    ] + friday_strength_tail(front_sets=min(main_sets, 4), front_reps=main_reps,
+                             cgb=(min(main_sets, 4), main_reps), rir=1)
 
 
 def power_mon():
@@ -444,22 +443,20 @@ def power_fri():
 def accessory_block():
     """Before the Tue/Thu ride, every block from week 9 to 38. Two circuits."""
     return [
-        ex(10, "Copenhagen Side Plank (short lever)", L, "core", 3, ss="A1", muscle="adductors",
+        ex(10, "Copenhagen Side Plank (short lever)", L, "core", 2, ss="A1", muscle="adductors",
            measure="time", side=PER_SIDE, secs=20, uw=13, notes="20–25 s per side. Knee on the bench."),
-        ex(11, "Copenhagen Side Plank (long lever)", L, "core", 3, ss="A1", muscle="adductors",
+        ex(11, "Copenhagen Side Plank (long lever)", L, "core", 2, ss="A1", muscle="adductors",
            measure="time", side=PER_SIDE, secs=20, fw=14, notes="20–25 s per side. Ankle on the bench."),
-        ex(12, "Perturbation Balance", L, "mobility", 3, ss="A2", measure="time", side=PER_LEG, secs=30,
+        ex(12, "Perturbation Balance", L, "mobility", 2, ss="A2", measure="time", side=PER_LEG, secs=30,
            uw=13, notes="Band tug or ball toss. " + LEFT),
-        ex(13, "Perturbation Balance (cushion)", L, "mobility", 3, ss="A2", measure="time", side=PER_LEG,
+        ex(13, "Perturbation Balance (cushion)", L, "mobility", 2, ss="A2", measure="time", side=PER_LEG,
            secs=30, fw=14, notes="On the cushion. " + LEFT),
-        ex(14, "Dead Bug", L, "core", 2, 10, ss="A3", side=PER_SIDE, muscle="core",
+        ex(14, "Dead Bug", L, "core", 2, 10, ss="A3", side=PER_SIDE, muscle="core", uw=13,
            notes="Or Pallof press (band anti-rotation, standing). Down to the floor leading with the right leg."),
-        ex(15, "Bent-Knee Calf Raise", L, "accessory", 3, 15, ss="A4", muscle="calves", load=DB, rir=1,
+        ex(15, "Suitcase Carry", L, "core", 2, ss="A3", measure="distance", side=PER_SIDE, load=DB,
+           dist=30, fw=14, notes="Heavy DB, walk tall."),
+        ex(16, "Bent-Knee Calf Raise", L, "accessory", 2, (15, 20), ss="A4", muscle="calves", load=DB, rir=1,
            notes="Seated, DB on the knee."),
-        ex(20, "Single-Leg Calf Raise", L, "accessory", 3, (10, 12), ss="B1", muscle="calves",
-           side=PER_LEG, load=DB, rir=1, fw=14, notes="Heavy DB. " + LEFT),
-        ex(21, "Suitcase Carry", L, "core", 3, ss="B2", measure="distance", side=PER_SIDE, load=DB,
-           dist=30, fw=14),
     ]
 
 # ---------------------------------------------------- Return to sport
@@ -547,8 +544,8 @@ THU_VO2 = ("peloton", "Peloton VO2 max", "vo2_intervals", 45, 45,
 THU_VO2_ALT = ("peloton", "Peloton VO2 max", "vo2_intervals", 40, 45,
                "Odd post-op weeks: 4 x 4 min at RPE 8–9, 4 min easy between. Even weeks: 8 x 30 s hard / 90 s easy. "
                "10 min warm-up and cool-down.", None, False, None)
-ACCESSORY = ("accessory", "Accessory block (before the ride)", None, 10, 12, None, None, False,
-             "Circuits: A1–A4, then B1–B2 from week 14. Rest after each round.")
+ACCESSORY = ("accessory", "Accessory circuit (before the ride)", None, 10, 12, None, None, False,
+             "One circuit, A1–A4, 2 rounds. Rest after each round.")
 
 MON_NOTE = "Pairs: alternate A1 and A2, rest after the pair."
 WED_NOTE = "PT morning possible: the knee check decides. Pairs: alternate, rest after the pair."
@@ -697,6 +694,7 @@ OLD_GATES = []
 SETTINGS = [
     # key, value, text, label, unit, group, sort
     ("gait_drill", None, None, "Lift-day gait drill (3 min)", None, "Program", 15),
+    ("plyo_work_seconds", 15, None, "Work per plyo set", "s", "Session time budget", 45),
 ]
 
 # ---------------------------------------------------------------- SQL helpers
@@ -752,7 +750,9 @@ for b in BLOCKS:
 
 # ---------------------------------------------------------------- SQL build
 parts = []
-header = f"""-- Program v2 (owner brief of 2026-10-19): replaces the v1 program content.
+header = f"""-- {VERSION}: program v2 (owner brief of 2026-10-19), tuned to about 60 min a
+-- lift day: standalone accessories folded into supersets, Tue/Thu one 2-round
+-- circuit, quad sets inside 12-16 a week, plyo set time estimated at 15 s.
 -- Generated by supabase/generators/program_v2.py; idempotent and safe to
 -- rerun. Rows are updated in place (matched by block name, weekday + slot,
 -- exercise slot); rows v2 no longer uses get deleted_at, never a delete.

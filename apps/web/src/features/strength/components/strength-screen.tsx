@@ -44,16 +44,16 @@ export async function StrengthScreen({
         latestCreatedAt={data.latestCreatedAt}
       />
 
-      <MuscleGroupBalanceCard summary={data.muscleGroupVolume} />
+      <StrengthSessionList sessions={data.sessions} />
 
+      {/* Reference cards, folded to one row each. */}
       <StrengthProgressionSummarySection
         summaries={data.progressionSummaries}
         collapsible
       />
 
-      <StrengthSessionList sessions={data.sessions} />
+      <MuscleGroupBalanceCard summary={data.muscleGroupVolume} />
 
-      {/* Last: folds to one row once every logged exercise is classified. */}
       <ClassifyExerciseCard
         unclassifiedExerciseNames={data.unclassifiedExerciseNames}
         overrides={data.exerciseOverrides}

@@ -9,6 +9,7 @@ import {
   readinessCall,
   stripDayPrefix,
   summarizeDailyActivity,
+  weekPlanFromProgram,
 } from "./helpers";
 
 describe("user-local today (timezone consistency)", () => {
@@ -296,5 +297,77 @@ describe("stripDayPrefix", () => {
     expect(stripDayPrefix("Monster walk")).toBe("Monster walk");
     expect(stripDayPrefix("Sun")).toBe("Sun");
     expect(stripDayPrefix("Peloton Zone 2")).toBe("Peloton Zone 2");
+  });
+});
+
+describe("weekPlanFromProgram", () => {
+  const session = (
+    id: string,
+    type: string,
+    completion: string,
+    ride: { kind: string; minutesMax: number | null } | null = null,
+  ) => ({ id, type, name: id, visible: true, completion, ride });
+  const week = [
+    {
+      date: "2026-10-19",
+      dayOfWeek: 1,
+      isToday: true,
+      sessions: [session("Legs + Push", "lift", "done")],
+    },
+    {
+      date: "2026-10-20",
+      dayOfWeek: 2,
+      isToday: false,
+      sessions: [
+        session("Accessory block", "accessory", "none"),
+        session("Peloton Zone 2", "peloton", "planned", {
+          kind: "zone2",
+          minutesMax: 45,
+        }),
+      ],
+    },
+    {
+      date: "2026-10-23",
+      dayOfWeek: 4,
+      isToday: false,
+      sessions: [
+        session("Peloton climb intervals", "peloton", "planned", {
+          kind: "climb_intervals",
+          minutesMax: 45,
+        }),
+      ],
+    },
+  ];
+
+  it("lists program lifts and rides, done once logged", () => {
+    const plan = weekPlanFromProgram(week, "2026-10-19");
+    const items = plan.days.flatMap((d) => d.items);
+    expect(items.map((i) => i.name)).toEqual([
+      "Legs + Push",
+      "Peloton Zone 2",
+      "Peloton climb intervals",
+    ]);
+    expect(items[0]).toMatchObject({ kind: "strength", done: true });
+    expect(items[1]).toMatchObject({ kind: "cardio", done: false });
+  });
+
+  it("sums only Zone 2 ride lengths into the Zone 2 target", () => {
+    expect(weekPlanFromProgram(week, "2026-10-19").zone2TargetMinutes).toBe(45);
+  });
+
+  it("marks skips and past days", () => {
+    const plan = weekPlanFromProgram(
+      [
+        {
+          date: "2026-10-19",
+          dayOfWeek: 1,
+          isToday: false,
+          sessions: [session("Legs + Push", "lift", "skipped")],
+        },
+      ],
+      "2026-10-21",
+    );
+    expect(plan.days[0]?.isPast).toBe(true);
+    expect(plan.days[0]?.items[0]?.skipped).toBe(true);
   });
 });

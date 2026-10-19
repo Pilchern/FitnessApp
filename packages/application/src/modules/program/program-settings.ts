@@ -68,6 +68,8 @@ export type ProgramSettings = {
   sessionGaitDrillMinutes: number;
   sessionTransitionMinutes: number;
   setWorkSeconds: number;
+  /** A plyo or sprint set is a few seconds of contacts, not a 40 s set. */
+  plyoWorkSeconds: number;
   restMainSeconds: number;
   restPairSeconds: number;
   restAccessorySeconds: number;
@@ -161,6 +163,7 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   sessionGaitDrillMinutes: 3,
   sessionTransitionMinutes: 4,
   setWorkSeconds: 40,
+  plyoWorkSeconds: 15,
   restMainSeconds: 150,
   restPairSeconds: 90,
   restAccessorySeconds: 60,

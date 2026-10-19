@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { LoggerPlan } from "@fitness-app/application";
 import type { StrengthProgramPlan } from "../types";
 import { KneeCheckPanel } from "./knee-check-panel";
@@ -22,10 +23,33 @@ export function ProgramPlanCallout({
   const { today, plan } = programPlan;
   const lift = today.sessions.find((s) => s.type === "lift" && s.visible);
 
+  // Logged: say so and get out of the way. The logger below still works for
+  // an extra session.
+  if (lift?.completion === "done") {
+    return (
+      <section className="flex items-center justify-between gap-3 rounded-[1.75rem] border border-pine/30 bg-pine/5 p-4 shadow-panel sm:p-6">
+        <div className="min-w-0">
+          <ProgramHeaderLine today={today} compact />
+          <h2 className="mt-1 font-display text-xl text-ink">
+            {lift.name}: done
+          </h2>
+        </div>
+        {today.loggedLiftId ? (
+          <Link
+            href={`/strength/${today.loggedLiftId}`}
+            className="shrink-0 text-sm font-semibold text-pine"
+          >
+            View →
+          </Link>
+        ) : null}
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-3 rounded-[1.75rem] border border-pine/30 bg-pine/5 p-4 shadow-panel sm:p-6">
       <div>
-        <ProgramHeaderLine today={today} />
+        <ProgramHeaderLine today={today} compact />
         <h2 className="mt-1 font-display text-2xl text-ink">
           {lift?.name ?? "Today's lift"}
         </h2>

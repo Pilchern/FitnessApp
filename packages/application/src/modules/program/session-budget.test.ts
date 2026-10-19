@@ -47,7 +47,7 @@ const block1Monday = [
 ];
 
 describe("session time budget", () => {
-  it("straight sets: sets x (work 40 s + rest by category)", () => {
+  it("straight sets: sets x (work 40 s, plyo 15 s, + rest by category)", () => {
     expect(
       workingSeconds([item({ name: "Squat", sets: 4, category: "main" })]),
     ).toBe(4 * (40 + 150));
@@ -56,7 +56,7 @@ describe("session time budget", () => {
     );
     expect(
       workingSeconds([item({ name: "Pogo", sets: 2, category: "plyo" })]),
-    ).toBe(2 * (40 + 60));
+    ).toBe(2 * (15 + 60));
   });
 
   it("per-leg items work both legs and rest once", () => {
@@ -127,6 +127,7 @@ describe("session time budget", () => {
           sessionGaitDrillMinutes: 3,
           sessionTransitionMinutes: 4,
           setWorkSeconds: 40,
+          plyoWorkSeconds: 15,
           restMainSeconds: 150,
           restPairSeconds: 90,
           restAccessorySeconds: 60,

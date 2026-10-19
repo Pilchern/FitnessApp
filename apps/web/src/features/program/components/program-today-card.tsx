@@ -7,7 +7,7 @@ import type {
 import { AdherenceBanners, Scorecard, StreakLine } from "./adherence";
 import { STATUS_LABEL } from "../helpers";
 import { KneeCheckPanel } from "./knee-check-panel";
-import { RedFlagControl, SkipControl } from "./session-outcome-controls";
+import { SkipControl } from "./session-outcome-controls";
 import { RIDE_KIND_LABEL, type WalkJogAdvice } from "@fitness-app/application";
 
 /** "Oct 26" from YYYY-MM-DD, without timezone drift. */
@@ -43,21 +43,29 @@ function rideLine(session: ProgramSessionView) {
   return [kind, minutes].filter(Boolean).join(", ");
 }
 
-export function ProgramHeaderLine({ today }: { today: ProgramToday }) {
+export function ProgramHeaderLine({
+  today,
+  compact = false,
+}: {
+  today: ProgramToday;
+  /** One line: week and block only. */
+  compact?: boolean;
+}) {
   const { header } = today;
   return (
     <>
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-pine">
-        Post-op week {header.week}
+        Week {header.week}
         {header.blockName ? ` · ${header.blockName}` : ""}
+        {header.isDeload && compact ? " · Deload" : ""}
       </p>
-      {header.nextBlock ? (
+      {!compact && header.nextBlock ? (
         <p className="mt-0.5 text-xs text-ink/60">
           Next block starts {formatMonthDay(header.nextBlock.date)} (
           {header.nextBlock.name})
         </p>
       ) : null}
-      {header.repScheme || header.isDeload ? (
+      {!compact && (header.repScheme || header.isDeload) ? (
         <p className="mt-0.5 text-xs text-ink/60">
           {header.isDeload ? "Deload: one set fewer, no load increases. " : ""}
           {header.repScheme ?? ""}
@@ -65,6 +73,17 @@ export function ProgramHeaderLine({ today }: { today: ProgramToday }) {
       ) : null}
     </>
   );
+}
+
+/** Logged today, or still to do (no skip or stop logged). */
+export function isDone(session: Pick<ProgramSessionView, "completion">) {
+  return session.completion === "done";
+}
+
+function isPending(
+  session: Pick<ProgramSessionView, "completion" | "outcome" | "visible">,
+) {
+  return session.visible && !session.outcome && session.completion === "today";
 }
 
 /** Session list for one day; hidden sessions and exercises greyed with why. */
@@ -75,6 +94,7 @@ export function ProgramSessionList({
   date,
   walkJog = null,
   controls = false,
+  loggedLiftId = null,
 }: {
   sessions: ProgramSessionView[];
   testDayUrl: string | null;
@@ -83,130 +103,165 @@ export function ProgramSessionList({
   walkJog?: WalkJogAdvice | null;
   /** Show Skip on today's sessions. */
   controls?: boolean;
+  loggedLiftId?: string | null;
 }) {
   if (sessions.length === 0) {
     return <p className="text-sm text-ink/60">Nothing planned.</p>;
   }
   return (
     <ul className="space-y-3">
-      {sessions.map((s) => (
-        <li key={s.id} className={s.visible ? "" : "opacity-55"}>
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3">
-            <span className="text-sm font-semibold text-ink">
-              {s.name}
-              {s.isOptional ? (
-                <span className="font-normal text-ink/60"> (optional)</span>
-              ) : null}
-              {s.upperTemplateName ? (
-                <span className="font-normal text-ink/60">
-                  {" "}
-                  then {s.upperTemplateName}
-                </span>
-              ) : null}
-            </span>
-            {controls && s.visible && s.type !== "test" && s.type !== "rest" ? (
-              <SkipControl session={s} date={date} />
-            ) : null}
-            {s.type === "test" && testDayUrl ? (
-              <a
-                href={testDayUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-semibold text-pine underline"
-              >
-                Open PT Tracker
-              </a>
-            ) : null}
-          </div>
-          {s.type === "walk_jog" && s.visible && walkJog ? (
-            <p className="text-xs text-ink/70">{walkJogLine(walkJog)}</p>
-          ) : null}
-          {s.structure && s.visible && s.type !== "walk_jog" ? (
-            <p className="text-xs text-ink/60">{s.structure}</p>
-          ) : null}
-          {!s.visible && s.hiddenReason ? (
-            <p className="text-xs text-ink/60">{s.hiddenReason}</p>
-          ) : null}
-          {s.visible && s.estimatedMinutes != null ? (
-            <p
-              className={`text-xs ${s.overBudget ? "font-medium text-ember" : "text-ink/60"}`}
-            >
-              About {s.estimatedMinutes} min
-              {s.overBudget ? " · over the lift time budget: trim it" : ""}
-            </p>
-          ) : null}
-          {rideLine(s) ? (
-            <p className="text-xs text-ink/70">{rideLine(s)}</p>
-          ) : null}
-          {s.ride?.structure ? (
-            <p className="text-xs text-ink/60">{s.ride.structure}</p>
-          ) : null}
-          {s.ride?.note ? (
-            <p className="text-xs font-medium text-ember">{s.ride.note}</p>
-          ) : null}
-          {s.legBlockReplaced ? (
-            <p className="mt-1 text-xs font-medium text-ember">
-              Leg block today: ROM + easy walk. Upper still runs.
-            </p>
-          ) : null}
-          {showExercises && s.visible && !s.legBlockReplaced ? (
-            <ul className="mt-1.5 space-y-1">
-              {s.exercises.map((e) => {
-                const off =
-                  e.status === "locked" || e.status === "readiness_hidden";
-                return (
-                  <li
-                    key={`${s.id}-${e.name}`}
-                    className={`flex flex-wrap justify-between gap-x-2 text-xs ${off ? "text-ink/40" : "text-ink/75"}`}
+      {sessions.map((s) => {
+        const done = isDone(s);
+        return (
+          <li key={s.id} className={s.visible ? "" : "opacity-55"}>
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <span className="text-sm font-semibold text-ink">
+                {s.name}
+                {s.isOptional ? (
+                  <span className="font-normal text-ink/60"> (optional)</span>
+                ) : null}
+                {s.upperTemplateName ? (
+                  <span className="font-normal text-ink/60">
+                    {" "}
+                    then {s.upperTemplateName}
+                  </span>
+                ) : null}
+              </span>
+              {done ? (
+                s.type === "lift" && loggedLiftId ? (
+                  <Link
+                    href={`/strength/${loggedLiftId}`}
+                    className="rounded-full bg-pine/10 px-3 py-1 text-xs font-semibold text-pine"
                   >
-                    <span className="min-w-0">
-                      {e.superset ? (
-                        <span className="mr-1 font-semibold tabular-nums text-ink/60">
-                          {e.superset}
-                        </span>
-                      ) : null}
-                      {e.name}
-                      {STATUS_LABEL[e.status] ? (
-                        <span className="ml-1.5 rounded-full border border-ink/15 px-1.5 py-px text-[0.65rem] uppercase tracking-wide">
-                          {STATUS_LABEL[e.status]}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="tabular-nums">
-                      {off ? e.lockedReason : e.prescription}
-                    </span>
-                    {e.cue && !off ? (
-                      <span className="w-full text-[0.7rem] text-ink/50">
-                        {e.cue}
+                    ✓ Done · View
+                  </Link>
+                ) : (
+                  <span className="rounded-full bg-pine/10 px-3 py-1 text-xs font-semibold text-pine">
+                    ✓ Done
+                  </span>
+                )
+              ) : controls &&
+                s.visible &&
+                s.type !== "test" &&
+                s.type !== "rest" ? (
+                <SkipControl session={s} date={date} />
+              ) : null}
+              {s.type === "test" && testDayUrl ? (
+                <a
+                  href={testDayUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-semibold text-pine underline"
+                >
+                  Open PT Tracker
+                </a>
+              ) : null}
+            </div>
+            {!s.visible && s.hiddenReason ? (
+              <p className="text-xs text-ink/60">{s.hiddenReason}</p>
+            ) : null}
+            {s.visible && !done ? (
+              <>
+                {s.type === "walk_jog" && walkJog ? (
+                  <p className="text-xs text-ink/70">{walkJogLine(walkJog)}</p>
+                ) : null}
+                {s.structure && s.type !== "walk_jog" ? (
+                  <p className="text-xs text-ink/60">{s.structure}</p>
+                ) : null}
+                {rideLine(s) ? (
+                  <p className="text-xs text-ink/70">{rideLine(s)}</p>
+                ) : s.estimatedMinutes != null ? (
+                  <p
+                    className={`text-xs ${s.overBudget ? "font-medium text-ember" : "text-ink/60"}`}
+                  >
+                    About {s.estimatedMinutes} min
+                    {s.overBudget ? " · over the time budget" : ""}
+                  </p>
+                ) : null}
+                {s.ride?.structure ? (
+                  <p className="text-xs text-ink/60">{s.ride.structure}</p>
+                ) : null}
+                {s.ride?.note ? (
+                  <p className="text-xs font-medium text-ember">
+                    {s.ride.note}
+                  </p>
+                ) : null}
+                {s.legBlockReplaced ? (
+                  <p className="mt-1 text-xs font-medium text-ember">
+                    Leg block today: ROM + easy walk. Upper still runs.
+                  </p>
+                ) : null}
+              </>
+            ) : null}
+            {showExercises && s.visible && !s.legBlockReplaced ? (
+              <ul className="mt-1.5 space-y-1">
+                {s.exercises.map((e) => {
+                  const off =
+                    e.status === "locked" || e.status === "readiness_hidden";
+                  return (
+                    <li
+                      key={`${s.id}-${e.name}`}
+                      className={`flex flex-wrap justify-between gap-x-2 text-xs ${off ? "text-ink/40" : "text-ink/75"}`}
+                    >
+                      <span className="min-w-0">
+                        {e.superset ? (
+                          <span className="mr-1 font-semibold tabular-nums text-ink/60">
+                            {e.superset}
+                          </span>
+                        ) : null}
+                        {e.name}
+                        {STATUS_LABEL[e.status] ? (
+                          <span className="ml-1.5 rounded-full border border-ink/15 px-1.5 py-px text-[0.65rem] uppercase tracking-wide">
+                            {STATUS_LABEL[e.status]}
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
-        </li>
-      ))}
+                      <span className="tabular-nums">
+                        {off ? e.lockedReason : e.prescription}
+                      </span>
+                      {e.cue && !off ? (
+                        <span className="w-full text-[0.7rem] text-ink/50">
+                          {e.cue}
+                        </span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </li>
+        );
+      })}
     </ul>
   );
 }
 
 type ProgramTodayCardProps = {
   today: ProgramToday;
-  /** This week's scorecard and banners; null hides them. */
+  /** This week's banners (and, on /program, the scorecard); null hides them. */
   snapshot?: AdherenceSnapshot | null;
   /** The program page shows exercise detail; the dashboard keeps it short. */
   detailed?: boolean;
 };
 
+/**
+ * Today's program. The dashboard version answers one question, what is left
+ * today: a session reads Done once it is logged and its buttons go away.
+ */
 export function ProgramTodayCard({
   today,
   detailed = false,
   snapshot = null,
 }: ProgramTodayCardProps) {
   const isSunday = new Date(`${today.today}T12:00:00Z`).getUTCDay() === 0;
-  const hasRide = today.sessions.some((s) => s.type === "peloton" && s.visible);
   const lift = today.sessions.find((s) => s.type === "lift" && s.visible);
+  const ride = today.sessions.find((s) => s.type === "peloton" && s.visible);
+  const liftPending = lift != null && isPending(lift);
+  const ridePending = ride != null && isPending(ride);
+  const tracked = today.sessions.filter(
+    (s) => s.visible && (s.type === "lift" || s.type === "peloton"),
+  );
+  const allDone = tracked.length > 0 && tracked.every(isDone);
   const sleepLow =
     today.sleepAverageHours != null &&
     today.sleepAverageHours < today.sleepMinHours;
@@ -214,8 +269,10 @@ export function ProgramTodayCard({
     <section className="space-y-4 rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <ProgramHeaderLine today={today} />
-          <h2 className="mt-1 font-display text-lg text-ink">Today</h2>
+          <ProgramHeaderLine today={today} compact={!detailed} />
+          <h2 className="mt-1 font-display text-lg text-ink">
+            {allDone ? "Today: done" : "Today"}
+          </h2>
         </div>
         {!detailed ? (
           <Link
@@ -227,14 +284,17 @@ export function ProgramTodayCard({
         ) : null}
       </div>
 
-      <KneeCheckPanel
-        date={today.today}
-        check={today.kneeCheck}
-        status={today.kneeStatus}
-        required={today.hasLift}
-      />
+      {/* Once the lift is logged the check has done its job. */}
+      {lift && isDone(lift) && today.kneeCheck ? null : (
+        <KneeCheckPanel
+          date={today.today}
+          check={today.kneeCheck}
+          status={today.kneeStatus}
+          required={liftPending}
+        />
+      )}
 
-      {lift && today.warmUp ? (
+      {detailed && liftPending && today.warmUp ? (
         <p className="rounded-2xl bg-pine/5 px-4 py-3 text-xs text-ink/75">
           <span className="font-semibold text-ink">Warm-up, 5 min: </span>
           {today.warmUp}
@@ -266,7 +326,7 @@ export function ProgramTodayCard({
         </div>
       ) : null}
 
-      {sleepLow ? (
+      {sleepLow && liftPending ? (
         <p className="rounded-2xl border border-ink/10 bg-sand/60 px-4 py-2 text-xs text-ink/75">
           Sleep averaged {today.sleepAverageHours?.toFixed(1)} h: no load
           increases until it is back to {today.sleepMinHours} h.
@@ -279,12 +339,13 @@ export function ProgramTodayCard({
         showExercises={detailed}
         date={today.today}
         walkJog={today.walkJog}
+        loggedLiftId={today.loggedLiftId}
         controls
       />
 
-      {snapshot ? (
+      {detailed && snapshot ? (
         <div className="space-y-1.5">
-          <Scorecard adherence={snapshot.adherence} />
+          <Scorecard adherence={snapshot.adherence} inProgress />
           <StreakLine snapshot={snapshot} />
         </div>
       ) : null}
@@ -298,9 +359,9 @@ export function ProgramTodayCard({
         </Link>
       ) : null}
 
-      {today.hasLift || hasRide ? (
+      {liftPending || ridePending ? (
         <div className="flex flex-wrap items-center gap-2">
-          {today.hasLift ? (
+          {liftPending ? (
             <Link
               href="/strength"
               className="inline-flex h-11 items-center justify-center rounded-full bg-pine px-5 text-sm font-semibold text-white"
@@ -308,20 +369,13 @@ export function ProgramTodayCard({
               Start lift
             </Link>
           ) : null}
-          {hasRide ? (
+          {ridePending ? (
             <Link
               href="/cardio"
               className="inline-flex h-11 items-center justify-center rounded-full border border-ink/15 px-5 text-sm font-semibold text-ink"
             >
               Log ride
             </Link>
-          ) : null}
-          {lift && !lift.outcome ? (
-            <RedFlagControl
-              sessionId={lift.id}
-              date={today.today}
-              contact={today.redFlag}
-            />
           ) : null}
         </div>
       ) : null}

@@ -7,12 +7,14 @@ function Tile({
   label,
   done,
   target,
+  inProgress,
 }: {
   label: string;
   done: number | null;
   target: number | null;
+  inProgress: boolean;
 }) {
-  const tone = ratioTone(done, target);
+  const tone = ratioTone(done, target, { inProgress });
   return (
     <div className="rounded-2xl border border-ink/10 bg-white px-3 py-2">
       <p className="text-[0.7rem] text-ink/55">{label}</p>
@@ -28,29 +30,42 @@ function Tile({
   );
 }
 
-/** Leg sessions, Peloton, ROM days and PT visits for one week. */
-export function Scorecard({ adherence }: { adherence: WeekAdherence }) {
+/**
+ * Leg sessions, Peloton, ROM days and PT visits for one week. The current
+ * week shows short counts neutral, green once met; red only once it is over.
+ */
+export function Scorecard({
+  adherence,
+  inProgress = false,
+}: {
+  adherence: WeekAdherence;
+  inProgress?: boolean;
+}) {
   return (
     <div className="grid grid-cols-4 gap-1.5">
       <Tile
         label="Legs"
         done={adherence.lifts.done}
         target={adherence.lifts.target}
+        inProgress={inProgress}
       />
       <Tile
         label="Peloton"
         done={adherence.rides.done}
         target={adherence.rides.target}
+        inProgress={inProgress}
       />
       <Tile
         label="ROM"
         done={adherence.romDays.done}
         target={adherence.romDays.target}
+        inProgress={inProgress}
       />
       <Tile
         label="PT"
         done={adherence.pt.attended}
         target={adherence.pt.scheduled}
+        inProgress={inProgress}
       />
     </div>
   );

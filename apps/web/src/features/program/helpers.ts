@@ -141,11 +141,16 @@ export const SKIP_LABELS: Record<string, string> = {
   sharp_pain: "Sharp pain",
 };
 
-/** Scorecard colour: met the target, short of it, or no data yet. */
+/**
+ * Scorecard colour: met the target, short of it, or no data yet. A week still
+ * in progress is never "short": 1 of 3 on a Monday is on track, not behind.
+ */
 export function ratioTone(
   done: number | null | undefined,
   target: number | null | undefined,
+  options: { inProgress?: boolean } = {},
 ): "met" | "short" | "none" {
   if (done == null || target == null || target <= 0) return "none";
-  return done >= target ? "met" : "short";
+  if (done >= target) return "met";
+  return options.inProgress ? "none" : "short";
 }

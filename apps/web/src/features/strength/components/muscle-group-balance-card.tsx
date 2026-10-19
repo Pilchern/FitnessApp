@@ -36,83 +36,81 @@ function formatSetBalance(summary: MuscleGroupVolumeSummary): string {
   return `${counts}. Balanced.`;
 }
 
+/**
+ * Working sets per muscle group over the last 7 days, folded to one row: the
+ * summary names anything untrained, the detail lists every group.
+ */
 export function MuscleGroupBalanceCard({
   summary,
 }: MuscleGroupBalanceCardProps) {
-  // Legs are trained in the PT app during rehab; don't flag them here.
   const excluded = new Set<string>(NICK_TRAINING_PLAN.excludedMuscleGroups);
   const groups = summary.byMuscleGroup.filter(
     (g) => !excluded.has(g.muscleGroup),
   );
-  const trainedGroups = groups.filter((g) => g.workingSetCount > 0);
-  const hasAnyData = trainedGroups.length > 0;
+  const hasAnyData = groups.some((g) => g.workingSetCount > 0);
+  const neglected = groups.filter((g) => g.workingSetCount === 0);
 
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-        Last 7 days
-      </p>
-      <h2 className="mt-3 font-display text-2xl text-ink">
-        Muscle group balance
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-ink/75">
-        Working sets by muscle group. Warm-ups excluded.
-      </p>
-
-      {!hasAnyData ? (
-        <p className="mt-5 text-sm leading-6 text-ink/75">
-          No strength sets logged in the last 7 days yet.
-        </p>
-      ) : (
-        <>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {groups.map((group) => {
-              const isNeglected = group.workingSetCount === 0;
-              return (
-                <div
+    <details className="group rounded-[1.75rem] border border-ink/10 bg-white/80 shadow-panel">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-6 py-3 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          Muscle balance
+          <span className="ml-2 font-normal text-ink/50">7 days</span>
+          {hasAnyData && neglected.length > 0 ? (
+            <span className="block text-xs font-normal text-ember">
+              Not trained:{" "}
+              {neglected
+                .map((g) => MUSCLE_GROUP_LABELS[g.muscleGroup] ?? g.muscleGroup)
+                .join(", ")}
+            </span>
+          ) : null}
+        </span>
+        <span className="text-ink/50 group-open:hidden">+</span>
+        <span className="hidden text-ink/50 group-open:inline">−</span>
+      </summary>
+      <div className="border-t border-ink/10 px-6 py-4">
+        {!hasAnyData ? (
+          <p className="text-sm text-ink/70">
+            No strength sets logged in the last 7 days yet.
+          </p>
+        ) : (
+          <>
+            <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+              {groups.map((group) => (
+                <li
                   key={group.muscleGroup}
-                  className={`rounded-[1.25rem] border p-3 ${
-                    isNeglected
-                      ? "border-ember/20 bg-ember/5"
-                      : "border-ink/10 bg-sand/50"
-                  }`}
+                  className="flex justify-between gap-2"
                 >
-                  <div className="text-xs uppercase tracking-[0.16em] text-ink/60">
+                  <span className="text-ink/70">
                     {MUSCLE_GROUP_LABELS[group.muscleGroup] ??
                       group.muscleGroup}
-                  </div>
-                  <div
-                    className={`mt-1 text-lg font-semibold ${isNeglected ? "text-ember" : "text-ink"}`}
+                  </span>
+                  <span
+                    className={`tabular-nums ${group.workingSetCount === 0 ? "font-semibold text-ember" : "font-semibold text-ink"}`}
                   >
-                    {group.workingSetCount}{" "}
-                    {group.workingSetCount === 1 ? "set" : "sets"}
-                  </div>
-                  <div className="text-xs text-ink/50">
-                    {isNeglected
-                      ? "Not trained this week"
-                      : group.totalVolume > 0
-                        ? `${group.totalVolume.toLocaleString()} lb`
-                        : "Bodyweight"}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-4 rounded-[1.25rem] border border-ink/10 bg-white/70 p-4 text-sm text-ink/75">
-            {formatSetBalance(summary)}
-          </div>
-
-          {summary.unclassifiedWorkingSetCount > 0 ? (
-            <p className="mt-3 text-xs text-ink/45">
-              {summary.unclassifiedWorkingSetCount} logged{" "}
-              {summary.unclassifiedWorkingSetCount === 1 ? "set" : "sets"} used
-              an exercise name we don&apos;t recognize yet, so it isn&apos;t
-              counted above.
+                    {group.workingSetCount}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-sm text-ink/75">
+              {formatSetBalance(summary)}
             </p>
-          ) : null}
-        </>
-      )}
-    </section>
+            {summary.unclassifiedWorkingSetCount > 0 ? (
+              <p className="mt-2 text-xs text-ink/45">
+                Working sets, warm-ups excluded.{" "}
+                {summary.unclassifiedWorkingSetCount} set
+                {summary.unclassifiedWorkingSetCount === 1 ? "" : "s"} (drills
+                and plyos) not counted.
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-ink/45">
+                Working sets, warm-ups excluded.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </details>
   );
 }
