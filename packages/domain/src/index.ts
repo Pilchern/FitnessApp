@@ -16,3 +16,4 @@ export * from "./modules/strength/exercise-catalog";
 export * from "./modules/supplements/supplement";
 export * from "./modules/training/training-template";
 export * from "./modules/weekly-reviews/weekly-review";
+export * from "./modules/program/program";

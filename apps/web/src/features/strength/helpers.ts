@@ -1,4 +1,5 @@
 import type { StrengthSession } from "@fitness-app/domain";
+import type { LoggerPlanExercise } from "@fitness-app/application";
 import type { StrengthFormValues, StrengthSetFormValue } from "./types";
 
 export function createEmptyStrengthSet(
@@ -13,6 +14,10 @@ export function createEmptyStrengthSet(
     isWarmup: partial?.isWarmup ?? false,
     durationSeconds: partial?.durationSeconds ?? "",
     distanceMeters: partial?.distanceMeters ?? "",
+    ...(partial?.side ? { side: partial.side } : {}),
+    ...(partial?.peakForceNewtons !== undefined
+      ? { peakForceNewtons: partial.peakForceNewtons }
+      : {}),
     notes: partial?.notes ?? "",
   };
 }
@@ -65,6 +70,10 @@ export function toStrengthFormValues(
             isWarmup: set.isWarmup,
             durationSeconds: numberToInput(set.durationSeconds),
             distanceMeters: numberToInput(set.distanceMeters),
+            ...(set.side ? { side: set.side } : {}),
+            ...(set.peakForceNewtons != null
+              ? { peakForceNewtons: numberToInput(set.peakForceNewtons) }
+              : {}),
             notes: set.notes ?? "",
           }))
         : [createEmptyStrengthSet()],
@@ -125,6 +134,10 @@ export type LastExercisePerformance = {
     weight: number | null;
     reps: number | null;
     durationSeconds: number | null;
+    /** Present only when logged. */
+    rir?: number;
+    side?: "left" | "right";
+    peakForceNewtons?: number;
   }[];
 };
 
@@ -163,6 +176,11 @@ export function buildLastByExercise(
             weight: s.weight,
             reps: s.reps,
             durationSeconds: s.durationSeconds ?? null,
+            ...(s.rir != null ? { rir: s.rir } : {}),
+            ...(s.side ? { side: s.side } : {}),
+            ...(s.peakForceNewtons != null
+              ? { peakForceNewtons: s.peakForceNewtons }
+              : {}),
           })),
       };
     }
@@ -171,8 +189,31 @@ export function buildLastByExercise(
   return result;
 }
 
-/** "165 x 8, 8, 7" (weight repeated only when it changes); "30s, 25s" for timed sets. */
-export function formatLastPerformance(last: LastExercisePerformance) {
+/**
+ * "165 x 8, 8, 7" (weight repeated only when it changes); "30s, 25s" for timed
+ * sets; per-leg work splits by leg: "L 10 x 12, 12 · R 10 x 12, 11"; force
+ * sets show peak newtons: "L 410 N · R 520 N".
+ */
+export function formatLastPerformance(last: LastExercisePerformance): string {
+  if (last.sets.some((set) => set.side)) {
+    return (["left", "right"] as const)
+      .map((side) => {
+        const sets = last.sets.filter((set) => set.side === side);
+        if (sets.length === 0) return "";
+        const label = side === "left" ? "L" : "R";
+        const peaks = sets
+          .map((set) => set.peakForceNewtons)
+          .filter((n): n is number => n != null);
+        if (peaks.length > 0) return `${label} ${Math.max(...peaks)} N`;
+        const body = formatLastPerformance({
+          ...last,
+          sets: sets.map((set) => ({ ...set, side: undefined })),
+        });
+        return body ? `${label} ${body}` : "";
+      })
+      .filter(Boolean)
+      .join(" · ");
+  }
   const parts: string[] = [];
   let previousWeight: number | null | undefined;
   for (const set of last.sets) {
@@ -440,4 +481,105 @@ export function draftWasSaved(
     Number.isFinite(created) &&
     created >= draft.submittedAt - SAVE_CLOCK_SKEW_MS
   );
+}
+
+/** "L2" / "R2" for per-leg sets (counted within each leg), else the set number. */
+export function setLabel(
+  sets: { side?: "left" | "right" | "" }[],
+  indexes: number[],
+  index: number,
+  setNumber: number,
+): string {
+  const side = sets[index]?.side;
+  if (!side) return `${setNumber}`;
+  const position =
+    indexes.filter((i) => i <= index && sets[i]?.side === side).length || 1;
+  return `${side === "left" ? "L" : "R"}${position}`;
+}
+
+/** Isometric sets log peak newtons instead of weight and reps. */
+export function isForceSet(set: { peakForceNewtons?: string }) {
+  return set.peakForceNewtons !== undefined;
+}
+
+/**
+ * After the left leg's reps change, the matching right-leg set (same
+ * position within its leg, same exercise group) takes those reps as its
+ * target, unless it is already ticked done.
+ */
+export function withRightRepsFromLeft<
+  T extends {
+    side?: "left" | "right" | "";
+    reps: string;
+    done?: boolean;
+  },
+>(sets: T[], groupIndexes: number[], leftIndex: number, leftReps: string): T[] {
+  if (sets[leftIndex]?.side !== "left") return sets;
+  const position = groupIndexes.filter(
+    (i) => i <= leftIndex && sets[i]?.side === "left",
+  ).length;
+  const rights = groupIndexes.filter((i) => sets[i]?.side === "right");
+  const target = rights[position - 1];
+  if (target == null || sets[target]?.done) return sets;
+  // Same rule as rightLegRepsTarget in @fitness-app/application (web tests
+  // cannot load workspace packages at runtime).
+  const reps = Number(leftReps);
+  if (leftReps.trim() === "" || !Number.isInteger(reps) || reps <= 0) {
+    return sets;
+  }
+  return sets.map((set, i) =>
+    i === target ? { ...set, reps: String(reps) } : set,
+  );
+}
+
+/**
+ * Logger rows for one plan exercise. Per-leg work alternates left then right
+ * (L1, R1, L2, R2). Program leg work takes the engine's load as is; template
+ * exercises keep the last-logged prefill. Timed and isometric work prefill
+ * seconds; isometrics also get an empty peak-newtons field.
+ */
+export function planExerciseSets(
+  ex: LoggerPlanExercise,
+  last: LastExercisePerformance | undefined,
+): (StrengthSetFormValue & { done: boolean })[] {
+  const sides: ("left" | "right" | null)[] =
+    ex.sideMode === "per_leg" ? ["left", "right"] : [null];
+  const force = ex.measure === "force";
+  const timed = ex.measure === "time" || force;
+  const rows: (StrengthSetFormValue & { done: boolean })[] = [];
+  for (let i = 0; i < ex.targetSets; i += 1) {
+    for (const side of sides) {
+      const weight = timed
+        ? ""
+        : ex.program
+          ? ex.targetWeight != null
+            ? String(ex.targetWeight)
+            : ""
+          : startingWeight(last, i, ex.targetWeight, ex.targetReps);
+      const seconds = timed
+        ? ex.targetSeconds != null
+          ? String(ex.targetSeconds)
+          : force
+            ? "5"
+            : ""
+        : ex.program
+          ? ""
+          : startingDuration(last, i);
+      rows.push({
+        exerciseName: ex.exerciseName,
+        setNumber: rows.length + 1,
+        reps: !timed && ex.targetReps != null ? String(ex.targetReps) : "",
+        weight,
+        rir: !timed && ex.targetRir != null ? String(ex.targetRir) : "",
+        isWarmup: false,
+        durationSeconds: seconds,
+        distanceMeters: "",
+        notes: "",
+        done: false,
+        ...(side ? { side } : {}),
+        ...(force ? { peakForceNewtons: "" } : {}),
+      });
+    }
+  }
+  return rows;
 }

@@ -1,0 +1,350 @@
+import type {
+  IsoDate,
+  KneeReadinessStatus,
+  LoadKind,
+  ProgramBlock,
+  ProgramExercise,
+  ProgramGate,
+  ProgramSession,
+  RideKind,
+  TrainingProgram,
+} from "@fitness-app/domain";
+import {
+  addDays,
+  programWeekInfo,
+  type ProgramWeekInfo,
+} from "./program-calendar";
+import {
+  effectiveScheme,
+  plannedSetCount,
+  type PrescriptionScheme,
+} from "./program-progression";
+
+/** Replaces the leg block on a knee day off. */
+export const KNEE_OFF_BLOCK = {
+  name: "Knee day off: ROM + easy walk",
+  seconds: 15 * 60,
+  notes: "Heel slides, prone hang, quad sets, then an easy walk. 15 min.",
+} as const;
+
+/** The ride after a walk-jog is cut to this. */
+export const RIDE_AFTER_WALK_JOG_MINUTES = { min: 15, max: 20 } as const;
+
+/** Cleared from its date on; an unknown gate key stays locked. */
+export function isGateCleared(
+  gates: Pick<ProgramGate, "gateKey" | "clearedOn">[],
+  gateKey: string | null,
+  date: IsoDate,
+) {
+  if (gateKey == null) return true;
+  const gate = gates.find((g) => g.gateKey === gateKey);
+  return gate?.clearedOn != null && gate.clearedOn <= date;
+}
+
+function gateLabel(gates: ProgramGate[], key: string) {
+  return gates.find((g) => g.gateKey === key)?.label ?? key;
+}
+
+/** A block's own sessions, else the sessions of the block it repeats. */
+export function sessionsForBlock(
+  program: Pick<TrainingProgram, "sessions" | "blocks">,
+  block: ProgramBlock,
+): ProgramSession[] {
+  const own = program.sessions.filter((s) => s.blockId === block.id);
+  if (own.length > 0 || !block.sessionsFromBlockId) return own;
+  return program.sessions.filter(
+    (s) => s.blockId === block.sessionsFromBlockId,
+  );
+}
+
+export type PlannedExerciseStatus =
+  | "active"
+  | "substitute"
+  | "locked"
+  | "readiness_hidden";
+
+export type PlannedExercise = {
+  exercise: ProgramExercise;
+  status: PlannedExerciseStatus;
+  /** What to do today: the substitute's name while the gate is closed. */
+  name: string;
+  loadKind: LoadKind;
+  /** Why it is greyed out; null when it runs today. */
+  lockedReason: string | null;
+  scheme: PrescriptionScheme;
+  sets: number;
+};
+
+export type PlanContext = {
+  gates: ProgramGate[];
+  date: IsoDate;
+  readiness: KneeReadinessStatus | null;
+  block: ProgramBlock | null;
+  sourceBlock: ProgramBlock | null;
+  weekIndexInBlock: number;
+  isDeload: boolean;
+};
+
+/**
+ * Gate first: a closed gate shows the substitute, or greys the exercise out.
+ * Then readiness: "normal only" work (landing prep) waits for a normal check.
+ */
+export function planExercise(
+  exercise: ProgramExercise,
+  ctx: PlanContext,
+): PlannedExercise {
+  const scheme = effectiveScheme(exercise, ctx.block, ctx.sourceBlock);
+  const sets = plannedSetCount(scheme, ctx.weekIndexInBlock, ctx.isDeload);
+  const base = {
+    exercise,
+    name: exercise.name,
+    loadKind: exercise.loadKind,
+    scheme,
+    sets,
+  };
+
+  if (!isGateCleared(ctx.gates, exercise.gateKey, ctx.date)) {
+    if (exercise.substituteName) {
+      return {
+        ...base,
+        status: "substitute",
+        name: exercise.substituteName,
+        loadKind: exercise.substituteLoadKind ?? exercise.loadKind,
+        lockedReason: null,
+      };
+    }
+    return {
+      ...base,
+      status: "locked",
+      lockedReason: `Waiting on gate: ${gateLabel(ctx.gates, exercise.gateKey ?? "")}`,
+    };
+  }
+
+  if (
+    exercise.readinessRequirement === "normal" &&
+    ctx.readiness !== "normal"
+  ) {
+    return {
+      ...base,
+      status: "readiness_hidden",
+      lockedReason:
+        ctx.readiness == null
+          ? "Needs a normal knee check"
+          : "Off today: knee check not normal",
+    };
+  }
+
+  return { ...base, status: "active", lockedReason: null };
+}
+
+export function isPlannedToday(p: PlannedExercise) {
+  return p.status === "active" || p.status === "substitute";
+}
+
+export type PlannedRide = {
+  kind: RideKind;
+  minutesMin: number | null;
+  minutesMax: number | null;
+  structure: string | null;
+  note: string | null;
+};
+
+export type PlannedSession = {
+  session: ProgramSession;
+  /** False when a gate or readiness keeps the whole session off today. */
+  visible: boolean;
+  hiddenReason: string | null;
+  exercises: PlannedExercise[];
+  /** Knee day off on a lift day: the leg block is swapped for ROM + walk. */
+  legBlockReplaced: boolean;
+  ride: PlannedRide | null;
+};
+
+export type DayPlan = {
+  date: IsoDate;
+  info: ProgramWeekInfo;
+  readiness: KneeReadinessStatus | null;
+  sessions: PlannedSession[];
+};
+
+function walkJogAllowed(
+  session: ProgramSession,
+  gates: ProgramGate[],
+  date: IsoDate,
+  readiness: KneeReadinessStatus | null,
+): { ok: boolean; reason: string | null } {
+  if (!isGateCleared(gates, session.gateKey, date)) {
+    return {
+      ok: false,
+      reason: `Waiting on gate: ${gateLabel(gates, session.gateKey ?? "")}`,
+    };
+  }
+  // Belt and braces: the table already forbids walk-jog on lift days.
+  if ([1, 3, 5].includes(session.dayOfWeek)) {
+    return { ok: false, reason: "Walk-jog never runs on a lift day." };
+  }
+  if (readiness === "hold" || readiness === "knee_off") {
+    return { ok: false, reason: "No running unless the knee check is normal." };
+  }
+  return { ok: true, reason: null };
+}
+
+/**
+ * Everything planned for `date`, with gates, deload and the knee check
+ * applied:
+ * - knee_off: lift days swap the leg block for ROM + walk (upper still runs);
+ *   climb intervals become Zone 2; walk-jog is off.
+ * - hold: "normal only" exercises and walk-jog are off; loads repeat.
+ * - walk-jog (jog gate cleared) cuts the same day's ride to 15-20 min.
+ */
+export function buildDayPlan(
+  program: TrainingProgram,
+  date: IsoDate,
+  readiness: KneeReadinessStatus | null,
+): DayPlan {
+  const info = programWeekInfo(program, date);
+  const block = info.block;
+  if (!block) return { date, info, readiness, sessions: [] };
+
+  const sourceBlock = block.sessionsFromBlockId
+    ? (program.blocks.find((b) => b.id === block.sessionsFromBlockId) ?? null)
+    : null;
+  const ctx: PlanContext = {
+    gates: program.gates,
+    date,
+    readiness,
+    block,
+    sourceBlock,
+    weekIndexInBlock: info.weekIndexInBlock,
+    isDeload: info.isDeload,
+  };
+
+  const todays = sessionsForBlock(program, block)
+    .filter((s) => s.dayOfWeek === info.dayOfWeek)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const walkJogToday = todays.some(
+    (s) =>
+      s.sessionType === "walk_jog" &&
+      walkJogAllowed(s, program.gates, date, readiness).ok,
+  );
+
+  const sessions = todays.map((session): PlannedSession => {
+    const exercises = [...session.exercises]
+      .sort((a, b) => a.order - b.order)
+      .map((ex) => planExercise(ex, ctx));
+
+    if (session.sessionType === "walk_jog") {
+      const allowed = walkJogAllowed(session, program.gates, date, readiness);
+      return {
+        session,
+        visible: allowed.ok,
+        hiddenReason: allowed.reason,
+        exercises,
+        legBlockReplaced: false,
+        ride: null,
+      };
+    }
+
+    const gateOpen = isGateCleared(program.gates, session.gateKey, date);
+
+    let ride: PlannedRide | null = null;
+    if (session.sessionType === "peloton") {
+      ride = {
+        kind: session.rideKind ?? "zone2",
+        minutesMin: session.minutesMin,
+        minutesMax: session.minutesMax,
+        structure: session.structure,
+        note: null,
+      };
+      if (readiness === "knee_off" && ride.kind === "climb_intervals") {
+        ride = {
+          ...ride,
+          kind: "zone2",
+          structure: null,
+          note: "Knee day off: Zone 2 instead of intervals.",
+        };
+      }
+      if (walkJogToday) {
+        ride = {
+          ...ride,
+          minutesMin: RIDE_AFTER_WALK_JOG_MINUTES.min,
+          minutesMax: RIDE_AFTER_WALK_JOG_MINUTES.max,
+          note: [ride.note, "Shortened: walk-jog first."]
+            .filter(Boolean)
+            .join(" "),
+        };
+      }
+    }
+
+    return {
+      session,
+      visible: gateOpen,
+      hiddenReason: gateOpen
+        ? null
+        : `Waiting on gate: ${gateLabel(program.gates, session.gateKey ?? "")}`,
+      exercises,
+      legBlockReplaced:
+        session.sessionType === "lift" && readiness === "knee_off",
+      ride,
+    };
+  });
+
+  return { date, info, readiness, sessions };
+}
+
+/** Monday to Sunday of the post-op week holding `date`. */
+export function programWeekDates(
+  program: Pick<TrainingProgram, "weekAnchorDate" | "blocks" | "weeks">,
+  date: IsoDate,
+): IsoDate[] {
+  const { weekStart } = programWeekInfo(program, date);
+  return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+}
+
+/**
+ * Right-leg rep target: what the left leg just did, else the prescription.
+ * The left (operated) leg sets the work; the right matches it.
+ */
+export function rightLegRepsTarget(
+  leftLoggedReps: string | number | null | undefined,
+  prescribedReps: number | null,
+): number | null {
+  const left =
+    typeof leftLoggedReps === "number"
+      ? leftLoggedReps
+      : leftLoggedReps != null && leftLoggedReps.trim() !== ""
+        ? Number(leftLoggedReps)
+        : NaN;
+  return Number.isInteger(left) && left > 0 ? left : prescribedReps;
+}
+
+/**
+ * Top of the rep range an exercise was prescribed on `date` (looked up by
+ * name, or by its substitute's name). Tells the progression engine whether
+ * last time's sets came from a different rep scheme, i.e. a new block.
+ */
+export function prescribedRepsMaxOn(
+  program: TrainingProgram,
+  exerciseName: string,
+  date: IsoDate,
+): number | null {
+  const info = programWeekInfo(program, date);
+  const block = info.block;
+  if (!block) return null;
+  const sourceBlock = block.sessionsFromBlockId
+    ? (program.blocks.find((b) => b.id === block.sessionsFromBlockId) ?? null)
+    : null;
+  const key = exerciseName.trim().toLowerCase();
+  for (const session of sessionsForBlock(program, block)) {
+    for (const ex of session.exercises) {
+      const names = [ex.name, ex.substituteName].filter(
+        (n): n is string => n != null,
+      );
+      if (names.some((n) => n.trim().toLowerCase() === key)) {
+        return effectiveScheme(ex, block, sourceBlock).repsMax;
+      }
+    }
+  }
+  return null;
+}

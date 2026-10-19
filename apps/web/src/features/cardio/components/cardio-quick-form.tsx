@@ -309,6 +309,28 @@ export function CardioQuickForm({
           </label>
 
           <label className="grid gap-2 text-sm font-medium text-ink">
+            Output (kJ)
+            <input
+              className={fieldClassName()}
+              name="totalOutputKj"
+              inputMode="decimal"
+              placeholder="Peloton total"
+              value={values.totalOutputKj}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  totalOutputKj: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.totalOutputKj ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.totalOutputKj}
+              </p>
+            ) : null}
+          </label>
+
+          <label className="grid gap-2 text-sm font-medium text-ink">
             RPE
             <input
               className={fieldClassName()}

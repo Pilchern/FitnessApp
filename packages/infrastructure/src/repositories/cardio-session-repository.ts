@@ -30,6 +30,8 @@ const cardioSessionRowSchema = z.object({
   avg_heart_rate: z.number().int().nullable(),
   max_heart_rate: z.number().int().nullable(),
   avg_output: z.number().nullable(),
+  // Optional so rows read before the program migration still parse.
+  total_output_kj: z.number().nullable().optional(),
   best_5min_watts: z.number().int().nullable(),
   best_20min_watts: z.number().int().nullable(),
   zone2_heart_rate: z.number().int().nullable(),
@@ -69,6 +71,7 @@ export function mapCardioSessionRow(row: CardioSessionRow): CardioSession {
     avgHeartRate: row.avg_heart_rate,
     maxHeartRate: row.max_heart_rate,
     avgOutput: row.avg_output,
+    totalOutputKj: row.total_output_kj ?? null,
     best5MinWatts: row.best_5min_watts,
     best20MinWatts: row.best_20min_watts,
     zone2HeartRate: row.zone2_heart_rate,
@@ -102,6 +105,10 @@ function toCardioSessionInsert(input: CreateCardioSessionInput) {
     avg_heart_rate: input.avgHeartRate ?? null,
     max_heart_rate: input.maxHeartRate ?? null,
     avg_output: input.avgOutput ?? null,
+    // Only sent when set, so synced rides insert before the column exists.
+    ...(input.totalOutputKj != null
+      ? { total_output_kj: input.totalOutputKj }
+      : {}),
     best_5min_watts: input.best5MinWatts ?? null,
     best_20min_watts: input.best20MinWatts ?? null,
     zone2_heart_rate: input.zone2HeartRate ?? null,
@@ -134,6 +141,7 @@ function toCardioSessionUpdate(input: UpdateCardioSessionInput) {
     avg_heart_rate: input.avgHeartRate,
     max_heart_rate: input.maxHeartRate,
     avg_output: input.avgOutput,
+    total_output_kj: input.totalOutputKj,
     best_5min_watts: input.best5MinWatts,
     best_20min_watts: input.best20MinWatts,
     zone2_heart_rate: input.zone2HeartRate,

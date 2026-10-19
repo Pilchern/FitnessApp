@@ -69,6 +69,19 @@ pnpm format:write
 - Put provider-specific import code in `packages/integrations/src/providers`.
 - Put job handlers and scheduling code in `packages/jobs/src`.
 
+## Training program (post-op legs)
+
+The program is data, not code: `training_programs` -> `program_blocks` (week range, default sets/reps/RIR) -> `program_sessions` (weekday, type, linked upper template, ride prescription) -> `program_exercises` (sets, rep range, RIR, tempo, per-leg, measure, gate). `program_weeks` holds deload flags; `program_gates` holds the manual "cleared on" dates set in Settings. Week numbers count whole weeks from `training_programs.week_anchor_date` (the surgery date). Seed: `supabase/migrations/20261019120100_seed_acl_lower_body_program.sql` (idempotent). Rules live in `packages/application/src/modules/program/`.
+
+Add a block (e.g. Block 4 content), in SQL through the Supabase MCP or the dashboard:
+1. The block row already exists for Block 4 (weeks 23-38). For a new one, insert into `program_blocks` with `start_week`, `end_week`, and the default `sets_min/sets_max/reps_min/reps_max/rir_target` and a display `rep_scheme`.
+2. Insert its `program_sessions`: one row per weekday (`day_of_week` 0 = Sunday), `session_type` lift/peloton/test/walk_jog, and for lift days `upper_template_id` (the Mon/Wed/Fri strength template). Walk-jog cannot go on Mon/Wed/Fri (table check).
+3. Insert `program_exercises` per lift session, ordered by `exercise_order`. Leave sets/reps/RIR null to use the block's scheme. Set `side_mode = 'per_leg'` for left/right work, `measure` = `time` or `force` for holds and isometrics, `gate_key` (and optionally `substitute_name`) for gated work, `readiness_requirement = 'normal'` for work that only runs on a normal knee check.
+4. A deload or repeat block can skip steps 2-3 and set `sessions_from_block_id` to the block it repeats; mark its weeks `is_deload` in `program_weeks`.
+5. Add a gate by inserting into `program_gates` (`gate_key`, `label`); it shows up in Settings.
+
+Nothing else changes: the dashboard card, `/program`, `/strength` and the progression engine read these rows.
+
 ## Current status
 
 Implemented now:

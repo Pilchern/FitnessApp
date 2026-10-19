@@ -42,6 +42,8 @@ const strengthExerciseSetSchema = z.object({
   isWarmup: z.boolean().default(false),
   durationSeconds: z.number().int().min(0).nullable().optional(),
   distanceMeters: z.number().min(0).nullable().optional(),
+  side: z.enum(["left", "right"]).nullable().optional(),
+  peakForceNewtons: z.number().min(0).max(5000).nullable().optional(),
   notes: optionalTrimmedStringSchema,
 });
 

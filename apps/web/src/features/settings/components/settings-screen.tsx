@@ -10,6 +10,18 @@ import { DangerZone } from "./danger-zone";
 import { SettingsForm } from "./settings-form";
 import { SupplementsManager } from "./supplements-manager";
 import { PageHeader } from "@/components/shared/page-header";
+import { getProgramGates } from "@/features/program/server";
+import { GatesManager } from "@/features/program/components/gates-manager";
+import { getZonedDate } from "@fitness-app/application";
+
+async function loadGates() {
+  try {
+    return await getProgramGates();
+  } catch (error) {
+    console.error("Program gates failed to load", error);
+    return [];
+  }
+}
 
 type SettingsScreenProps = {
   saved?: boolean;
@@ -17,7 +29,10 @@ type SettingsScreenProps = {
 };
 
 export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
-  const data = await getSettingsPageData();
+  const [data, gates] = await Promise.all([getSettingsPageData(), loadGates()]);
+  const today = getZonedDate(data.profile?.timezone || "UTC")
+    .toISOString()
+    .slice(0, 10);
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -43,6 +58,8 @@ export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
         action={updateSettingsAction}
         recomputeNutritionTargetsAction={recomputeNutritionTargetsAction}
       />
+
+      <GatesManager gates={gates} today={today} />
 
       <SupplementsManager
         kind="habit"

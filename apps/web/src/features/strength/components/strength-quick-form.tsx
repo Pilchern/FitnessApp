@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { StrengthSession } from "@fitness-app/domain";
-import type { StrengthTrainingTemplateDefinition } from "@fitness-app/application";
+import type { LoggerPlanExercise } from "@fitness-app/application";
 import {
   createEmptyStrengthSet,
   draftWasSaved,
@@ -12,17 +12,21 @@ import {
   formatLastPerformance,
   formatStrengthDate,
   groupSetsByExercise,
+  isForceSet,
   isTimedSet,
   parseStrengthDraft,
+  planExerciseSets,
   readyToAddLoad,
   showsTimedWeight,
   renumberSets,
   selectSetsToSave,
+  setLabel,
   startingDuration,
   startingWeight,
   STRENGTH_DRAFT_KEY,
   templateRepTop,
   toStrengthFormValues,
+  withRightRepsFromLeft,
   type LastExercisePerformance,
   type StrengthDraft,
 } from "../helpers";
@@ -36,7 +40,8 @@ import type {
 export type PlanRequest = {
   id: number;
   name: string;
-  definition: StrengthTrainingTemplateDefinition;
+  /** A template, or today's program lift (legs with per-leg and isometric work). */
+  definition: { notes?: string | null; exercises: LoggerPlanExercise[] };
 };
 
 type StrengthQuickFormProps = {
@@ -237,6 +242,8 @@ export function StrengthQuickForm({
     setRepTops(
       Object.fromEntries(
         plan.exercises.flatMap((ex) => {
+          // Program leg work carries its own load suggestion.
+          if (ex.program) return [];
           const top = templateRepTop(ex.targetReps, ex.notes);
           return top != null ? [[exerciseKey(ex.exerciseName), top]] : [];
         }),
@@ -246,26 +253,7 @@ export function StrengthQuickForm({
       ...current,
       sessionName: planRequest.name,
       sets: plan.exercises.flatMap((ex) =>
-        Array.from({ length: ex.targetSets }, (_, i) => ({
-          exerciseName: ex.exerciseName,
-          setNumber: i + 1,
-          reps: ex.targetReps != null ? String(ex.targetReps) : "",
-          weight: startingWeight(
-            lastByExercise[exerciseKey(ex.exerciseName)],
-            i,
-            ex.targetWeight,
-            ex.targetReps,
-          ),
-          rir: ex.targetRir != null ? String(ex.targetRir) : "",
-          isWarmup: false,
-          durationSeconds: startingDuration(
-            lastByExercise[exerciseKey(ex.exerciseName)],
-            i,
-          ),
-          distanceMeters: "",
-          notes: "",
-          done: false,
-        })),
+        planExerciseSets(ex, lastByExercise[exerciseKey(ex.exerciseName)]),
       ),
     }));
     // Only re-run when a plan is requested; the rest is read at that moment.
@@ -357,6 +345,19 @@ export function StrengthQuickForm({
     }));
   }
 
+  /** Reps on a left-leg set also become the matching right set's target. */
+  function updateReps(index: number, groupIndexes: number[], reps: string) {
+    setValues((current) => {
+      const sets = current.sets.map((set, i) =>
+        i === index ? { ...set, reps } : set,
+      );
+      return {
+        ...current,
+        sets: withRightRepsFromLeft(sets, groupIndexes, index, reps),
+      };
+    });
+  }
+
   function toggleDone(index: number) {
     const wasDone = Boolean(values.sets[index]?.done);
     updateSet(index, { done: !wasDone });
@@ -368,15 +369,23 @@ export function StrengthQuickForm({
     const source = values.sets[lastIndex];
     if (!source) return;
     setValues((current) => {
-      const copy = createEmptyStrengthSet({
-        exerciseName: source.exerciseName,
-        reps: source.reps,
-        weight: source.weight,
-        rir: source.rir,
-        durationSeconds: source.durationSeconds,
+      const copy = (side?: "left" | "right") => ({
+        ...createEmptyStrengthSet({
+          exerciseName: source.exerciseName,
+          reps: source.reps,
+          weight: source.weight,
+          rir: source.rir,
+          durationSeconds: source.durationSeconds,
+          side,
+          peakForceNewtons:
+            source.peakForceNewtons !== undefined ? "" : undefined,
+        }),
+        done: false,
       });
       const sets = [...current.sets];
-      sets.splice(lastIndex + 1, 0, { ...copy, done: false });
+      // Per-leg work adds a left + right pair.
+      const added = source.side ? [copy("left"), copy("right")] : [copy()];
+      sets.splice(lastIndex + 1, 0, ...added);
       return { ...current, sets: renumberSets(sets) };
     });
   }
@@ -457,6 +466,8 @@ export function StrengthQuickForm({
                 set.durationSeconds != null ? `${set.durationSeconds}` : "",
               distanceMeters:
                 set.distanceMeters != null ? `${set.distanceMeters}` : "",
+              ...(set.side ? { side: set.side } : {}),
+              ...(set.peakForceNewtons != null ? { peakForceNewtons: "" } : {}),
               notes: set.notes ?? "",
               done: false,
             }))
@@ -599,7 +610,8 @@ export function StrengthQuickForm({
           const first = values.sets[group.indexes[0] ?? 0];
           if (!first || !group.name.trim()) return null;
           const last = lastByExercise[group.key];
-          const timed = isTimedSet(first);
+          const force = isForceSet(first);
+          const timed = !force && isTimedSet(first);
           const addLoad =
             !timed && readyToAddLoad(last?.sets, repTops[group.key]);
           const timedWeight = timed && showsTimedWeight(first);
@@ -657,18 +669,24 @@ export function StrengthQuickForm({
                 {group.indexes.map((index) => {
                   const set = values.sets[index];
                   if (!set) return null;
+                  const label = setLabel(
+                    values.sets,
+                    group.indexes,
+                    index,
+                    set.setNumber,
+                  );
                   return (
                     <div
                       key={index}
                       className={`grid items-center gap-1.5 rounded-2xl p-1 ${
-                        timed && !timedWeight
+                        force || (timed && !timedWeight)
                           ? "grid-cols-[1.75rem_1fr_3rem]"
                           : "grid-cols-[1.75rem_1fr_1fr_3rem]"
                       } ${set.done ? "bg-pine/10" : ""}`}
                     >
                       <button
                         type="button"
-                        aria-label={`Set ${set.setNumber}: tap to toggle warm-up`}
+                        aria-label={`Set ${label}: tap to toggle warm-up`}
                         onClick={() =>
                           updateSet(index, { isWarmup: !set.isWarmup })
                         }
@@ -676,14 +694,23 @@ export function StrengthQuickForm({
                           set.isWarmup ? "text-ember" : "text-ink/60"
                         }`}
                       >
-                        {set.isWarmup ? "W" : set.setNumber}
+                        {set.isWarmup ? "W" : label}
                       </button>
-                      {timed ? (
+                      {force ? (
+                        <Stepper
+                          label={`Peak newtons for set ${label}`}
+                          value={set.peakForceNewtons ?? ""}
+                          step={10}
+                          onChange={(next) =>
+                            updateSet(index, { peakForceNewtons: next })
+                          }
+                        />
+                      ) : timed ? (
                         <>
                           {timedWeight ? (
                             <Stepper
                               decimal
-                              label={`Weight for set ${set.setNumber}`}
+                              label={`Weight for set ${label}`}
                               value={set.weight}
                               step={Number(set.weight) >= 45 ? 5 : 2.5}
                               onChange={(next) =>
@@ -692,7 +719,7 @@ export function StrengthQuickForm({
                             />
                           ) : null}
                           <Stepper
-                            label={`Seconds for set ${set.setNumber}`}
+                            label={`Seconds for set ${label}`}
                             value={set.durationSeconds}
                             step={5}
                             onChange={(next) =>
@@ -704,7 +731,7 @@ export function StrengthQuickForm({
                         <>
                           <Stepper
                             decimal
-                            label={`Weight for set ${set.setNumber}`}
+                            label={`Weight for set ${label}`}
                             value={set.weight}
                             step={Number(set.weight) >= 45 ? 5 : 2.5}
                             onChange={(next) =>
@@ -712,18 +739,18 @@ export function StrengthQuickForm({
                             }
                           />
                           <Stepper
-                            label={`Reps for set ${set.setNumber}`}
+                            label={`Reps for set ${label}`}
                             value={set.reps}
                             step={1}
                             onChange={(next) =>
-                              updateSet(index, { reps: next })
+                              updateReps(index, group.indexes, next)
                             }
                           />
                         </>
                       )}
                       <button
                         type="button"
-                        aria-label={`Mark set ${set.setNumber} ${set.done ? "not done" : "done"}`}
+                        aria-label={`Mark set ${label} ${set.done ? "not done" : "done"}`}
                         aria-pressed={Boolean(set.done)}
                         onClick={() => toggleDone(index)}
                         className={`h-12 rounded-2xl text-xl font-semibold transition ${
@@ -760,7 +787,11 @@ export function StrengthQuickForm({
                     </button>
                   ) : null}
                 </div>
-                {timed ? null : (
+                {timed || force ? (
+                  force ? (
+                    <span className="text-xs text-ink/60">Peak N</span>
+                  ) : null
+                ) : (
                   <label className="flex items-center gap-2 text-xs font-medium text-ink/70">
                     RIR
                     <input

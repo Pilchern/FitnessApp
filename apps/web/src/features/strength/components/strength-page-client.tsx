@@ -14,6 +14,9 @@ import type { LastExercisePerformance } from "../helpers";
 import { StrengthQuickForm, type PlanRequest } from "./strength-quick-form";
 import { StrengthTemplateSection } from "./strength-template-section";
 import { TodaysPlanCallout } from "./todays-plan-callout";
+import type { LoggerPlan } from "@fitness-app/application";
+import type { StrengthProgramPlan } from "@/features/program/types";
+import { ProgramPlanCallout } from "@/features/program/components/program-plan-callout";
 
 type StrengthPageClientProps = {
   mode: "create" | "edit";
@@ -23,6 +26,7 @@ type StrengthPageClientProps = {
   lastSession: StrengthSession | null;
   strengthTemplates: TrainingTemplate[];
   todaysScheduledTemplate: TrainingTemplate | null;
+  programPlan?: StrengthProgramPlan | null;
   lastByExercise: Record<string, LastExercisePerformance>;
   latestCreatedAt: string | null;
 };
@@ -35,6 +39,7 @@ export function StrengthPageClient({
   lastSession,
   strengthTemplates,
   todaysScheduledTemplate,
+  programPlan = null,
   lastByExercise,
   latestCreatedAt,
 }: StrengthPageClientProps) {
@@ -51,6 +56,14 @@ export function StrengthPageClient({
     }
   }
 
+  function handleStartProgram(plan: LoggerPlan) {
+    setPlanRequest((current) => ({
+      id: (current?.id ?? 0) + 1,
+      name: plan.name,
+      definition: { notes: plan.notes, exercises: plan.exercises },
+    }));
+  }
+
   const action: (
     state: StrengthActionState,
     formData: FormData,
@@ -62,7 +75,12 @@ export function StrengthPageClient({
   return (
     <>
       {/* Gone once a plan is loaded, so the workout starts at the top. */}
-      {todaysScheduledTemplate && onLoad && planRequest == null ? (
+      {programPlan && onLoad && planRequest == null ? (
+        <ProgramPlanCallout
+          programPlan={programPlan}
+          onStart={handleStartProgram}
+        />
+      ) : todaysScheduledTemplate && onLoad && planRequest == null ? (
         <TodaysPlanCallout template={todaysScheduledTemplate} onLoad={onLoad} />
       ) : null}
 
