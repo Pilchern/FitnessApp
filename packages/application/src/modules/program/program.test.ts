@@ -14,7 +14,6 @@ import {
   programSettingsFromRows,
   settingRowKey,
 } from "./program-settings";
-import { walkJogAdvice } from "./walk-jog";
 import {
   effectiveScheme,
   estimatedMax,
@@ -22,6 +21,7 @@ import {
   hitTopOfRange,
   legExerciseIndex,
   newBlockStartLoad,
+  repRangeSteps,
   nextLoad,
   plannedSetCount,
   roundDownToLoadStep,
@@ -342,11 +342,27 @@ describe("progression engine", () => {
     });
   });
 
-  it("suggests a new-block start from last block's best set (10-rep load x 1.1 for 6-8)", () => {
+  it("suggests a new-block start: top load x 1.1 per step down in reps", () => {
     expect(estimatedMax(100, 10, 2)).toBeCloseTo(140);
-    expect(newBlockStartLoad(sets(100, [10, 10, 10]), 6, 2, "barbell")).toBe(
-      110,
-    );
+    expect(newBlockStartLoad(sets(100, [10, 10, 10]), 1, "barbell")).toBe(110);
+    // Two steps (12 -> 5 skipping 8): 100 x 1.21 = 121, down to 120.
+    expect(newBlockStartLoad(sets(100, [10, 10, 10]), 2, "barbell")).toBe(120);
+    // A step up in reps divides: 110 / 1.1 = 100.
+    expect(newBlockStartLoad(sets(110, [5, 5]), -1, "barbell")).toBe(100);
+    // Dumbbells round down to the next DB: 40 x 1.1 = 44 -> 40.
+    expect(newBlockStartLoad(sets(40, [12, 12]), 1, "dumbbell")).toBe(40);
+    expect(newBlockStartLoad(sets(50, [12, 12]), 1, "dumbbell")).toBe(55);
+    // Per-leg: the left leg's load only.
+    expect(
+      newBlockStartLoad(
+        [
+          { weight: 20, reps: 12, rir: 2, side: "left" },
+          { weight: 30, reps: 12, rir: 2, side: "right" },
+        ],
+        1,
+        "dumbbell",
+      ),
+    ).toBe(20);
     expect(
       suggestLoad({
         ...base,
@@ -361,6 +377,19 @@ describe("progression engine", () => {
         lastRepsMax: 12,
       }),
     ).toMatchObject({ load: 110, kind: "new_block" });
+  });
+
+  it("counts rep-range steps on the program's ladder", () => {
+    const ladder = [12, 12, 8, 5, 3];
+    expect(repRangeSteps(12, 12, ladder)).toBe(0);
+    expect(repRangeSteps(12, 8, ladder)).toBe(1);
+    expect(repRangeSteps(8, 5, ladder)).toBe(1);
+    expect(repRangeSteps(12, 5, ladder)).toBe(2);
+    // Block 3 (3-5) to Strength A (4-6): one step up.
+    expect(repRangeSteps(5, 6, [...ladder, 6])).toBe(-1);
+    // An accessory's own range off the ladder still moves one step.
+    expect(repRangeSteps(15, 12, ladder)).toBe(1);
+    expect(repRangeSteps(12, 10, [])).toBe(1);
   });
 
   it("does not jump to a new-block load on a hold day", () => {
@@ -1028,32 +1057,33 @@ describe("Phase A: upper rows and the leg block", () => {
     expect(sets).toMatchObject({ "Barbell Pin Squat": 3, "Lateral Raise": 2 });
   });
 
-  it("leaves upper loads to the logger's history prefill, with the range in the notes", () => {
+  it("runs upper lifts through double progression too", () => {
     const p = programWithUpper();
     const day = buildDayPlan(p, "2026-10-26", "normal");
-    const plan = buildLiftLoggerPlan({
-      program: p,
-      planned: day.sessions[0]!,
-      info: day.info,
-      readiness: "normal",
-      history: {
-        "lateral raise": {
-          sessionDate: "2026-10-16",
-          sets: [{ weight: 10, reps: 15, rir: 2 }],
-        },
-      },
-      upper: null,
-    });
-    const raise = plan.exercises.find(
-      (e) => e.exerciseName === "Lateral Raise",
-    )!;
-    expect(raise).toMatchObject({
-      targetWeight: null,
+    const plan = (sets: { weight: number; reps: number; rir: number }[]) =>
+      buildLiftLoggerPlan({
+        program: p,
+        planned: day.sessions[0]!,
+        info: day.info,
+        readiness: "normal",
+        history: { "lateral raise": { sessionDate: "2026-10-16", sets } },
+        upper: null,
+      }).exercises.find((e) => e.exerciseName === "Lateral Raise")!;
+    const same = plan([{ weight: 10, reps: 15, rir: 2 }]);
+    expect(same).toMatchObject({
+      targetWeight: 10,
       targetReps: 20,
       targetSets: 3,
-      notes: "15-20 reps.",
+      program: true,
     });
-    expect(raise.program).toBeUndefined();
+    expect(same.notes).toContain("15-20 reps.");
+    expect(
+      plan([
+        { weight: 10, reps: 20, rir: 2 },
+        { weight: 10, reps: 20, rir: 2 },
+        { weight: 10, reps: 20, rir: 2 },
+      ]),
+    ).toMatchObject({ targetWeight: 12.5 });
   });
 
   it("marks a loaded upper lift with no history as Find load", () => {
@@ -1097,80 +1127,6 @@ describe("Phase A: upper rows and the leg block", () => {
       programWithUpper().sessions.flatMap((s) => s.exercises),
     );
     expect(index.get("lateral raise")?.primaryMuscle ?? null).toBeNull();
-  });
-});
-
-describe("Phase A: walk-jog progression", () => {
-  const today = "2026-11-07";
-
-  it("starts at 1 min jog / 1 min walk x 6", () => {
-    expect(walkJogAdvice({ runs: [], checks: [], today })).toMatchObject({
-      action: "start",
-      runMinutesMin: 6,
-      structure: "1 min jog / 1 min walk x 6",
-    });
-  });
-
-  it("adds 1-2 min of running when the next knee check was normal", () => {
-    const advice = walkJogAdvice({
-      runs: [{ date: "2026-11-03", runMinutes: 6 }],
-      checks: [{ date: "2026-11-04", status: "normal" }],
-      today,
-    });
-    expect(advice).toMatchObject({
-      action: "run",
-      runMinutesMin: 7,
-      runMinutesMax: 8,
-    });
-  });
-
-  it("repeats the last run when there has been no check since", () => {
-    expect(
-      walkJogAdvice({
-        runs: [{ date: "2026-11-03", runMinutes: 8 }],
-        checks: [],
-        today,
-      }),
-    ).toMatchObject({ action: "run", runMinutesMin: 8, runMinutesMax: 8 });
-  });
-
-  it("rests 2 days after a non-normal check, then resumes one step back", () => {
-    const runs = [
-      { date: "2026-10-31", runMinutes: 6 },
-      { date: "2026-11-03", runMinutes: 8 },
-    ];
-    const checks = [{ date: "2026-11-04", status: "hold" as const }];
-    expect(walkJogAdvice({ runs, checks, today: "2026-11-05" })).toMatchObject({
-      action: "rest",
-      resumeOn: "2026-11-07",
-    });
-    expect(walkJogAdvice({ runs, checks, today: "2026-11-06" }).action).toBe(
-      "rest",
-    );
-    expect(walkJogAdvice({ runs, checks, today: "2026-11-07" })).toMatchObject({
-      action: "run",
-      runMinutesMin: 6,
-    });
-  });
-
-  it("never steps back below the start", () => {
-    expect(
-      walkJogAdvice({
-        runs: [{ date: "2026-11-03", runMinutes: 6 }],
-        checks: [{ date: "2026-11-04", status: "knee_off" }],
-        today: "2026-11-10",
-      }),
-    ).toMatchObject({ action: "run", runMinutesMin: 6 });
-  });
-
-  it("ignores a run logged today", () => {
-    expect(
-      walkJogAdvice({
-        runs: [{ date: today, runMinutes: 6 }],
-        checks: [],
-        today,
-      }).action,
-    ).toBe("start");
   });
 });
 

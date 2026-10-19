@@ -33,6 +33,8 @@ export type ProgramExerciseView = {
   prescription: string;
   /** One-line coaching cue. */
   cue: string | null;
+  /** "A1", "A2"; null for straight sets. */
+  superset: string | null;
 };
 
 export type ProgramSessionView = {
@@ -49,12 +51,18 @@ export type ProgramSessionView = {
   structure: string | null;
   isOptional: boolean;
   notes: string | null;
+  /** Estimated minutes as it runs today; null when there is nothing to time. */
+  estimatedMinutes: number | null;
+  /** Lift session over the time limit (60 min). */
+  overBudget: boolean;
   /** An explicit skip or red-flag stop logged for this date. */
   outcome: Pick<ProgramSessionOutcome, "outcome" | "reason"> | null;
 };
 
 export type ProgramHeader = {
   week: number;
+  /** The next block and its first day. */
+  nextBlock: { name: string; date: string } | null;
   blockName: string | null;
   repScheme: string | null;
   isDeload: boolean;

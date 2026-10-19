@@ -176,30 +176,44 @@ export function estimatedMax(weight: number, reps: number, rir: number) {
 }
 
 /**
- * Starting load for a new rep range from last block's best working set:
- * the load that leaves `targetRir` in reserve at `targetReps`, rounded down.
- * 100 lb x 10 at RIR 2 gives 110 lb for 6 reps at RIR 2 (about x1.1).
+ * Steps between two rep ranges on the program's ladder of block rep tops
+ * (12, 8, 5 ...). Positive = fewer reps (heavier). A change that skips no
+ * rung still counts as one step.
+ */
+export function repRangeSteps(
+  lastRepsMax: number,
+  newRepsMax: number,
+  ladder: number[] = [],
+): number {
+  if (lastRepsMax === newRepsMax) return 0;
+  const down = newRepsMax < lastRepsMax;
+  const lo = Math.min(lastRepsMax, newRepsMax);
+  const hi = Math.max(lastRepsMax, newRepsMax);
+  const rungs = new Set(
+    ladder.filter((v) => (down ? v >= lo && v < hi : v > lo && v <= hi)),
+  ).size;
+  return (down ? 1 : -1) * Math.max(1, rungs);
+}
+
+/**
+ * Starting load for a new block: last block's top working load (left leg
+ * or bilateral) x 1.1 for each step down in reps (divided for a step up),
+ * rounded down to a load the equipment makes. 100 lb for 10-12 gives 110
+ * lb for 6-8.
  */
 export function newBlockStartLoad(
   sets: ProgressionSet[],
-  targetReps: number,
-  targetRir: number,
+  steps: number,
   kind: LoadKind,
-  steps: LoadSteps = DEFAULT_PROGRAM_SETTINGS,
+  settings: LoadSteps &
+    Pick<ProgramSettings, "newBlockLoadMultiplier"> = DEFAULT_PROGRAM_SETTINGS,
 ): number | null {
-  const estimates = progressionSets(sets)
-    .filter((s) => s.weight != null && s.weight > 0 && s.reps != null)
-    .map((s) =>
-      estimatedMax(
-        s.weight as number,
-        s.reps as number,
-        s.rir ?? DEFAULT_LOGGED_RIR,
-      ),
-    );
-  if (estimates.length === 0) return null;
-  const best = Math.max(...estimates);
-  const raw = best / (1 + (targetReps + targetRir) / 30);
-  return roundDownToLoadStep(raw, kind, steps);
+  const loads = progressionSets(sets)
+    .map((s) => s.weight ?? 0)
+    .filter((w) => w > 0);
+  if (loads.length === 0) return null;
+  const raw = Math.max(...loads) * settings.newBlockLoadMultiplier ** steps;
+  return roundDownToLoadStep(raw, kind, settings);
 }
 
 export type LoadSuggestion = {
@@ -217,6 +231,8 @@ export type SuggestLoadInput = {
   lastSets: ProgressionSet[];
   /** Top of the rep range in force when those sets were logged. */
   lastRepsMax: number | null;
+  /** Rep tops of the program's blocks, for counting steps between blocks. */
+  repLadder?: number[];
   readiness: KneeReadinessStatus | null;
   isDeload: boolean;
   /** Average sleep over the last few nights; null when there is no data. */
@@ -315,19 +331,21 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
     input.lastRepsMax !== input.scheme.repsMax;
 
   if (loaded && repRangeChanged && !lock) {
-    const start = newBlockStartLoad(
-      working,
-      input.scheme.repsMin ?? input.scheme.repsMax ?? 1,
-      input.scheme.rirTarget ?? DEFAULT_LOGGED_RIR,
-      input.loadKind,
-      settings,
+    const steps = repRangeSteps(
+      input.lastRepsMax as number,
+      input.scheme.repsMax as number,
+      input.repLadder ?? [],
     );
+    const start = newBlockStartLoad(working, steps, input.loadKind, settings);
     if (start != null) {
+      const range = [input.scheme.repsMin, input.scheme.repsMax]
+        .filter((v, i, all) => v != null && (i === 0 || v !== all[0]))
+        .join("–");
       return {
         load: start,
         kind: "new_block",
         held: false,
-        reason: `Suggested start for ${input.scheme.repsMin ?? ""}–${input.scheme.repsMax} reps from last block's best set. Edit if it feels off.`,
+        reason: `Suggested start for ${range} reps: last block's top load x ${settings.newBlockLoadMultiplier}${Math.abs(steps) > 1 ? `^${Math.abs(steps)}` : ""}${steps < 0 ? " (divided: more reps)" : ""}. Edit if it feels off.`,
       };
     }
   }

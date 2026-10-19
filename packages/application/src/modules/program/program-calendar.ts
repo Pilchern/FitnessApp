@@ -171,3 +171,17 @@ export function programMilestones(
   }
   return milestones;
 }
+
+/**
+ * The next block to start after `date` (by week; manual blocks excluded),
+ * for "next block starts <date>". Null after the last one.
+ */
+export function nextBlockStart(
+  program: Pick<
+    TrainingProgram,
+    "weekAnchorDate" | "blocks" | "returnToSportWeek"
+  >,
+  date: IsoDate,
+): ProgramMilestone | null {
+  return programMilestones(program).find((m) => m.date > date) ?? null;
+}

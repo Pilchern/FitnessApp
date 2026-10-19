@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import type { StrengthSession } from "@fitness-app/domain";
-import type { LoggerPlanExercise } from "@fitness-app/application";
+import {
+  restForTick,
+  restMetaFromPlan,
+  type LoggerPlanExercise,
+  type RestMeta,
+} from "@fitness-app/application";
 import {
   createEmptyStrengthSet,
   draftWasSaved,
@@ -198,6 +203,10 @@ export function StrengthQuickForm({
   const [newExercise, setNewExercise] = useState("");
   const [restSeconds, setRestSeconds] = useState(90);
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
+  /** Program rest rules by exercise key; empty for templates and free logging. */
+  const [restMeta, setRestMeta] = useState<RestMeta>({});
+  /** What comes next: "Right leg", "Next: A2 Pull-Up", "Then A1 Squat". */
+  const [nextCue, setNextCue] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const vibrated = useRef(false);
   const draftChecked = useRef(false);
@@ -232,6 +241,8 @@ export function StrengthQuickForm({
     const plan = planRequest.definition;
     setRestoredAt(null);
     setPlanNotes(plan.notes ?? null);
+    setRestMeta(restMetaFromPlan(plan.exercises));
+    setNextCue(null);
     setExerciseNotes(
       Object.fromEntries(
         plan.exercises
@@ -267,10 +278,17 @@ export function StrengthQuickForm({
     const named = values.sets.some((set) => set.exerciseName.trim());
     writeDraft(
       named
-        ? { savedAt: Date.now(), values, exerciseNotes, planNotes, repTops }
+        ? {
+            savedAt: Date.now(),
+            values,
+            exerciseNotes,
+            planNotes,
+            repTops,
+            restMeta,
+          }
         : null,
     );
-  }, [mode, values, exerciseNotes, planNotes, repTops]);
+  }, [mode, values, exerciseNotes, planNotes, repTops, restMeta]);
 
   useEffect(() => {
     if (mode !== "create") return;
@@ -283,6 +301,7 @@ export function StrengthQuickForm({
       setExerciseNotes(draft.exerciseNotes);
       setPlanNotes(draft.planNotes);
       setRepTops(draft.repTops ?? {});
+      setRestMeta(draft.restMeta ?? {});
       setRestoredAt(draft.savedAt);
     }
     draftChecked.current = true;
@@ -295,6 +314,8 @@ export function StrengthQuickForm({
     setExerciseNotes({});
     setPlanNotes(null);
     setRepTops({});
+    setRestMeta({});
+    setNextCue(null);
     setRestEndsAt(null);
     setRestoredAt(null);
   }
@@ -330,10 +351,10 @@ export function StrengthQuickForm({
     }
   }, [restEndsAt, restRemaining]);
 
-  function startRest() {
+  function startRest(seconds: number = restSeconds) {
     vibrated.current = false;
     setNow(Date.now());
-    setRestEndsAt(Date.now() + restSeconds * 1000);
+    setRestEndsAt(Date.now() + seconds * 1000);
   }
 
   function updateSet(index: number, next: Partial<StrengthSetFormValue>) {
@@ -358,10 +379,24 @@ export function StrengthQuickForm({
     });
   }
 
+  /**
+   * Ticking a set starts the rest. Program rows follow their rules: no rest
+   * between legs or inside a superset (just "what's next"), the pair rest
+   * after the last item, else the category's rest. Other rows use the timer.
+   */
   function toggleDone(index: number) {
     const wasDone = Boolean(values.sets[index]?.done);
     updateSet(index, { done: !wasDone });
-    if (!wasDone) startRest();
+    if (wasDone) return;
+    const call = restForTick(values.sets, index, restMeta);
+    if (!call) {
+      setNextCue(null);
+      startRest();
+      return;
+    }
+    setNextCue(call.next);
+    if (call.seconds > 0) startRest(call.seconds);
+    else setRestEndsAt(null);
   }
 
   function addSet(groupIndexes: number[]) {
@@ -629,6 +664,12 @@ export function StrengthQuickForm({
               <div className="flex items-start justify-between gap-2 px-1">
                 <div className="min-w-0">
                   <h3 className="text-base font-semibold text-ink">
+                    {restMeta[group.key]?.supersetGroup ? (
+                      <span className="mr-1.5 text-sm tabular-nums text-pine">
+                        {restMeta[group.key]?.supersetGroup}
+                        {restMeta[group.key]?.supersetOrder ?? ""}
+                      </span>
+                    ) : null}
                     {group.name}
                   </h3>
                   {exerciseNotes[group.key] ? (
@@ -953,12 +994,34 @@ export function StrengthQuickForm({
         {/* Nothing to save on an empty workout, so no bar. */}
         {showSaveBar ? (
           <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 space-y-2 border-t border-ink/10 bg-white/95 px-3 pb-3 pt-2 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
+            {restEndsAt == null && nextCue && mode === "create" ? (
+              <div className="flex h-12 items-center justify-between gap-2 rounded-2xl bg-pine px-3 text-white">
+                <span className="min-w-0 truncate text-base font-semibold">
+                  No rest · {nextCue}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Dismiss"
+                  onClick={() => setNextCue(null)}
+                  className="h-9 w-9 shrink-0 text-lg text-white/70"
+                >
+                  ×
+                </button>
+              </div>
+            ) : null}
             {restEndsAt != null && mode === "create" ? (
-              <div className="flex h-12 items-center justify-between gap-2 rounded-2xl bg-ink px-3 text-white">
-                <span className="text-lg font-semibold tabular-nums">
-                  {restRemaining > 0
-                    ? `Rest ${formatClock(restRemaining)}`
-                    : "Rest over, go"}
+              <div className="flex min-h-12 items-center justify-between gap-2 rounded-2xl bg-ink px-3 py-1 text-white">
+                <span className="min-w-0">
+                  <span className="block text-lg font-semibold tabular-nums">
+                    {restRemaining > 0
+                      ? `Rest ${formatClock(restRemaining)}`
+                      : "Rest over, go"}
+                  </span>
+                  {nextCue ? (
+                    <span className="block truncate text-xs text-white/70">
+                      {nextCue}
+                    </span>
+                  ) : null}
                 </span>
                 <div className="flex items-center gap-1">
                   {REST_OPTIONS.map((option) => (
@@ -983,7 +1046,10 @@ export function StrengthQuickForm({
                   <button
                     type="button"
                     aria-label="Dismiss rest timer"
-                    onClick={() => setRestEndsAt(null)}
+                    onClick={() => {
+                      setRestEndsAt(null);
+                      setNextCue(null);
+                    }}
                     className="h-9 w-9 text-lg text-white/70"
                   >
                     ×

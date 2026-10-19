@@ -88,6 +88,7 @@ const sessionRowSchema = z.object({
     "walk_jog",
     "walk",
     "golf",
+    "accessory",
   ]),
   name: z.string(),
   upper_template_id: z.string().uuid().nullable(),
@@ -140,6 +141,8 @@ const exerciseRowSchema = z.object({
   substitute_load_kind: loadKind.nullable(),
   substitute_reps_min: num.optional().default(null),
   substitute_reps_max: num.optional().default(null),
+  superset_group: z.string().nullable().optional().default(null),
+  superset_order: num.optional().default(null),
   notes: z.string().nullable(),
 });
 
@@ -240,6 +243,8 @@ function mapExercise(row: z.infer<typeof exerciseRowSchema>): ProgramExercise {
     substituteLoadKind: row.substitute_load_kind,
     substituteRepsMin: row.substitute_reps_min,
     substituteRepsMax: row.substitute_reps_max,
+    supersetGroup: row.superset_group,
+    supersetOrder: row.superset_order,
     notes: row.notes,
   };
 }
