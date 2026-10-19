@@ -802,6 +802,16 @@ cue_json = jdump({n: CUES[n] for n in used})
 for blob in (jdump(sess_json), jdump(ex_json), cue_json):
     assert "$j$" not in blob
 
+V1_BLOCK_COLS = ("k, name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir_target, "
+                 "rep_scheme, notes, activation, gate_key, from_k, fallback_k")
+
+
+def v1_blocks(alias):
+    """The block list inline: no temp table, so no DROP, which the connector holds for confirmation."""
+    rows = (","+chr(10)+"    ").join(block_rows)
+    return f"(values{chr(10)}    {rows}{chr(10)}  ) as {alias}({V1_BLOCK_COLS})"
+
+
 parts.append(("program rows", f"""-- 3. Retire the program's blocks, sessions and exercises; the upserts below
 -- bring back every row v1 uses (the Block 4 placeholder and the old gated
 -- slots stay retired).
@@ -824,14 +834,6 @@ from o {PROG}
 where b.program_id = p.id and b.deleted_at is null;
 
 -- 4. Blocks (k = block code within this script).
-drop table if exists pg_temp.v1_blocks;
-create temporary table v1_blocks (
-  k text, name text, start_week smallint, end_week smallint, sets_min smallint, sets_max smallint,
-  reps_min smallint, reps_max smallint, rir_target numeric, rep_scheme text, notes text,
-  activation text, gate_key text, from_k text, fallback_k text
-);
-insert into v1_blocks values
-  {(","+chr(10)+"  ").join(block_rows)};
 
 {OWNER}
 insert into public.program_blocks
@@ -840,7 +842,7 @@ insert into public.program_blocks
 select o.uid, p.id, v.name, v.start_week, v.end_week, v.sets_min, v.sets_max, v.reps_min, v.reps_max,
   v.rir_target, v.rep_scheme, v.notes, v.activation, v.gate_key
 from o {PROG}
-cross join v1_blocks v
+cross join {v1_blocks('v')}
 on conflict (program_id, name) do update
   set start_week = excluded.start_week, end_week = excluded.end_week,
       sets_min = excluded.sets_min, sets_max = excluded.sets_max,
@@ -853,8 +855,8 @@ on conflict (program_id, name) do update
 update public.program_blocks b
 set sessions_from_block_id = src.id
 from o {PROG}
-join v1_blocks v on v.from_k is not null
-join v1_blocks vs on vs.k = v.from_k
+join {v1_blocks('v')} on v.from_k is not null
+join {v1_blocks('vs')} on vs.k = v.from_k
 join public.program_blocks src on src.program_id = p.id and src.name = vs.name
 where b.program_id = p.id and b.name = v.name;
 
@@ -862,8 +864,8 @@ where b.program_id = p.id and b.name = v.name;
 update public.program_blocks b
 set fallback_block_id = fb.id
 from o {PROG}
-join v1_blocks v on v.fallback_k is not null
-join v1_blocks vf on vf.k = v.fallback_k
+join {v1_blocks('v')} on v.fallback_k is not null
+join {v1_blocks('vf')} on vf.k = v.fallback_k
 join public.program_blocks fb on fb.program_id = p.id and fb.name = vf.name
 where b.program_id = p.id and b.name = v.name;
 
@@ -886,7 +888,7 @@ from o {PROG}
 cross join jsonb_to_recordset($j${jdump(sess_json)}$j$::jsonb)
   as v(k text, d smallint, s smallint, t text, n text, rk text, m1 smallint, m2 smallint,
        st text, g text, op boolean, nt text)
-join v1_blocks vb on vb.k = v.k
+join {v1_blocks('vb')} on vb.k = v.k
 join public.program_blocks b on b.program_id = p.id and b.name = vb.name
 on conflict (block_id, day_of_week, sort_order) do update
   set session_type = excluded.session_type, name = excluded.name, ride_kind = excluded.ride_kind,
@@ -915,7 +917,7 @@ cross join jsonb_to_recordset($j${jdump(ex_json)}$j$::jsonb)
        ms text, sd text, l text, s1 smallint, s2 smallint, r1 smallint, r2 smallint, ir numeric,
        sc smallint, dm smallint, tp text, g text, g2 text, sb text, sl text, sr1 smallint,
        sr2 smallint, fw smallint, uw smallint, q boolean, nt text)
-join v1_blocks vb on vb.k = v.k
+join {v1_blocks('vb')} on vb.k = v.k
 join public.program_blocks b on b.program_id = p.id and b.name = vb.name
 join public.program_sessions s on s.block_id = b.id and s.day_of_week = v.d and s.sort_order = v.s
 on conflict (program_session_id, exercise_order) do update
@@ -932,8 +934,6 @@ on conflict (program_session_id, exercise_order) do update
       from_week = excluded.from_week, until_week = excluded.until_week,
       counts_as_quad_set = excluded.counts_as_quad_set, cue = excluded.cue, notes = excluded.notes,
       deleted_at = null;
-
-drop table pg_temp.v1_blocks;
 
 -- Old gate names, now that nothing live points at them.
 {OWNER}
@@ -1047,28 +1047,28 @@ where t.user_id = o.uid and t.template_type = 'strength' and t.deleted_at is nul
 
 n_sessions_total = sum(len(b.get("sessions") or {}) for b in BLOCKS)
 n_ex_total = len(ex_json)
-parts.append(("checks", f"""-- 9. Checks: any mismatch raises, and the whole seed rolls back.
-do $$
-declare
-  pid uuid;
-  n int;
-begin
-  select p.id into pid from public.training_programs p
+parts.append(("checks", f"""-- 9. Checks: a mismatch fails the cast below (the error text names it), and
+-- the whole seed rolls back. Plain SQL (no DO block, no DROP), so the
+-- Supabase connector runs it without asking for confirmation.
+with p as (
+  select p.id from public.training_programs p
   join public.profiles pr on pr.user_id = p.user_id
-  where p.name = {q(PROGRAM)} order by pr.created_at limit 1;
-  select count(*) into n from public.program_blocks where program_id = pid and deleted_at is null;
-  if n <> {len(BLOCKS)} then raise exception 'v1 seed: % blocks, expected {len(BLOCKS)}', n; end if;
-  select count(*) into n from public.program_sessions s join public.program_blocks b on b.id = s.block_id
-    where b.program_id = pid and s.deleted_at is null and b.deleted_at is null;
-  if n <> {n_sessions_total} then raise exception 'v1 seed: % sessions, expected {n_sessions_total}', n; end if;
-  select count(*) into n from public.program_exercises e join public.program_sessions s on s.id = e.program_session_id
-    join public.program_blocks b on b.id = s.block_id
-    where b.program_id = pid and e.deleted_at is null and s.deleted_at is null and b.deleted_at is null;
-  if n <> {n_ex_total} then raise exception 'v1 seed: % exercises, expected {n_ex_total}', n; end if;
-  select count(*) into n from public.program_weeks where program_id = pid and deleted_at is null
-    and is_deload and week_number in (13, 18, 27, 32);
-  if n <> 4 then raise exception 'v1 seed: % of the 4 deload weeks flagged', n; end if;
-end $$;
+  where p.name = {q(PROGRAM)} order by pr.created_at limit 1
+), c as (
+  select
+    (select count(*) from public.program_blocks b, p where b.program_id = p.id and b.deleted_at is null) as blocks,
+    (select count(*) from public.program_sessions s join public.program_blocks b on b.id = s.block_id, p
+      where b.program_id = p.id and s.deleted_at is null and b.deleted_at is null) as sessions,
+    (select count(*) from public.program_exercises e join public.program_sessions s on s.id = e.program_session_id
+      join public.program_blocks b on b.id = s.block_id, p
+      where b.program_id = p.id and e.deleted_at is null and s.deleted_at is null and b.deleted_at is null) as exercises,
+    (select count(*) from public.program_weeks w, p where w.program_id = p.id and w.deleted_at is null
+      and w.is_deload and w.week_number in (13, 18, 27, 32)) as deloads
+)
+select ('v1 seed check failed: blocks ' || blocks || '/{len(BLOCKS)}, sessions ' || sessions
+  || '/{n_sessions_total}, exercises ' || exercises || '/{n_ex_total}, deloads ' || deloads || '/4')::int
+from c
+where blocks <> {len(BLOCKS)} or sessions <> {n_sessions_total} or exercises <> {n_ex_total} or deloads <> 4;
 """))
 sql = header + "\n" + "\n".join(p for _, p in parts)
 OUT_MIGRATION.write_text(sql)
@@ -1142,11 +1142,11 @@ for day, lit in tmpl_literals.items():
 assert "$j$" not in apply_sql
 md5_checks = " or ".join(
     f"(part = {q(k)} and md5(body) <> {q(hashlib.md5(v.encode()).hexdigest())})" for k, v in stage.items())
-apply_sql = f"""do $$ begin
-  if (select count(*) from seed_staging.v1) <> {len(stage)} or exists (
-    select 1 from seed_staging.v1 where {md5_checks}
-  ) then raise exception 'v1 seed: staged data does not match the generator'; end if;
-end $$;
+apply_sql = f"""-- Staged data must match the generator byte for byte. (The failing cast
+-- depends on an aggregate, so it only runs when the check fails.)
+select ('v1 seed: staged data does not match the generator: ' || count(*) || ' parts')::int
+from seed_staging.v1
+having count(*) <> {len(stage)} or bool_or({md5_checks});
 """ + apply_sql
 stage_dir = OUT_CHUNKS / "stage"
 stage_dir.mkdir(parents=True, exist_ok=True)
@@ -1162,3 +1162,29 @@ for i, (k, v) in enumerate(stage.items(), start=1):
 (stage_dir / "90_apply.sql").write_text(apply_sql)
 (stage_dir / "99_drop.sql").write_text("drop schema seed_staging cascade;\n")
 print("staging parts:", {k: len(v) for k, v in stage.items()}, "apply bytes:", len(apply_sql))
+
+# The connector also drops requests much over ~15 KB, so the apply script is
+# staged too (in pieces, md5-checked as a whole) and run by a tiny call.
+script_parts = []
+current = ""
+for stmt in apply_sql.split(";\n"):
+    piece = stmt + ";\n"
+    if current and len((current + piece).encode()) > 9000:
+        script_parts.append(current)
+        current = ""
+    current += piece
+script_parts.append(current)
+assert "".join(script_parts) == apply_sql + ";\n"
+full_script = "".join(script_parts)
+for i, body in enumerate(script_parts, start=1):
+    assert "$q$" not in body
+    (stage_dir / f"5{i}_script.sql").write_text(
+        f"insert into seed_staging.script values ({i}, $q${body}$q$)\n"
+        f"on conflict (part) do update set body = excluded.body;\n")
+script_md5 = hashlib.md5(full_script.encode()).hexdigest()
+run = (f"select seed_staging.run(s) from (select string_agg(body, '' order by part) as s from seed_staging.script) x\n"
+       f"where md5(s) = '{script_md5}' and (select count(*) from seed_staging.script) = {len(script_parts)};\n"
+       f"select ('v1 seed: staged script does not match: ' || md5(string_agg(body, '' order by part)))::int\n"
+       f"from seed_staging.script having md5(string_agg(body, '' order by part)) <> '{script_md5}';\n")
+(stage_dir / "91_run.sql").write_text(run)
+print("script parts:", [len(p.encode()) for p in script_parts], "md5", script_md5)

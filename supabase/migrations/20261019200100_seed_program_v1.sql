@@ -62,27 +62,6 @@ from o join public.training_programs p on p.user_id = o.uid and p.name = 'ACL re
 where b.program_id = p.id and b.deleted_at is null;
 
 -- 4. Blocks (k = block code within this script).
-drop table if exists pg_temp.v1_blocks;
-create temporary table v1_blocks (
-  k text, name text, start_week smallint, end_week smallint, sets_min smallint, sets_max smallint,
-  reps_min smallint, reps_max smallint, rir_target numeric, rep_scheme text, notes text,
-  activation text, gate_key text, from_k text, fallback_k text
-);
-insert into v1_blocks values
-  ('k0', 'On-ramp', 9::smallint, 9::smallint, 2::smallint, 3::smallint, 12::smallint, 12::smallint, 3::numeric, 'Main 2–3 x 12 @ RIR 3–4; accessories 2 x 12 @ RIR 3; upper unchanged.', 'First loaded leg week: find loads. Every first set is "find load".', 'week', null, null, null),
-  ('k1', 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2, 'Main 3–4 x 10–12 @ RIR 2; accessories 3 x 10–15 @ RIR 1–2.', null, 'week', null, null, null),
-  ('k2', 'Deload + Test', 13, 13, null, null, null, null, null, 'Block 1 at deload volume: one set off, no load increases, plyo halved.', 'Full test battery Sunday 11/22 (PT Tracker).', 'week', null, 'k1', null),
-  ('k3', 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2, 'Main 4 x 6–8 @ RIR 2; accessories 3 x 8–12. Plyos: quality only.', 'Suggested start for main lifts: Block 1''s top 10-rep load x 1.1 (the engine does this).', 'week', null, null, null),
-  ('k4', 'Deload', 18, 18, null, null, null, null, null, 'Block 2 at deload volume.', 'Holiday week. Test Sunday 12/27.', 'week', null, 'k3', null),
-  ('k5', 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2, 'Main 4–5 x 3–5 @ RIR 2. Power before strength.', 'Week 22 Sunday: first hop test battery (PT Tracker).', 'week', null, null, null),
-  ('k6', 'Strength A', 23, 26, 4, 4, 4, 6, 1, 'Main 4 x 4–6 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
-  ('k7', 'Deload + Test (week 27)', 27, 27, null, null, null, null, null, 'Strength A at deload volume.', 'Monthly test Sunday.', 'week', null, 'k6', null),
-  ('k8', 'Power B', 28, 31, 3, 3, 3, 3, null, 'Main 3 x 3 at 75–80% effort, moved fast, each paired with a contrast jump.', null, 'week', null, null, null),
-  ('k9', 'Deload + Test (week 32)', 32, 32, null, null, null, null, null, 'Power B at deload volume.', 'Monthly test Sunday.', 'week', null, 'k8', null),
-  ('k10', 'Strength A2', 33, 36, 5, 5, 3, 5, 1, 'Main 5 x 3–5 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
-  ('k11', 'Taper + RTS battery', 37, 38, null, null, null, null, null, 'Strength A2 at deload volume.', 'Full return-to-sport battery Sunday 5/16 (PT Tracker).', 'week', null, 'k10', null),
-  ('k12', 'Return to Sport + Maintenance', 39, 520, 3, 4, 4, 8, 2, 'Strength 2–3x a week, main 3–4 x 4–8; injury prevention 2x a week.', 'Starts when the rts gate is on; until then Strength A2 keeps running.', 'gate', 'rts', null, 'k10'),
-  ('k13', 'Triathlon (placeholder)', 39, 520, null, null, null, null, null, null, 'Empty placeholder. Turn it on by setting its activation date, then add sessions.', 'manual', null, null, null);
 
 with o as (select user_id as uid from public.profiles order by created_at limit 1)
 insert into public.program_blocks
@@ -91,7 +70,22 @@ insert into public.program_blocks
 select o.uid, p.id, v.name, v.start_week, v.end_week, v.sets_min, v.sets_max, v.reps_min, v.reps_max,
   v.rir_target, v.rep_scheme, v.notes, v.activation, v.gate_key
 from o join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
-cross join v1_blocks v
+cross join (values
+    ('k0', 'On-ramp', 9::smallint, 9::smallint, 2::smallint, 3::smallint, 12::smallint, 12::smallint, 3::numeric, 'Main 2–3 x 12 @ RIR 3–4; accessories 2 x 12 @ RIR 3; upper unchanged.', 'First loaded leg week: find loads. Every first set is "find load".', 'week', null, null, null),
+    ('k1', 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2, 'Main 3–4 x 10–12 @ RIR 2; accessories 3 x 10–15 @ RIR 1–2.', null, 'week', null, null, null),
+    ('k2', 'Deload + Test', 13, 13, null, null, null, null, null, 'Block 1 at deload volume: one set off, no load increases, plyo halved.', 'Full test battery Sunday 11/22 (PT Tracker).', 'week', null, 'k1', null),
+    ('k3', 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2, 'Main 4 x 6–8 @ RIR 2; accessories 3 x 8–12. Plyos: quality only.', 'Suggested start for main lifts: Block 1''s top 10-rep load x 1.1 (the engine does this).', 'week', null, null, null),
+    ('k4', 'Deload', 18, 18, null, null, null, null, null, 'Block 2 at deload volume.', 'Holiday week. Test Sunday 12/27.', 'week', null, 'k3', null),
+    ('k5', 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2, 'Main 4–5 x 3–5 @ RIR 2. Power before strength.', 'Week 22 Sunday: first hop test battery (PT Tracker).', 'week', null, null, null),
+    ('k6', 'Strength A', 23, 26, 4, 4, 4, 6, 1, 'Main 4 x 4–6 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k7', 'Deload + Test (week 27)', 27, 27, null, null, null, null, null, 'Strength A at deload volume.', 'Monthly test Sunday.', 'week', null, 'k6', null),
+    ('k8', 'Power B', 28, 31, 3, 3, 3, 3, null, 'Main 3 x 3 at 75–80% effort, moved fast, each paired with a contrast jump.', null, 'week', null, null, null),
+    ('k9', 'Deload + Test (week 32)', 32, 32, null, null, null, null, null, 'Power B at deload volume.', 'Monthly test Sunday.', 'week', null, 'k8', null),
+    ('k10', 'Strength A2', 33, 36, 5, 5, 3, 5, 1, 'Main 5 x 3–5 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k11', 'Taper + RTS battery', 37, 38, null, null, null, null, null, 'Strength A2 at deload volume.', 'Full return-to-sport battery Sunday 5/16 (PT Tracker).', 'week', null, 'k10', null),
+    ('k12', 'Return to Sport + Maintenance', 39, 520, 3, 4, 4, 8, 2, 'Strength 2–3x a week, main 3–4 x 4–8; injury prevention 2x a week.', 'Starts when the rts gate is on; until then Strength A2 keeps running.', 'gate', 'rts', null, 'k10'),
+    ('k13', 'Triathlon (placeholder)', 39, 520, null, null, null, null, null, null, 'Empty placeholder. Turn it on by setting its activation date, then add sessions.', 'manual', null, null, null)
+  ) as v(k, name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes, activation, gate_key, from_k, fallback_k)
 on conflict (program_id, name) do update
   set start_week = excluded.start_week, end_week = excluded.end_week,
       sets_min = excluded.sets_min, sets_max = excluded.sets_max,
@@ -104,8 +98,38 @@ with o as (select user_id as uid from public.profiles order by created_at limit 
 update public.program_blocks b
 set sessions_from_block_id = src.id
 from o join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
-join v1_blocks v on v.from_k is not null
-join v1_blocks vs on vs.k = v.from_k
+join (values
+    ('k0', 'On-ramp', 9::smallint, 9::smallint, 2::smallint, 3::smallint, 12::smallint, 12::smallint, 3::numeric, 'Main 2–3 x 12 @ RIR 3–4; accessories 2 x 12 @ RIR 3; upper unchanged.', 'First loaded leg week: find loads. Every first set is "find load".', 'week', null, null, null),
+    ('k1', 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2, 'Main 3–4 x 10–12 @ RIR 2; accessories 3 x 10–15 @ RIR 1–2.', null, 'week', null, null, null),
+    ('k2', 'Deload + Test', 13, 13, null, null, null, null, null, 'Block 1 at deload volume: one set off, no load increases, plyo halved.', 'Full test battery Sunday 11/22 (PT Tracker).', 'week', null, 'k1', null),
+    ('k3', 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2, 'Main 4 x 6–8 @ RIR 2; accessories 3 x 8–12. Plyos: quality only.', 'Suggested start for main lifts: Block 1''s top 10-rep load x 1.1 (the engine does this).', 'week', null, null, null),
+    ('k4', 'Deload', 18, 18, null, null, null, null, null, 'Block 2 at deload volume.', 'Holiday week. Test Sunday 12/27.', 'week', null, 'k3', null),
+    ('k5', 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2, 'Main 4–5 x 3–5 @ RIR 2. Power before strength.', 'Week 22 Sunday: first hop test battery (PT Tracker).', 'week', null, null, null),
+    ('k6', 'Strength A', 23, 26, 4, 4, 4, 6, 1, 'Main 4 x 4–6 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k7', 'Deload + Test (week 27)', 27, 27, null, null, null, null, null, 'Strength A at deload volume.', 'Monthly test Sunday.', 'week', null, 'k6', null),
+    ('k8', 'Power B', 28, 31, 3, 3, 3, 3, null, 'Main 3 x 3 at 75–80% effort, moved fast, each paired with a contrast jump.', null, 'week', null, null, null),
+    ('k9', 'Deload + Test (week 32)', 32, 32, null, null, null, null, null, 'Power B at deload volume.', 'Monthly test Sunday.', 'week', null, 'k8', null),
+    ('k10', 'Strength A2', 33, 36, 5, 5, 3, 5, 1, 'Main 5 x 3–5 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k11', 'Taper + RTS battery', 37, 38, null, null, null, null, null, 'Strength A2 at deload volume.', 'Full return-to-sport battery Sunday 5/16 (PT Tracker).', 'week', null, 'k10', null),
+    ('k12', 'Return to Sport + Maintenance', 39, 520, 3, 4, 4, 8, 2, 'Strength 2–3x a week, main 3–4 x 4–8; injury prevention 2x a week.', 'Starts when the rts gate is on; until then Strength A2 keeps running.', 'gate', 'rts', null, 'k10'),
+    ('k13', 'Triathlon (placeholder)', 39, 520, null, null, null, null, null, null, 'Empty placeholder. Turn it on by setting its activation date, then add sessions.', 'manual', null, null, null)
+  ) as v(k, name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes, activation, gate_key, from_k, fallback_k) on v.from_k is not null
+join (values
+    ('k0', 'On-ramp', 9::smallint, 9::smallint, 2::smallint, 3::smallint, 12::smallint, 12::smallint, 3::numeric, 'Main 2–3 x 12 @ RIR 3–4; accessories 2 x 12 @ RIR 3; upper unchanged.', 'First loaded leg week: find loads. Every first set is "find load".', 'week', null, null, null),
+    ('k1', 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2, 'Main 3–4 x 10–12 @ RIR 2; accessories 3 x 10–15 @ RIR 1–2.', null, 'week', null, null, null),
+    ('k2', 'Deload + Test', 13, 13, null, null, null, null, null, 'Block 1 at deload volume: one set off, no load increases, plyo halved.', 'Full test battery Sunday 11/22 (PT Tracker).', 'week', null, 'k1', null),
+    ('k3', 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2, 'Main 4 x 6–8 @ RIR 2; accessories 3 x 8–12. Plyos: quality only.', 'Suggested start for main lifts: Block 1''s top 10-rep load x 1.1 (the engine does this).', 'week', null, null, null),
+    ('k4', 'Deload', 18, 18, null, null, null, null, null, 'Block 2 at deload volume.', 'Holiday week. Test Sunday 12/27.', 'week', null, 'k3', null),
+    ('k5', 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2, 'Main 4–5 x 3–5 @ RIR 2. Power before strength.', 'Week 22 Sunday: first hop test battery (PT Tracker).', 'week', null, null, null),
+    ('k6', 'Strength A', 23, 26, 4, 4, 4, 6, 1, 'Main 4 x 4–6 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k7', 'Deload + Test (week 27)', 27, 27, null, null, null, null, null, 'Strength A at deload volume.', 'Monthly test Sunday.', 'week', null, 'k6', null),
+    ('k8', 'Power B', 28, 31, 3, 3, 3, 3, null, 'Main 3 x 3 at 75–80% effort, moved fast, each paired with a contrast jump.', null, 'week', null, null, null),
+    ('k9', 'Deload + Test (week 32)', 32, 32, null, null, null, null, null, 'Power B at deload volume.', 'Monthly test Sunday.', 'week', null, 'k8', null),
+    ('k10', 'Strength A2', 33, 36, 5, 5, 3, 5, 1, 'Main 5 x 3–5 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k11', 'Taper + RTS battery', 37, 38, null, null, null, null, null, 'Strength A2 at deload volume.', 'Full return-to-sport battery Sunday 5/16 (PT Tracker).', 'week', null, 'k10', null),
+    ('k12', 'Return to Sport + Maintenance', 39, 520, 3, 4, 4, 8, 2, 'Strength 2–3x a week, main 3–4 x 4–8; injury prevention 2x a week.', 'Starts when the rts gate is on; until then Strength A2 keeps running.', 'gate', 'rts', null, 'k10'),
+    ('k13', 'Triathlon (placeholder)', 39, 520, null, null, null, null, null, null, 'Empty placeholder. Turn it on by setting its activation date, then add sessions.', 'manual', null, null, null)
+  ) as vs(k, name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes, activation, gate_key, from_k, fallback_k) on vs.k = v.from_k
 join public.program_blocks src on src.program_id = p.id and src.name = vs.name
 where b.program_id = p.id and b.name = v.name;
 
@@ -113,8 +137,38 @@ with o as (select user_id as uid from public.profiles order by created_at limit 
 update public.program_blocks b
 set fallback_block_id = fb.id
 from o join public.training_programs p on p.user_id = o.uid and p.name = 'ACL return'
-join v1_blocks v on v.fallback_k is not null
-join v1_blocks vf on vf.k = v.fallback_k
+join (values
+    ('k0', 'On-ramp', 9::smallint, 9::smallint, 2::smallint, 3::smallint, 12::smallint, 12::smallint, 3::numeric, 'Main 2–3 x 12 @ RIR 3–4; accessories 2 x 12 @ RIR 3; upper unchanged.', 'First loaded leg week: find loads. Every first set is "find load".', 'week', null, null, null),
+    ('k1', 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2, 'Main 3–4 x 10–12 @ RIR 2; accessories 3 x 10–15 @ RIR 1–2.', null, 'week', null, null, null),
+    ('k2', 'Deload + Test', 13, 13, null, null, null, null, null, 'Block 1 at deload volume: one set off, no load increases, plyo halved.', 'Full test battery Sunday 11/22 (PT Tracker).', 'week', null, 'k1', null),
+    ('k3', 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2, 'Main 4 x 6–8 @ RIR 2; accessories 3 x 8–12. Plyos: quality only.', 'Suggested start for main lifts: Block 1''s top 10-rep load x 1.1 (the engine does this).', 'week', null, null, null),
+    ('k4', 'Deload', 18, 18, null, null, null, null, null, 'Block 2 at deload volume.', 'Holiday week. Test Sunday 12/27.', 'week', null, 'k3', null),
+    ('k5', 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2, 'Main 4–5 x 3–5 @ RIR 2. Power before strength.', 'Week 22 Sunday: first hop test battery (PT Tracker).', 'week', null, null, null),
+    ('k6', 'Strength A', 23, 26, 4, 4, 4, 6, 1, 'Main 4 x 4–6 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k7', 'Deload + Test (week 27)', 27, 27, null, null, null, null, null, 'Strength A at deload volume.', 'Monthly test Sunday.', 'week', null, 'k6', null),
+    ('k8', 'Power B', 28, 31, 3, 3, 3, 3, null, 'Main 3 x 3 at 75–80% effort, moved fast, each paired with a contrast jump.', null, 'week', null, null, null),
+    ('k9', 'Deload + Test (week 32)', 32, 32, null, null, null, null, null, 'Power B at deload volume.', 'Monthly test Sunday.', 'week', null, 'k8', null),
+    ('k10', 'Strength A2', 33, 36, 5, 5, 3, 5, 1, 'Main 5 x 3–5 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k11', 'Taper + RTS battery', 37, 38, null, null, null, null, null, 'Strength A2 at deload volume.', 'Full return-to-sport battery Sunday 5/16 (PT Tracker).', 'week', null, 'k10', null),
+    ('k12', 'Return to Sport + Maintenance', 39, 520, 3, 4, 4, 8, 2, 'Strength 2–3x a week, main 3–4 x 4–8; injury prevention 2x a week.', 'Starts when the rts gate is on; until then Strength A2 keeps running.', 'gate', 'rts', null, 'k10'),
+    ('k13', 'Triathlon (placeholder)', 39, 520, null, null, null, null, null, null, 'Empty placeholder. Turn it on by setting its activation date, then add sessions.', 'manual', null, null, null)
+  ) as v(k, name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes, activation, gate_key, from_k, fallback_k) on v.fallback_k is not null
+join (values
+    ('k0', 'On-ramp', 9::smallint, 9::smallint, 2::smallint, 3::smallint, 12::smallint, 12::smallint, 3::numeric, 'Main 2–3 x 12 @ RIR 3–4; accessories 2 x 12 @ RIR 3; upper unchanged.', 'First loaded leg week: find loads. Every first set is "find load".', 'week', null, null, null),
+    ('k1', 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2, 'Main 3–4 x 10–12 @ RIR 2; accessories 3 x 10–15 @ RIR 1–2.', null, 'week', null, null, null),
+    ('k2', 'Deload + Test', 13, 13, null, null, null, null, null, 'Block 1 at deload volume: one set off, no load increases, plyo halved.', 'Full test battery Sunday 11/22 (PT Tracker).', 'week', null, 'k1', null),
+    ('k3', 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2, 'Main 4 x 6–8 @ RIR 2; accessories 3 x 8–12. Plyos: quality only.', 'Suggested start for main lifts: Block 1''s top 10-rep load x 1.1 (the engine does this).', 'week', null, null, null),
+    ('k4', 'Deload', 18, 18, null, null, null, null, null, 'Block 2 at deload volume.', 'Holiday week. Test Sunday 12/27.', 'week', null, 'k3', null),
+    ('k5', 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2, 'Main 4–5 x 3–5 @ RIR 2. Power before strength.', 'Week 22 Sunday: first hop test battery (PT Tracker).', 'week', null, null, null),
+    ('k6', 'Strength A', 23, 26, 4, 4, 4, 6, 1, 'Main 4 x 4–6 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k7', 'Deload + Test (week 27)', 27, 27, null, null, null, null, null, 'Strength A at deload volume.', 'Monthly test Sunday.', 'week', null, 'k6', null),
+    ('k8', 'Power B', 28, 31, 3, 3, 3, 3, null, 'Main 3 x 3 at 75–80% effort, moved fast, each paired with a contrast jump.', null, 'week', null, null, null),
+    ('k9', 'Deload + Test (week 32)', 32, 32, null, null, null, null, null, 'Power B at deload volume.', 'Monthly test Sunday.', 'week', null, 'k8', null),
+    ('k10', 'Strength A2', 33, 36, 5, 5, 3, 5, 1, 'Main 5 x 3–5 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k11', 'Taper + RTS battery', 37, 38, null, null, null, null, null, 'Strength A2 at deload volume.', 'Full return-to-sport battery Sunday 5/16 (PT Tracker).', 'week', null, 'k10', null),
+    ('k12', 'Return to Sport + Maintenance', 39, 520, 3, 4, 4, 8, 2, 'Strength 2–3x a week, main 3–4 x 4–8; injury prevention 2x a week.', 'Starts when the rts gate is on; until then Strength A2 keeps running.', 'gate', 'rts', null, 'k10'),
+    ('k13', 'Triathlon (placeholder)', 39, 520, null, null, null, null, null, null, 'Empty placeholder. Turn it on by setting its activation date, then add sessions.', 'manual', null, null, null)
+  ) as vf(k, name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes, activation, gate_key, from_k, fallback_k) on vf.k = v.fallback_k
 join public.program_blocks fb on fb.program_id = p.id and fb.name = vf.name
 where b.program_id = p.id and b.name = v.name;
 
@@ -137,7 +191,22 @@ from o join public.training_programs p on p.user_id = o.uid and p.name = 'ACL re
 cross join jsonb_to_recordset($j$[{"k":"k0","d":0,"s":0,"t":"test","n":"Test day + walk","st":"Tests in the PT Tracker, then a 30 min walk. Weekly Zone 2 target: 150 min (rides and walks)."},{"k":"k0","d":1,"s":0,"t":"lift","n":"Heavy legs + Push","nt":"Legs first, then Push, then core."},{"k":"k0","d":2,"s":1,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":30,"m2":45},{"k":"k0","d":3,"s":0,"t":"lift","n":"Single-leg + Pull","nt":"PT morning. Legs, then Pull, then core and balance."},{"k":"k0","d":4,"s":1,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":30,"m2":45},{"k":"k0","d":5,"s":0,"t":"lift","n":"Quad isolation + Arms","nt":"PT morning. Plyos first (normal knee check only), then quad work, then Arms."},{"k":"k0","d":6,"s":1,"t":"peloton","n":"Peloton Zone 2 (long)","rk":"zone2","m1":45,"m2":60},{"k":"k1","d":0,"s":0,"t":"test","n":"Test day + walk","st":"Tests in the PT Tracker, then a 30 min walk. Weekly Zone 2 target: 150 min (rides and walks)."},{"k":"k1","d":1,"s":0,"t":"lift","n":"Heavy legs + Push","nt":"Legs first, then Push, then core."},{"k":"k1","d":2,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k1","d":2,"s":1,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":30,"m2":45},{"k":"k1","d":3,"s":0,"t":"lift","n":"Single-leg + Pull","nt":"PT morning. Legs, then Pull, then core and balance."},{"k":"k1","d":4,"s":1,"t":"peloton","n":"Peloton climb intervals","rk":"climb_intervals","m1":45,"m2":45,"st":"10 min warm-up; 5 x 3 min seated, cadence 60–70, RPE 7, 3 min easy between; cool-down."},{"k":"k1","d":5,"s":0,"t":"lift","n":"Quad isolation + Arms","nt":"PT morning. Plyos first (normal knee check only), then quad work, then Arms."},{"k":"k1","d":6,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k1","d":6,"s":1,"t":"peloton","n":"Peloton Zone 2 (long)","rk":"zone2","m1":45,"m2":60},{"k":"k3","d":0,"s":0,"t":"test","n":"Test day + walk","st":"Tests in the PT Tracker, then a 30 min walk. Weekly Zone 2 target: 150 min (rides and walks)."},{"k":"k3","d":1,"s":0,"t":"lift","n":"Heavy legs + Push","nt":"Legs first, then Push, then core."},{"k":"k3","d":2,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k3","d":2,"s":1,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":30,"m2":45},{"k":"k3","d":3,"s":0,"t":"lift","n":"Single-leg + Pull","nt":"PT morning. Legs, then Pull, then core and balance."},{"k":"k3","d":4,"s":1,"t":"peloton","n":"Peloton 4 x 4","rk":"threshold_intervals","m1":40,"m2":45,"st":"10 min warm-up; 4 x 4 min at RPE 8 (standing allowed if the knee check is normal), 3 min easy between; cool-down."},{"k":"k3","d":5,"s":0,"t":"lift","n":"Power intro + quad + Arms","nt":"PT morning. Plyos first (normal knee check only), then quad work, then Arms."},{"k":"k3","d":6,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k3","d":6,"s":1,"t":"peloton","n":"Peloton Zone 2 (long)","rk":"zone2","m1":45,"m2":60},{"k":"k5","d":0,"s":0,"t":"test","n":"Test day + walk","st":"Tests in the PT Tracker, then a 30 min walk. Weekly Zone 2 target: 150 min (rides and walks)."},{"k":"k5","d":1,"s":0,"t":"lift","n":"Heavy legs + Push","nt":"Legs first, then Push, then core."},{"k":"k5","d":2,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k5","d":2,"s":1,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":30,"m2":45},{"k":"k5","d":3,"s":0,"t":"lift","n":"Single-leg power + Pull","nt":"PT morning. Legs, then Pull, then core and balance."},{"k":"k5","d":4,"s":1,"t":"peloton","n":"Peloton VO2 max","rk":"vo2_intervals","m1":45,"m2":45,"st":"10 min warm-up; 4 x 4 min at RPE 8–9, 4 min easy between; cool-down."},{"k":"k5","d":5,"s":0,"t":"lift","n":"Reactive + quad + Arms","nt":"PT morning. Plyos first (normal knee check only), then quad work, then Arms."},{"k":"k5","d":6,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k5","d":6,"s":1,"t":"peloton","n":"Peloton Zone 2 (long)","rk":"zone2","m1":45,"m2":60},{"k":"k6","d":0,"s":0,"t":"test","n":"Test day + walk","st":"Tests in the PT Tracker, then a 30 min walk. Weekly Zone 2 target: 150 min (rides and walks)."},{"k":"k6","d":1,"s":0,"t":"lift","n":"Heavy legs + Push","nt":"Legs first, then Push, then core."},{"k":"k6","d":2,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back. From week 23: run 2–3x a week, weekly run minutes up 10% at most.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k6","d":2,"s":1,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":30,"m2":45},{"k":"k6","d":3,"s":0,"t":"lift","n":"Single-leg power + Pull","nt":"PT morning. Legs, then Pull, then core and balance."},{"k":"k6","d":4,"s":1,"t":"peloton","n":"Peloton VO2 max","rk":"vo2_intervals","m1":45,"m2":45,"st":"10 min warm-up; 4 x 4 min at RPE 8–9, 4 min easy between; cool-down."},{"k":"k6","d":5,"s":0,"t":"lift","n":"Change of direction + quad + Arms","nt":"PT morning. Plyos first (normal knee check only), then quad work, then Arms."},{"k":"k6","d":6,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back. From week 23: run 2–3x a week, weekly run minutes up 10% at most.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k6","d":6,"s":1,"t":"peloton","n":"Peloton Zone 2 (long)","rk":"zone2","m1":45,"m2":60},{"k":"k6","d":6,"s":2,"t":"golf","n":"Golf: short game","st":"Putting and chipping, 1–2x a week. Log balls hit in the notes; check the knee next morning.","g":"golf_short","op":true},{"k":"k6","d":6,"s":3,"t":"golf","n":"Golf: full swing (staged)","st":"Half wedges → half irons → full irons → driver last. Each stage 2 weeks minimum with a normal next morning.","g":"golf_full","op":true},{"k":"k8","d":0,"s":0,"t":"test","n":"Test day + walk","st":"Tests in the PT Tracker, then a 30 min walk. Weekly Zone 2 target: 150 min (rides and walks)."},{"k":"k8","d":1,"s":0,"t":"lift","n":"Contrast legs + Push","nt":"Legs first, then Push, then core."},{"k":"k8","d":2,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back. From week 23: run 2–3x a week, weekly run minutes up 10% at most.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k8","d":2,"s":1,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":30,"m2":45},{"k":"k8","d":3,"s":0,"t":"lift","n":"Contrast single-leg + Pull","nt":"PT morning. Legs, then Pull, then core and balance."},{"k":"k8","d":4,"s":1,"t":"peloton","n":"Peloton VO2 max","rk":"vo2_intervals","m1":40,"m2":45,"st":"Odd post-op weeks: 4 x 4 min at RPE 8–9, 4 min easy between. Even weeks: 8 x 30 s hard / 90 s easy. 10 min warm-up and cool-down."},{"k":"k8","d":5,"s":0,"t":"lift","n":"Speed + quad + Arms","nt":"PT morning. Plyos first (normal knee check only), then quad work, then Arms."},{"k":"k8","d":6,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back. From week 23: run 2–3x a week, weekly run minutes up 10% at most.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k8","d":6,"s":1,"t":"peloton","n":"Peloton Zone 2 (long)","rk":"zone2","m1":45,"m2":60},{"k":"k8","d":6,"s":2,"t":"golf","n":"Golf: short game","st":"Putting and chipping, 1–2x a week. Log balls hit in the notes; check the knee next morning.","g":"golf_short","op":true},{"k":"k8","d":6,"s":3,"t":"golf","n":"Golf: full swing (staged)","st":"Half wedges → half irons → full irons → driver last. Each stage 2 weeks minimum with a normal next morning.","g":"golf_full","op":true},{"k":"k10","d":0,"s":0,"t":"test","n":"Test day + walk","st":"Tests in the PT Tracker, then a 30 min walk. Weekly Zone 2 target: 150 min (rides and walks)."},{"k":"k10","d":1,"s":0,"t":"lift","n":"Heavy legs + Push","nt":"Legs first, then Push, then core."},{"k":"k10","d":2,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back. From week 23: run 2–3x a week, weekly run minutes up 10% at most.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k10","d":2,"s":1,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":30,"m2":45},{"k":"k10","d":3,"s":0,"t":"lift","n":"Single-leg power + Pull","nt":"PT morning. Legs, then Pull, then core and balance."},{"k":"k10","d":4,"s":1,"t":"peloton","n":"Peloton VO2 max","rk":"vo2_intervals","m1":40,"m2":45,"st":"Odd post-op weeks: 4 x 4 min at RPE 8–9, 4 min easy between. Even weeks: 8 x 30 s hard / 90 s easy. 10 min warm-up and cool-down."},{"k":"k10","d":5,"s":0,"t":"lift","n":"Change of direction + quad + Arms","nt":"PT morning. Plyos first (normal knee check only), then quad work, then Arms."},{"k":"k10","d":6,"s":0,"t":"walk_jog","n":"Walk-jog","st":"Stages: 1:1 x6 → 2:1 x6 → 3:1 x5 → 5:1 x4 → 10 min continuous → 15 → 20 → 30. Add 1–2 min of running after a normal next morning; otherwise 2 days off, then one stage back. From week 23: run 2–3x a week, weekly run minutes up 10% at most.","g":"jog","nt":"Then Peloton Zone 2 for 15–20 min."},{"k":"k10","d":6,"s":1,"t":"peloton","n":"Peloton Zone 2 (long)","rk":"zone2","m1":45,"m2":60},{"k":"k10","d":6,"s":2,"t":"golf","n":"Golf: short game","st":"Putting and chipping, 1–2x a week. Log balls hit in the notes; check the knee next morning.","g":"golf_short","op":true},{"k":"k10","d":6,"s":3,"t":"golf","n":"Golf: full swing (staged)","st":"Half wedges → half irons → full irons → driver last. Each stage 2 weeks minimum with a normal next morning.","g":"golf_full","op":true},{"k":"k12","d":0,"s":0,"t":"test","n":"Test day + walk","st":"PT Tracker tests and a 30 min walk. Quarterly benchmarks: dead hang (target 2 min), farmer carry at half bodyweight per hand (target 1 min), 18\" step-down with 3 s control per leg."},{"k":"k12","d":1,"s":0,"t":"lift","n":"Lower heavy + upper push","nt":"Prevention block after the lifts."},{"k":"k12","d":2,"s":0,"t":"peloton","n":"Peloton VO2 max","rk":"vo2_intervals","m1":40,"m2":45,"st":"10 min warm-up; 4 x 4 min at RPE 8–9, 4 min easy between; cool-down."},{"k":"k12","d":3,"s":0,"t":"run","n":"Run","m1":20,"m2":60,"st":"Per the triathlon plan once it starts; weekly run minutes up 10% at most.","g":"jog"},{"k":"k12","d":4,"s":0,"t":"lift","n":"Lower single-leg/power + upper pull","nt":"Prevention block after the lifts."},{"k":"k12","d":5,"s":0,"t":"peloton","n":"Peloton Zone 2","rk":"zone2","m1":45,"m2":60},{"k":"k12","d":6,"s":0,"t":"lift","n":"Full body","op":true,"nt":"Optional third lift."},{"k":"k12","d":6,"s":1,"t":"walk","n":"Ruck","m1":45,"m2":60,"st":"Ruck at Zone 2 heart rate.","op":true},{"k":"k12","d":6,"s":2,"t":"golf","n":"Golf: short game","st":"Putting and chipping, 1–2x a week. Log balls hit in the notes; check the knee next morning.","g":"golf_short","op":true},{"k":"k12","d":6,"s":3,"t":"golf","n":"Golf: full swing (staged)","st":"Half wedges → half irons → full irons → driver last. Each stage 2 weeks minimum with a normal next morning.","g":"golf_full","op":true}]$j$::jsonb)
   as v(k text, d smallint, s smallint, t text, n text, rk text, m1 smallint, m2 smallint,
        st text, g text, op boolean, nt text)
-join v1_blocks vb on vb.k = v.k
+join (values
+    ('k0', 'On-ramp', 9::smallint, 9::smallint, 2::smallint, 3::smallint, 12::smallint, 12::smallint, 3::numeric, 'Main 2–3 x 12 @ RIR 3–4; accessories 2 x 12 @ RIR 3; upper unchanged.', 'First loaded leg week: find loads. Every first set is "find load".', 'week', null, null, null),
+    ('k1', 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2, 'Main 3–4 x 10–12 @ RIR 2; accessories 3 x 10–15 @ RIR 1–2.', null, 'week', null, null, null),
+    ('k2', 'Deload + Test', 13, 13, null, null, null, null, null, 'Block 1 at deload volume: one set off, no load increases, plyo halved.', 'Full test battery Sunday 11/22 (PT Tracker).', 'week', null, 'k1', null),
+    ('k3', 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2, 'Main 4 x 6–8 @ RIR 2; accessories 3 x 8–12. Plyos: quality only.', 'Suggested start for main lifts: Block 1''s top 10-rep load x 1.1 (the engine does this).', 'week', null, null, null),
+    ('k4', 'Deload', 18, 18, null, null, null, null, null, 'Block 2 at deload volume.', 'Holiday week. Test Sunday 12/27.', 'week', null, 'k3', null),
+    ('k5', 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2, 'Main 4–5 x 3–5 @ RIR 2. Power before strength.', 'Week 22 Sunday: first hop test battery (PT Tracker).', 'week', null, null, null),
+    ('k6', 'Strength A', 23, 26, 4, 4, 4, 6, 1, 'Main 4 x 4–6 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k7', 'Deload + Test (week 27)', 27, 27, null, null, null, null, null, 'Strength A at deload volume.', 'Monthly test Sunday.', 'week', null, 'k6', null),
+    ('k8', 'Power B', 28, 31, 3, 3, 3, 3, null, 'Main 3 x 3 at 75–80% effort, moved fast, each paired with a contrast jump.', null, 'week', null, null, null),
+    ('k9', 'Deload + Test (week 32)', 32, 32, null, null, null, null, null, 'Power B at deload volume.', 'Monthly test Sunday.', 'week', null, 'k8', null),
+    ('k10', 'Strength A2', 33, 36, 5, 5, 3, 5, 1, 'Main 5 x 3–5 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k11', 'Taper + RTS battery', 37, 38, null, null, null, null, null, 'Strength A2 at deload volume.', 'Full return-to-sport battery Sunday 5/16 (PT Tracker).', 'week', null, 'k10', null),
+    ('k12', 'Return to Sport + Maintenance', 39, 520, 3, 4, 4, 8, 2, 'Strength 2–3x a week, main 3–4 x 4–8; injury prevention 2x a week.', 'Starts when the rts gate is on; until then Strength A2 keeps running.', 'gate', 'rts', null, 'k10'),
+    ('k13', 'Triathlon (placeholder)', 39, 520, null, null, null, null, null, null, 'Empty placeholder. Turn it on by setting its activation date, then add sessions.', 'manual', null, null, null)
+  ) as vb(k, name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes, activation, gate_key, from_k, fallback_k) on vb.k = v.k
 join public.program_blocks b on b.program_id = p.id and b.name = vb.name
 on conflict (block_id, day_of_week, sort_order) do update
   set session_type = excluded.session_type, name = excluded.name, ride_kind = excluded.ride_kind,
@@ -166,7 +235,22 @@ cross join jsonb_to_recordset($j$[{"k":"k0","d":1,"s":0,"o":10,"n":"Barbell Pin 
        ms text, sd text, l text, s1 smallint, s2 smallint, r1 smallint, r2 smallint, ir numeric,
        sc smallint, dm smallint, tp text, g text, g2 text, sb text, sl text, sr1 smallint,
        sr2 smallint, fw smallint, uw smallint, q boolean, nt text)
-join v1_blocks vb on vb.k = v.k
+join (values
+    ('k0', 'On-ramp', 9::smallint, 9::smallint, 2::smallint, 3::smallint, 12::smallint, 12::smallint, 3::numeric, 'Main 2–3 x 12 @ RIR 3–4; accessories 2 x 12 @ RIR 3; upper unchanged.', 'First loaded leg week: find loads. Every first set is "find load".', 'week', null, null, null),
+    ('k1', 'Block 1 Build', 10, 12, 3, 4, 10, 12, 2, 'Main 3–4 x 10–12 @ RIR 2; accessories 3 x 10–15 @ RIR 1–2.', null, 'week', null, null, null),
+    ('k2', 'Deload + Test', 13, 13, null, null, null, null, null, 'Block 1 at deload volume: one set off, no load increases, plyo halved.', 'Full test battery Sunday 11/22 (PT Tracker).', 'week', null, 'k1', null),
+    ('k3', 'Block 2 Strength', 14, 17, 4, 4, 6, 8, 2, 'Main 4 x 6–8 @ RIR 2; accessories 3 x 8–12. Plyos: quality only.', 'Suggested start for main lifts: Block 1''s top 10-rep load x 1.1 (the engine does this).', 'week', null, null, null),
+    ('k4', 'Deload', 18, 18, null, null, null, null, null, 'Block 2 at deload volume.', 'Holiday week. Test Sunday 12/27.', 'week', null, 'k3', null),
+    ('k5', 'Block 3 Heavy + Power', 19, 22, 4, 5, 3, 5, 2, 'Main 4–5 x 3–5 @ RIR 2. Power before strength.', 'Week 22 Sunday: first hop test battery (PT Tracker).', 'week', null, null, null),
+    ('k6', 'Strength A', 23, 26, 4, 4, 4, 6, 1, 'Main 4 x 4–6 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k7', 'Deload + Test (week 27)', 27, 27, null, null, null, null, null, 'Strength A at deload volume.', 'Monthly test Sunday.', 'week', null, 'k6', null),
+    ('k8', 'Power B', 28, 31, 3, 3, 3, 3, null, 'Main 3 x 3 at 75–80% effort, moved fast, each paired with a contrast jump.', null, 'week', null, null, null),
+    ('k9', 'Deload + Test (week 32)', 32, 32, null, null, null, null, null, 'Power B at deload volume.', 'Monthly test Sunday.', 'week', null, 'k8', null),
+    ('k10', 'Strength A2', 33, 36, 5, 5, 3, 5, 1, 'Main 5 x 3–5 @ RIR 1–2. Plyos at maintenance.', null, 'week', null, null, null),
+    ('k11', 'Taper + RTS battery', 37, 38, null, null, null, null, null, 'Strength A2 at deload volume.', 'Full return-to-sport battery Sunday 5/16 (PT Tracker).', 'week', null, 'k10', null),
+    ('k12', 'Return to Sport + Maintenance', 39, 520, 3, 4, 4, 8, 2, 'Strength 2–3x a week, main 3–4 x 4–8; injury prevention 2x a week.', 'Starts when the rts gate is on; until then Strength A2 keeps running.', 'gate', 'rts', null, 'k10'),
+    ('k13', 'Triathlon (placeholder)', 39, 520, null, null, null, null, null, null, 'Empty placeholder. Turn it on by setting its activation date, then add sessions.', 'manual', null, null, null)
+  ) as vb(k, name, start_week, end_week, sets_min, sets_max, reps_min, reps_max, rir_target, rep_scheme, notes, activation, gate_key, from_k, fallback_k) on vb.k = v.k
 join public.program_blocks b on b.program_id = p.id and b.name = vb.name
 join public.program_sessions s on s.block_id = b.id and s.day_of_week = v.d and s.sort_order = v.s
 on conflict (program_session_id, exercise_order) do update
@@ -183,8 +267,6 @@ on conflict (program_session_id, exercise_order) do update
       from_week = excluded.from_week, until_week = excluded.until_week,
       counts_as_quad_set = excluded.counts_as_quad_set, cue = excluded.cue, notes = excluded.notes,
       deleted_at = null;
-
-drop table pg_temp.v1_blocks;
 
 -- Old gate names, now that nothing live points at them.
 with o as (select user_id as uid from public.profiles order by created_at limit 1)
@@ -236,25 +318,25 @@ cross join (values
 where t.user_id = o.uid and t.template_type = 'strength' and t.deleted_at is null
   and t.scheduled_day_of_week = v.day;
 
--- 9. Checks: any mismatch raises, and the whole seed rolls back.
-do $$
-declare
-  pid uuid;
-  n int;
-begin
-  select p.id into pid from public.training_programs p
+-- 9. Checks: a mismatch fails the cast below (the error text names it), and
+-- the whole seed rolls back. Plain SQL (no DO block, no DROP), so the
+-- Supabase connector runs it without asking for confirmation.
+with p as (
+  select p.id from public.training_programs p
   join public.profiles pr on pr.user_id = p.user_id
-  where p.name = 'ACL return' order by pr.created_at limit 1;
-  select count(*) into n from public.program_blocks where program_id = pid and deleted_at is null;
-  if n <> 14 then raise exception 'v1 seed: % blocks, expected 14', n; end if;
-  select count(*) into n from public.program_sessions s join public.program_blocks b on b.id = s.block_id
-    where b.program_id = pid and s.deleted_at is null and b.deleted_at is null;
-  if n <> 77 then raise exception 'v1 seed: % sessions, expected 77', n; end if;
-  select count(*) into n from public.program_exercises e join public.program_sessions s on s.id = e.program_session_id
-    join public.program_blocks b on b.id = s.block_id
-    where b.program_id = pid and e.deleted_at is null and s.deleted_at is null and b.deleted_at is null;
-  if n <> 272 then raise exception 'v1 seed: % exercises, expected 272', n; end if;
-  select count(*) into n from public.program_weeks where program_id = pid and deleted_at is null
-    and is_deload and week_number in (13, 18, 27, 32);
-  if n <> 4 then raise exception 'v1 seed: % of the 4 deload weeks flagged', n; end if;
-end $$;
+  where p.name = 'ACL return' order by pr.created_at limit 1
+), c as (
+  select
+    (select count(*) from public.program_blocks b, p where b.program_id = p.id and b.deleted_at is null) as blocks,
+    (select count(*) from public.program_sessions s join public.program_blocks b on b.id = s.block_id, p
+      where b.program_id = p.id and s.deleted_at is null and b.deleted_at is null) as sessions,
+    (select count(*) from public.program_exercises e join public.program_sessions s on s.id = e.program_session_id
+      join public.program_blocks b on b.id = s.block_id, p
+      where b.program_id = p.id and e.deleted_at is null and s.deleted_at is null and b.deleted_at is null) as exercises,
+    (select count(*) from public.program_weeks w, p where w.program_id = p.id and w.deleted_at is null
+      and w.is_deload and w.week_number in (13, 18, 27, 32)) as deloads
+)
+select ('v1 seed check failed: blocks ' || blocks || '/14, sessions ' || sessions
+  || '/77, exercises ' || exercises || '/272, deloads ' || deloads || '/4')::int
+from c
+where blocks <> 14 or sessions <> 77 or exercises <> 272 or deloads <> 4;
