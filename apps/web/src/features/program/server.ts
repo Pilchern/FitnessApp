@@ -15,6 +15,8 @@ import {
   programSettingsFromRows,
   programWeekDates,
   programWeekInfo,
+  applySettingGates,
+  isSettingGate,
   nextBlockStart,
   estimatePlannedSession,
   supersetLabel,
@@ -167,8 +169,8 @@ export async function loadProgramContext(
     cardioService,
   } = await createCoreServices();
   const today = await zonedToday(user.id);
-  const program = await programService.getActiveProgram(user.id);
-  if (!program) return null;
+  const loaded = await programService.getActiveProgram(user.id);
+  if (!loaded) return null;
 
   const outcomeStart = extraOutcomeStart ?? today;
   const [settingRows, checks, outcomes, recovery, templates, rides] =
@@ -197,6 +199,10 @@ export async function loadProgramContext(
       }),
     ]);
   const settings = programSettingsFromRows(settingRows);
+  const program = {
+    ...loaded,
+    gates: applySettingGates(loaded.gates, settings),
+  };
   const statusOn = (date: string) =>
     kneeReadinessStatus(checks.find((c) => c.date === date) ?? null, settings);
 
@@ -264,6 +270,7 @@ function buildToday(ctx: ProgramContext): {
           })
         : null,
       warmUp: settings.warmUp || null,
+      gaitDrill: settings.gaitDrill || null,
     },
   };
 }
@@ -459,5 +466,8 @@ export async function getProgramSettingsData() {
     programService.getActiveProgram(user.id),
     programService.listSettings(user.id),
   ]);
-  return { gates: program?.gates ?? [], settings };
+  return {
+    gates: (program?.gates ?? []).filter((g) => !isSettingGate(g.gateKey)),
+    settings,
+  };
 }

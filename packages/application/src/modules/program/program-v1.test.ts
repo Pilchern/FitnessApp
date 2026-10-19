@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { ProgramBlock, TrainingProgram } from "@fitness-app/domain";
-import { nextBlockStart, programWeekInfo } from "./program-calendar";
+import {
+  isGateCleared,
+  nextBlockStart,
+  programWeekInfo,
+} from "./program-calendar";
+import {
+  applySettingGates,
+  DEFAULT_PROGRAM_SETTINGS,
+  isSettingGate,
+} from "./program-settings";
 import { buildDayPlan, planExercise, type PlanContext } from "./program-plan";
 import {
   legExerciseIndex,
@@ -391,5 +400,62 @@ describe("program v2: next block on the home header", () => {
     expect(nextBlockStart(p, "2026-10-26")?.date).toBe("2026-11-16");
     expect(nextBlockStart(p, "2027-05-16")?.date).toBe("2027-05-17");
     expect(nextBlockStart(p, "2027-05-17")).toBeNull();
+  });
+});
+
+describe("program v2: settings-driven gates", () => {
+  it("turns shoulder emphasis on and off from the setting", () => {
+    const gates = [gate("shoulder_emphasis"), gate("jog", "2026-10-26")];
+    const off = applySettingGates(gates, DEFAULT_PROGRAM_SETTINGS);
+    expect(off[0]?.clearedOn).toBeNull();
+    expect(off[1]?.clearedOn).toBe("2026-10-26");
+    const on = applySettingGates(gates, {
+      ...DEFAULT_PROGRAM_SETTINGS,
+      shoulderEmphasis: 1,
+    });
+    expect(isGateCleared(on, "shoulder_emphasis", "2026-10-28")).toBe(true);
+    expect(isSettingGate("shoulder_emphasis")).toBe(true);
+    expect(isSettingGate("jog")).toBe(false);
+  });
+
+  it("shows the Wednesday lateral raise only while the toggle is on", () => {
+    const wed = session({
+      id: "wed",
+      blockId: "b1",
+      dayOfWeek: 3,
+      exercises: [
+        exercise({
+          name: "Pull-Up",
+          order: 11,
+          supersetGroup: "A",
+          supersetOrder: 2,
+        }),
+        exercise({
+          name: "Lateral Raise",
+          order: 12,
+          blockPart: "upper",
+          gateKey: "shoulder_emphasis",
+          supersetGroup: "A",
+          supersetOrder: 3,
+        }),
+      ],
+    });
+    const p = v1Program({
+      sessions: [wed],
+      gates: [gate("shoulder_emphasis")],
+    });
+    const names = (program: TrainingProgram) =>
+      buildDayPlan(program, "2026-10-28", "normal")
+        .sessions[0]!.exercises.filter((e) => e.status === "active")
+        .map((e) => e.name);
+    expect(names(p)).toEqual(["Pull-Up"]);
+    const on = {
+      ...p,
+      gates: applySettingGates(p.gates, {
+        ...DEFAULT_PROGRAM_SETTINGS,
+        shoulderEmphasis: 1,
+      }),
+    };
+    expect(names(on)).toEqual(["Pull-Up", "Lateral Raise"]);
   });
 });

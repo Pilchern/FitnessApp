@@ -81,8 +81,12 @@ export function GatesManager({
     >
       <h2 className="font-display text-lg text-ink">Program gates</h2>
       <p className="mt-1 text-sm text-ink/60">
-        Set the date PT or the surgeon cleared each one. Gated exercises stay
-        hidden or greyed out until then.
+        Set the date PT or the surgeon cleared each one. Gated exercises run
+        their fallback until then.
+      </p>
+      <p className="mt-2 rounded-2xl bg-pine/5 px-4 py-3 text-xs text-ink/75">
+        The PT Tracker evaluates the criteria. Quad LSI is a hard criterion.
+        Walking asymmetry is soft: under 8% and trending down over 3 weeks.
       </p>
       <ul className="mt-2 divide-y divide-ink/10">
         {gates.map((g) => (

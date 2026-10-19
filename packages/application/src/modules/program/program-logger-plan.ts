@@ -292,6 +292,9 @@ export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
     settings.warmUp
       ? `Warm-up (${settings.sessionWarmUpMinutes} min): ${settings.warmUp}.`
       : null,
+    settings.gaitDrill
+      ? `Gait drill (${settings.sessionGaitDrillMinutes} min): ${settings.gaitDrill}`
+      : null,
     planned.session.notes,
     input.upper?.notes ?? null,
   ]

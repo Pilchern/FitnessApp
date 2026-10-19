@@ -88,6 +88,7 @@ export type ProgramToday = {
   walkJog: WalkJogAdvice | null;
   /** Lift-day warm-up, items separated by "; ". */
   warmUp: string | null;
+  gaitDrill: string | null;
 };
 
 export type ProgramWeekDay = {
