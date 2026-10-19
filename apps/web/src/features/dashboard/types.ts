@@ -32,6 +32,8 @@ export type DashboardData = {
   readinessHistory: { date: string; score: number | null }[];
   readinessCall: string;
   todayItems: WeekPlanItem[];
+  /** Today's logged how-you-feel rating, 1-10. */
+  feelToday: number | null;
   zone2Minutes: number;
   weekPlan: WeekPlan;
   latestWeightLb: number | null;

@@ -47,6 +47,7 @@ export default async function DashboardPage() {
           history={data.readinessHistory}
           call={data.readinessCall}
           todayItems={data.todayItems}
+          feelToday={data.feelToday}
           stepsToday={stepsToday}
         />
         <div className="space-y-4 lg:space-y-6">

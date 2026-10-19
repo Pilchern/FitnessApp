@@ -1,55 +1,50 @@
-import type {
-  CardioSession,
-  RecoveryCheckin,
-  StrengthSession,
-} from "@fitness-app/domain";
+import type { RecoveryCheckin } from "@fitness-app/domain";
 
 /**
- * Daily readiness: a 0-100 estimate of how recovered you are today, built the
- * way Oura and Whoop build theirs (today against your own recent baseline).
+ * Daily readiness (v3): a 0-100 estimate of how recovered you are today,
+ * against your own baseline. It exists to make one call: progress, hold, or
+ * go light. Built from what the evidence supports, for sparse Apple Watch data:
  *
- * How the number is made:
- * 1. Core signals become z-scores against your prior 30 days: HRV and heart
- *    rate (overnight readings when synced, else Apple's daily HRV and resting
- *    HR), the 7-night HRV average (steadier than one night of Apple's sparse
- *    HRV samples; Plews et al. 2012/2013), last night's sleep and the 7-night average against the sleep target
- *    (credit above the target is capped; the first 15 min short is free and
- *    a single short night costs less than a short week), and wake-time
- *    consistency.
- * 2. Their weighted mean maps to the score: a day exactly at baseline is 70,
- *    and SCORE_PER_Z points per unit. Simulated with your sleep spread (8.2 h,
- *    +/- 0.7) and assumed signal correlations, 90+ lands on about 8% of days
- *    and 100 on about 1%, before penalties and the calibration cap. That was
- *    the v2 weights; re-run it at the 2026-11-10 recalibration.
- * 3. Penalties that only ever subtract: wrist temperature above baseline,
- *    breathing rate above baseline, and a training-load spike (last 7 days
- *    against the 4-week average, floored at the plan's weekly load).
- * 4. Guards: overnight HR, HRV and breathing rate are averaged over the
- *    time asleep (overnight-metrics.ts); on older fixed-window rows they are
- *    skipped when sleep started after 23:30 (awake time), and no
- *    single signal counts past +/- 3 z.
- * 5. Caps: soreness 8+ or a self-rating of 4 or less caps at 49. 100 needs
- *    every core signal at or above baseline, no penalty, and a settled
- *    baseline; a calibrating baseline tops out at 95.
+ * 1. HRV as a 7-night trend, not one night. The Watch stores a handful of
+ *    spot SDNN readings a night (4-5, ranging 23-99 ms within a night), so a
+ *    single night is mostly noise (Plews 2013: one day r = -0.06 with
+ *    performance, the weekly mean r = 0.72). The 7-night median of ln HRV is
+ *    compared with a 30-day baseline, and inside +/- 0.5 SD counts as normal:
+ *    the HRV-guided training rule (Vesterinen 2016, Javaloyes 2019). Above
+ *    normal earns nothing: HRV can rise with overreaching (Bellenger 2016).
+ * 2. Overnight heart rate against baseline, normal within about 3 bpm
+ *    (illness and drinks move it 3-4+ bpm; hard training about 1%).
+ * 3. Sleep: the 7-night average carries more than last night, since
+ *    accumulated debt costs more than one short night (Van Dongen 2003;
+ *    Craven 2022: one night costs maximal strength little). No credit above
+ *    the target.
+ * 4. Each signal is scored past a dead band, so a normal day is about 80
+ *    and one late night lands in fair, not low.
+ * 5. Vitals checked together, Apple Vitals style: wrist temperature,
+ *    breathing rate and overnight HR. One elevated signal alone is common
+ *    (warm room, late meal) and only counts through HR; two at once cap the
+ *    score at fair; a strong temperature or breathing rise with anything
+ *    else caps it in low as possible illness (Smarr 2020, Miller 2020,
+ *    Mason 2022). One event is not triple-counted as stacked penalties.
+ * 6. How you feel, when logged, is 35% of the score: subjective measures
+ *    track training stress at least as well as objective ones (Saw 2016).
+ *    Rough (3 or less) or soreness 8+ caps at low.
  *
- * It is a heuristic, not a validated measure. Each contributor is reported so
- * the number can be checked, and a day without enough baseline gets no score.
- * Robust statistics (median and MAD, ln for HRV) keep one odd reading from
- * swinging the baseline.
+ * Not used, on purpose: training load (the acute:chronic ratio has no
+ * validated threshold, Impellizzeri 2020/2021, and the only trial found no
+ * benefit, Dalen-Lorentsen 2021; physiology already reflects load), and
+ * wake-time consistency (a long-run health habit, not next-day readiness).
+ *
+ * A heuristic, not a validated measure; no composite score is (Doherty 2025).
+ * Every contributor is reported so the number can be checked.
  */
 
 export type ReadinessComponentKey =
-  | "hrv"
-  | "hrvBalance"
-  | "restingHeartRate"
+  | "hrvTrend"
+  | "overnightHeartRate"
   | "sleep"
   | "sleepBalance"
-  | "wakeConsistency";
-
-export type ReadinessAdjustmentKey =
-  | "wristTemperature"
-  | "respiratoryRate"
-  | "trainingLoad";
+  | "feel";
 
 export type ReadinessLevel = "good" | "fair" | "low";
 
@@ -61,14 +56,6 @@ export type ReadinessComponent = {
   detail: string;
 };
 
-/** A penalty subtracted from the score; `points` is positive. */
-export type ReadinessAdjustment = {
-  key: ReadinessAdjustmentKey;
-  label: string;
-  points: number;
-  detail: string;
-};
-
 export type DailyReadiness =
   | {
       status: "scored";
@@ -77,11 +64,10 @@ export type DailyReadiness =
       score: number;
       level: ReadinessLevel;
       components: ReadinessComponent[];
-      adjustments: ReadinessAdjustment[];
-      /** Days of HRV in the baseline window; under 14 the baseline is still settling. */
+      /** Nights of HRV in the baseline window; under 14 HRV is not scored yet. */
       baselineDays: number;
       calibrating: boolean;
-      /** Why the score was capped (high soreness, low self-rating); empty when not. */
+      /** Why the score was capped (vitals off, feeling rough, soreness); empty when not. */
       caps: string[];
     }
   | {
@@ -90,49 +76,71 @@ export type DailyReadiness =
       reason: string;
     };
 
-/** Training load for one day, in RPE x minutes (Foster session-RPE). */
-export type TrainingLoadDay = { date: string; load: number };
-
 export type ReadinessOptions = {
-  /** Sleep need in hours; last night and the 7-night average score against it. */
+  /** Sleep need in hours asleep; last night and the 7-night average score against it. */
   sleepTargetHours?: number;
-  /** Daily training load covering at least the 28 days before the scored day. */
-  trainingLoad?: TrainingLoadDay[];
-  /**
-   * The plan's prescribed weekly load (see plannedWeeklyLoad). The 4-week
-   * average never counts as lower than this, so ramping up to the plan, or
-   * starting to log it, does not read as a spike.
-   */
-  plannedWeeklyLoad?: number;
 };
 
+/** Rolling baseline (Vesterinen 2016, Javaloyes 2019: 4 weeks; Mishra 2020: 28 days). */
 const BASELINE_WINDOW_DAYS = 30;
 const MIN_BASELINE_DAYS = 5;
-const SETTLED_BASELINE_DAYS = 14;
-const DEFAULT_SLEEP_TARGET_HOURS = 8;
-/** Score for a day exactly at baseline; each unit of weighted z adds SCORE_PER_Z. */
-const BASELINE_SCORE = 70;
-const SCORE_PER_Z = 22;
-/** Floors on the spread so a short, steady baseline does not over-react. */
-const MIN_LN_HRV_SPREAD = 0.15;
-const MIN_HR_SPREAD_BPM = 3;
-const MIN_RESPIRATORY_SPREAD = 0.5;
+/** Baseline HRV nights before HRV counts at all: Apple's spot SDNN is noisy. */
+const MIN_HRV_BASELINE_NIGHTS = 14;
 /**
- * Sleep z. Above target: hours over SURPLUS spread, capped at +1. Below: the
- * first SLEEP_GRACE_HOURS short is free, then hours over DEFICIT spread,
- * floored at -3. Basis: 7+ h is adequate for adults (AASM/SRS consensus,
- * Watson 2015); real cost shows around 6 h, mostly when repeated (Van Dongen
- * 2003), so one short night is gentle and the 7-night average is steeper.
- * Last night: 7 h = -0.6, 6 h = -1.4. 7-night average: 7 h = -1.0.
+ * Nights of the last 7 needed for the 7-night HRV value. Plews 2014: 3 is the
+ * floor for chest-strap RMSSD; one more for the Watch's noisier readings.
  */
-const SLEEP_GRACE_HOURS = 0.25;
-const SLEEP_SURPLUS_SPREAD_HOURS = 0.75;
-const SLEEP_DEFICIT_SPREAD_HOURS = 1.25;
-const SLEEP_BALANCE_SURPLUS_SPREAD_HOURS = 0.4;
-const SLEEP_BALANCE_DEFICIT_SPREAD_HOURS = 0.75;
-/** Wake-time SD at which consistency is neutral, and minutes per z. */
-const WAKE_SD_NEUTRAL_MIN = 45;
-const WAKE_SD_PER_Z_MIN = 20;
+const MIN_WEEK_NIGHTS = 4;
+const DEFAULT_SLEEP_TARGET_HOURS = 7.5;
+
+/** A day with every signal normal; each unit of weighted deviation moves it this much. */
+const NORMAL_SCORE = 80;
+const SCORE_PER_UNIT = 20;
+/** Most a contributor can pull down, in units, and the most credit it can add. */
+const MAX_DEFICIT = 3;
+const MAX_CREDIT = 0.5;
+
+/** HRV: inside +/- 0.5 SD of baseline is normal (smallest worthwhile change). */
+const HRV_DEAD_BAND_SD = 0.5;
+const MIN_LN_HRV_SPREAD = 0.15;
+/** Overnight HR: spread floor 3 bpm, normal within 1 spread (about 3 bpm). */
+const MIN_HR_SPREAD_BPM = 3;
+const HR_DEAD_BAND_SD = 1;
+/**
+ * Sleep, hours under target before it costs, and hours per unit after that.
+ * Last night: 45 min short is free, then 1 unit per 45 min (6 h of 7.5 =
+ * -1). 7-night average: 15 min short is free, then 1 unit per 15 min
+ * (7 h average = -1, 6.5 h = -3, the floor): debt is what costs.
+ */
+const SLEEP_GRACE_HOURS = 0.75;
+const SLEEP_HOURS_PER_UNIT = 0.75;
+const SLEEP_BALANCE_GRACE_HOURS = 0.25;
+const SLEEP_BALANCE_HOURS_PER_UNIT = 0.25;
+
+/**
+ * Overnight HR weighs as much as HRV: on the Watch it agrees with ECG
+ * (ICC 0.96) far better than HRV does (0.67; Miller 2022), and it is the
+ * more specific signal for illness and drinks (Altini & Plews 2021).
+ */
+const WEIGHTS: Record<Exclude<ReadinessComponentKey, "feel">, number> = {
+  hrvTrend: 0.3,
+  overnightHeartRate: 0.3,
+  sleep: 0.15,
+  sleepBalance: 0.25,
+};
+/** Share of the score from how you feel, when logged. */
+const FEEL_WEIGHT = 0.35;
+
+/** Vitals: soft and strong rises over the baseline median. */
+const TEMP_SOFT_C = 0.5;
+const TEMP_STRONG_C = 1.0;
+const RESP_SOFT = 1.0;
+const RESP_STRONG = 1.5;
+const HR_SOFT_BPM = 5;
+const VITALS_OFF_CAP = 59;
+const POSSIBLE_ILLNESS_CAP = 45;
+const LOW_CAP = 49;
+
 /**
  * Older rows (and nights before sleep synced) average a fixed 23:00-05:59
  * window. Fall asleep after 23:30 and that window holds awake time, which
@@ -143,39 +151,6 @@ const WAKE_SD_PER_Z_MIN = 20;
 const LATEST_CLEAN_BEDTIME_MIN = 23 * 60 + 30;
 /** Bedtimes before noon are after midnight. */
 const NOON_MIN = 12 * 60;
-/** One signal's z is held to +/- this, so one odd reading cannot sink the day. */
-const MAX_COMPONENT_Z = 3;
-const CAPPED_SCORE = 49;
-const CALIBRATING_MAX_SCORE = 95;
-
-const WEIGHTS: Record<ReadinessComponentKey, number> = {
-  hrv: 0.3,
-  hrvBalance: 0.1,
-  restingHeartRate: 0.2,
-  sleep: 0.2,
-  sleepBalance: 0.1,
-  wakeConsistency: 0.1,
-};
-
-/** Default session RPE when none was logged, by cardio kind. */
-const DEFAULT_CARDIO_RPE = { zone2: 4, recovery: 2, vo2: 8, other: 5 } as const;
-const DEFAULT_STRENGTH_RPE = 6;
-const DEFAULT_STRENGTH_MINUTES = 60;
-
-/**
- * Weekly load of the plan as written, in the same units as buildTrainingLoad:
- * lifts at the default strength RPE and length, Zone 2 at the default Zone 2
- * RPE.
- */
-export function plannedWeeklyLoad(plan: {
-  liftsPerWeek: number;
-  zone2Minutes: number;
-}) {
-  return (
-    plan.liftsPerWeek * DEFAULT_STRENGTH_RPE * DEFAULT_STRENGTH_MINUTES +
-    plan.zone2Minutes * DEFAULT_CARDIO_RPE.zone2
-  );
-}
 
 export function readinessLevel(score: number): ReadinessLevel {
   if (score >= 67) return "good";
@@ -199,11 +174,21 @@ function median(values: number[]): number {
     : sorted[mid]!;
 }
 
+function mean(values: number[]) {
+  return values.reduce((s, v) => s + v, 0) / values.length;
+}
+
 /** Median and a robust SD (1.4826 x MAD), floored. */
 function robustBaseline(values: number[], minSpread: number) {
   const center = median(values);
   const mad = median(values.map((v) => Math.abs(v - center)));
   return { center, spread: Math.max(1.4826 * mad, minSpread) };
+}
+
+/** z past a dead band: 0 inside +/- band, then the distance beyond it. */
+function beyondBand(z: number, band: number) {
+  if (Math.abs(z) <= band) return 0;
+  return z > 0 ? z - band : z + band;
 }
 
 function addDays(isoDate: string, days: number) {
@@ -216,6 +201,11 @@ function hours(minutes: number) {
   return Math.round((minutes / 60) * 10) / 10;
 }
 
+function signed(value: number, digits = 0) {
+  const text = value.toFixed(digits);
+  return value > 0 ? `+${text}` : text;
+}
+
 /** "06:42" -> 402. */
 function clockMinutes(value: string | null): number | null {
   const match = value ? /^(\d{1,2}):(\d{2})/.exec(value) : null;
@@ -226,26 +216,28 @@ function present(values: (number | null)[]): number[] {
   return values.filter((v): v is number => v != null && Number.isFinite(v));
 }
 
+type Scored = ReadinessComponent & { units: number };
+
 function component(
   key: ReadinessComponentKey,
   label: string,
-  z: number,
+  units: number,
   detail: string,
-): ReadinessComponent & { z: number } {
-  z = clamp(z, -MAX_COMPONENT_Z, MAX_COMPONENT_Z);
-  const score = clampScore(BASELINE_SCORE + SCORE_PER_Z * z);
-  return { key, label, score, level: readinessLevel(score), detail, z };
+): Scored {
+  units = clamp(units, -MAX_DEFICIT, MAX_CREDIT);
+  const score = clampScore(NORMAL_SCORE + SCORE_PER_UNIT * units);
+  return { key, label, score, level: readinessLevel(score), detail, units };
 }
 
-function sleepZ(
+/** Hours short of target past the grace, in units (never positive). */
+function sleepUnits(
   sleptHours: number,
   targetHours: number,
-  surplusSpread: number,
-  deficitSpread: number,
+  graceHours: number,
+  hoursPerUnit: number,
 ) {
-  const diff = sleptHours - targetHours;
-  if (diff >= 0) return Math.min(1, diff / surplusSpread);
-  return clamp((diff + SLEEP_GRACE_HOURS) / deficitSpread, -3, 0);
+  const short = targetHours - graceHours - sleptHours;
+  return short > 0 ? -short / hoursPerUnit : 0;
 }
 
 /**
@@ -275,46 +267,6 @@ function hasSignal(checkin: RecoveryCheckin) {
 }
 
 /**
- * Daily load in RPE x minutes. Cardio uses the logged RPE, else a default by
- * kind; strength has no session RPE, so it counts as a moderate 6.
- */
-export function buildTrainingLoad(
-  cardioSessions: Pick<
-    CardioSession,
-    | "sessionDate"
-    | "sessionKind"
-    | "durationMinutes"
-    | "rpe"
-    | "plannedVsCompleted"
-  >[],
-  strengthSessions: Pick<StrengthSession, "sessionDate" | "durationMinutes">[],
-): TrainingLoadDay[] {
-  const byDate = new Map<string, number>();
-  const add = (date: string, load: number) =>
-    byDate.set(date, (byDate.get(date) ?? 0) + load);
-
-  for (const session of cardioSessions) {
-    if (
-      session.plannedVsCompleted === "planned" ||
-      session.plannedVsCompleted === "skipped" ||
-      !session.durationMinutes
-    ) {
-      continue;
-    }
-    const rpe = session.rpe ?? DEFAULT_CARDIO_RPE[session.sessionKind];
-    add(session.sessionDate, rpe * session.durationMinutes);
-  }
-  for (const session of strengthSessions) {
-    const minutes = session.durationMinutes ?? DEFAULT_STRENGTH_MINUTES;
-    add(session.sessionDate, DEFAULT_STRENGTH_RPE * minutes);
-  }
-
-  return [...byDate.entries()]
-    .map(([date, load]) => ({ date, load }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
-/**
  * Scores `today`, or yesterday when today's row has no sleep or HRV yet (the
  * overnight sync has not run). `checkins` should cover the 30 days before.
  */
@@ -341,7 +293,12 @@ export function computeDailyReadiness(
     };
   }
 
-  return scoreDay(checkins, day, options);
+  // How you feel is today's rating only, even when the physiology falls back
+  // to yesterday's row: yesterday's rating described yesterday.
+  return scoreDay(checkins, day, options, {
+    readinessLevel: todayRow?.readinessLevel ?? null,
+    sorenessLevel: todayRow?.sorenessLevel ?? null,
+  });
 }
 
 /**
@@ -367,15 +324,25 @@ function pickSeries(
   };
 }
 
+type Feel = {
+  readinessLevel: number | null;
+  sorenessLevel: number | null;
+};
+
 function scoreDay(
   checkins: RecoveryCheckin[],
   day: RecoveryCheckin,
   options: ReadinessOptions,
+  feel: Feel,
 ): DailyReadiness {
   const sleepTarget = options.sleepTargetHours ?? DEFAULT_SLEEP_TARGET_HOURS;
   const windowStart = addDays(day.checkinDate, -BASELINE_WINDOW_DAYS);
   const prior = checkins.filter(
     (c) => c.checkinDate < day.checkinDate && c.checkinDate >= windowStart,
+  );
+  const weekStart = addDays(day.checkinDate, -6);
+  const week = checkins.filter(
+    (c) => c.checkinDate >= weekStart && c.checkinDate <= day.checkinDate,
   );
   const positive = (v: number | null) => (v != null && v > 0 ? v : null);
 
@@ -392,64 +359,60 @@ function scoreDay(
     (c) => c.restingHeartRate,
   );
 
-  const components: (ReadinessComponent & { z: number })[] = [];
+  const components: Scored[] = [];
 
-  const weekStart = addDays(day.checkinDate, -6);
-  const week = checkins.filter(
-    (c) => c.checkinDate >= weekStart && c.checkinDate <= day.checkinDate,
-  );
-
-  if (hrv.today != null && hrv.prior.length >= MIN_BASELINE_DAYS) {
+  // HRV: the 7-night median of ln HRV against the baseline's daily spread
+  // (the normal range is built from single nights, HRV4Training style).
+  const weekHrv = present(week.map(hrv.read));
+  if (
+    hrv.prior.length >= MIN_HRV_BASELINE_NIGHTS &&
+    weekHrv.length >= MIN_WEEK_NIGHTS
+  ) {
     const base = robustBaseline(hrv.prior.map(Math.log), MIN_LN_HRV_SPREAD);
+    // Median, not mean: with 4-5 spot readings a night, odd nights are
+    // common, and one should not move the week.
+    const weekLn = median(weekHrv.map(Math.log));
     const usual = Math.round(Math.exp(base.center));
+    const last =
+      hrv.today != null ? `; last night ${Math.round(hrv.today)} ms` : "";
     components.push(
       component(
-        "hrv",
-        hrv.overnight ? "HRV, overnight" : "HRV",
-        (Math.log(hrv.today) - base.center) / base.spread,
-        `${Math.round(hrv.today)} ms vs ${usual} ms usual`,
+        "hrvTrend",
+        hrv.overnight ? "HRV, 7 nights" : "HRV, 7 days",
+        Math.min(
+          0,
+          beyondBand((weekLn - base.center) / base.spread, HRV_DEAD_BAND_SD),
+        ),
+        `${Math.round(Math.exp(weekLn))} ms vs ${usual} ms usual${last}`,
       ),
     );
-
-    // Same series as tonight's reading, so overnight and daily never mix.
-    // Median, so one artifact night cannot drag the week.
-    const weekLn = present(week.map(hrv.read)).map(Math.log);
-    if (weekLn.length >= 3) {
-      const typical = median(weekLn);
-      components.push(
-        component(
-          "hrvBalance",
-          "HRV, 7 nights",
-          (typical - base.center) / base.spread,
-          `${Math.round(Math.exp(typical))} ms typical vs ${usual} ms usual`,
-        ),
-      );
-    }
   }
 
   if (heartRate.today != null && heartRate.prior.length >= MIN_BASELINE_DAYS) {
     const base = robustBaseline(heartRate.prior, MIN_HR_SPREAD_BPM);
     components.push(
       component(
-        "restingHeartRate",
+        "overnightHeartRate",
         heartRate.overnight ? "Heart rate, overnight" : "Resting HR",
-        -(heartRate.today - base.center) / base.spread,
+        beyondBand(
+          -(heartRate.today - base.center) / base.spread,
+          HR_DEAD_BAND_SD,
+        ),
         `${Math.round(heartRate.today)} bpm vs ${Math.round(base.center)} usual`,
       ),
     );
   }
 
   if (day.sleepDurationMinutes != null) {
-    const slept = day.sleepDurationMinutes / 60;
     components.push(
       component(
         "sleep",
-        "Sleep",
-        sleepZ(
-          slept,
+        "Sleep, last night",
+        sleepUnits(
+          day.sleepDurationMinutes / 60,
           sleepTarget,
-          SLEEP_SURPLUS_SPREAD_HOURS,
-          SLEEP_DEFICIT_SPREAD_HOURS,
+          SLEEP_GRACE_HOURS,
+          SLEEP_HOURS_PER_UNIT,
         ),
         `${hours(day.sleepDurationMinutes)} h of ${sleepTarget} h`,
       ),
@@ -458,174 +421,153 @@ function scoreDay(
 
   const weekSleep = present(week.map((c) => c.sleepDurationMinutes));
   if (weekSleep.length >= 3) {
-    const avg = weekSleep.reduce((s, v) => s + v, 0) / weekSleep.length;
+    const avg = mean(weekSleep);
     components.push(
       component(
         "sleepBalance",
         "Sleep, 7 nights",
-        sleepZ(
+        sleepUnits(
           avg / 60,
           sleepTarget,
-          SLEEP_BALANCE_SURPLUS_SPREAD_HOURS,
-          SLEEP_BALANCE_DEFICIT_SPREAD_HOURS,
+          SLEEP_BALANCE_GRACE_HOURS,
+          SLEEP_BALANCE_HOURS_PER_UNIT,
         ),
         `${hours(avg)} h average`,
       ),
     );
   }
 
-  const wakeTimes = present(week.map((c) => clockMinutes(c.wakeTimeLocal)));
-  if (wakeTimes.length >= 4) {
-    const mean = wakeTimes.reduce((s, v) => s + v, 0) / wakeTimes.length;
-    const sd = Math.sqrt(
-      wakeTimes.reduce((s, v) => s + (v - mean) ** 2, 0) / wakeTimes.length,
-    );
-    components.push(
-      component(
-        "wakeConsistency",
-        "Wake time, 7 days",
-        clamp((WAKE_SD_NEUTRAL_MIN - sd) / WAKE_SD_PER_Z_MIN, -2.5, 1),
-        `±${Math.round(sd)} min`,
-      ),
-    );
-  }
-
   const hasPhysiology = components.some(
-    (c) => c.key === "hrv" || c.key === "restingHeartRate",
+    (c) => c.key === "hrvTrend" || c.key === "overnightHeartRate",
   );
-  if (!hasPhysiology || components.length < 2) {
+  if (!hasPhysiology) {
     const have = Math.max(hrv.prior.length, heartRate.prior.length);
     return {
       status: "insufficient",
       date: day.checkinDate,
       reason:
         have < MIN_BASELINE_DAYS
-          ? `Building your baseline: ${have} of ${MIN_BASELINE_DAYS} days of HRV and resting HR.`
-          : "Last night's HRV and resting HR have not synced yet.",
+          ? `Building your baseline: ${have} of ${MIN_BASELINE_DAYS} nights of HRV and heart rate.`
+          : "Last night's HRV and heart rate have not synced yet.",
     };
   }
 
-  const adjustments = buildAdjustments(
-    day,
-    prior,
-    options.trainingLoad,
-    options.plannedWeeklyLoad,
+  const totalWeight = components.reduce(
+    (s, c) => s + WEIGHTS[c.key as keyof typeof WEIGHTS],
+    0,
   );
+  const units =
+    components.reduce(
+      (s, c) => s + c.units * WEIGHTS[c.key as keyof typeof WEIGHTS],
+      0,
+    ) / totalWeight;
+  let score = NORMAL_SCORE + SCORE_PER_UNIT * units;
 
-  const totalWeight = components.reduce((s, c) => s + WEIGHTS[c.key], 0);
-  const z =
-    components.reduce((s, c) => s + c.z * WEIGHTS[c.key], 0) / totalWeight;
-  const penalty = adjustments.reduce((s, a) => s + a.points, 0);
-  let score = clampScore(BASELINE_SCORE + SCORE_PER_Z * z - penalty);
-
-  const baselineDays = hrv.prior.length;
-  const calibrating = baselineDays < SETTLED_BASELINE_DAYS;
-  const perfect =
-    components.length === Object.keys(WEIGHTS).length &&
-    components.every((c) => c.z >= 0) &&
-    adjustments.length === 0 &&
-    !calibrating;
-  if (!perfect) score = Math.min(score, 99);
-  if (calibrating) score = Math.min(score, CALIBRATING_MAX_SCORE);
+  if (feel.readinessLevel != null) {
+    const rating = clamp(feel.readinessLevel, 1, 10);
+    const feelScore = rating * 10;
+    components.push({
+      key: "feel",
+      label: "How you feel",
+      score: feelScore,
+      level: readinessLevel(feelScore),
+      detail: `${rating}/10`,
+      units: 0,
+    });
+    score = (1 - FEEL_WEIGHT) * score + FEEL_WEIGHT * feelScore;
+  }
+  score = clampScore(score);
 
   const caps: string[] = [];
-  if (day.sorenessLevel != null && day.sorenessLevel >= 8) {
-    caps.push(`Soreness logged at ${day.sorenessLevel}/10`);
+  const vitals = vitalsCheck(day, prior, heartRate);
+  if (vitals) {
+    caps.push(vitals.reason);
+    score = Math.min(score, vitals.cap);
   }
-  if (day.readinessLevel != null && day.readinessLevel <= 4) {
-    caps.push(`You rated readiness ${day.readinessLevel}/10`);
+  if (feel.sorenessLevel != null && feel.sorenessLevel >= 8) {
+    caps.push(`Soreness logged at ${feel.sorenessLevel}/10`);
+    score = Math.min(score, LOW_CAP);
   }
-  if (caps.length > 0) score = Math.min(score, CAPPED_SCORE);
+  if (feel.readinessLevel != null && feel.readinessLevel <= 3) {
+    caps.push(`You rated how you feel ${feel.readinessLevel}/10`);
+    score = Math.min(score, LOW_CAP);
+  }
 
+  const baselineDays = hrv.prior.length;
   return {
     status: "scored",
     date: day.checkinDate,
     score,
     level: readinessLevel(score),
-    components: components.map(({ z: _z, ...rest }) => rest),
-    adjustments,
+    components: components.map(({ units: _units, ...rest }) => rest),
     baselineDays,
-    calibrating,
+    calibrating: baselineDays < MIN_HRV_BASELINE_NIGHTS,
     caps,
   };
 }
 
-function buildAdjustments(
+/**
+ * Wrist temperature, breathing rate and overnight HR against their baseline
+ * medians, checked together. Two elevated at once caps at fair; a strong
+ * temperature or breathing rise plus any other caps at low.
+ */
+function vitalsCheck(
   day: RecoveryCheckin,
   prior: RecoveryCheckin[],
-  trainingLoad: TrainingLoadDay[] | undefined,
-  plannedWeeklyLoad = 0,
-): ReadinessAdjustment[] {
-  const adjustments: ReadinessAdjustment[] = [];
+  heartRate: { today: number | null; prior: number[] },
+): { cap: number; reason: string } | null {
+  const flags: { label: string; strong: boolean }[] = [];
 
-  // Wrist temperature: a rise of 0.3 C or less is noise; above it, 4 points
-  // per 0.1 C, capped at 25. A drop is not penalized.
   const priorTemp = present(prior.map((c) => c.sleepWristTempC));
   if (day.sleepWristTempC != null && priorTemp.length >= MIN_BASELINE_DAYS) {
-    const deviation = day.sleepWristTempC - median(priorTemp);
-    const points = Math.min(25, Math.round((deviation - 0.3) * 40));
-    if (points > 0) {
-      adjustments.push({
-        key: "wristTemperature",
-        label: "Wrist temperature",
-        points,
-        detail: `+${deviation.toFixed(1)} °C above usual`,
+    const rise = day.sleepWristTempC - median(priorTemp);
+    if (rise >= TEMP_SOFT_C) {
+      flags.push({
+        label: `wrist temperature ${signed(rise, 1)} °C`,
+        strong: rise >= TEMP_STRONG_C,
       });
     }
   }
 
-  // Breathing rate is very steady night to night; past 1.5 robust SDs above
-  // baseline, 8 points per SD, capped at 20.
   const priorResp = present(
     prior.map((c) => overnightReading(c, c.sleepRespiratoryRate)),
   );
-  const respiratoryRate = overnightReading(day, day.sleepRespiratoryRate);
-  if (respiratoryRate != null && priorResp.length >= MIN_BASELINE_DAYS) {
-    const base = robustBaseline(priorResp, MIN_RESPIRATORY_SPREAD);
-    const z = (respiratoryRate - base.center) / base.spread;
-    const points = Math.min(20, Math.round((z - 1.5) * 8));
-    if (points > 0) {
-      adjustments.push({
-        key: "respiratoryRate",
-        label: "Breathing rate",
-        points,
-        detail: `${respiratoryRate.toFixed(1)}/min vs ${base.center.toFixed(1)} usual`,
+  const resp = overnightReading(day, day.sleepRespiratoryRate);
+  if (resp != null && priorResp.length >= MIN_BASELINE_DAYS) {
+    const rise = resp - median(priorResp);
+    if (rise >= RESP_SOFT) {
+      flags.push({
+        label: `breathing rate ${signed(rise, 1)}/min`,
+        strong: rise >= RESP_STRONG,
       });
     }
   }
 
-  // Acute:chronic load. The last 7 days against the 4-week weekly average,
-  // both ending the day before (today's session has not happened yet). Needs
-  // three weeks of history; past 1.3x, 3 points per 0.1, capped at 15. The
-  // 4-week average is floored at the plan's weekly load: a small denominator
-  // makes the ratio blow up (Lolli 2019), and doing the plan is not a spike.
-  if (trainingLoad && trainingLoad.length > 0) {
-    const end = day.checkinDate;
-    const sum = (from: string) =>
-      trainingLoad
-        .filter((d) => d.date >= from && d.date < end)
-        .reduce((s, d) => s + d.load, 0);
-    const acute = sum(addDays(end, -7));
-    const chronicWeekly = Math.max(
-      sum(addDays(end, -28)) / 4,
-      plannedWeeklyLoad,
-    );
-    const hasHistory = trainingLoad[0]!.date <= addDays(end, -21);
-    if (hasHistory && chronicWeekly > 0) {
-      const ratio = acute / chronicWeekly;
-      const points = Math.min(15, Math.round((ratio - 1.3) * 30));
-      if (points > 0) {
-        adjustments.push({
-          key: "trainingLoad",
-          label: "Training load",
-          points,
-          detail: `last 7 days ${ratio.toFixed(1)}x your 4-week average`,
-        });
-      }
+  if (heartRate.today != null && heartRate.prior.length >= MIN_BASELINE_DAYS) {
+    const rise = heartRate.today - median(heartRate.prior);
+    if (rise >= HR_SOFT_BPM) {
+      flags.push({
+        label: `overnight heart rate ${signed(Math.round(rise))} bpm`,
+        strong: false,
+      });
     }
   }
 
-  return adjustments;
+  const strong = flags.some((f) => f.strong);
+  const list = flags.map((f) => f.label).join(", ");
+  if (flags.length >= 3 || (strong && flags.length >= 2)) {
+    return {
+      cap: POSSIBLE_ILLNESS_CAP,
+      reason: `Possible illness: ${list} above usual`,
+    };
+  }
+  if (flags.length >= 2 || strong) {
+    return {
+      cap: VITALS_OFF_CAP,
+      reason: `Vitals off: ${list} above usual (a late night, late meal or drinks, or getting sick)`,
+    };
+  }
+  return null;
 }
 
 /** Scores for each of the `days` dates ending at `today`; null where unscorable. */
@@ -640,7 +582,10 @@ export function buildReadinessHistory(
     const date = addDays(today, i - (days - 1));
     const row = byDate.get(date);
     if (!row || !hasSignal(row)) return { date, score: null };
-    const result = scoreDay(checkins, row, options);
+    const result = scoreDay(checkins, row, options, {
+      readinessLevel: row.readinessLevel,
+      sorenessLevel: row.sorenessLevel,
+    });
     return { date, score: result.status === "scored" ? result.score : null };
   });
 }
