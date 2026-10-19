@@ -9,6 +9,8 @@ import type {
 import type { ProgramSessionType } from "@fitness-app/domain";
 
 export type SessionCompletion =
+  | "skipped"
+  | "stopped"
   | "done"
   | "missed"
   | "today"
@@ -18,7 +20,9 @@ export type SessionCompletion =
 /**
  * Lift days are done once a strength session with sets exists that day;
  * rides once any ride is logged or synced (a skipped one does not count).
- * Test days and walk-jog are not tracked here.
+ * An explicit skip or red-flag stop wins over everything, so a skipped day
+ * reads as a choice, not a silent miss. Test days and walk-jog are not
+ * tracked.
  */
 export function sessionCompletion(input: {
   type: ProgramSessionType;
@@ -26,8 +30,10 @@ export function sessionCompletion(input: {
   today: string;
   liftDates: Set<string>;
   rideDates: Set<string>;
+  outcome?: "skipped" | "stopped" | null;
 }): SessionCompletion {
   const { type, date, today } = input;
+  if (input.outcome) return input.outcome;
   const tracked = type === "lift" || type === "peloton";
   if (!tracked) return "none";
   const done =
@@ -113,3 +119,15 @@ export function formatShortDate(isoDate: string) {
     timeZone: "UTC",
   }).format(new Date(`${isoDate}T12:00:00Z`));
 }
+
+/** Labels for skip reasons and red flags. */
+export const SKIP_LABELS: Record<string, string> = {
+  time: "Time",
+  knee: "Knee",
+  sick: "Sick",
+  travel: "Travel",
+  other: "Other",
+  giving_way: "Giving way",
+  locking: "Locking",
+  sharp_pain: "Sharp pain",
+};

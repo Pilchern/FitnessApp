@@ -5,6 +5,7 @@ import {
   hardSetBand,
   limbSymmetryPct,
   sessionCompletion,
+  SKIP_LABELS,
 } from "./helpers";
 import {
   isForceSet,
@@ -272,5 +273,57 @@ describe("plan rows for the logger", () => {
     );
     expect(rows[0]).toMatchObject({ weight: "175", reps: "8" });
     expect(rows[0]).not.toHaveProperty("side");
+  });
+});
+
+describe("explicit skips (Phase A)", () => {
+  const base = {
+    today: "2026-10-21",
+    liftDates: new Set<string>(),
+    rideDates: new Set<string>(),
+  };
+
+  it("shows a skip or red-flag stop instead of missed", () => {
+    expect(
+      sessionCompletion({
+        ...base,
+        type: "lift",
+        date: "2026-10-19",
+        outcome: "skipped",
+      }),
+    ).toBe("skipped");
+    expect(
+      sessionCompletion({
+        ...base,
+        type: "lift",
+        date: "2026-10-21",
+        outcome: "stopped",
+      }),
+    ).toBe("stopped");
+    expect(
+      sessionCompletion({
+        ...base,
+        type: "lift",
+        date: "2026-10-19",
+        outcome: null,
+      }),
+    ).toBe("missed");
+  });
+});
+
+describe("skip labels", () => {
+  it("names every skip reason and red flag", () => {
+    for (const key of [
+      "time",
+      "knee",
+      "sick",
+      "travel",
+      "other",
+      "giving_way",
+      "locking",
+      "sharp_pain",
+    ]) {
+      expect(SKIP_LABELS[key]).toBeTruthy();
+    }
   });
 });

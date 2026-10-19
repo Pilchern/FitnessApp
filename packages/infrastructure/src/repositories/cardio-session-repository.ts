@@ -32,6 +32,8 @@ const cardioSessionRowSchema = z.object({
   avg_output: z.number().nullable(),
   // Optional so rows read before the program migration still parse.
   total_output_kj: z.number().nullable().optional(),
+  run_minutes: z.number().nullable().optional(),
+  walk_minutes: z.number().nullable().optional(),
   best_5min_watts: z.number().int().nullable(),
   best_20min_watts: z.number().int().nullable(),
   zone2_heart_rate: z.number().int().nullable(),
@@ -72,6 +74,8 @@ export function mapCardioSessionRow(row: CardioSessionRow): CardioSession {
     maxHeartRate: row.max_heart_rate,
     avgOutput: row.avg_output,
     totalOutputKj: row.total_output_kj ?? null,
+    runMinutes: row.run_minutes ?? null,
+    walkMinutes: row.walk_minutes ?? null,
     best5MinWatts: row.best_5min_watts,
     best20MinWatts: row.best_20min_watts,
     zone2HeartRate: row.zone2_heart_rate,
@@ -109,6 +113,8 @@ function toCardioSessionInsert(input: CreateCardioSessionInput) {
     ...(input.totalOutputKj != null
       ? { total_output_kj: input.totalOutputKj }
       : {}),
+    ...(input.runMinutes != null ? { run_minutes: input.runMinutes } : {}),
+    ...(input.walkMinutes != null ? { walk_minutes: input.walkMinutes } : {}),
     best_5min_watts: input.best5MinWatts ?? null,
     best_20min_watts: input.best20MinWatts ?? null,
     zone2_heart_rate: input.zone2HeartRate ?? null,
@@ -142,6 +148,8 @@ function toCardioSessionUpdate(input: UpdateCardioSessionInput) {
     max_heart_rate: input.maxHeartRate,
     avg_output: input.avgOutput,
     total_output_kj: input.totalOutputKj,
+    run_minutes: input.runMinutes,
+    walk_minutes: input.walkMinutes,
     best_5min_watts: input.best5MinWatts,
     best_20min_watts: input.best20MinWatts,
     zone2_heart_rate: input.zone2HeartRate,

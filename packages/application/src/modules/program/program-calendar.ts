@@ -92,7 +92,10 @@ export type ProgramMilestone = {
   date: IsoDate;
 };
 
-/** Each block's first day, then the earliest return-to-sport date. */
+/**
+ * Each block's first day, then the earliest return-to-sport date (unless a
+ * block already starts that week).
+ */
 export function programMilestones(
   program: Pick<
     TrainingProgram,
@@ -106,7 +109,11 @@ export function programMilestones(
       week: b.startWeek,
       date: weekDateRange(program.weekAnchorDate, b.startWeek).start,
     }));
-  if (program.returnToSportWeek != null) {
+  // A block that starts on the return-to-sport week already marks it.
+  if (
+    program.returnToSportWeek != null &&
+    !program.blocks.some((b) => b.startWeek === program.returnToSportWeek)
+  ) {
     milestones.push({
       label: "Return to sport (earliest)",
       week: program.returnToSportWeek,

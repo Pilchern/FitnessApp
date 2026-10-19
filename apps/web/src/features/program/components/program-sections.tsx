@@ -5,8 +5,13 @@ import {
   formatShortDate,
   hardSetBand,
   limbSymmetryPct,
+  SKIP_LABELS,
   type SessionCompletion,
 } from "../helpers";
+
+function yearSuffix(date: string) {
+  return date.slice(0, 4) !== "2026" ? `, ${date.slice(0, 4)}` : "";
+}
 
 const card =
   "rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6";
@@ -15,6 +20,8 @@ const COMPLETION: Record<
   SessionCompletion,
   { label: string; tone: string } | null
 > = {
+  skipped: { label: "Skipped", tone: "text-ember" },
+  stopped: { label: "Stopped", tone: "text-ember font-semibold" },
   done: { label: "Done", tone: "text-pine" },
   missed: { label: "Missed", tone: "text-ember font-semibold" },
   today: { label: "Today", tone: "text-pine" },
@@ -34,6 +41,9 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
   );
   const done = tracked.filter((s) => s.completion === "done").length;
   const missed = tracked.filter((s) => s.completion === "missed").length;
+  const skipped = tracked.filter(
+    (s) => s.completion === "skipped" || s.completion === "stopped",
+  ).length;
   return (
     <section className={card}>
       <p className="text-xs text-ink/55">This week</p>
@@ -41,6 +51,9 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
         {done} of {tracked.length} done
         {missed > 0 ? (
           <span className="text-ember"> · {missed} missed</span>
+        ) : null}
+        {skipped > 0 ? (
+          <span className="text-ember"> · {skipped} skipped</span>
         ) : null}
       </h2>
       <ul className="mt-3 divide-y divide-ink/10">
@@ -77,6 +90,7 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
                     {s.visible && c ? (
                       <span className={`shrink-0 text-xs ${c.tone}`}>
                         {c.label}
+                        {s.outcome ? ` · ${SKIP_LABELS[s.outcome.reason]}` : ""}
                       </span>
                     ) : null}
                   </li>
@@ -110,7 +124,7 @@ export function ProgramMilestones({
             </span>
             <span className="shrink-0 tabular-nums">
               {formatShortDate(m.date)}
-              {m.date.slice(0, 4) !== "2026" ? `, ${m.date.slice(0, 4)}` : ""}
+              {yearSuffix(m.date)}
             </span>
           </li>
         ))}
@@ -125,36 +139,32 @@ export function ProgramProgress({
   progress,
 }: Pick<ProgramPageData, "hardSets" | "hardSetTarget" | "progress">) {
   const current = hardSets[hardSets.length - 1];
-  const max = Math.max(
-    hardSetTarget.max,
-    ...hardSets.map((w) => w.count.total),
-  );
+  const quads = (w: (typeof hardSets)[number]) => w.count.byMuscle.quads ?? 0;
+  const max = Math.max(hardSetTarget.max, ...hardSets.map(quads));
   return (
     <section className={card}>
       <h2 className="font-display text-lg text-ink">Progress</h2>
 
       <div className="mt-3">
         <div className="flex items-baseline justify-between gap-2">
-          <p className="text-sm text-ink">Hard leg sets this week</p>
+          <p className="text-sm text-ink">Hard quad sets this week</p>
           <p className="text-sm font-semibold tabular-nums text-ink">
-            {current?.count.total ?? 0}
+            {current ? quads(current) : 0}
             <span className="font-normal text-ink/55">
               {" "}
               / {hardSetTarget.min}–{hardSetTarget.max}
             </span>
           </p>
         </div>
-        {current && current.count.byMuscle.quads != null ? (
-          <p className="text-xs text-ink/55">
-            Quads {current.count.byMuscle.quads}
-          </p>
-        ) : null}
+        <p className="text-xs text-ink/55">
+          All hard leg sets {current?.count.total ?? 0}
+        </p>
         <ol
           className="mt-3 flex h-20 items-end gap-1.5"
-          aria-label="Hard leg sets by week"
+          aria-label="Hard quad sets by week"
         >
           {hardSets.map((w) => {
-            const band = hardSetBand(w.count.total, hardSetTarget);
+            const band = hardSetBand(quads(w), hardSetTarget);
             return (
               <li
                 key={w.week}
@@ -163,9 +173,9 @@ export function ProgramProgress({
                 <div
                   className={`w-full rounded-t ${band === "on" ? "bg-pine" : band === "over" ? "bg-ember" : "bg-ink/25"}`}
                   style={{
-                    height: `${Math.max(4, (w.count.total / max) * 64)}px`,
+                    height: `${Math.max(4, (quads(w) / max) * 64)}px`,
                   }}
-                  title={`${w.count.total} sets`}
+                  title={`${quads(w)} quad sets`}
                 />
                 <span className="text-[0.65rem] text-ink/50">{w.week}</span>
               </li>
@@ -173,8 +183,8 @@ export function ProgramProgress({
           })}
         </ol>
         <p className="mt-1 text-[0.7rem] text-ink/45">
-          Post-op week. Working rep sets at RIR 4 or less; per-leg lifts count
-          the left leg.
+          Post-op week. Working rep sets at or under the hard-set RIR
+          (Settings); per-leg lifts count the left leg.
         </p>
       </div>
 
@@ -259,7 +269,9 @@ export function ProgramGatesSummary({
             >
               {g.clearedOn
                 ? `Cleared ${formatShortDate(g.clearedOn)}`
-                : "Not cleared"}
+                : g.earliestOn
+                  ? `Earliest ${formatShortDate(g.earliestOn)}${yearSuffix(g.earliestOn)}`
+                  : "Not cleared"}
             </span>
           </li>
         ))}

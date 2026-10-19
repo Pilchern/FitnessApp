@@ -18,6 +18,7 @@ export type ExerciseMeasure = "reps" | "time" | "force";
 export type SideMode = "bilateral" | "per_leg";
 export type LoadKind = "barbell" | "dumbbell" | "cuff" | "bodyweight" | "band";
 export type ReadinessRequirement = "any" | "normal";
+export type BlockPart = "legs" | "upper";
 export type ProgramMuscle =
   | "quads"
   | "hamstrings"
@@ -31,6 +32,11 @@ export type ProgramExercise = {
   sessionId: EntityId;
   order: number;
   name: string;
+  /** legs: knee work (engine, deloads, knee-off swap). upper: runs as logged. */
+  blockPart: BlockPart;
+  /** Only in these post-op weeks (inclusive); null = no limit. */
+  fromWeek: number | null;
+  untilWeek: number | null;
   primaryMuscle: ProgramMuscle | null;
   readinessRequirement: ReadinessRequirement;
   measure: ExerciseMeasure;
@@ -96,6 +102,8 @@ export type ProgramGate = {
   label: string;
   /** Null until cleared; cleared from this date on. */
   clearedOn: IsoDate | null;
+  /** Earliest expected clearance (display only). */
+  earliestOn: IsoDate | null;
   notes: string | null;
 };
 
@@ -125,3 +133,29 @@ export type KneeCheck = {
 
 /** normal: full session. hold: repeat loads. knee_off: leg block replaced. */
 export type KneeReadinessStatus = "normal" | "hold" | "knee_off";
+
+export type SessionOutcomeKind = "skipped" | "stopped";
+export type SkipReason = "time" | "knee" | "sick" | "travel" | "other";
+export type RedFlagReason = "giving_way" | "locking" | "sharp_pain";
+
+/** An explicit skip (with a reason) or a red-flag stop for a planned session. */
+export type ProgramSessionOutcome = {
+  id: EntityId;
+  programSessionId: EntityId;
+  date: IsoDate;
+  outcome: SessionOutcomeKind;
+  reason: SkipReason | RedFlagReason;
+  notes: string | null;
+};
+
+/** One target or threshold row, edited in Settings. */
+export type TrainingSetting = {
+  id: EntityId;
+  key: string;
+  value: number | null;
+  textValue: string | null;
+  label: string;
+  unit: string | null;
+  groupName: string;
+  sortOrder: number;
+};

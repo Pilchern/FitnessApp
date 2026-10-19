@@ -39,6 +39,8 @@ export type CardioFormValues = {
   maxHeartRate: string;
   avgOutput: string;
   totalOutputKj: string;
+  runMinutes: string;
+  walkMinutes: string;
   cadenceMin: string;
   cadenceMax: string;
   resistanceMin: string;

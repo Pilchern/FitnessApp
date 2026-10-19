@@ -6,22 +6,29 @@ import {
   buildLiftLoggerPlan,
   exerciseProgress,
   getZonedDate,
+  isGateCleared,
+  kneeOffStreak,
   kneeReadinessStatus,
   lastSetsByExercise,
   legExerciseIndex,
   programMilestones,
+  programSettingsFromRows,
   programWeekDates,
   programWeekInfo,
   sessionsForBlock,
+  sleepAverageHours,
+  walkJogAdvice,
   weekDateRange,
   weeklyHardLegSets,
-  WEEKLY_HARD_LEG_SETS,
+  type DatedKneeCheck,
   type DayPlan,
+  type ProgramSettings,
   type UpperTemplateExercise,
 } from "@fitness-app/application";
 import {
   isStrengthTemplateDefinition,
-  type KneeCheck,
+  type KneeReadinessStatus,
+  type ProgramSessionOutcome,
   type StrengthSession,
   type TrainingProgram,
   type TrainingTemplate,
@@ -44,6 +51,9 @@ import type {
 const HISTORY_DAYS = 730;
 const HARD_SET_WEEKS = 6;
 const PROGRESS_POINTS = 8;
+/** Knee checks loaded for the streak and walk-jog rules. */
+const CHECK_LOOKBACK_DAYS = 21;
+const RUN_LOOKBACK_DAYS = 60;
 
 async function zonedToday(userId: string) {
   const profile = await getCachedUserProfile(userId);
@@ -67,25 +77,35 @@ function headerFor(program: TrainingProgram, date: string): ProgramHeader {
 function sessionViews(
   plan: DayPlan,
   templates: TrainingTemplate[],
+  outcomes: ProgramSessionOutcome[],
 ): ProgramSessionView[] {
-  return plan.sessions.map((s) => ({
-    id: s.session.id,
-    type: s.session.sessionType,
-    name: s.session.name,
-    visible: s.visible,
-    hiddenReason: s.hiddenReason,
-    legBlockReplaced: s.legBlockReplaced,
-    ride: s.ride,
-    notes: s.session.notes,
-    upperTemplateName:
-      templates.find((t) => t.id === s.session.upperTemplateId)?.name ?? null,
-    exercises: s.exercises.map((p) => ({
-      name: p.name,
-      status: p.status,
-      lockedReason: p.lockedReason,
-      prescription: formatPrescription(p),
-    })),
-  }));
+  return plan.sessions.map((s) => {
+    const outcome = outcomes.find(
+      (o) => o.programSessionId === s.session.id && o.date === plan.date,
+    );
+    return {
+      id: s.session.id,
+      type: s.session.sessionType,
+      name: s.session.name,
+      visible: s.visible,
+      hiddenReason: s.hiddenReason,
+      legBlockReplaced: s.legBlockReplaced,
+      ride: s.ride,
+      notes: s.session.notes,
+      upperTemplateName:
+        templates.find((t) => t.id === s.session.upperTemplateId)?.name ?? null,
+      outcome: outcome
+        ? { outcome: outcome.outcome, reason: outcome.reason }
+        : null,
+      exercises: s.exercises.map((p) => ({
+        name: p.name,
+        part: p.part,
+        status: p.status,
+        lockedReason: p.lockedReason,
+        prescription: formatPrescription(p),
+      })),
+    };
+  });
 }
 
 function upperFor(
@@ -110,15 +130,99 @@ function upperFor(
   };
 }
 
-function buildToday(
-  program: TrainingProgram,
-  today: string,
-  kneeCheck: KneeCheck | null,
-  templates: TrainingTemplate[],
-): { view: ProgramToday; plan: DayPlan } {
-  const kneeStatus = kneeReadinessStatus(kneeCheck);
-  const plan = buildDayPlan(program, today, kneeStatus);
-  const sessions = sessionViews(plan, templates);
+type ProgramContext = {
+  program: TrainingProgram;
+  settings: ProgramSettings;
+  today: string;
+  checks: DatedKneeCheck[];
+  statusOn: (date: string) => KneeReadinessStatus | null;
+  outcomes: ProgramSessionOutcome[];
+  sleepAverage: number | null;
+  templates: TrainingTemplate[];
+  runs: { date: string; runMinutes: number }[];
+};
+
+/** Everything the program screens share; null without an active program. */
+async function loadProgramContext(
+  extraOutcomeStart?: string,
+): Promise<ProgramContext | null> {
+  const user = await requireCurrentUser();
+  const {
+    programService,
+    trainingTemplateService,
+    recoveryService,
+    cardioService,
+  } = await createCoreServices();
+  const today = await zonedToday(user.id);
+  const program = await programService.getActiveProgram(user.id);
+  if (!program) return null;
+
+  const outcomeStart = extraOutcomeStart ?? today;
+  const [settingRows, checks, outcomes, recovery, templates, rides] =
+    await Promise.all([
+      programService.listSettings(user.id),
+      programService.listKneeChecks(
+        user.id,
+        addDays(today, -CHECK_LOOKBACK_DAYS),
+        addDays(today, 7),
+      ),
+      programService.listOutcomes(
+        user.id,
+        outcomeStart < today ? outcomeStart : today,
+        addDays(today, 7),
+      ),
+      recoveryService.listByDateRange({
+        userId: user.id,
+        startDate: addDays(today, -7),
+        endDate: today,
+      }),
+      trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
+      cardioService.listByDateRange({
+        userId: user.id,
+        startDate: addDays(today, -RUN_LOOKBACK_DAYS),
+        endDate: today,
+      }),
+    ]);
+  const settings = programSettingsFromRows(settingRows);
+  const statusOn = (date: string) =>
+    kneeReadinessStatus(checks.find((c) => c.date === date) ?? null, settings);
+
+  return {
+    program,
+    settings,
+    today,
+    checks,
+    statusOn,
+    outcomes,
+    sleepAverage: sleepAverageHours(
+      recovery,
+      today,
+      settings.sleepAverageNights,
+    ),
+    templates,
+    runs: rides
+      .filter((r) => r.runMinutes != null && r.runMinutes > 0)
+      .map((r) => ({
+        date: r.sessionDate,
+        runMinutes: r.runMinutes as number,
+      })),
+  };
+}
+
+function buildToday(ctx: ProgramContext): {
+  view: ProgramToday;
+  plan: DayPlan;
+} {
+  const { program, today, settings } = ctx;
+  const kneeCheck = ctx.checks.find((c) => c.date === today) ?? null;
+  const kneeStatus = ctx.statusOn(today);
+  const plan = buildDayPlan(program, today, kneeStatus, settings);
+  const sessions = sessionViews(plan, ctx.templates, ctx.outcomes);
+  const streak = kneeOffStreak(
+    ctx.checks.map((c) => ({ date: c.date, status: ctx.statusOn(c.date) })),
+    today,
+  );
+  const jogCleared = isGateCleared(program.gates, "jog", today);
   return {
     plan,
     view: {
@@ -129,105 +233,93 @@ function buildToday(
       sessions,
       hasLift: sessions.some((s) => s.type === "lift" && s.visible),
       testDayUrl: program.testDayUrl,
+      kneeOffStreak: streak,
+      showGoBackWeek: streak >= settings.kneeOffStreakDays,
+      redFlag: { name: settings.orthoName, phone: settings.orthoPhone },
+      sleepAverageHours: ctx.sleepAverage,
+      sleepMinHours: settings.sleepMinHoursForIncrease,
+      walkJog: jogCleared
+        ? walkJogAdvice({
+            runs: ctx.runs,
+            checks: ctx.checks.map((c) => ({
+              date: c.date,
+              status: ctx.statusOn(c.date),
+            })),
+            today,
+            settings,
+          })
+        : null,
     },
   };
 }
 
 /** Today's program for the dashboard card. Null without an active program. */
 export async function getProgramToday(): Promise<ProgramToday | null> {
-  const user = await requireCurrentUser();
-  const { programService, trainingTemplateService } =
-    await createCoreServices();
-  const today = await zonedToday(user.id);
-  const [program, checks, templates] = await Promise.all([
-    programService.getActiveProgram(user.id),
-    programService.listKneeChecks(user.id, today, today),
-    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
-  ]);
-  if (!program) return null;
-  return buildToday(program, today, checks[0] ?? null, templates).view;
+  const ctx = await loadProgramContext();
+  return ctx ? buildToday(ctx).view : null;
 }
 
 /**
  * Today's lift for /strength: the knee check state, and once it is in, the
- * combined legs + upper plan with suggested loads.
+ * combined plan with suggested leg loads.
  */
 export async function getStrengthProgramPlan(
   sessions: StrengthSession[],
-  templates: TrainingTemplate[],
 ): Promise<StrengthProgramPlan | null> {
-  const user = await requireCurrentUser();
-  const { programService } = await createCoreServices();
-  const today = await zonedToday(user.id);
-  const [program, checks] = await Promise.all([
-    programService.getActiveProgram(user.id),
-    programService.listKneeChecks(user.id, today, today),
-  ]);
-  if (!program) return null;
-  const { view, plan } = buildToday(
-    program,
-    today,
-    checks[0] ?? null,
-    templates,
-  );
+  const ctx = await loadProgramContext();
+  if (!ctx) return null;
+  const { view, plan } = buildToday(ctx);
   const lift = plan.sessions.find(
     (s) => s.session.sessionType === "lift" && s.visible,
   );
   if (!lift) return null;
   return {
     today: view,
+    sessionId: lift.session.id,
     plan:
       view.kneeStatus == null
         ? null
         : buildLiftLoggerPlan({
-            program,
+            program: ctx.program,
             planned: lift,
             info: plan.info,
             readiness: view.kneeStatus,
             history: lastSetsByExercise(sessions),
-            upper: upperFor(templates, lift.session.upperTemplateId),
+            upper: upperFor(ctx.templates, lift.session.upperTemplateId),
+            sleepAverageHours: ctx.sleepAverage,
+            settings: ctx.settings,
           }),
   };
 }
 
 export async function getProgramPageData(): Promise<ProgramPageData> {
   const user = await requireCurrentUser();
-  const {
-    programService,
-    strengthService,
-    cardioService,
-    trainingTemplateService,
-  } = await createCoreServices();
-  const today = await zonedToday(user.id);
-  const program = await programService.getActiveProgram(user.id);
+  const { strengthService, cardioService } = await createCoreServices();
+  const firstToday = await zonedToday(user.id);
+  const ctx = await loadProgramContext(addDays(firstToday, -7));
 
-  if (!program) {
+  if (!ctx) {
     return {
       program: null,
       today: null,
       week: [],
       milestones: [],
       hardSets: [],
-      hardSetTarget: WEEKLY_HARD_LEG_SETS,
+      hardSetTarget: { min: 12, max: 16 },
       progress: [],
       gates: [],
     };
   }
 
+  const { program, today, settings } = ctx;
   const weekDates = programWeekDates(program, today);
   const currentWeek = programWeekInfo(program, today).week;
   const firstHardSetWeek = Math.max(0, currentWeek - HARD_SET_WEEKS + 1);
-  const historyStart = addDays(today, -HISTORY_DAYS);
 
-  const [checks, sessions, rides, templates] = await Promise.all([
-    programService.listKneeChecks(
-      user.id,
-      weekDates[0]!,
-      weekDates[weekDates.length - 1]!,
-    ),
+  const [sessions, rides] = await Promise.all([
     strengthService.listByDateRange({
       userId: user.id,
-      startDate: historyStart,
+      startDate: addDays(today, -HISTORY_DAYS),
       endDate: today,
       limit: 2000,
     }),
@@ -236,17 +328,9 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
       startDate: weekDates[0]!,
       endDate: weekDates[weekDates.length - 1]!,
     }),
-    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
   ]);
 
-  const checkOn = (date: string) => checks.find((c) => c.date === date) ?? null;
-  const { view: todayView } = buildToday(
-    program,
-    today,
-    checkOn(today),
-    templates,
-  );
-
+  const { view: todayView } = buildToday(ctx);
   const liftDates = new Set(
     sessions.filter((s) => s.sets.length > 0).map((s) => s.sessionDate),
   );
@@ -257,14 +341,14 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
   );
 
   const week: ProgramWeekDay[] = weekDates.map((date) => {
-    const kneeStatus = kneeReadinessStatus(checkOn(date));
-    const plan = buildDayPlan(program, date, kneeStatus);
+    const kneeStatus = ctx.statusOn(date);
+    const plan = buildDayPlan(program, date, kneeStatus, settings);
     return {
       date,
       dayOfWeek: plan.info.dayOfWeek,
       isToday: date === today,
       kneeStatus,
-      sessions: sessionViews(plan, templates).map((s) => ({
+      sessions: sessionViews(plan, ctx.templates, ctx.outcomes).map((s) => ({
         ...s,
         completion: sessionCompletion({
           type: s.type,
@@ -272,13 +356,17 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
           today,
           liftDates,
           rideDates,
+          outcome: s.outcome?.outcome ?? null,
         }),
       })),
     };
   });
 
-  const allExercises = program.sessions.flatMap((s) => s.exercises);
-  const index = legExerciseIndex(allExercises);
+  const index = legExerciseIndex(
+    program.sessions
+      .flatMap((s) => s.exercises)
+      .filter((e) => e.blockPart === "legs"),
+  );
   const hardSets = Array.from(
     { length: currentWeek - firstHardSetWeek + 1 },
     (_, i) => {
@@ -287,7 +375,12 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
       return {
         week: weekNumber,
         start: range.start,
-        count: weeklyHardLegSets(sessions, index, range),
+        count: weeklyHardLegSets(
+          sessions,
+          index,
+          range,
+          settings.hardSetMaxRir,
+        ),
       };
     },
   );
@@ -298,7 +391,7 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
   const progress = (block ? sessionsForBlock(program, block) : [])
     .filter((s) => s.sessionType === "lift")
     .sort((a, b) => a.dayOfWeek - b.dayOfWeek)
-    .flatMap((s) => s.exercises)
+    .flatMap((s) => s.exercises.filter((e) => e.blockPart === "legs"))
     .flatMap((ex) =>
       [ex.name, ex.substituteName]
         .filter((n): n is string => n != null)
@@ -327,16 +420,19 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
       past: m.date <= today,
     })),
     hardSets,
-    hardSetTarget: WEEKLY_HARD_LEG_SETS,
+    hardSetTarget: { min: settings.quadSetsMin, max: settings.quadSetsMax },
     progress,
     gates: program.gates,
   };
 }
 
-/** Gates for the Settings toggle list; empty without a program. */
-export async function getProgramGates() {
+/** Gates and settings rows for the Settings page; empty without a program. */
+export async function getProgramSettingsData() {
   const user = await requireCurrentUser();
   const { programService } = await createCoreServices();
-  const program = await programService.getActiveProgram(user.id);
-  return program?.gates ?? [];
+  const [program, settings] = await Promise.all([
+    programService.getActiveProgram(user.id),
+    programService.listSettings(user.id),
+  ]);
+  return { gates: program?.gates ?? [], settings };
 }

@@ -38,6 +38,9 @@ export function exercise(
     id: `ex-${partial.name}`,
     sessionId: "s",
     order: 0,
+    blockPart: "legs",
+    fromWeek: null,
+    untilWeek: null,
     primaryMuscle: "quads",
     readinessRequirement: "any",
     measure: "reps",
@@ -90,6 +93,7 @@ export function gate(
     gateKey,
     label: gateKey,
     clearedOn,
+    earliestOn: null,
     notes: null,
   };
 }

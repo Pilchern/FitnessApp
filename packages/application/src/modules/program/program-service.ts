@@ -1,7 +1,9 @@
 import type {
   IsoDate,
   KneeCheck,
+  ProgramSessionOutcome,
   TrainingProgram,
+  TrainingSetting,
   UserId,
 } from "@fitness-app/domain";
 import { z } from "zod";
@@ -27,6 +29,57 @@ export type SaveKneeCheckInput = z.infer<typeof saveKneeCheckSchema>;
 
 export type DatedKneeCheck = KneeCheck & { date: IsoDate };
 
+export const SKIP_REASONS = [
+  "time",
+  "knee",
+  "sick",
+  "travel",
+  "other",
+] as const;
+export const RED_FLAG_REASONS = [
+  "giving_way",
+  "locking",
+  "sharp_pain",
+] as const;
+
+export const saveOutcomeSchema = z.discriminatedUnion("outcome", [
+  z.object({
+    userId: uuidSchema,
+    programSessionId: uuidSchema,
+    date: isoDateSchema,
+    outcome: z.literal("skipped"),
+    reason: z.enum(SKIP_REASONS),
+    notes: z.string().trim().max(500).nullable().optional(),
+  }),
+  z.object({
+    userId: uuidSchema,
+    programSessionId: uuidSchema,
+    date: isoDateSchema,
+    outcome: z.literal("stopped"),
+    reason: z.enum(RED_FLAG_REASONS),
+    notes: z.string().trim().max(500).nullable().optional(),
+  }),
+]);
+
+export type SaveOutcomeInput = z.infer<typeof saveOutcomeSchema>;
+
+export const clearOutcomeSchema = z.object({
+  userId: uuidSchema,
+  programSessionId: uuidSchema,
+  date: isoDateSchema,
+});
+
+export type ClearOutcomeInput = z.infer<typeof clearOutcomeSchema>;
+
+export const updateSettingSchema = z.object({
+  userId: uuidSchema,
+  key: z.string().regex(/^[a-z0-9_]{1,60}$/),
+  value: z.number().min(-100000).max(100000).nullable(),
+  textValue: z.string().trim().max(200).nullable(),
+});
+
+export type UpdateSettingInput = z.infer<typeof updateSettingSchema>;
+
 export interface ProgramRepository {
   /** The active program with blocks, weeks, sessions, exercises and gates. */
   getActiveProgram(userId: UserId): Promise<TrainingProgram | null>;
@@ -39,6 +92,16 @@ export interface ProgramRepository {
   ): Promise<DatedKneeCheck[]>;
   /** Saves into the day's recovery row, creating it when missing. */
   saveKneeCheck(input: SaveKneeCheckInput): Promise<void>;
+  listOutcomes(
+    userId: UserId,
+    startDate: IsoDate,
+    endDate: IsoDate,
+  ): Promise<ProgramSessionOutcome[]>;
+  /** One outcome per session and date; saving again replaces it. */
+  saveOutcome(input: SaveOutcomeInput): Promise<void>;
+  clearOutcome(input: ClearOutcomeInput): Promise<void>;
+  listSettings(userId: UserId): Promise<TrainingSetting[]>;
+  updateSetting(input: UpdateSettingInput): Promise<void>;
 }
 
 export class ProgramService {
@@ -58,5 +121,25 @@ export class ProgramService {
 
   async saveKneeCheck(input: unknown) {
     return this.repository.saveKneeCheck(saveKneeCheckSchema.parse(input));
+  }
+
+  async listOutcomes(userId: UserId, startDate: IsoDate, endDate: IsoDate) {
+    return this.repository.listOutcomes(userId, startDate, endDate);
+  }
+
+  async saveOutcome(input: unknown) {
+    return this.repository.saveOutcome(saveOutcomeSchema.parse(input));
+  }
+
+  async clearOutcome(input: unknown) {
+    return this.repository.clearOutcome(clearOutcomeSchema.parse(input));
+  }
+
+  async listSettings(userId: UserId) {
+    return this.repository.listSettings(userId);
+  }
+
+  async updateSetting(input: unknown) {
+    return this.repository.updateSetting(updateSettingSchema.parse(input));
   }
 }

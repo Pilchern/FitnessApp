@@ -1,9 +1,11 @@
 -- Post-op training program: a data-driven program -> block -> week ->
 -- session -> exercise prescription model, so a new block is rows, not code.
+-- Plus manual gates, explicit skip/stop outcomes and a settings table for
+-- every target and threshold.
 --
 -- Additive only. New tables, plus nullable columns on strength_exercise_sets
 -- (side, peak force), recovery_checkins (morning knee check) and
--- cardio_sessions (total output kJ). No existing column, constraint or row is
+-- cardio_sessions (total output kJ, run/walk minutes). No existing column, constraint or row is
 -- changed, so existing history reads exactly as before.
 --
 -- Week numbers count whole weeks from training_programs.week_anchor_date
@@ -101,6 +103,8 @@ create table if not exists public.program_gates (
   gate_key text not null check (gate_key ~ '^[a-z0-9_]{1,40}$'),
   label text not null,
   cleared_on date,
+  -- Earliest date clearance is expected (display only).
+  earliest_on date,
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -161,6 +165,12 @@ create table if not exists public.program_exercises (
   program_session_id uuid not null,
   exercise_order smallint not null check (exercise_order >= 0),
   exercise_name text not null,
+  -- 'legs' is the knee work (progression engine, deloads, knee-off swap);
+  -- 'upper' runs as logged, loads prefilled from history.
+  block_part text not null default 'legs' check (block_part in ('legs', 'upper')),
+  -- Only in these post-op weeks (inclusive); null = no limit.
+  from_week smallint check (from_week between 0 and 520),
+  until_week smallint check (until_week between 0 and 520),
   -- Muscle a working set counts toward in the weekly hard-set counter; null
   -- for drills (landing prep, balance, gait) that are not hard sets.
   primary_muscle text check (
@@ -207,6 +217,51 @@ create table if not exists public.program_exercises (
 );
 
 -- ---------------------------------------------------------------------------
+-- Session outcomes: a skip (with a reason) or a red-flag stop is explicit,
+-- not a silent gap.
+-- ---------------------------------------------------------------------------
+create table if not exists public.program_session_outcomes (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  program_session_id uuid not null,
+  outcome_date date not null,
+  outcome text not null check (outcome in ('skipped', 'stopped')),
+  reason text not null check (
+    reason in ('time', 'knee', 'sick', 'travel', 'other',
+               'giving_way', 'locking', 'sharp_pain')
+  ),
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  constraint program_session_outcomes_session_date_key
+    unique (user_id, program_session_id, outcome_date),
+  constraint program_session_outcomes_session_fk
+    foreign key (program_session_id, user_id)
+    references public.program_sessions (id, user_id)
+    on delete cascade
+);
+
+-- ---------------------------------------------------------------------------
+-- Targets and thresholds, one row per key, edited in Settings.
+-- ---------------------------------------------------------------------------
+create table if not exists public.training_settings (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  key text not null check (key ~ '^[a-z0-9_]{1,60}$'),
+  value numeric(10, 2),
+  text_value text,
+  label text not null,
+  unit text,
+  group_name text not null,
+  sort_order smallint not null default 0,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  deleted_at timestamptz,
+  constraint training_settings_user_key unique (user_id, key)
+);
+
+-- ---------------------------------------------------------------------------
 -- Logging columns on existing tables (all nullable, additive)
 -- ---------------------------------------------------------------------------
 
@@ -243,7 +298,16 @@ alter table public.recovery_checkins
 
 -- Peloton total output as shown on the bike.
 alter table public.cardio_sessions
-  add column if not exists total_output_kj numeric(6, 1);
+  add column if not exists total_output_kj numeric(6, 1),
+  -- Walk-jog: total minutes running and walking.
+  add column if not exists run_minutes numeric(5, 1),
+  add column if not exists walk_minutes numeric(5, 1);
+
+alter table public.cardio_sessions
+  drop constraint if exists cardio_sessions_run_walk_minutes_check,
+  add constraint cardio_sessions_run_walk_minutes_check
+    check ((run_minutes is null or run_minutes between 0 and 600)
+       and (walk_minutes is null or walk_minutes between 0 and 600));
 
 alter table public.cardio_sessions
   drop constraint if exists cardio_sessions_total_output_kj_check,
@@ -259,7 +323,8 @@ declare
 begin
   foreach t in array array[
     'training_programs', 'program_blocks', 'program_weeks',
-    'program_gates', 'program_sessions', 'program_exercises'
+    'program_gates', 'program_sessions', 'program_exercises',
+    'program_session_outcomes', 'training_settings'
   ]
   loop
     execute format('drop trigger if exists set_%1$s_updated_at on public.%1$I', t);
@@ -312,6 +377,13 @@ create index if not exists program_sessions_upper_template_idx
 create index if not exists program_sessions_gate_idx
   on public.program_sessions (user_id, gate_key)
   where gate_key is not null;
+
+create index if not exists program_session_outcomes_date_idx
+  on public.program_session_outcomes (user_id, outcome_date)
+  where deleted_at is null;
+
+create index if not exists program_session_outcomes_session_idx
+  on public.program_session_outcomes (program_session_id, user_id);
 
 create index if not exists program_exercises_gate_idx
   on public.program_exercises (user_id, gate_key)

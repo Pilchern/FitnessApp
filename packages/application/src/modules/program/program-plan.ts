@@ -1,4 +1,5 @@
 import type {
+  BlockPart,
   IsoDate,
   KneeReadinessStatus,
   LoadKind,
@@ -19,16 +20,16 @@ import {
   plannedSetCount,
   type PrescriptionScheme,
 } from "./program-progression";
+import {
+  DEFAULT_PROGRAM_SETTINGS,
+  type ProgramSettings,
+} from "./program-settings";
 
-/** Replaces the leg block on a knee day off. */
+/** Replaces the leg block on a knee day off (length from settings). */
 export const KNEE_OFF_BLOCK = {
   name: "Knee day off: ROM + easy walk",
-  seconds: 15 * 60,
-  notes: "Heel slides, prone hang, quad sets, then an easy walk. 15 min.",
+  notes: "Heel slides, prone hang, quad sets, then an easy walk.",
 } as const;
-
-/** The ride after a walk-jog is cut to this. */
-export const RIDE_AFTER_WALK_JOG_MINUTES = { min: 15, max: 20 } as const;
 
 /** Cleared from its date on; an unknown gate key stays locked. */
 export function isGateCleared(
@@ -65,6 +66,7 @@ export type PlannedExerciseStatus =
 
 export type PlannedExercise = {
   exercise: ProgramExercise;
+  part: BlockPart;
   status: PlannedExerciseStatus;
   /** What to do today: the substitute's name while the gate is closed. */
   name: string;
@@ -77,6 +79,7 @@ export type PlannedExercise = {
 
 export type PlanContext = {
   gates: ProgramGate[];
+  week: number;
   date: IsoDate;
   readiness: KneeReadinessStatus | null;
   block: ProgramBlock | null;
@@ -87,23 +90,34 @@ export type PlanContext = {
 
 /**
  * Gate first: a closed gate shows the substitute, or greys the exercise out.
- * Then readiness: "normal only" work (landing prep) waits for a normal check.
+ * On a repeat-loads (hold) day gated work is off too, even once cleared (the
+ * substitute runs instead when there is one). Then readiness: "normal only"
+ * work (landing prep) waits for a normal check. Deloads take a set off leg
+ * work only.
  */
 export function planExercise(
   exercise: ProgramExercise,
   ctx: PlanContext,
 ): PlannedExercise {
   const scheme = effectiveScheme(exercise, ctx.block, ctx.sourceBlock);
-  const sets = plannedSetCount(scheme, ctx.weekIndexInBlock, ctx.isDeload);
+  const part = exercise.blockPart;
+  const sets = plannedSetCount(
+    scheme,
+    ctx.weekIndexInBlock,
+    ctx.isDeload && part === "legs",
+  );
   const base = {
     exercise,
+    part,
     name: exercise.name,
     loadKind: exercise.loadKind,
     scheme,
     sets,
   };
 
-  if (!isGateCleared(ctx.gates, exercise.gateKey, ctx.date)) {
+  const gateClosed = !isGateCleared(ctx.gates, exercise.gateKey, ctx.date);
+  const holdOff = ctx.readiness === "hold" && exercise.gateKey != null;
+  if (gateClosed || holdOff) {
     if (exercise.substituteName) {
       return {
         ...base,
@@ -115,8 +129,10 @@ export function planExercise(
     }
     return {
       ...base,
-      status: "locked",
-      lockedReason: `Waiting on gate: ${gateLabel(ctx.gates, exercise.gateKey ?? "")}`,
+      status: gateClosed ? "locked" : "readiness_hidden",
+      lockedReason: gateClosed
+        ? `Waiting on gate: ${gateLabel(ctx.gates, exercise.gateKey ?? "")}`
+        : "Off on a repeat-loads day",
     };
   }
 
@@ -135,6 +151,17 @@ export function planExercise(
   }
 
   return { ...base, status: "active", lockedReason: null };
+}
+
+/** True when the exercise runs in `week` (its from/until window, inclusive). */
+export function inWeekWindow(
+  ex: Pick<ProgramExercise, "fromWeek" | "untilWeek">,
+  week: number,
+) {
+  return (
+    (ex.fromWeek == null || week >= ex.fromWeek) &&
+    (ex.untilWeek == null || week <= ex.untilWeek)
+  );
 }
 
 export function isPlannedToday(p: PlannedExercise) {
@@ -196,11 +223,16 @@ function walkJogAllowed(
  *   climb intervals become Zone 2; walk-jog is off.
  * - hold: "normal only" exercises and walk-jog are off; loads repeat.
  * - walk-jog (jog gate cleared) cuts the same day's ride to 15-20 min.
+ * Exercises outside their week window (from/until week) are left out.
  */
 export function buildDayPlan(
   program: TrainingProgram,
   date: IsoDate,
   readiness: KneeReadinessStatus | null,
+  settings: Pick<
+    ProgramSettings,
+    "rideAfterWalkJogMin" | "rideAfterWalkJogMax"
+  > = DEFAULT_PROGRAM_SETTINGS,
 ): DayPlan {
   const info = programWeekInfo(program, date);
   const block = info.block;
@@ -211,6 +243,7 @@ export function buildDayPlan(
     : null;
   const ctx: PlanContext = {
     gates: program.gates,
+    week: info.week,
     date,
     readiness,
     block,
@@ -231,6 +264,7 @@ export function buildDayPlan(
 
   const sessions = todays.map((session): PlannedSession => {
     const exercises = [...session.exercises]
+      .filter((ex) => inWeekWindow(ex, info.week))
       .sort((a, b) => a.order - b.order)
       .map((ex) => planExercise(ex, ctx));
 
@@ -268,8 +302,8 @@ export function buildDayPlan(
       if (walkJogToday) {
         ride = {
           ...ride,
-          minutesMin: RIDE_AFTER_WALK_JOG_MINUTES.min,
-          minutesMax: RIDE_AFTER_WALK_JOG_MINUTES.max,
+          minutesMin: settings.rideAfterWalkJogMin,
+          minutesMax: settings.rideAfterWalkJogMax,
           note: [ride.note, "Shortened: walk-jog first."]
             .filter(Boolean)
             .join(" "),
@@ -337,7 +371,9 @@ export function prescribedRepsMaxOn(
     : null;
   const key = exerciseName.trim().toLowerCase();
   for (const session of sessionsForBlock(program, block)) {
-    for (const ex of session.exercises) {
+    for (const ex of session.exercises.filter((e) =>
+      inWeekWindow(e, info.week),
+    )) {
       const names = [ex.name, ex.substituteName].filter(
         (n): n is string => n != null,
       );

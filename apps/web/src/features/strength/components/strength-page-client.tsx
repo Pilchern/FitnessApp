@@ -17,6 +17,7 @@ import { TodaysPlanCallout } from "./todays-plan-callout";
 import type { LoggerPlan } from "@fitness-app/application";
 import type { StrengthProgramPlan } from "@/features/program/types";
 import { ProgramPlanCallout } from "@/features/program/components/program-plan-callout";
+import { RedFlagControl } from "@/features/program/components/session-outcome-controls";
 
 type StrengthPageClientProps = {
   mode: "create" | "edit";
@@ -82,6 +83,17 @@ export function StrengthPageClient({
         />
       ) : todaysScheduledTemplate && onLoad && planRequest == null ? (
         <TodaysPlanCallout template={todaysScheduledTemplate} onLoad={onLoad} />
+      ) : null}
+
+      {/* Mid-workout on a program lift: giving way, locking or sharp pain. */}
+      {programPlan && mode === "create" && planRequest != null ? (
+        <div className="flex justify-end">
+          <RedFlagControl
+            sessionId={programPlan.sessionId}
+            date={programPlan.today.today}
+            contact={programPlan.today.redFlag}
+          />
+        </div>
       ) : null}
 
       {/* Keyed by mode so Edit -> Cancel remounts the logger and restores the

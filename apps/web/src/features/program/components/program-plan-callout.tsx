@@ -4,6 +4,7 @@ import type { LoggerPlan } from "@fitness-app/application";
 import type { StrengthProgramPlan } from "../types";
 import { KneeCheckPanel } from "./knee-check-panel";
 import { ProgramHeaderLine } from "./program-today-card";
+import { RedFlagControl, SkipControl } from "./session-outcome-controls";
 
 type ProgramPlanCalloutProps = {
   programPlan: StrengthProgramPlan;
@@ -33,12 +34,35 @@ export function ProgramPlanCallout({
         ) : null}
       </div>
 
+      {today.showGoBackWeek ? (
+        <p
+          role="alert"
+          className="rounded-2xl border border-ember/40 bg-ember/15 px-4 py-3 text-sm font-semibold text-ember"
+        >
+          {today.kneeOffStreak} knee-off days in a row: go back one week on leg
+          loads; tell PT.
+        </p>
+      ) : null}
+
       <KneeCheckPanel
         date={today.today}
         check={today.kneeCheck}
         status={today.kneeStatus}
         required
       />
+
+      {lift ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <SkipControl session={lift} date={today.today} />
+          {!lift.outcome ? (
+            <RedFlagControl
+              sessionId={programPlan.sessionId}
+              date={today.today}
+              contact={today.redFlag}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {plan ? (
         <>

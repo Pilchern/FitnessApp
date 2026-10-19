@@ -8,11 +8,18 @@ import type {
   TrainingProgram,
 } from "@fitness-app/domain";
 import type {
+  ClearOutcomeInput,
   DatedKneeCheck,
   ProgramRepository,
   SaveKneeCheckInput,
+  SaveOutcomeInput,
   SetGateClearedInput,
+  UpdateSettingInput,
 } from "@fitness-app/application";
+import type {
+  ProgramSessionOutcome,
+  TrainingSetting,
+} from "@fitness-app/domain";
 import { z } from "zod";
 import { type AppSupabaseClient, throwOnError } from "./shared";
 
@@ -55,6 +62,7 @@ const gateRowSchema = z.object({
   gate_key: z.string(),
   label: z.string(),
   cleared_on: z.string().nullable(),
+  earliest_on: z.string().nullable(),
   notes: z.string().nullable(),
 });
 
@@ -81,6 +89,9 @@ const exerciseRowSchema = z.object({
   program_session_id: z.string().uuid(),
   exercise_order: z.number(),
   exercise_name: z.string(),
+  block_part: z.enum(["legs", "upper"]),
+  from_week: num,
+  until_week: num,
   primary_muscle: z
     .enum(["quads", "hamstrings", "glutes", "calves", "adductors", "core"])
     .nullable(),
@@ -99,6 +110,35 @@ const exerciseRowSchema = z.object({
   substitute_name: z.string().nullable(),
   substitute_load_kind: loadKind.nullable(),
   notes: z.string().nullable(),
+});
+
+const outcomeRowSchema = z.object({
+  id: z.string().uuid(),
+  program_session_id: z.string().uuid(),
+  outcome_date: z.string(),
+  outcome: z.enum(["skipped", "stopped"]),
+  reason: z.enum([
+    "time",
+    "knee",
+    "sick",
+    "travel",
+    "other",
+    "giving_way",
+    "locking",
+    "sharp_pain",
+  ]),
+  notes: z.string().nullable(),
+});
+
+const settingRowSchema = z.object({
+  id: z.string().uuid(),
+  key: z.string(),
+  value: z.coerce.number().nullable(),
+  text_value: z.string().nullable(),
+  label: z.string(),
+  unit: z.string().nullable(),
+  group_name: z.string(),
+  sort_order: z.number(),
 });
 
 const kneeRowSchema = z.object({
@@ -131,6 +171,9 @@ function mapExercise(row: z.infer<typeof exerciseRowSchema>): ProgramExercise {
     sessionId: row.program_session_id,
     order: row.exercise_order,
     name: row.exercise_name,
+    blockPart: row.block_part,
+    fromWeek: row.from_week,
+    untilWeek: row.until_week,
     primaryMuscle: row.primary_muscle,
     readinessRequirement: row.readiness_requirement,
     measure: row.measure,
@@ -244,6 +287,7 @@ export class SupabaseProgramRepository implements ProgramRepository {
         gateKey: g.gate_key,
         label: g.label,
         clearedOn: g.cleared_on,
+        earliestOn: g.earliest_on,
         notes: g.notes,
       }));
 
@@ -381,5 +425,92 @@ export class SupabaseProgramRepository implements ProgramRepository {
       ...columns,
     });
     throwOnError(response.error, "Save knee check");
+  }
+
+  async listOutcomes(
+    userId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<ProgramSessionOutcome[]> {
+    const response = await this.client
+      .from("program_session_outcomes")
+      .select("id, program_session_id, outcome_date, outcome, reason, notes")
+      .eq("user_id", userId)
+      .gte("outcome_date", startDate)
+      .lte("outcome_date", endDate)
+      .is("deleted_at", null);
+    throwOnError(response.error, "List session outcomes");
+    return outcomeRowSchema
+      .array()
+      .parse(response.data ?? [])
+      .map((row) => ({
+        id: row.id,
+        programSessionId: row.program_session_id,
+        date: row.outcome_date,
+        outcome: row.outcome,
+        reason: row.reason,
+        notes: row.notes,
+      }));
+  }
+
+  async saveOutcome(input: SaveOutcomeInput) {
+    const response = await this.client.from("program_session_outcomes").upsert(
+      {
+        user_id: input.userId,
+        program_session_id: input.programSessionId,
+        outcome_date: input.date,
+        outcome: input.outcome,
+        reason: input.reason,
+        notes: input.notes ?? null,
+        deleted_at: null,
+      },
+      { onConflict: "user_id,program_session_id,outcome_date" },
+    );
+    throwOnError(response.error, "Save session outcome");
+  }
+
+  async clearOutcome(input: ClearOutcomeInput) {
+    const response = await this.client
+      .from("program_session_outcomes")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("user_id", input.userId)
+      .eq("program_session_id", input.programSessionId)
+      .eq("outcome_date", input.date)
+      .is("deleted_at", null);
+    throwOnError(response.error, "Clear session outcome");
+  }
+
+  async listSettings(userId: string): Promise<TrainingSetting[]> {
+    const response = await this.client
+      .from("training_settings")
+      .select("id, key, value, text_value, label, unit, group_name, sort_order")
+      .eq("user_id", userId)
+      .is("deleted_at", null)
+      .order("group_name", { ascending: true })
+      .order("sort_order", { ascending: true });
+    throwOnError(response.error, "List training settings");
+    return settingRowSchema
+      .array()
+      .parse(response.data ?? [])
+      .map((row) => ({
+        id: row.id,
+        key: row.key,
+        value: row.value,
+        textValue: row.text_value,
+        label: row.label,
+        unit: row.unit,
+        groupName: row.group_name,
+        sortOrder: row.sort_order,
+      }));
+  }
+
+  async updateSetting(input: UpdateSettingInput) {
+    const response = await this.client
+      .from("training_settings")
+      .update({ value: input.value, text_value: input.textValue })
+      .eq("user_id", input.userId)
+      .eq("key", input.key)
+      .is("deleted_at", null);
+    throwOnError(response.error, "Update training setting");
   }
 }

@@ -57,7 +57,7 @@ export async function getStrengthPageData(
   let programPlan = null;
   if (!editSessionId) {
     try {
-      programPlan = await getStrengthProgramPlan(sessions, strengthTemplates);
+      programPlan = await getStrengthProgramPlan(sessions);
     } catch (error) {
       console.error("Program plan failed to load", error);
     }

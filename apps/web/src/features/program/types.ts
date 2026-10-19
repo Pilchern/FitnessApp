@@ -1,4 +1,5 @@
 import type {
+  WalkJogAdvice,
   ExerciseProgressPoint,
   HardSetCount,
   LoggerPlan,
@@ -7,15 +8,18 @@ import type {
   ProgramMilestone,
 } from "@fitness-app/application";
 import type {
+  BlockPart,
   KneeCheck,
   KneeReadinessStatus,
   ProgramGate,
+  ProgramSessionOutcome,
   ProgramSessionType,
 } from "@fitness-app/domain";
 import type { SessionCompletion } from "./helpers";
 
 export type ProgramExerciseView = {
   name: string;
+  part: BlockPart;
   status: PlannedExerciseStatus;
   lockedReason: string | null;
   /** "3 x 10–12 @ RIR 2", "3 x 20 s per leg", "5 x 5 s, peak N per leg". */
@@ -33,6 +37,8 @@ export type ProgramSessionView = {
   exercises: ProgramExerciseView[];
   upperTemplateName: string | null;
   notes: string | null;
+  /** An explicit skip or red-flag stop logged for this date. */
+  outcome: Pick<ProgramSessionOutcome, "outcome" | "reason"> | null;
 };
 
 export type ProgramHeader = {
@@ -52,6 +58,14 @@ export type ProgramToday = {
   sessions: ProgramSessionView[];
   hasLift: boolean;
   testDayUrl: string | null;
+  kneeOffStreak: number;
+  /** Knee-off streak at the setting: "go back one week on leg loads". */
+  showGoBackWeek: boolean;
+  redFlag: { name: string; phone: string | null };
+  sleepAverageHours: number | null;
+  sleepMinHours: number;
+  /** Next walk-jog, once the jog gate is cleared. */
+  walkJog: WalkJogAdvice | null;
 };
 
 export type ProgramWeekDay = {
@@ -82,11 +96,14 @@ export type ProgramPageData = {
 
 export type StrengthProgramPlan = {
   today: ProgramToday;
+  /** Today's lift session (for skip and red-flag outcomes). */
+  sessionId: string;
   /** Null until the knee check is in, or when today has no lift. */
   plan: LoggerPlan | null;
 };
 
 export type ProgramActionState = {
+  saved?: boolean;
   error?: string;
   fieldErrors?: Record<string, string>;
 };

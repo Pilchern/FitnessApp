@@ -16,7 +16,11 @@ function GateRow({ gate, today }: { gate: ProgramGate; today: string }) {
           <span
             className={`shrink-0 text-xs ${gate.clearedOn ? "text-pine" : "text-ink/50"}`}
           >
-            {gate.clearedOn ? `Cleared ${gate.clearedOn}` : "Not cleared"}
+            {gate.clearedOn
+              ? `Cleared ${gate.clearedOn}`
+              : gate.earliestOn
+                ? `Earliest ${gate.earliestOn}`
+                : "Not cleared"}
           </span>
         </div>
         <div className="flex gap-2">

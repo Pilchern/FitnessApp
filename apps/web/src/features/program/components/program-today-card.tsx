@@ -2,6 +2,19 @@ import Link from "next/link";
 import type { ProgramSessionView, ProgramToday } from "../types";
 import { STATUS_LABEL } from "../helpers";
 import { KneeCheckPanel } from "./knee-check-panel";
+import { RedFlagControl, SkipControl } from "./session-outcome-controls";
+import type { WalkJogAdvice } from "@fitness-app/application";
+
+function walkJogLine(advice: WalkJogAdvice) {
+  if (advice.action === "rest") {
+    return `Rest from running (bike instead). Back on ${advice.resumeOn}.`;
+  }
+  const minutes =
+    advice.runMinutesMin === advice.runMinutesMax
+      ? `${advice.runMinutesMin}`
+      : `${advice.runMinutesMin}–${advice.runMinutesMax}`;
+  return `${minutes} min running: ${advice.structure}. ${advice.reason}`;
+}
 
 function rideLine(session: ProgramSessionView) {
   const ride = session.ride;
@@ -39,10 +52,17 @@ export function ProgramSessionList({
   sessions,
   testDayUrl,
   showExercises,
+  date,
+  walkJog = null,
+  controls = false,
 }: {
   sessions: ProgramSessionView[];
   testDayUrl: string | null;
   showExercises: boolean;
+  date: string;
+  walkJog?: WalkJogAdvice | null;
+  /** Show Skip on today's sessions. */
+  controls?: boolean;
 }) {
   if (sessions.length === 0) {
     return <p className="text-sm text-ink/60">Nothing planned.</p>;
@@ -61,6 +81,9 @@ export function ProgramSessionList({
                 </span>
               ) : null}
             </span>
+            {controls && s.visible && s.type !== "test" && s.type !== "rest" ? (
+              <SkipControl session={s} date={date} />
+            ) : null}
             {s.type === "test" && testDayUrl ? (
               <a
                 href={testDayUrl}
@@ -72,6 +95,9 @@ export function ProgramSessionList({
               </a>
             ) : null}
           </div>
+          {s.type === "walk_jog" && s.visible && walkJog ? (
+            <p className="text-xs text-ink/70">{walkJogLine(walkJog)}</p>
+          ) : null}
           {!s.visible && s.hiddenReason ? (
             <p className="text-xs text-ink/60">{s.hiddenReason}</p>
           ) : null}
@@ -86,7 +112,7 @@ export function ProgramSessionList({
           ) : null}
           {s.legBlockReplaced ? (
             <p className="mt-1 text-xs font-medium text-ember">
-              Leg block today: 15 min ROM + easy walk.
+              Leg block today: ROM + easy walk. Upper still runs.
             </p>
           ) : null}
           {showExercises && s.visible && !s.legBlockReplaced ? (
@@ -132,6 +158,10 @@ export function ProgramTodayCard({
   detailed = false,
 }: ProgramTodayCardProps) {
   const hasRide = today.sessions.some((s) => s.type === "peloton" && s.visible);
+  const lift = today.sessions.find((s) => s.type === "lift" && s.visible);
+  const sleepLow =
+    today.sleepAverageHours != null &&
+    today.sleepAverageHours < today.sleepMinHours;
   return (
     <section className="space-y-4 rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
       <div className="flex items-start justify-between gap-3">
@@ -156,14 +186,38 @@ export function ProgramTodayCard({
         required={today.hasLift}
       />
 
+      {today.showGoBackWeek ? (
+        <div
+          role="alert"
+          className="rounded-2xl border border-ember/40 bg-ember/15 px-4 py-3 text-sm text-ember"
+        >
+          <p className="font-semibold">
+            {today.kneeOffStreak} knee-off days in a row.
+          </p>
+          <p className="mt-0.5 text-ink/80">
+            Go back one week on leg loads; tell PT.
+          </p>
+        </div>
+      ) : null}
+
+      {sleepLow ? (
+        <p className="rounded-2xl border border-ink/10 bg-sand/60 px-4 py-2 text-xs text-ink/75">
+          Sleep averaged {today.sleepAverageHours?.toFixed(1)} h: no load
+          increases until it is back to {today.sleepMinHours} h.
+        </p>
+      ) : null}
+
       <ProgramSessionList
         sessions={today.sessions}
         testDayUrl={today.testDayUrl}
         showExercises={detailed}
+        date={today.today}
+        walkJog={today.walkJog}
+        controls
       />
 
       {today.hasLift || hasRide ? (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {today.hasLift ? (
             <Link
               href="/strength"
@@ -179,6 +233,13 @@ export function ProgramTodayCard({
             >
               Log ride
             </Link>
+          ) : null}
+          {lift && !lift.outcome ? (
+            <RedFlagControl
+              sessionId={lift.id}
+              date={today.today}
+              contact={today.redFlag}
+            />
           ) : null}
         </div>
       ) : null}

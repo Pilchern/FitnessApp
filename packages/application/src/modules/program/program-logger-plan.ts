@@ -11,8 +11,13 @@ import {
   isPlannedToday,
   KNEE_OFF_BLOCK,
   prescribedRepsMaxOn,
+  type PlannedExercise,
   type PlannedSession,
 } from "./program-plan";
+import {
+  DEFAULT_PROGRAM_SETTINGS,
+  type ProgramSettings,
+} from "./program-settings";
 import {
   programExerciseKey,
   suggestLoad,
@@ -102,81 +107,112 @@ export type BuildLiftPlanInput = {
   info: ProgramWeekInfo;
   readiness: KneeReadinessStatus | null;
   history: Record<string, ExerciseHistory>;
+  /** A linked upper-body template, run after the program rows unchanged. */
   upper: { notes: string | null; exercises: UpperTemplateExercise[] } | null;
+  sleepAverageHours?: number | null;
+  settings?: ProgramSettings;
 };
 
+function legExercise(
+  p: PlannedExercise,
+  input: BuildLiftPlanInput,
+  settings: ProgramSettings,
+): LoggerPlanExercise {
+  const tempo = p.exercise.tempo ? `Tempo ${p.exercise.tempo}.` : null;
+  const base = {
+    exerciseName: p.name,
+    exerciseOrder: 0,
+    targetSets: p.sets,
+    targetRir: p.scheme.rirTarget,
+    sideMode: p.exercise.sideMode,
+    measure: p.exercise.measure,
+    program: true as const,
+  };
+  if (p.exercise.measure !== "reps") {
+    return {
+      ...base,
+      targetReps: null,
+      targetWeight: null,
+      targetRir: null,
+      targetSeconds: p.exercise.secondsTarget,
+      notes: [tempo, p.exercise.notes].filter(Boolean).join(" ") || null,
+    };
+  }
+  const history = input.history[programExerciseKey(p.name)];
+  const suggestion = suggestLoad({
+    loadKind: p.loadKind,
+    scheme: p.scheme,
+    lastSets: history?.sets ?? [],
+    lastRepsMax: history
+      ? prescribedRepsMaxOn(input.program, p.name, history.sessionDate)
+      : null,
+    readiness: input.readiness,
+    isDeload: input.info.isDeload,
+    sleepAverageHours: input.sleepAverageHours ?? null,
+    settings,
+  });
+  return {
+    ...base,
+    targetReps: p.scheme.repsMax,
+    targetWeight: suggestion.load,
+    targetSeconds: null,
+    suggestion,
+    notes: [suggestionCue(suggestion), tempo, p.exercise.notes]
+      .filter(Boolean)
+      .join(" "),
+  };
+}
+
+/** Upper rows run as logged: the logger prefills last time's load. */
+function upperExercise(p: PlannedExercise): LoggerPlanExercise {
+  const { repsMin, repsMax } = p.scheme;
+  const range =
+    repsMin != null && repsMax != null && repsMin !== repsMax
+      ? `${repsMin}-${repsMax} reps.`
+      : null;
+  return {
+    exerciseName: p.name,
+    exerciseOrder: 0,
+    targetSets: p.sets,
+    targetReps: repsMax,
+    targetWeight: null,
+    targetRir: p.scheme.rirTarget,
+    notes: [range, p.exercise.notes].filter(Boolean).join(" ") || null,
+  };
+}
+
 /**
- * Today's lift for the logger: the leg block first (or ROM + walk on a knee
- * day off), then the linked upper-body template unchanged. Leg loads come
- * from the progression engine; upper loads stay with the logger's
- * last-logged prefill.
+ * Today's lift for the logger, in prescription order: leg work through the
+ * progression engine, upper work prefilled from what was last logged. On a
+ * knee day off every leg row is swapped for one ROM + walk block (upper
+ * still runs). A linked upper template, if any, follows unchanged.
  */
 export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
   const { planned, info, readiness } = input;
-  const legs: LoggerPlanExercise[] = planned.legBlockReplaced
-    ? [
-        {
-          exerciseName: KNEE_OFF_BLOCK.name,
-          exerciseOrder: 0,
-          targetSets: 1,
-          targetReps: null,
-          targetWeight: null,
-          targetRir: null,
-          notes: KNEE_OFF_BLOCK.notes,
-          measure: "time",
-          targetSeconds: KNEE_OFF_BLOCK.seconds,
-          sideMode: "bilateral",
-          program: true,
-        },
-      ]
-    : planned.exercises.filter(isPlannedToday).map((p, i) => {
-        const tempo = p.exercise.tempo ? `Tempo ${p.exercise.tempo}.` : null;
-        const base = {
-          exerciseName: p.name,
-          exerciseOrder: i,
-          targetSets: p.sets,
-          targetRir: p.scheme.rirTarget,
-          sideMode: p.exercise.sideMode,
-          measure: p.exercise.measure,
-          program: true as const,
-        };
-        if (p.exercise.measure !== "reps") {
-          return {
-            ...base,
-            targetReps: null,
-            targetWeight: null,
-            targetRir: null,
-            targetSeconds: p.exercise.secondsTarget,
-            notes: [tempo, p.exercise.notes].filter(Boolean).join(" ") || null,
-          };
-        }
-        const history = input.history[programExerciseKey(p.name)];
-        const suggestion = suggestLoad({
-          loadKind: p.loadKind,
-          scheme: p.scheme,
-          lastSets: history?.sets ?? [],
-          lastRepsMax: history
-            ? prescribedRepsMaxOn(input.program, p.name, history.sessionDate)
-            : null,
-          readiness,
-          isDeload: info.isDeload,
-        });
-        return {
-          ...base,
-          targetReps: p.scheme.repsMax,
-          targetWeight: suggestion.load,
-          targetSeconds: null,
-          suggestion,
-          notes: [suggestionCue(suggestion), tempo, p.exercise.notes]
-            .filter(Boolean)
-            .join(" "),
-        };
-      });
-
-  const upper = (input.upper?.exercises ?? []).map((ex, i) => ({
-    ...ex,
-    exerciseOrder: legs.length + i,
-  }));
+  const settings = input.settings ?? DEFAULT_PROGRAM_SETTINGS;
+  const rows: LoggerPlanExercise[] = [];
+  if (planned.legBlockReplaced) {
+    rows.push({
+      exerciseName: KNEE_OFF_BLOCK.name,
+      exerciseOrder: 0,
+      targetSets: 1,
+      targetReps: null,
+      targetWeight: null,
+      targetRir: null,
+      notes: `${KNEE_OFF_BLOCK.notes} ${settings.kneeOffBlockMinutes} min.`,
+      measure: "time",
+      targetSeconds: settings.kneeOffBlockMinutes * 60,
+      sideMode: "bilateral",
+      program: true,
+    });
+  }
+  for (const p of planned.exercises.filter(isPlannedToday)) {
+    if (p.part === "upper") rows.push(upperExercise(p));
+    else if (!planned.legBlockReplaced)
+      rows.push(legExercise(p, input, settings));
+  }
+  const legs = rows;
+  const upper = (input.upper?.exercises ?? []).map((ex) => ({ ...ex }));
 
   const status = readiness ? KNEE_STATUS_COPY[readiness] : null;
   const notes = [
@@ -193,6 +229,9 @@ export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
   return {
     name: `${planned.session.name} · Wk ${info.week}`,
     notes,
-    exercises: [...legs, ...upper],
+    exercises: [...legs, ...upper].map((ex, i) => ({
+      ...ex,
+      exerciseOrder: i,
+    })),
   };
 }

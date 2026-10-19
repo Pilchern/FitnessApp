@@ -1,4 +1,5 @@
 import type {
+  IsoDate,
   KneeReadinessStatus,
   LoadKind,
   ProgramBlock,
@@ -6,60 +7,69 @@ import type {
   ProgramMuscle,
   StrengthSession,
 } from "@fitness-app/domain";
+import { addDays } from "./program-calendar";
+import {
+  DEFAULT_PROGRAM_SETTINGS,
+  type ProgramSettings,
+} from "./program-settings";
 
-/** Barbell +5 lb, cuff +2.5 lb. Dumbbells: next size, see `nextDumbbell`. */
-export const BARBELL_STEP_LB = 5;
-export const CUFF_STEP_LB = 2.5;
-/**
- * Adjustable dumbbells [assumed]: 2.5 lb steps up to 25 lb, 5 lb above.
- * Change here if the set jumps differently.
- */
-export const DUMBBELL_FINE_STEP_LB = 2.5;
-export const DUMBBELL_COARSE_STEP_LB = 5;
-export const DUMBBELL_FINE_LIMIT_LB = 25;
-/** Progression needs at least this many reps in reserve on every set. */
-export const PROGRESSION_MIN_RIR = 2;
 /** Last block's RIR when it was not logged [assumed]. */
 export const DEFAULT_LOGGED_RIR = 2;
-/** A working set at this RIR or closer to failure counts as a hard set. */
-export const HARD_SET_MAX_RIR = 4;
-/** Weekly hard leg-set target. */
-export const WEEKLY_HARD_LEG_SETS = { min: 12, max: 16 } as const;
 /** Epley stops being useful past about 15 reps to failure. */
 const MAX_REPS_TO_FAILURE_FOR_ESTIMATE = 15;
 
-export function nextDumbbell(load: number) {
-  return load < DUMBBELL_FINE_LIMIT_LB
-    ? load + DUMBBELL_FINE_STEP_LB
-    : load + DUMBBELL_COARSE_STEP_LB;
+type LoadSteps = Pick<
+  ProgramSettings,
+  | "barbellStepLb"
+  | "cuffStepLb"
+  | "dumbbellFineStepLb"
+  | "dumbbellCoarseStepLb"
+  | "dumbbellFineLimitLb"
+>;
+
+export function nextDumbbell(
+  load: number,
+  steps: LoadSteps = DEFAULT_PROGRAM_SETTINGS,
+) {
+  return load < steps.dumbbellFineLimitLb
+    ? load + steps.dumbbellFineStepLb
+    : load + steps.dumbbellCoarseStepLb;
 }
 
-/** The next load up; null for bodyweight and band work. */
-export function nextLoad(load: number, kind: LoadKind): number | null {
+/** The next load up (settings: +5 barbell, +2.5 cuff, next DB); null for bodyweight and band. */
+export function nextLoad(
+  load: number,
+  kind: LoadKind,
+  steps: LoadSteps = DEFAULT_PROGRAM_SETTINGS,
+): number | null {
   switch (kind) {
     case "barbell":
-      return load + BARBELL_STEP_LB;
+      return load + steps.barbellStepLb;
     case "cuff":
-      return load + CUFF_STEP_LB;
+      return load + steps.cuffStepLb;
     case "dumbbell":
-      return nextDumbbell(load);
+      return nextDumbbell(load, steps);
     default:
       return null;
   }
 }
 
 /** Rounds down to a load the equipment can make. */
-export function roundDownToLoadStep(load: number, kind: LoadKind) {
+export function roundDownToLoadStep(
+  load: number,
+  kind: LoadKind,
+  steps: LoadSteps = DEFAULT_PROGRAM_SETTINGS,
+) {
   const floorTo = (step: number) => Math.floor(load / step + 1e-9) * step;
   switch (kind) {
     case "barbell":
-      return floorTo(BARBELL_STEP_LB);
+      return floorTo(steps.barbellStepLb);
     case "cuff":
-      return floorTo(CUFF_STEP_LB);
+      return floorTo(steps.cuffStepLb);
     case "dumbbell":
-      return load < DUMBBELL_FINE_LIMIT_LB
-        ? floorTo(DUMBBELL_FINE_STEP_LB)
-        : floorTo(DUMBBELL_COARSE_STEP_LB);
+      return load < steps.dumbbellFineLimitLb
+        ? floorTo(steps.dumbbellFineStepLb)
+        : floorTo(steps.dumbbellCoarseStepLb);
     default:
       return load;
   }
@@ -133,7 +143,11 @@ export function progressionSets<T extends ProgressionSet>(sets: T[]): T[] {
  * Double progression: true when every working set reached the top of the
  * rep range at one load with at least 2 reps in reserve.
  */
-export function hitTopOfRange(sets: ProgressionSet[], repsTop: number | null) {
+export function hitTopOfRange(
+  sets: ProgressionSet[],
+  repsTop: number | null,
+  minRir: number = DEFAULT_PROGRAM_SETTINGS.progressionMinRir,
+) {
   const working = progressionSets(sets);
   if (repsTop == null || working.length === 0) return false;
   const load = working[0]?.weight ?? null;
@@ -143,7 +157,7 @@ export function hitTopOfRange(sets: ProgressionSet[], repsTop: number | null) {
       s.reps != null &&
       s.reps >= repsTop &&
       s.rir != null &&
-      s.rir >= PROGRESSION_MIN_RIR,
+      s.rir >= minRir,
   );
 }
 
@@ -163,6 +177,7 @@ export function newBlockStartLoad(
   targetReps: number,
   targetRir: number,
   kind: LoadKind,
+  steps: LoadSteps = DEFAULT_PROGRAM_SETTINGS,
 ): number | null {
   const estimates = progressionSets(sets)
     .filter((s) => s.weight != null && s.weight > 0 && s.reps != null)
@@ -176,7 +191,7 @@ export function newBlockStartLoad(
   if (estimates.length === 0) return null;
   const best = Math.max(...estimates);
   const raw = best / (1 + (targetReps + targetRir) / 30);
-  return roundDownToLoadStep(raw, kind);
+  return roundDownToLoadStep(raw, kind, steps);
 }
 
 export type LoadSuggestion = {
@@ -196,13 +211,41 @@ export type SuggestLoadInput = {
   lastRepsMax: number | null;
   readiness: KneeReadinessStatus | null;
   isDeload: boolean;
+  /** Average sleep over the last few nights; null when there is no data. */
+  sleepAverageHours?: number | null;
+  settings?: ProgramSettings;
 };
 
 /**
- * Next session's load. Increases only on a normal knee check and outside a
- * deload; a changed rep range (new block) starts from last block's best set.
+ * Average hours asleep over the `nights` check-ins ending on `today`
+ * (check-ins are dated by wake day). Null when none of them has sleep.
+ */
+export function sleepAverageHours(
+  rows: { checkinDate: IsoDate; sleepDurationMinutes: number | null }[],
+  today: IsoDate,
+  nights: number,
+): number | null {
+  const from = addDays(today, -(Math.max(1, nights) - 1));
+  const minutes = rows
+    .filter(
+      (r) =>
+        r.checkinDate >= from &&
+        r.checkinDate <= today &&
+        r.sleepDurationMinutes != null &&
+        r.sleepDurationMinutes > 0,
+    )
+    .map((r) => r.sleepDurationMinutes as number);
+  if (minutes.length === 0) return null;
+  return minutes.reduce((a, b) => a + b, 0) / minutes.length / 60;
+}
+
+/**
+ * Next session's load. Increases only on a normal knee check, outside a
+ * deload, and when recent sleep averages at least the setting (6.5 h); a
+ * changed rep range (new block) starts from last block's best set.
  */
 export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
+  const settings = input.settings ?? DEFAULT_PROGRAM_SETTINGS;
   const working = progressionSets(input.lastSets);
   if (working.length === 0) {
     return {
@@ -222,7 +265,10 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
         : "Knee check not normal: repeat last loads."
       : input.isDeload
         ? "Deload week: no load increase."
-        : null;
+        : input.sleepAverageHours != null &&
+            input.sleepAverageHours < settings.sleepMinHoursForIncrease
+          ? `Sleep averaged ${input.sleepAverageHours.toFixed(1)} h over ${settings.sleepAverageNights} nights (under ${settings.sleepMinHoursForIncrease}): no load increase.`
+          : null;
 
   const loaded =
     input.loadKind !== "bodyweight" &&
@@ -240,6 +286,7 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
       input.scheme.repsMin ?? input.scheme.repsMax ?? 1,
       input.scheme.rirTarget ?? DEFAULT_LOGGED_RIR,
       input.loadKind,
+      settings,
     );
     if (start != null) {
       return {
@@ -251,7 +298,11 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
     }
   }
 
-  const earned = hitTopOfRange(working, input.scheme.repsMax);
+  const earned = hitTopOfRange(
+    working,
+    input.scheme.repsMax,
+    settings.progressionMinRir,
+  );
   if (!loaded) {
     return {
       load: lastLoad > 0 ? lastLoad : null,
@@ -263,12 +314,12 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
     };
   }
   if (earned && !lock) {
-    const next = nextLoad(lastLoad, input.loadKind) ?? lastLoad;
+    const next = nextLoad(lastLoad, input.loadKind, settings) ?? lastLoad;
     return {
       load: next,
       kind: "increase",
       held: false,
-      reason: `Every set hit ${input.scheme.repsMax} with ${PROGRESSION_MIN_RIR}+ in reserve: up to ${next}.`,
+      reason: `Every set hit ${input.scheme.repsMax} with ${settings.progressionMinRir}+ in reserve: up to ${next}.`,
     };
   }
   return {
@@ -278,7 +329,7 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
     reason:
       earned && lock
         ? lock
-        : "Same load: not every set reached the top of the range at RIR 2+.",
+        : `Same load: not every set reached the top of the range at RIR ${settings.progressionMinRir}+.`,
   };
 }
 
@@ -316,13 +367,14 @@ export type HardSetCount = {
 
 /**
  * Hard leg sets between two dates (inclusive): working, rep-based sets of a
- * program leg exercise at RIR 4 or less (blank RIR counts). A per-leg
+ * program leg exercise at the hard-set RIR or less (4; blank RIR counts). A per-leg
  * exercise counts its left-leg sets only, so one L+R pair is one set.
  */
 export function weeklyHardLegSets(
   sessions: Pick<StrengthSession, "sessionDate" | "sets">[],
   index: Map<string, LegExerciseInfo>,
   range: { start: string; end: string },
+  hardSetMaxRir: number = DEFAULT_PROGRAM_SETTINGS.hardSetMaxRir,
 ): HardSetCount {
   const result: HardSetCount = { total: 0, byMuscle: {} };
   for (const session of sessions) {
@@ -334,7 +386,7 @@ export function weeklyHardLegSets(
       if (!info || !info.primaryMuscle || info.measure !== "reps") continue;
       if (set.isWarmup || set.side === "right") continue;
       if (set.reps == null || set.reps <= 0) continue;
-      if (set.rir != null && set.rir > HARD_SET_MAX_RIR) continue;
+      if (set.rir != null && set.rir > hardSetMaxRir) continue;
       result.total += 1;
       result.byMuscle[info.primaryMuscle] =
         (result.byMuscle[info.primaryMuscle] ?? 0) + 1;

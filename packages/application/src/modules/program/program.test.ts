@@ -7,7 +7,13 @@ import {
   programWeekInfo,
   weekDateRange,
 } from "./program-calendar";
-import { kneeReadinessStatus } from "./knee-readiness";
+import { kneeOffStreak, kneeReadinessStatus } from "./knee-readiness";
+import {
+  DEFAULT_PROGRAM_SETTINGS,
+  programSettingsFromRows,
+  settingRowKey,
+} from "./program-settings";
+import { walkJogAdvice } from "./walk-jog";
 import {
   effectiveScheme,
   estimatedMax,
@@ -18,12 +24,14 @@ import {
   nextLoad,
   plannedSetCount,
   roundDownToLoadStep,
+  sleepAverageHours,
   suggestLoad,
   weeklyHardLegSets,
   type SuggestLoadInput,
 } from "./program-progression";
 import {
   buildDayPlan,
+  inWeekWindow,
   isGateCleared,
   planExercise,
   prescribedRepsMaxOn,
@@ -407,6 +415,7 @@ describe("left-leg sets the right leg's reps", () => {
 
 describe("gates", () => {
   const ctx: PlanContext = {
+    week: 10,
     gates: [gate("barbell_squat"), gate("plyo", "2026-11-09")],
     date: "2026-10-26",
     readiness: "normal",
@@ -795,6 +804,363 @@ describe("lift plan for the logger", () => {
     });
     expect(p.exercises.map((e) => e.exerciseName)).not.toContain(
       "Double-Leg Pogo",
+    );
+  });
+});
+
+describe("Phase A: settings", () => {
+  it("overlays seeded rows on the defaults; blank values keep the default", () => {
+    const s = programSettingsFromRows([
+      { key: "barbell_step_lb", value: 10, textValue: null },
+      { key: "quad_sets_min", value: null, textValue: null },
+      { key: "ortho_phone", value: null, textValue: " 555-0100 " },
+      { key: "ortho_name", value: null, textValue: "" },
+    ]);
+    expect(s.barbellStepLb).toBe(10);
+    expect(s.quadSetsMin).toBe(12);
+    expect(s.orthoPhone).toBe("555-0100");
+    expect(s.orthoName).toBe("OrthoIllinois");
+    expect(settingRowKey("sleepMinHoursForIncrease")).toBe(
+      "sleep_min_hours_for_increase",
+    );
+  });
+
+  it("feeds load steps from settings", () => {
+    const s = { ...DEFAULT_PROGRAM_SETTINGS, barbellStepLb: 10, cuffStepLb: 1 };
+    expect(nextLoad(95, "barbell", s)).toBe(105);
+    expect(nextLoad(5, "cuff", s)).toBe(6);
+  });
+
+  it("moves the knee-check cut-offs with the settings", () => {
+    const check = {
+      swelling: "none" as const,
+      graftPain: 3,
+      extensionFull: true,
+    };
+    expect(kneeReadinessStatus(check)).toBe("hold");
+    expect(
+      kneeReadinessStatus(check, {
+        readinessNormalMaxPain: 3,
+        readinessKneeOffAbovePain: 4,
+      }),
+    ).toBe("normal");
+  });
+});
+
+describe("Phase A: sleep and the progression engine", () => {
+  const rows = [
+    { checkinDate: "2026-10-26", sleepDurationMinutes: 360 },
+    { checkinDate: "2026-10-25", sleepDurationMinutes: 390 },
+    { checkinDate: "2026-10-24", sleepDurationMinutes: 420 },
+    { checkinDate: "2026-10-23", sleepDurationMinutes: 600 },
+    { checkinDate: "2026-10-22", sleepDurationMinutes: null },
+  ];
+
+  it("averages the last 3 nights (dated by wake day)", () => {
+    expect(sleepAverageHours(rows, "2026-10-26", 3)).toBeCloseTo(6.5);
+    expect(sleepAverageHours(rows, "2026-10-23", 2)).toBeCloseTo(10);
+    expect(sleepAverageHours([], "2026-10-26", 3)).toBeNull();
+  });
+
+  const base = {
+    loadKind: "barbell" as const,
+    scheme: { setsMin: 3, setsMax: 3, repsMin: 10, repsMax: 10, rirTarget: 2 },
+    lastSets: [10, 10, 10].map((reps) => ({ weight: 95, reps, rir: 2 })),
+    lastRepsMax: 10,
+    readiness: "normal" as const,
+    isDeload: false,
+  };
+
+  it("holds the load when 3-night sleep is under 6.5 h", () => {
+    expect(suggestLoad({ ...base, sleepAverageHours: 6.4 })).toMatchObject({
+      load: 95,
+      kind: "same",
+      held: true,
+    });
+    expect(suggestLoad({ ...base, sleepAverageHours: 6.5 })).toMatchObject({
+      load: 100,
+      kind: "increase",
+    });
+    expect(suggestLoad({ ...base, sleepAverageHours: null })).toMatchObject({
+      load: 100,
+    });
+  });
+
+  it("lets the minimum sleep come from settings", () => {
+    const settings = {
+      ...DEFAULT_PROGRAM_SETTINGS,
+      sleepMinHoursForIncrease: 7,
+    };
+    expect(
+      suggestLoad({ ...base, sleepAverageHours: 6.8, settings }).kind,
+    ).toBe("same");
+  });
+
+  it("deload and readiness still lock with good sleep", () => {
+    expect(
+      suggestLoad({ ...base, sleepAverageHours: 8, isDeload: true }).kind,
+    ).toBe("same");
+    expect(
+      suggestLoad({ ...base, sleepAverageHours: 8, readiness: "hold" }).kind,
+    ).toBe("same");
+  });
+});
+
+describe("Phase A: knee-off streak", () => {
+  it("counts knee-off days in a row back from today, or from yesterday", () => {
+    const days = [
+      { date: "2026-10-24", status: "knee_off" as const },
+      { date: "2026-10-25", status: "knee_off" as const },
+      { date: "2026-10-26", status: "knee_off" as const },
+    ];
+    expect(kneeOffStreak(days, "2026-10-26")).toBe(3);
+    expect(kneeOffStreak(days, "2026-10-27")).toBe(3);
+    expect(
+      kneeOffStreak(
+        [...days, { date: "2026-10-27", status: "normal" }],
+        "2026-10-27",
+      ),
+    ).toBe(0);
+    expect(
+      kneeOffStreak([{ date: "2026-10-24", status: "knee_off" }], "2026-10-26"),
+    ).toBe(0);
+  });
+});
+
+describe("Phase A: gates on a hold day and week windows", () => {
+  const ctx: PlanContext = {
+    week: 11,
+    gates: [gate("barbell", "2026-10-20")],
+    date: "2026-11-02",
+    readiness: "hold",
+    block: block("b1", "Block 1", 10, 12, {
+      setsMin: 3,
+      setsMax: 4,
+      repsMin: 10,
+      repsMax: 12,
+    }),
+    sourceBlock: null,
+    weekIndexInBlock: 1,
+    isDeload: false,
+  };
+
+  it("runs the substitute instead of cleared gated work on a hold day", () => {
+    const squat = exercise({
+      name: "Barbell Pin Squat",
+      gateKey: "barbell",
+      substituteName: "Goblet Box Squat",
+      substituteLoadKind: "dumbbell",
+    });
+    expect(planExercise(squat, ctx)).toMatchObject({
+      status: "substitute",
+      name: "Goblet Box Squat",
+    });
+    expect(planExercise(squat, { ...ctx, readiness: "normal" })).toMatchObject({
+      status: "active",
+      name: "Barbell Pin Squat",
+    });
+  });
+
+  it("hides cleared gated work with no substitute on a hold day", () => {
+    const nordic = exercise({ name: "Nordic", gateKey: "barbell" });
+    expect(planExercise(nordic, ctx)).toMatchObject({
+      status: "readiness_hidden",
+      lockedReason: "Off on a repeat-loads day",
+    });
+  });
+
+  it("keeps an exercise to its from/until weeks (rear foot elevated from week 11)", () => {
+    expect(inWeekWindow({ fromWeek: null, untilWeek: 10 }, 10)).toBe(true);
+    expect(inWeekWindow({ fromWeek: null, untilWeek: 10 }, 11)).toBe(false);
+    expect(inWeekWindow({ fromWeek: 11, untilWeek: null }, 10)).toBe(false);
+    expect(inWeekWindow({ fromWeek: 11, untilWeek: null }, 12)).toBe(true);
+  });
+
+  it("drops out-of-window exercises from the day plan", () => {
+    const p = testProgram();
+    const monday = p.sessions.find((s) => s.id === "b1-mon")!;
+    monday.exercises = [
+      exercise({ name: "Split Squat", untilWeek: 10 }),
+      exercise({ name: "RFE Split Squat", fromWeek: 11, order: 1 }),
+    ];
+    expect(
+      buildDayPlan(p, "2026-10-26", "normal").sessions[0]!.exercises.map(
+        (e) => e.name,
+      ),
+    ).toEqual(["Split Squat"]);
+    expect(
+      buildDayPlan(p, "2026-11-02", "normal").sessions[0]!.exercises.map(
+        (e) => e.name,
+      ),
+    ).toEqual(["RFE Split Squat"]);
+  });
+});
+
+describe("Phase A: upper rows and the leg block", () => {
+  function programWithUpper() {
+    const p = withGate(testProgram(), "barbell_squat", null);
+    const monday = p.sessions.find((s) => s.id === "b1-mon")!;
+    monday.exercises = [
+      ...monday.exercises,
+      exercise({
+        name: "Lateral Raise",
+        blockPart: "upper",
+        primaryMuscle: null,
+        loadKind: "dumbbell",
+        setsMin: 3,
+        setsMax: 3,
+        repsMin: 15,
+        repsMax: 20,
+        rirTarget: 2,
+        order: 30,
+      }),
+    ];
+    return p;
+  }
+
+  it("keeps upper sets on a deload week and takes one off leg work", () => {
+    const p = withGate(programWithUpper(), "barbell_squat", "2026-10-01");
+    const plan = buildDayPlan(p, "2026-11-16", "normal").sessions[0]!;
+    const sets = Object.fromEntries(
+      plan.exercises.map((e) => [e.name, e.sets]),
+    );
+    expect(sets).toMatchObject({ "Barbell Pin Squat": 3, "Lateral Raise": 3 });
+  });
+
+  it("leaves upper loads to the logger's history prefill, with the range in the notes", () => {
+    const p = programWithUpper();
+    const day = buildDayPlan(p, "2026-10-26", "normal");
+    const plan = buildLiftLoggerPlan({
+      program: p,
+      planned: day.sessions[0]!,
+      info: day.info,
+      readiness: "normal",
+      history: {},
+      upper: null,
+    });
+    const raise = plan.exercises.find(
+      (e) => e.exerciseName === "Lateral Raise",
+    )!;
+    expect(raise).toMatchObject({
+      targetWeight: null,
+      targetReps: 20,
+      targetSets: 3,
+      notes: "15-20 reps.",
+    });
+    expect(raise.program).toBeUndefined();
+  });
+
+  it("keeps upper work on a knee day off and swaps every leg row for the ROM block", () => {
+    const p = programWithUpper();
+    const day = buildDayPlan(p, "2026-10-26", "knee_off");
+    const plan = buildLiftLoggerPlan({
+      program: p,
+      planned: day.sessions[0]!,
+      info: day.info,
+      readiness: "knee_off",
+      history: {},
+      upper: null,
+      settings: { ...DEFAULT_PROGRAM_SETTINGS, kneeOffBlockMinutes: 20 },
+    });
+    expect(plan.exercises.map((e) => e.exerciseName)).toEqual([
+      "Knee day off: ROM + easy walk",
+      "Lateral Raise",
+    ]);
+    expect(plan.exercises[0]!.targetSeconds).toBe(1200);
+  });
+
+  it("does not count upper sets as hard leg sets", () => {
+    const index = legExerciseIndex(
+      programWithUpper().sessions.flatMap((s) => s.exercises),
+    );
+    expect(index.get("lateral raise")?.primaryMuscle ?? null).toBeNull();
+  });
+});
+
+describe("Phase A: walk-jog progression", () => {
+  const today = "2026-11-07";
+
+  it("starts at 1 min jog / 1 min walk x 6", () => {
+    expect(walkJogAdvice({ runs: [], checks: [], today })).toMatchObject({
+      action: "start",
+      runMinutesMin: 6,
+      structure: "1 min jog / 1 min walk x 6",
+    });
+  });
+
+  it("adds 1-2 min of running when the next knee check was normal", () => {
+    const advice = walkJogAdvice({
+      runs: [{ date: "2026-11-03", runMinutes: 6 }],
+      checks: [{ date: "2026-11-04", status: "normal" }],
+      today,
+    });
+    expect(advice).toMatchObject({
+      action: "run",
+      runMinutesMin: 7,
+      runMinutesMax: 8,
+    });
+  });
+
+  it("repeats the last run when there has been no check since", () => {
+    expect(
+      walkJogAdvice({
+        runs: [{ date: "2026-11-03", runMinutes: 8 }],
+        checks: [],
+        today,
+      }),
+    ).toMatchObject({ action: "run", runMinutesMin: 8, runMinutesMax: 8 });
+  });
+
+  it("rests 2 days after a non-normal check, then resumes one step back", () => {
+    const runs = [
+      { date: "2026-10-31", runMinutes: 6 },
+      { date: "2026-11-03", runMinutes: 8 },
+    ];
+    const checks = [{ date: "2026-11-04", status: "hold" as const }];
+    expect(walkJogAdvice({ runs, checks, today: "2026-11-05" })).toMatchObject({
+      action: "rest",
+      resumeOn: "2026-11-07",
+    });
+    expect(walkJogAdvice({ runs, checks, today: "2026-11-06" }).action).toBe(
+      "rest",
+    );
+    expect(walkJogAdvice({ runs, checks, today: "2026-11-07" })).toMatchObject({
+      action: "run",
+      runMinutesMin: 6,
+    });
+  });
+
+  it("never steps back below the start", () => {
+    expect(
+      walkJogAdvice({
+        runs: [{ date: "2026-11-03", runMinutes: 6 }],
+        checks: [{ date: "2026-11-04", status: "knee_off" }],
+        today: "2026-11-10",
+      }),
+    ).toMatchObject({ action: "run", runMinutesMin: 6 });
+  });
+
+  it("ignores a run logged today", () => {
+    expect(
+      walkJogAdvice({
+        runs: [{ date: today, runMinutes: 6 }],
+        checks: [],
+        today,
+      }).action,
+    ).toBe("start");
+  });
+});
+
+describe("Phase A: milestones with a return-to-sport block", () => {
+  it("does not list week 39 twice", () => {
+    const p = testProgram();
+    p.blocks.push(block("rts", "Return to Sport + Maintenance", 39, 520));
+    const labels = programMilestones(p)
+      .filter((m) => m.week === 39)
+      .map((m) => m.label);
+    expect(labels).toEqual(["Return to Sport + Maintenance"]);
+    expect(programMilestones(p).find((m) => m.week === 39)?.date).toBe(
+      "2027-05-17",
     );
   });
 });
