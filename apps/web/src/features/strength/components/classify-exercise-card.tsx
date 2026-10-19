@@ -165,58 +165,48 @@ export function ClassifyExerciseCard({
     </div>
   );
 
-  // Nothing to classify: the saved classifications are reference only, so
-  // keep them folded away instead of a full card on every visit.
-  if (unclassifiedExerciseNames.length === 0) {
-    return (
-      <details className="group rounded-[1.75rem] border border-ink/10 bg-white/80 px-6 shadow-panel">
-        <summary className="flex h-14 cursor-pointer list-none items-center justify-between text-sm font-semibold text-ink">
-          <span>
-            Exercise classifications{" "}
-            <span className="font-normal text-ink/55">{overrides.length}</span>
-          </span>
-          <span className="text-ink/50 group-open:hidden">+</span>
-          <span className="hidden text-ink/50 group-open:inline">−</span>
-        </summary>
-        <div className="pb-5">
-          <p className="text-sm text-ink/60">
-            Every exercise you&apos;ve logged is classified. These are the ones
-            you taught the app.
-          </p>
-          {overrideList}
-        </div>
-      </details>
-    );
-  }
-
+  // Reference work, so it stays folded: the summary says how many names
+  // still need a muscle group.
   return (
-    <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
-        Exercise catalog
-      </p>
-      <h2 className="mt-3 font-display text-2xl text-ink">
-        Classify your exercises
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-ink/75">
-        Teach the app a muscle group, movement pattern, and category for
-        exercise names it doesn&apos;t recognize, so they count toward your
-        muscle-group balance and push:pull ratio.
-      </p>
-
-      <div className="mt-5 space-y-3">
-        {unclassifiedExerciseNames.map((name) => (
-          <ClassifyExerciseRow key={name} exerciseName={name} />
-        ))}
+    <details className="group rounded-[1.75rem] border border-ink/10 bg-white/80 px-6 shadow-panel">
+      <summary className="flex h-14 cursor-pointer list-none items-center justify-between text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+        <span>
+          Exercise names
+          {unclassifiedExerciseNames.length > 0 ? (
+            <span className="ml-2 font-normal text-ember">
+              {unclassifiedExerciseNames.length} to classify
+            </span>
+          ) : (
+            <span className="ml-2 font-normal text-ink/55">
+              {overrides.length}
+            </span>
+          )}
+        </span>
+        <span className="text-ink/50 group-open:hidden">+</span>
+        <span className="hidden text-ink/50 group-open:inline">−</span>
+      </summary>
+      <div className="pb-5">
+        {unclassifiedExerciseNames.length > 0 ? (
+          <>
+            <p className="text-sm text-ink/60">
+              Give these a muscle group so they count toward muscle balance.
+            </p>
+            <div className="mt-3 space-y-3">
+              {unclassifiedExerciseNames.map((name) => (
+                <ClassifyExerciseRow key={name} exerciseName={name} />
+              ))}
+            </div>
+          </>
+        ) : null}
+        {overrides.length > 0 ? (
+          <div className={unclassifiedExerciseNames.length > 0 ? "mt-5" : ""}>
+            <h3 className="text-sm font-semibold text-ink">
+              Your classifications
+            </h3>
+            {overrideList}
+          </div>
+        ) : null}
       </div>
-
-      {overrides.length > 0 ? (
-        <div className="mt-6 border-t border-ink/10 pt-5">
-          <h3 className="text-sm font-semibold text-ink">
-            Your classifications
-          </h3>
-          {overrideList}
-        </div>
-      ) : null}
-    </section>
+    </details>
   );
 }

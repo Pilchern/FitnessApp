@@ -42,7 +42,7 @@ const SUPPLEMENT_LABELS: ChecklistLabels = {
   eyebrow: "Supplements",
   title: "Today's supplements",
   empty: "You haven't added any supplements yet.",
-  hint: "Tap to mark what you took today. Saves as you tap.",
+  hint: "",
   save: "Save supplements",
 };
 
@@ -111,7 +111,9 @@ export function SupplementChecklist({
           {isPending ? "Saving..." : null}
         </span>
       </div>
-      <p className="mt-1 text-sm leading-6 text-ink/60">{labels.hint}</p>
+      {labels.hint ? (
+        <p className="mt-1 text-sm leading-6 text-ink/60">{labels.hint}</p>
+      ) : null}
 
       {state.error ? (
         <div className="mt-4 rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember">

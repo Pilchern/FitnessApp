@@ -390,7 +390,11 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
 
   const { program, today, settings } = ctx;
   const currentWeek = programWeekInfo(program, today).week;
-  const firstHardSetWeek = Math.max(0, currentWeek - HARD_SET_WEEKS + 1);
+  const firstProgramWeek = Math.min(...program.blocks.map((b) => b.startWeek));
+  const firstHardSetWeek = Math.max(
+    firstProgramWeek,
+    currentWeek - HARD_SET_WEEKS + 1,
+  );
 
   const sessions = await strengthService.listByDateRange({
     userId: user.id,

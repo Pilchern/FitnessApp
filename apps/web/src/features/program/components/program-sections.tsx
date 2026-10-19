@@ -16,6 +16,35 @@ function yearSuffix(date: string) {
 const card =
   "rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6";
 
+/** Reference material: one row until opened. */
+function Fold({
+  title,
+  meta,
+  children,
+}: {
+  title: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group rounded-[1.75rem] border border-ink/10 bg-white shadow-panel">
+      <summary className="flex h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 text-sm font-semibold text-ink sm:px-6 [&::-webkit-details-marker]:hidden">
+        <span>
+          {title}
+          {meta ? (
+            <span className="ml-2 font-normal text-ink/50">{meta}</span>
+          ) : null}
+        </span>
+        <span className="text-ink/50 group-open:hidden">+</span>
+        <span className="hidden text-ink/50 group-open:inline">−</span>
+      </summary>
+      <div className="border-t border-ink/10 px-5 pb-5 pt-2 sm:px-6">
+        {children}
+      </div>
+    </details>
+  );
+}
+
 const COMPLETION: Record<
   SessionCompletion,
   { label: string; tone: string } | null
@@ -25,7 +54,7 @@ const COMPLETION: Record<
   done: { label: "Done", tone: "text-pine" },
   missed: { label: "Missed", tone: "text-ember font-semibold" },
   today: { label: "Today", tone: "text-pine" },
-  planned: { label: "Planned", tone: "text-ink/50" },
+  planned: null,
   none: null,
 };
 
@@ -100,6 +129,13 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
           </li>
         ))}
       </ul>
+      <Link
+        href="/program/review"
+        className="mt-2 flex items-center justify-between border-t border-ink/10 pt-3 text-sm text-ink/70 hover:text-pine"
+      >
+        <span>Weekly review</span>
+        <span aria-hidden="true">→</span>
+      </Link>
     </section>
   );
 }
@@ -109,10 +145,13 @@ export function ProgramMilestones({
 }: {
   milestones: ProgramPageData["milestones"];
 }) {
+  const next = milestones.find((m) => !m.past);
   return (
-    <section className={card}>
-      <h2 className="font-display text-lg text-ink">Milestones</h2>
-      <ul className="mt-3 divide-y divide-ink/10">
+    <Fold
+      title="Milestones"
+      meta={next ? `next: ${next.label}, ${formatShortDate(next.date)}` : null}
+    >
+      <ul className="divide-y divide-ink/10">
         {milestones.map((m) => (
           <li
             key={m.label}
@@ -129,7 +168,7 @@ export function ProgramMilestones({
           </li>
         ))}
       </ul>
-    </section>
+    </Fold>
   );
 }
 
@@ -159,32 +198,34 @@ export function ProgramProgress({
         <p className="text-xs text-ink/55">
           All hard leg sets {current?.count.total ?? 0}
         </p>
-        <ol
-          className="mt-3 flex h-20 items-end gap-1.5"
-          aria-label="Hard quad sets by week"
-        >
-          {hardSets.map((w) => {
-            const band = hardSetBand(quads(w), hardSetTarget);
-            return (
-              <li
-                key={w.week}
-                className="flex flex-1 flex-col items-center gap-1"
-              >
-                <div
-                  className={`w-full rounded-t ${band === "on" ? "bg-pine" : band === "over" ? "bg-ember" : "bg-ink/25"}`}
-                  style={{
-                    height: `${Math.max(4, (quads(w) / max) * 64)}px`,
-                  }}
-                  title={`${quads(w)} quad sets`}
-                />
-                <span className="text-[0.65rem] text-ink/50">{w.week}</span>
-              </li>
-            );
-          })}
-        </ol>
+        {hardSets.length >= 2 ? (
+          <ol
+            className="mt-3 flex h-20 items-end gap-1.5"
+            aria-label="Hard quad sets by week"
+          >
+            {hardSets.map((w) => {
+              const band = hardSetBand(quads(w), hardSetTarget);
+              return (
+                <li
+                  key={w.week}
+                  className="flex flex-1 flex-col items-center gap-1"
+                >
+                  <div
+                    className={`w-full rounded-t ${band === "on" ? "bg-pine" : band === "over" ? "bg-ember" : "bg-ink/25"}`}
+                    style={{
+                      height: `${Math.max(4, (quads(w) / max) * 64)}px`,
+                    }}
+                    title={`${quads(w)} quad sets`}
+                  />
+                  <span className="text-[0.65rem] text-ink/50">{w.week}</span>
+                </li>
+              );
+            })}
+          </ol>
+        ) : null}
         <p className="mt-1 text-[0.7rem] text-ink/45">
-          Post-op week. Working rep sets at or under the hard-set RIR
-          (Settings); per-leg lifts count the left leg.
+          Working rep sets at or under the hard-set RIR; per-leg lifts count the
+          left leg.
         </p>
       </div>
 
@@ -225,7 +266,8 @@ export function ProgramProgress({
                       <span>
                         {p.force
                           ? `L ${pt.leftPeakNewtons ?? "–"} N · R ${pt.rightPeakNewtons ?? "–"} N`
-                          : p.perLeg
+                          : p.perLeg &&
+                              (pt.leftLoad != null || pt.rightLoad != null)
                             ? `L ${pt.leftLoad ?? "–"} · R ${pt.rightLoad ?? "–"} lb`
                             : `${pt.load ?? "–"} lb`}
                       </span>
@@ -246,18 +288,10 @@ export function ProgramGatesSummary({
 }: {
   gates: ProgramPageData["gates"];
 }) {
+  const cleared = gates.filter((g) => g.clearedOn).length;
   return (
-    <section className={card}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-lg text-ink">Gates</h2>
-        <Link
-          href="/settings#gates"
-          className="text-sm font-semibold text-pine"
-        >
-          Edit →
-        </Link>
-      </div>
-      <ul className="mt-3 divide-y divide-ink/10">
+    <Fold title="Gates" meta={`${cleared} of ${gates.length} cleared`}>
+      <ul className="divide-y divide-ink/10">
         {gates.map((g) => (
           <li
             key={g.gateKey}
@@ -276,7 +310,13 @@ export function ProgramGatesSummary({
           </li>
         ))}
       </ul>
-    </section>
+      <Link
+        href="/settings#gates"
+        className="mt-2 inline-block text-sm font-semibold text-pine"
+      >
+        Edit gates →
+      </Link>
+    </Fold>
   );
 }
 
@@ -290,18 +330,18 @@ export function ProgramRules({
 }) {
   if (rules.length === 0) return null;
   return (
-    <section className={card}>
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-lg text-ink">Rules</h2>
-        {version ? (
-          <span className="text-xs text-ink/50">{version}</span>
-        ) : null}
-      </div>
-      <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-sm text-ink/80">
+    <Fold title="Rules" meta={rules.length}>
+      <ol className="list-decimal space-y-1.5 pl-5 text-sm text-ink/80">
         {rules.map((rule) => (
           <li key={rule}>{rule}</li>
         ))}
       </ol>
-    </section>
+      <div className="mt-3 flex items-center justify-between gap-3 text-xs text-ink/50">
+        <span>{version ?? ""}</span>
+        <a href="/api/program/calendar" className="font-semibold text-pine">
+          Calendar (.ics)
+        </a>
+      </div>
+    </Fold>
   );
 }

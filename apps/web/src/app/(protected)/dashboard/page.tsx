@@ -76,7 +76,7 @@ export default async function DashboardPage() {
         eyebrow: "Daily habits",
         title: "Today's habits",
         empty: "No habits yet.",
-        hint: "Saves as you tap. The count is days done in the last 7.",
+        hint: "",
         save: "Save habits",
       }}
       action={logSupplementsAction}
@@ -98,7 +98,10 @@ export default async function DashboardPage() {
           // The program card carries Start lift / Log ride when it loads.
           todayItems={programToday ? [] : data.todayItems}
           feelToday={data.feelToday}
-          stepsToday={stepsToday}
+          // The steps habit already shows today's count.
+          stepsToday={
+            Object.keys(stepHabitNotes).length > 0 ? null : stepsToday
+          }
         />
         {programToday ? (
           <ProgramTodayCard today={programToday} snapshot={adherence} />
@@ -118,6 +121,7 @@ export default async function DashboardPage() {
             }
             zone2Minutes={data.zone2Minutes}
             latestReview={data.latestReview}
+            reviewHref={programToday ? "/program/review" : "/weekly-review"}
           />
           <StrainSleepCard data={data.strainSleep} />
         </div>
