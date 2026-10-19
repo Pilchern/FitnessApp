@@ -37,7 +37,9 @@ Lifts Mon/Wed/Fri. Cardio Tue/Thu/Sat. Sunday rest. [stated 2026-10-12, session 
 
 Daily non-negotiables: PT home sheet AM and PM (PT Tracker), 7,000 steps, protein about 180 g, fixed wake time, bed about 10:00 PM, alcohol under 7 drinks per week.
 
-## 4. Strength (FitnessApp templates, upper body only for now)
+## 4. Strength (FitnessApp templates, legs first, then upper)
+
+Changed 2026-10-19 [stated]: the three templates now start with the post-op program's leg block (Mon heavy legs, Wed single-leg plus a balance/gait finish, Fri quad isolation plus landing prep) and are renamed to match. The program card on /strength stays the source of truth for leg loads, the knee check and gates; the templates are the fallback list. The upper lists below are unchanged. "Knee block first" below now means the leg block.
 
 Rules: knee block (PT Tracker) first while fresh, then upper. Seated or supported DB work only; no standing heavy presses or unsupported bent-over rows yet. Pull-ups/chin-ups: reach the bar from the bench, step down onto the bench with the RIGHT leg, then the floor; no jumping or dropping. If that feels unsafe, use band pulldowns. Bench: feet flat, do not tuck the left foot under the bench. Get on/off benches and the floor leading with the right leg; do not kneel on the left. Load rule: last 2-3 reps hard, form clean, knee pain 3/10 or less; hit the top of the rep range on all sets, then add weight next session. Add load before reps, never both in one week.
 
@@ -167,7 +169,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 - Dashboard (rebuilt 2026-10-12): Today card with a daily readiness score (v3, 2026-10-19: 7-night HRV trend, overnight heart rate and sleep against a 30-day baseline, scored only outside a normal band; wrist temperature, breathing rate and heart rate checked together; a one-tap how-you-feel at 35%; no training-load penalty; an estimate, not a medical measure) and a one-line call for today's planned session; Plan card (templates over the week, Done/Missed/Planned, Z2 vs template target); habits (tap saves); "What changed" trend notes (wake time vs 6:30 target, cardio, resting HR, weight, lifts); Body.
 - /strength: Today's plan callout; Load plan prefills sets; weight starts at the last logged working-set weight, with "Last (date): 165 x 8, 8, 7".
-- Live database seeded by hand: 3 strength templates (Mon Push, Wed Pull, Fri Arms), 3 cardio templates (Tue 30, Thu 30, Sat 45), 4 habits, protein target 180.
+- Live database seeded by hand: 3 strength templates (Mon Heavy legs + Push, Wed Single-leg + Pull, Fri Quad isolation + Arms; legs added 2026-10-19), 3 cardio templates (Tue 30, Thu 30, Sat 45), 4 habits, protein target 180.
 - Schema: supplements.kind (supplement | habit), migration applied live.
 - Live data counts at last check (2026-10-12): 144 rides (131 historical Strava, the rest from Apple Health), 294 body metrics, 0 lifts logged, recovery rows created nightly by the Apple Health sleep sync, 0 nutrition logs.
 - Apple Health (Health Auto Export, hourly): steps (auto-ticks the steps habit), resting HR, HRV, VO2 max, sleep with bedtime and wake, Peloton rides. Withings syncs daily.
