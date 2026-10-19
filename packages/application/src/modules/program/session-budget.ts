@@ -16,6 +16,7 @@ type BudgetSettings = Pick<
   | "sessionGaitDrillMinutes"
   | "sessionTransitionMinutes"
   | "setWorkSeconds"
+  | "plyoWorkSeconds"
   | "restMainSeconds"
   | "restPairSeconds"
   | "restAccessorySeconds"
@@ -58,7 +59,10 @@ function sides(item: Pick<BudgetItem, "sideMode">) {
   return item.sideMode === "bilateral" ? 1 : 2;
 }
 
-/** One side of one set: the hold time for timed and isometric work, else 40 s. */
+/**
+ * One side of one set: the hold time for timed and isometric work, about
+ * 15 s for a plyo set (a few contacts), else 40 s.
+ */
 function workSeconds(item: BudgetItem, settings: BudgetSettings) {
   if (
     (item.measure === "time" || item.measure === "force") &&
@@ -67,6 +71,7 @@ function workSeconds(item: BudgetItem, settings: BudgetSettings) {
   ) {
     return item.secondsTarget;
   }
+  if (item.category === "plyo") return settings.plyoWorkSeconds;
   return settings.setWorkSeconds;
 }
 

@@ -21,27 +21,27 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 - Changed 2026-10-19 [stated]: loaded leg training now lives in FitnessApp as a data-driven post-op program (blocks by post-op week, legs first on Mon/Wed/Fri then the upper template, 3-tap knee check, gates, progression). The PT Tracker keeps strength tests, gait data and return-to-sport gates; the Sunday test day links out to it. Still do not merge the apps. Open: whether the PT Tracker's Mon/Tue/Thu loaded knee blocks should stop now that legs run here (avoid doubling volume).
 - AI-Lab (local files, ~/AI-Lab): life OS notes. Edits to its context/ files need Nick's approval. No JumpFly client data in personal repos.
 
-## 3. Weekly schedule (program v2, weeks 9-12)
+## 3. Weekly schedule (program v2.1, weeks 9-12)
 
-Lifts Mon/Wed/Fri (legs and upper in one session, supersets). Accessory block plus Peloton Tue/Thu, long ride Sat, test day plus walk Sun. Source: `supabase/generators/program_v2.py`, seeded live 2026-10-19. Minutes are the app's own estimate (warm-up 5, gait drill 3, transitions 4, 40 s per set, rest 150 s main / 90 s per pair / 60 s other) [built].
+Lifts Mon/Wed/Fri (legs and upper in one session, supersets). Accessory block plus Peloton Tue/Thu, long ride Sat, test day plus walk Sun. Source: `supabase/generators/program_v2.py` (v2.1). Minutes are the app's own estimate (warm-up 5, gait drill 3, transitions 4, 40 s per set, 15 s per plyo set, rest 150 s main / 90 s per pair / 60 s other) [built].
 
 | Day | Work | Training | Est. min (wk 9 / wks 10-12) |
 |---|---|---|---|
-| Mon | Office | Legs + Push | 42 / 49 |
-| Tue | Office | Accessory block, then Peloton Zone 2 30-45 min | 15 + ride |
-| Wed | WFH, PT 7:40 | Single-leg + Pull | 46 / 50 |
-| Thu | Office | Accessory block, then Peloton (Zone 2 in wk 9; climb intervals 45 min from wk 10) | 15 + ride |
-| Fri | WFH, PT 7:40 | Quad + Arms (landing prep from wk 10, normal knee check only) | 47 / 61 |
+| Mon | Office | Legs + Push | 43 / 49 |
+| Tue | Office | Accessory circuit, then Peloton Zone 2 30-45 min | 10-12 + ride |
+| Wed | WFH, PT 7:40 | Single-leg + Pull | 46 / 47 |
+| Thu | Office | Accessory circuit, then Peloton (Zone 2 in wk 9; climb intervals 45 min from wk 10) | 10-12 + ride |
+| Fri | WFH, PT 7:40 | Quad + Arms (landing prep from wk 10, normal knee check only) | 46 / 56 |
 | Sat | Off | Peloton Zone 2 (long) 45-60 min | ride |
 | Sun | Off | Test day + walk | - |
 
-Target length [stated 2026-10-19]: about an hour a lift day, a little under or over is fine. Later blocks run longer once gates clear (dry run 2026-10-19): Block 2 Fri 67-72, Block 3 Wed 67-74, Strength A Wed 65-72, Strength A2 Wed 68-75 and Fri 62-72; Tue/Thu accessory block 27 min from week 14 against a 10-12 min label. Trims pending the owner's call.
+Target length [stated 2026-10-19]: about an hour a lift day, a little under or over is fine. v2.1 (2026-10-19) tuned every block to 43-63 min with all gates open (was up to 75): standalone curls and triceps ride in the last superset, the two isometric angles pair, the Tue/Thu block is one 2-round circuit (its single-leg calf raise repeated Monday's), golf drills 2 sets, Wednesday rows and single-leg RDLs 3 sets. Volume was cut only where it sat above target: quad sets now 12-16 a week in every block (Block 2 was 21, Strength A2 18), back 11 sets a week (was 13). Kept: every main lift, its rest, and all knee-specific work. Added: single-leg calf raise on Mondays from Block 2 (calf capacity for running). Block 3 and Strength A2 Mondays estimate 62-63 min because bench keeps its 5 heavy sets.
 
 Daily non-negotiables: PT home sheet AM and PM (PT Tracker), 8,000 steps, protein about 180 g, fixed wake time, bed about 10:00 PM, alcohol under 7 drinks per week.
 
 ## 4. Strength (program v2, legs and upper together)
 
-Current [stated 2026-10-19]: program v2 (`supabase/generators/program_v2.py`, seeded live 2026-10-19) replaces v1 and the pre-v1 Push/Pull/Arms lists. The /program page and the /strength program card follow it; the Mon/Wed/Fri templates were rebuilt from v2 Block 1 and are only the fallback when the program card is not showing. "Knee block first" below means the leg work.
+Current [stated 2026-10-19]: program v2.1 (`supabase/generators/program_v2.py`; v2 seeded live 2026-10-19, v2.1 seed `20261020150000` pending owner approval to apply) replaces v1 and the pre-v1 Push/Pull/Arms lists. The /program page and the /strength program card follow it; the Mon/Wed/Fri templates were rebuilt from v2 Block 1 and are only the fallback when the program card is not showing. "Knee block first" below means the leg work.
 
 Rules: knee block (PT Tracker) first while fresh, then upper. Seated or supported DB work only; no standing heavy presses or unsupported bent-over rows yet. Pull-ups/chin-ups: reach the bar from the bench, step down onto the bench with the RIGHT leg, then the floor; no jumping or dropping. If that feels unsafe, use band pulldowns. Bench: feet flat, do not tuck the left foot under the bench. Get on/off benches and the floor leading with the right leg; do not kneel on the left. Load rule: last 2-3 reps hard, form clean, knee pain 3/10 or less; hit the top of the rep range on all sets, then add weight next session. Add load before reps, never both in one week.
 
@@ -56,18 +56,16 @@ Mon Legs + Push:
 Wed Single-leg + Pull:
 - A1 DB Step-Up (12") 3 x 10-12 per leg / A2 Pull-Up 4 x 2-4 (A3 Lateral Raise only with shoulder emphasis on)
 - B1 Split Squat (to 90°) 3 x 10-12 per leg (Rear-Foot-Elevated from week 11) / B2 Dumbbell Row 4 x 10-12
-- C1 Slider Hamstring Curl 3 x 10-12 / C2 Face Pull 3 x 15-20
-- Dumbbell Curl 2 x 12-15
+- C1 Slider Hamstring Curl 3 x 10-12 / C2 Face Pull 3 x 15-20 / C3 Dumbbell Curl 2 x 12-15
 
 Fri Quad + Arms:
 - Landing prep from week 10, normal knee check only: Squat to Calf Raise 2 x 10, Snap-Down to Stick 3 x 5, Double-Leg Pogo (low) 2 x 10
 - A1 Spanish Squat 3 x 45 s / A2 Chin-Up 3 x 3-5
 - Isometric Knee Extension (90°) 5 x 5 s per leg, peak force
 - C1 Heel-Elevated Goblet Squat (to 90°) 3 x 12 / C2 Close-Grip Bench Press 3 x 8-10
-- D1 DB Single-Leg RDL 3 x 10 per leg / D2 Dumbbell Shoulder Press 3 x 10-12
-- Tricep Extension 2 x 12-15
+- D1 DB Single-Leg RDL 3 x 10 per leg / D2 Dumbbell Shoulder Press 3 x 10-12 / D3 Tricep Extension 2 x 12-15
 
-Tue/Thu accessory block (before the ride): Copenhagen Side Plank 3 x 20 s per side, Perturbation Balance 3 x 30 s per leg, Dead Bug 2 x 10 per side, Bent-Knee Calf Raise 3 x 15.
+Tue/Thu accessory circuit (before the ride), 2 rounds: Copenhagen Side Plank 20 s per side, Perturbation Balance 30 s per leg, Dead Bug 10 per side (Suitcase Carry 30 m per side from week 14), Bent-Knee Calf Raise 15-20.
 
 Dropped from the pre-v1 upper lists: Cuban Press, Weighted Floor Crunch, DB Seated Side Bend, Dead Hang, Hammer Curl, Band Anti-Rotation Press.
 
