@@ -17,7 +17,11 @@ import {
   getCurrentWeekRangeForUser,
   getZonedDate,
 } from "@fitness-app/application";
-import { NICK_TRAINING_PLAN } from "@/lib/training-plan";
+import {
+  EARLIEST_BEDTIME,
+  NICK_TRAINING_PLAN,
+  SLEEP_TARGET_HOURS,
+} from "@/lib/training-plan";
 import { requireCurrentUser } from "@/lib/server/auth";
 import {
   createCoreServices,
@@ -179,6 +183,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   // Load needs the 28 days before each of the last 7: cardio covers 55 days,
   // strength 90.
   const readinessOptions = {
+    sleepTargetHours: SLEEP_TARGET_HOURS,
     trainingLoad: buildTrainingLoad(cardioLast8Weeks, strengthSessions),
   };
   const readiness = computeDailyReadiness(recovery, today, readinessOptions);
@@ -302,10 +307,10 @@ function buildStrainSleep(input: {
   const sleep = buildSleepPlan({
     checkins: input.recovery,
     today: input.today,
-    sleepTargetHours: 8,
+    sleepTargetHours: SLEEP_TARGET_HOURS,
     strainByDate: new Map((strain ?? []).map((d) => [d.date, d.strain])),
     wakeTarget: NICK_TRAINING_PLAN.wakeTimeTarget ?? null,
-    earliestBedtime: "21:45",
+    earliestBedtime: EARLIEST_BEDTIME,
   });
   return {
     strain,
