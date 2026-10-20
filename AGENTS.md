@@ -600,7 +600,7 @@ App philosophy:
 - One primary user: the app owner (not multi-tenant SaaS)
 
 Current module status:
-- IMPLEMENTED: Dashboard, Cardio, Strength, Recovery, Body, Weekly Review, Journal, Insights, Settings, Integrations
+- IMPLEMENTED: Dashboard, Cardio, Strength, Recovery, Body, Weekly Review, Insights, Settings, Integrations
 - PLACEHOLDER: Nutrition (schema ready, no UI)
 - MISSING: E2E tests, background job infra, second provider adapter, AI insights
 

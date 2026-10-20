@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Fitness App",
   description:
-    "Modular health, fitness, recovery, body-composition, and journaling workspace.",
+    "Modular health, fitness, recovery, and body-composition workspace.",
   appleWebApp: { capable: true, title: "Fitness", statusBarStyle: "default" },
 };
 
