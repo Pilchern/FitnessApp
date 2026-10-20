@@ -133,7 +133,7 @@ function Stepper({
         type="button"
         aria-label={`Decrease ${label}`}
         onClick={() => bump(-1)}
-        className="w-9 shrink-0 text-xl font-semibold text-ink/70 active:bg-pine/10"
+        className="w-11 shrink-0 text-xl font-semibold text-ink/70 active:bg-pine/10"
       >
         −
       </button>
@@ -149,7 +149,7 @@ function Stepper({
         type="button"
         aria-label={`Increase ${label}`}
         onClick={() => bump(1)}
-        className="w-9 shrink-0 text-xl font-semibold text-ink/70 active:bg-pine/10"
+        className="w-11 shrink-0 text-xl font-semibold text-ink/70 active:bg-pine/10"
       >
         +
       </button>
@@ -659,7 +659,7 @@ export function StrengthQuickForm({
           return (
             <div
               key={`${group.key}-${group.indexes[0]}`}
-              className="rounded-[1.5rem] border border-ink/10 bg-white p-3 shadow-sm"
+              className="rounded-[1.5rem] border border-ink/10 bg-white px-2 py-3 shadow-sm sm:px-3"
             >
               <div className="flex items-start justify-between gap-2 px-1">
                 <div className="min-w-0">
@@ -721,10 +721,13 @@ export function StrengthQuickForm({
                   return (
                     <div
                       key={index}
-                      className={`grid items-center gap-1.5 rounded-2xl p-1 ${
+                      className={`grid items-center gap-1 rounded-2xl p-0.5 ${
                         force || (timed && !timedWeight)
-                          ? "grid-cols-[1.75rem_1fr_3rem]"
-                          : "grid-cols-[1.75rem_1fr_1fr_3rem]"
+                          ? "grid-cols-[1.25rem_minmax(0,1fr)_2.75rem]"
+                          : timed
+                            ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,1fr)_2.75rem]"
+                            : // Weight ("182.5") needs more room than reps.
+                              "grid-cols-[1.25rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem]"
                       } ${set.done ? "bg-pine/10" : ""}`}
                     >
                       <button
