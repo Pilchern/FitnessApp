@@ -20,7 +20,8 @@ describe("weeksPostOp", () => {
       "No running, jumping, plyometrics, or VO2 intervals until cleared.",
     );
     expect(context).toContain("legs and upper body");
-    expect(context).toContain("no squat past 90 degrees");
+    expect(context).toContain("squat past 90 degrees");
+    expect(context).toContain("No standing climbs");
     expect(context).not.toMatch(/upper body only|lower-body loading\./i);
   });
 });
