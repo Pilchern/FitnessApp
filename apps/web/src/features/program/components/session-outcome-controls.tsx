@@ -39,14 +39,14 @@ export function SkipControl({
         ? `Stopped · ${SKIP_LABELS[session.outcome.reason]}`
         : `Skipped · ${SKIP_LABELS[session.outcome.reason]}`;
     return (
-      <form action={undo} className="flex items-center gap-2">
+      <form action={undo} className="flex items-center gap-3">
         <input type="hidden" name="programSessionId" value={session.id} />
         <input type="hidden" name="date" value={date} />
         <span className="text-xs font-semibold text-ember">{label}</span>
         <button
           type="submit"
           disabled={undoing}
-          className="h-8 rounded-full border border-ink/15 px-3 text-xs font-semibold text-ink disabled:opacity-60"
+          className="h-11 rounded-full border border-ink/15 px-4 text-xs font-semibold text-ink disabled:opacity-60"
         >
           Undo
         </button>
@@ -62,7 +62,7 @@ export function SkipControl({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="h-8 rounded-full border border-ink/15 px-3 text-xs font-semibold text-ink/70"
+        className="h-11 rounded-full border border-ink/15 px-4 text-xs font-semibold text-ink/70"
       >
         Skip
       </button>
@@ -75,7 +75,7 @@ export function SkipControl({
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="outcome" value="skipped" />
       <p className="text-xs text-ink/65">Why skip?</p>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-2">
         {SKIP_REASONS.map((reason) => (
           <button
             key={reason}
@@ -83,7 +83,7 @@ export function SkipControl({
             name="reason"
             value={reason}
             disabled={pending}
-            className="h-9 rounded-full border border-ink/15 bg-white px-3 text-xs font-semibold text-ink active:bg-ember/10 disabled:opacity-60"
+            className="h-11 rounded-full border border-ink/15 bg-white px-3 text-xs font-semibold text-ink active:bg-ember/10 disabled:opacity-60"
           >
             {SKIP_LABELS[reason]}
           </button>
@@ -91,7 +91,7 @@ export function SkipControl({
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="h-9 px-2 text-xs text-ink/55 underline"
+          className="h-11 px-3 text-xs text-ink/55 underline"
         >
           Cancel
         </button>
@@ -151,7 +151,7 @@ export function RedFlagControl({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="h-9 rounded-full border border-ember/40 px-3 text-xs font-semibold text-ember"
+        className="h-11 rounded-full border border-ember/40 px-4 text-xs font-semibold text-ember"
       >
         Red flag
       </button>
@@ -184,7 +184,7 @@ export function RedFlagControl({
       <button
         type="button"
         onClick={() => setOpen(false)}
-        className="text-xs text-ink/55 underline"
+        className="h-11 px-1 text-xs text-ink/55 underline"
       >
         Cancel
       </button>

@@ -12,12 +12,11 @@ type ProfileRow = {
 };
 
 /**
- * Weekly cron endpoint — auto-drafts the completed weekly review (plus a
- * "weekly-reflection" journal entry, and an AI draft when configured) for
- * every profile that doesn't already have one for last week.
+ * Weekly cron endpoint — auto-drafts the completed weekly review (plus an
+ * AI draft when configured) for every profile that doesn't already have one
+ * for last week.
  *
- * The domain logic (drafting the review, the journal entry, and the AI
- * draft) lives in WeeklyReviewAutoFinalizeService
+ * The domain logic (drafting the review and the AI draft) lives in WeeklyReviewAutoFinalizeService
  * (packages/application/src/modules/weekly-reviews/weekly-review-auto-finalize-service.ts)
  * — this route is intentionally thin: auth check, fetch profiles, then loop
  * with bounded concurrency and aggregate counts. See that service for the
@@ -59,7 +58,6 @@ export async function GET(request: NextRequest) {
   let drafted = 0;
   let skipped = 0;
   let errors = 0;
-  let journalsDrafted = 0;
   let aiDrafted = 0;
 
   const settled = await mapWithConcurrency(rows, CONCURRENCY, (row) =>
@@ -74,9 +72,6 @@ export async function GET(request: NextRequest) {
     if (res.status === "fulfilled") {
       if (res.value.status === "drafted") {
         drafted++;
-        if (res.value.journalDrafted) {
-          journalsDrafted++;
-        }
       } else {
         skipped++;
       }
@@ -100,7 +95,6 @@ export async function GET(request: NextRequest) {
     drafted,
     skipped,
     errors,
-    journalsDrafted,
     aiDrafted,
   });
 }
