@@ -6,7 +6,7 @@ import type {
   PlannedExercise,
   PlannedExerciseStatus,
 } from "@fitness-app/application";
-import type { ProgramSessionType } from "@fitness-app/domain";
+import type { ProgramSessionType, StrengthSession } from "@fitness-app/domain";
 
 export type SessionCompletion =
   | "skipped"
@@ -17,12 +17,93 @@ export type SessionCompletion =
   | "planned"
   | "none";
 
+/** A logged lift (with sets) started from the program, linked to its session. */
+export type LinkedLift = {
+  id: string;
+  programSessionId: string;
+  /** The lift's own session date, which can be after the scheduled day. */
+  date: string;
+};
+
 /**
- * Lift days are done once a strength session with sets exists that day;
- * rides once any ride is logged or synced (a skipped one does not count).
- * An explicit skip or red-flag stop wins over everything, so a skipped day
- * reads as a choice, not a silent miss. Test days and walk-jog are not
- * tracked.
+ * Days after its scheduled date that a linked lift still counts for that
+ * occurrence. A program session recurs weekly, so one occurrence's window
+ * never reaches the next.
+ */
+export const LATE_LOG_DAYS = 6;
+
+function daysFrom(from: string, to: string) {
+  return Math.round(
+    (Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) /
+      86_400_000,
+  );
+}
+
+/**
+ * The linked lift that fulfils program session `sessionId` scheduled on
+ * `date`: linked to that session and dated that day or up to LATE_LOG_DAYS
+ * later. The latest dated wins; null when there is none.
+ */
+export function linkedLiftFor(
+  lifts: readonly LinkedLift[],
+  sessionId: string,
+  date: string,
+): LinkedLift | null {
+  let found: LinkedLift | null = null;
+  for (const lift of lifts) {
+    if (lift.programSessionId !== sessionId) continue;
+    const late = daysFrom(date, lift.date);
+    if (late < 0 || late > LATE_LOG_DAYS) continue;
+    if (!found || lift.date >= found.date) found = lift;
+  }
+  return found;
+}
+
+/**
+ * Splits logged lifts (with sets, oldest first) into linked lifts and the
+ * date fallback. A lift links only to a session the program still has
+ * (`knownSessionIds`); any other link falls back to its date, as do
+ * unlinked lifts. `liftIdByDate` keeps the latest unlinked lift per day.
+ */
+export function splitLoggedLifts(
+  lifts: readonly Pick<
+    StrengthSession,
+    "id" | "sessionDate" | "programSessionId"
+  >[],
+  knownSessionIds: ReadonlySet<string>,
+): {
+  liftDates: Set<string>;
+  liftIdByDate: Map<string, string>;
+  linkedLifts: LinkedLift[];
+} {
+  const liftDates = new Set<string>();
+  const liftIdByDate = new Map<string, string>();
+  const linkedLifts: LinkedLift[] = [];
+  for (const lift of lifts) {
+    const programSessionId = lift.programSessionId ?? null;
+    if (programSessionId != null && knownSessionIds.has(programSessionId)) {
+      linkedLifts.push({
+        id: lift.id,
+        programSessionId,
+        date: lift.sessionDate,
+      });
+    } else {
+      liftDates.add(lift.sessionDate);
+      liftIdByDate.set(lift.sessionDate, lift.id);
+    }
+  }
+  return { liftDates, liftIdByDate, linkedLifts };
+}
+
+/**
+ * Lift days are done once a lift linked to that program session is logged
+ * (that day or late, see linkedLiftFor), or else once an unlinked lift with
+ * sets (manual logging, older rows) exists that day. `liftDates` holds only
+ * unlinked lifts, so a late log never marks the day it was logged on.
+ * Rides are done once any ride is logged or synced (a skipped one does not
+ * count). An explicit skip or red-flag stop wins over everything, so a
+ * skipped day reads as a choice, not a silent miss. Test days and walk-jog
+ * are not tracked.
  */
 export function sessionCompletion(input: {
   type: ProgramSessionType;
@@ -31,13 +112,22 @@ export function sessionCompletion(input: {
   liftDates: Set<string>;
   rideDates: Set<string>;
   outcome?: "skipped" | "stopped" | null;
+  /** The program session's id, matched against linked lifts. */
+  sessionId?: string;
+  linkedLifts?: readonly LinkedLift[];
 }): SessionCompletion {
   const { type, date, today } = input;
   if (input.outcome) return input.outcome;
   const tracked = type === "lift" || type === "peloton";
   if (!tracked) return "none";
+  const linked =
+    type === "lift" && input.sessionId != null
+      ? linkedLiftFor(input.linkedLifts ?? [], input.sessionId, date)
+      : null;
   const done =
-    type === "lift" ? input.liftDates.has(date) : input.rideDates.has(date);
+    type === "lift"
+      ? linked != null || input.liftDates.has(date)
+      : input.rideDates.has(date);
   if (done) return "done";
   if (date < today) return "missed";
   if (date === today) return "today";

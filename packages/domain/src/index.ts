@@ -8,7 +8,6 @@ export * from "./modules/integrations/import-batch";
 export * from "./modules/integrations/integration-connection";
 export * from "./modules/integrations/sync-job-run";
 export * from "./modules/insights/insight";
-export * from "./modules/journal/journal-entry";
 export * from "./modules/nutrition/nutrition-log";
 export * from "./modules/recovery/recovery-checkin";
 export * from "./modules/strength/strength-session";
