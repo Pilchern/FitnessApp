@@ -14,7 +14,6 @@ export * from "./modules/insights/insight-rules";
 export * from "./modules/insights/insight-repository";
 export * from "./modules/insights/ai-insight-service";
 export * from "./modules/insights/insight-orchestrator";
-export * from "./modules/journal/journal-entry";
 export * from "./modules/recovery/recovery-checkin";
 export * from "./modules/recovery/recovery-helpers";
 export * from "./modules/recovery/overnight-metrics";

@@ -62,6 +62,8 @@ export function StrengthPageClient({
       id: (current?.id ?? 0) + 1,
       name: plan.name,
       definition: { notes: plan.notes, exercises: plan.exercises },
+      // Links the saved lift to the program session it fulfils.
+      programSessionId: programPlan?.sessionId ?? null,
     }));
   }
 

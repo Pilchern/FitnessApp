@@ -104,7 +104,7 @@ export function KneeCheckPanel({
           <button
             type="button"
             onClick={() => setEditing(true)}
-            className="h-9 shrink-0 rounded-full border border-ink/15 bg-white/70 px-3 text-ink text-xs font-semibold"
+            className="h-11 shrink-0 rounded-full border border-ink/15 bg-white/70 px-4 text-ink text-xs font-semibold"
           >
             Redo
           </button>
@@ -196,7 +196,7 @@ export function KneeCheckPanel({
         <button
           type="button"
           onClick={() => setEditing(false)}
-          className="text-xs font-semibold text-ink/60 underline"
+          className="h-11 text-xs font-semibold text-ink/60 underline"
         >
           Keep today&apos;s answer
         </button>

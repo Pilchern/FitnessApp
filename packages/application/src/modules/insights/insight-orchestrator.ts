@@ -15,7 +15,6 @@ function insightKey(insightType: string, insightDate: string) {
 
 export type OrchestratorInput = InsightEngineInput & {
   userId: string;
-  recentJournalEntries?: string[];
 };
 
 // How long a persisted AI-sourced insight is considered "fresh" before

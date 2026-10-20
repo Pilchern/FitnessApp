@@ -32,6 +32,11 @@ export const strengthSessionFormSchema = z.object({
     "Readiness",
   ),
   energyPost: parseOptionalNumber(z.number().int().min(1).max(10), "Energy"),
+  /** Set by the program's Start; empty for manual logging. */
+  programSessionId: z.preprocess(
+    (value) => (value === "" || value == null ? undefined : value),
+    z.string().uuid().optional(),
+  ),
   completedAsPlanned: z
     .enum(["true", "false"])
     .transform((value) => value === "true"),

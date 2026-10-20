@@ -4,6 +4,7 @@ import {
   addDays,
   buildDayPlan,
   buildWeeklyWeightTrend,
+  countLifts,
   dayStreak,
   executionBanner,
   kneeReadinessStatus,
@@ -31,6 +32,7 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
+import { splitLoggedLifts } from "./helpers";
 import { loadProgramContext } from "./server";
 import type { AdherenceSnapshot, WeeklyReviewData } from "./types";
 
@@ -43,7 +45,12 @@ function firstProgramWeek(program: TrainingProgram) {
 }
 
 /** Shared loads for the scorecard: lifts, rides, ROM days, over a date range. */
-async function loadActivity(userId: string, start: string, end: string) {
+async function loadActivity(
+  userId: string,
+  program: TrainingProgram,
+  start: string,
+  end: string,
+) {
   const {
     strengthService,
     cardioService,
@@ -79,11 +86,15 @@ async function loadActivity(userId: string, start: string, end: string) {
       )
       .map((h) => h.id),
   );
+  // Linked lifts count once per program session, the rest once per day.
+  const { liftDates, linkedLifts } = splitLoggedLifts(
+    sessions.filter((s) => s.sets.length > 0),
+    new Set(program.sessions.map((s) => s.id)),
+  );
   return {
     sessions,
-    liftDates: new Set(
-      sessions.filter((s) => s.sets.length > 0).map((s) => s.sessionDate),
-    ),
+    liftDates,
+    linkedLifts,
     rideDates: new Set(
       rides
         .filter((r) => r.plannedVsCompleted !== "skipped")
@@ -101,14 +112,17 @@ async function loadActivity(userId: string, start: string, end: string) {
 function completedWeekLifts(
   program: TrainingProgram,
   week: number,
-  liftDates: Set<string>,
+  activity: Pick<
+    Awaited<ReturnType<typeof loadActivity>>,
+    "liftDates" | "linkedLifts"
+  >,
 ) {
   const first = firstProgramWeek(program);
   const counts: number[] = [];
   for (let w = week - 1; w >= first; w -= 1) {
     const { start } = weekDateRange(program.weekAnchorDate, w);
     const dates = Array.from({ length: 7 }, (_, i) => addDays(start, i));
-    counts.push(dates.filter((d) => liftDates.has(d)).length);
+    counts.push(countLifts(dates, activity.liftDates, activity.linkedLifts));
   }
   return counts;
 }
@@ -129,7 +143,12 @@ export async function getAdherenceSnapshot(): Promise<AdherenceSnapshot | null> 
   ).start;
   const { bodyMetricService, programService } = await createCoreServices();
   const [activity, body, checkins] = await Promise.all([
-    loadActivity(user.id, firstStart < today ? firstStart : today, today),
+    loadActivity(
+      user.id,
+      program,
+      firstStart < today ? firstStart : today,
+      today,
+    ),
     bodyMetricService.listByDateRange({
       userId: user.id,
       startDate: addDays(today, -WAIST_LOOKBACK_DAYS),
@@ -144,6 +163,7 @@ export async function getAdherenceSnapshot(): Promise<AdherenceSnapshot | null> 
   const adherence = weekAdherence({
     weekDates,
     liftDates: activity.liftDates,
+    linkedLifts: activity.linkedLifts,
     rideDates: activity.rideDates,
     romDates: activity.romDates,
     pt: checkin
@@ -154,7 +174,7 @@ export async function getAdherenceSnapshot(): Promise<AdherenceSnapshot | null> 
       : null,
     settings,
   });
-  const pastWeeks = completedWeekLifts(program, info.week, activity.liftDates);
+  const pastWeeks = completedWeekLifts(program, info.week, activity);
   const trend = buildWeeklyWeightTrend(body, today, {
     riseLbPerWeek: settings.weightRiseLbPerWeek,
     weeks: settings.weightRiseWeeks,
@@ -283,6 +303,7 @@ export async function getWeeklyReviewData(
     await Promise.all([
       loadActivity(
         user.id,
+        program,
         [firstStart, addDays(range.start, -7)].sort()[0]!,
         range.end,
       ),
@@ -310,6 +331,7 @@ export async function getWeeklyReviewData(
   const adherence = weekAdherence({
     weekDates,
     liftDates: activity.liftDates,
+    linkedLifts: activity.linkedLifts,
     rideDates: activity.rideDates,
     romDates: activity.romDates,
     pt: checkin
@@ -320,7 +342,7 @@ export async function getWeeklyReviewData(
       : null,
     settings,
   });
-  const pastWeeks = completedWeekLifts(program, week, activity.liftDates);
+  const pastWeeks = completedWeekLifts(program, week, activity);
   const thisWeekLifts = adherence.lifts.done;
   const isLiftDay = (date: string) =>
     buildDayPlan(program, date, null, settings).sessions.some(

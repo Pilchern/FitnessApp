@@ -4,8 +4,15 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Fitness App",
   description:
-    "Modular health, fitness, recovery, body-composition, and journaling workspace.",
+    "Modular health, fitness, recovery, and body-composition workspace.",
   appleWebApp: { capable: true, title: "Fitness", statusBarStyle: "default" },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: { url: "/apple-touch-icon.png", sizes: "180x180" },
+  },
 };
 
 export const viewport: Viewport = {

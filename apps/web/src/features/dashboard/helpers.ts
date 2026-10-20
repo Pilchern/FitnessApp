@@ -6,8 +6,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
  *
  * Callers must not pass a raw `new Date()`: `toISOString()` on a raw instant
  * yields the UTC date, which rolls over before local midnight for users west
- * of UTC (19:00 in America/Chicago). Anything keyed on "today" — journal
- * streaks, this-week volume — is wrong every evening if it does.
+ * of UTC (19:00 in America/Chicago). Anything keyed on "today" — this-week
+ * volume — is wrong every evening if it does.
  */
 export function formatZonedIsoDate(zonedNow: Date) {
   return zonedNow.toISOString().slice(0, 10);

@@ -55,6 +55,8 @@ const strengthSessionBaseSchema = z.object({
   readinessPre: z.number().int().min(1).max(10).nullable().optional(),
   energyPost: z.number().int().min(1).max(10).nullable().optional(),
   completedAsPlanned: z.boolean().default(true),
+  /** Set when the lift was started from the program; omitted otherwise. */
+  programSessionId: uuidSchema.nullable().optional(),
   source: manualOrImportedRecordSourceSchema.default(defaultManualSource),
   sets: z
     .array(strengthExerciseSetSchema)

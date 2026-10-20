@@ -60,9 +60,7 @@ function stripCodeFence(text: string): string {
     .trim();
 }
 
-function buildContext(
-  input: InsightEngineInput & { recentJournalEntries?: string[] },
-): string {
+function buildContext(input: InsightEngineInput): string {
   const lines: string[] = [];
 
   if (input.weeklyReviews.length > 0) {
@@ -128,13 +126,6 @@ function buildContext(
     }
   }
 
-  if (input.recentJournalEntries && input.recentJournalEntries.length > 0) {
-    lines.push("Recent journal notes:");
-    for (const entry of input.recentJournalEntries.slice(0, 3)) {
-      lines.push(`  - ${entry}`);
-    }
-  }
-
   return lines.join("\n");
 }
 
@@ -143,7 +134,7 @@ export class AiInsightService {
 
   /** Insights only, with every failure flattened to []. */
   async generateInsights(
-    input: InsightEngineInput & { recentJournalEntries?: string[] },
+    input: InsightEngineInput,
   ): Promise<GeneratedInsight[]> {
     const result = await this.generate(input);
     return result.status === "ok" ? result.insights : [];
