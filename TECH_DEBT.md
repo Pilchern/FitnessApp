@@ -1,6 +1,6 @@
 # Technical Debt Register — FitnessApp
 
-**Last updated:** 2026-10-12 (TD-042 narrowed: the Strava/Peloton sync orchestrator is deleted; the journal page stays)
+**Last updated:** 2026-10-20 (TD-042 closed: journal code deleted, `journal_entries` table kept)
 **Methodology:** Items are ordered by impact × effort ratio. Fix high-impact, low-effort items first.
 
 ---
@@ -15,9 +15,9 @@ Daily habits reuse `supplements` / `supplement_logs` through a `kind` column (`s
 
 Seeded with a pre-injury weekly plan, written by `profile-bootstrap.ts`, read by nothing. The real schedule is `training_templates.scheduled_day_of_week`. Either delete the column or make the dashboard plan card read it; do not add a third source of truth.
 
-### TD-042 — Dead code left after retiring Strava, Peloton and the journal (low)
+### TD-042 — Dead code left after retiring Strava, Peloton and the journal (closed 2026-10-20)
 
-`CardioSyncOrchestrator` and the `cardio` retry branch were deleted 2026-10-12 (session 5). Left: the `/journal` page, actions and `JournalEntryService` wiring, out of the nav since 2026-10-12. Kept because the page is the only way to read the old entries in the app (the data export also has them) and the dashboard still computes a journal streak; delete only when the owner says the entries can go dark. Keep the `strava`/`peloton` provider values: historical rows and cross-provider dedup use them.
+Closed: the `/journal` route, `features/journal`, the journal domain type, application module, `SupabaseJournalEntryRepository`, its `createCoreServices` wiring, the export's `journalEntries` section and the auto-finalize service's unused journal-drafting branch are deleted (`journal_entries` had 0 rows ever). The `journal_entries` table stays; dropping it is a separate owner decision. Keep the `strava`/`peloton` provider values: historical rows and cross-provider dedup use them.
 
 ### TD-043 — Strength set saves are not atomic (low)
 

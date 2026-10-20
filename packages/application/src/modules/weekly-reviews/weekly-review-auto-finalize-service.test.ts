@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import type {
   BodyMetric,
   CardioSession,
-  JournalEntry,
   RecoveryCheckin,
   WeeklyReview,
   WeeklyReviewAiDraft,
@@ -11,8 +10,6 @@ import type { BodyMetricRepository } from "../body-metrics/body-metric";
 import { BodyMetricService } from "../body-metrics/body-metric";
 import type { CardioSessionRepository } from "../cardio/cardio-session";
 import { CardioSessionService } from "../cardio/cardio-session";
-import type { JournalEntryRepository } from "../journal/journal-entry";
-import { JournalEntryService } from "../journal/journal-entry";
 import type { RecoveryCheckinRepository } from "../recovery/recovery-checkin";
 import { RecoveryCheckinService } from "../recovery/recovery-checkin";
 import type { StrengthSessionSummaryRepository } from "../strength/strength-session-summary";
@@ -103,44 +100,6 @@ class FakeWeeklyReviewRepository implements WeeklyReviewRepository {
   }
 }
 
-class FakeJournalEntryRepository implements JournalEntryRepository {
-  public existingEntries: JournalEntry[] = [];
-  public created: unknown[] = [];
-
-  async create(input: any): Promise<JournalEntry> {
-    this.created.push(input);
-    return {
-      id: "journal-1",
-      userId: input.userId,
-      entryDate: input.entryDate,
-      title: input.title ?? null,
-      body: input.body,
-      tags: input.tags ?? [],
-      relatedWeekStart: input.relatedWeekStart ?? null,
-      relatedWeeklyReviewId: input.relatedWeeklyReviewId ?? null,
-      relatedCardioSessionId: input.relatedCardioSessionId ?? null,
-      relatedStrengthSessionId: input.relatedStrengthSessionId ?? null,
-      createdAt: "2026-07-13T00:00:00.000Z",
-      updatedAt: "2026-07-13T00:00:00.000Z",
-      deletedAt: null,
-    };
-  }
-
-  async update(): Promise<JournalEntry> {
-    throw new Error("not used in this test");
-  }
-
-  async archive(): Promise<void> {}
-
-  async findById(): Promise<JournalEntry | null> {
-    return null;
-  }
-
-  async listByDateRange(): Promise<JournalEntry[]> {
-    return this.existingEntries;
-  }
-}
-
 class EmptyBodyMetricRepository implements BodyMetricRepository {
   async create(): Promise<BodyMetric> {
     throw new Error("not used");
@@ -212,20 +171,15 @@ class FakeStrengthSessionSummaryRepository implements StrengthSessionSummaryRepo
 
 function buildDeps(overrides?: {
   weeklyReviewRepo?: FakeWeeklyReviewRepository;
-  journalRepo?: FakeJournalEntryRepository;
   aiWeeklyReviewService?: AiWeeklyReviewService | null;
 }) {
   const weeklyReviewRepo =
     overrides?.weeklyReviewRepo ?? new FakeWeeklyReviewRepository();
-  const journalRepo =
-    overrides?.journalRepo ?? new FakeJournalEntryRepository();
 
   return {
     weeklyReviewRepo,
-    journalRepo,
     deps: {
       weeklyReviewService: new WeeklyReviewService(weeklyReviewRepo),
-      journalService: new JournalEntryService(journalRepo),
       bodyMetricService: new BodyMetricService(new EmptyBodyMetricRepository()),
       cardioService: new CardioSessionService(
         new EmptyCardioSessionRepository(),
@@ -242,95 +196,29 @@ function buildDeps(overrides?: {
 }
 
 describe("WeeklyReviewAutoFinalizeService", () => {
-  it("drafts a new review and a journal entry when none exists yet, with no AI service configured", async () => {
-    const { deps, weeklyReviewRepo, journalRepo } = buildDeps();
+  it("drafts a new review when none exists yet, with no AI service configured", async () => {
+    const { deps, weeklyReviewRepo } = buildDeps();
     const service = new WeeklyReviewAutoFinalizeService(deps);
 
     const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
 
     expect(result.status).toBe("drafted");
     if (result.status === "drafted") {
-      expect(result.journalDrafted).toBe(true);
       expect(result.aiDrafted).toBe(false);
     }
     expect(weeklyReviewRepo.created).toHaveLength(1);
-    expect(journalRepo.created).toHaveLength(1);
-  });
-
-  it("drafts the review without a journal entry when no journal service is wired", async () => {
-    const { deps, weeklyReviewRepo, journalRepo } = buildDeps();
-    const service = new WeeklyReviewAutoFinalizeService({
-      ...deps,
-      journalService: undefined,
-    });
-
-    const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
-
-    expect(result.status).toBe("drafted");
-    if (result.status === "drafted") {
-      expect(result.journalDrafted).toBe(false);
-    }
-    expect(weeklyReviewRepo.created).toHaveLength(1);
-    expect(journalRepo.created).toHaveLength(0);
   });
 
   it("skips drafting when a review already exists for the week", async () => {
     const weeklyReviewRepo = new FakeWeeklyReviewRepository();
     weeklyReviewRepo.existing = makeReview();
-    const { deps, journalRepo } = buildDeps({ weeklyReviewRepo });
+    const { deps } = buildDeps({ weeklyReviewRepo });
     const service = new WeeklyReviewAutoFinalizeService(deps);
 
     const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
 
     expect(result.status).toBe("skipped");
-    expect(journalRepo.created).toHaveLength(0);
-  });
-
-  it("does not create a duplicate journal entry when one already exists for the week", async () => {
-    const journalRepo = new FakeJournalEntryRepository();
-    // draftJournalEntryForUser titles entries "Week of <Mon DD>" — match the
-    // getLastCompletedWeekStart() output for "today" mocked deterministically
-    // isn't needed here: we only assert create() is skipped when title matches.
-    const { deps } = buildDeps({ journalRepo });
-    // Prime the existing entries list to include whatever title will be computed.
-    // Since the title depends on getLastCompletedWeekStart(new Date()), run once
-    // to discover it, then rerun with that title pre-seeded.
-    const probe = new WeeklyReviewAutoFinalizeService(deps).finalizeForUser({
-      userId,
-      weekStartsOn: 1,
-    });
-    await probe;
-    const createdTitle = (
-      journalRepo.created[0] as { title: string } | undefined
-    )?.title;
-    expect(createdTitle).toBeTruthy();
-
-    const secondJournalRepo = new FakeJournalEntryRepository();
-    secondJournalRepo.existingEntries = [
-      {
-        id: "existing-journal",
-        userId,
-        entryDate: "2026-07-06",
-        title: createdTitle ?? null,
-        body: "already drafted",
-        tags: ["weekly-reflection"],
-        relatedWeekStart: "2026-07-06",
-        relatedWeeklyReviewId: null,
-        relatedCardioSessionId: null,
-        relatedStrengthSessionId: null,
-        createdAt: "2026-07-13T00:00:00.000Z",
-        updatedAt: "2026-07-13T00:00:00.000Z",
-        deletedAt: null,
-      },
-    ];
-    const { deps: secondDeps } = buildDeps({ journalRepo: secondJournalRepo });
-    const service = new WeeklyReviewAutoFinalizeService(secondDeps);
-
-    const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
-
-    expect(result.status).toBe("drafted");
-    // create() was never called again because the title already matched.
-    expect(secondJournalRepo.created).toHaveLength(0);
+    expect(weeklyReviewRepo.created).toHaveLength(0);
   });
 
   it("generates and saves an AI draft when the ai service returns a draft for a fresh 'none' status review", async () => {

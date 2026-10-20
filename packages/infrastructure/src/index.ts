@@ -7,7 +7,6 @@ export * from "./repositories/import-batch-repository";
 export * from "./repositories/integration-connection-repository";
 export * from "./repositories/integration-credential-repository";
 export * from "./repositories/integration-status-repository";
-export * from "./repositories/journal-entry-repository";
 export * from "./repositories/raw-import-event-repository";
 export * from "./repositories/nutrition-log-repository";
 export * from "./repositories/overnight-sample-repository";
