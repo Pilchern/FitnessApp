@@ -545,7 +545,7 @@ function evaluateConsecutiveStrengthMissed(input: InsightEngineInput) {
     "warning",
     "No strength sessions in 2 weeks",
     "Strength work dropped off for two consecutive weeks.",
-    "Three upper-body sessions a week (Mon/Wed/Fri) keep the rebuild on track. Schedule them before the week starts.",
+    "Three lift sessions a week (Mon/Wed/Fri, legs and upper body per the program) keep the rebuild on track. Schedule them before the week starts.",
     {
       weekStart,
       previousWeekStart,

@@ -349,7 +349,7 @@ export const ROUTINES: Routine[] = [
     title: "Mobility",
     habitKeyword: "mobility",
     summary:
-      "Static stretches for the desk and the upper-body lifts. Standing, seated or lying on a bench; nothing loads the knee.",
+      "Static stretches for the desk and lift days. Standing, seated or lying on a bench; nothing loads the knee.",
     safety: [
       "Ease into each stretch to a mild pull, never pain. Breathe slowly.",
       "Lie on the bench by sitting first and swinging the legs up; get off leading with the right leg.",

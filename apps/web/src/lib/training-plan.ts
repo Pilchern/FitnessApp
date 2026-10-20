@@ -46,7 +46,7 @@ export function weeksPostOp(now: Date = new Date()): number {
 export const nickAiPlanContext = (now: Date = new Date()) =>
   [
     `Recovering from ACL reconstruction (patellar tendon graft), about ${weeksPostOp(now)} weeks post-op; surgeon visit week of 2026-10-26.`,
-    "No running, jumping, plyometrics, or VO2 intervals until cleared. Do not suggest lower-body loading.",
-    "Lifts are upper body only (Mon/Wed/Fri); cardio is Zone 2 bike (Tue/Thu/Sat). Scheduled counts and the Zone 2 target in the data come from the current plan; judge adherence against them.",
+    "No running, jumping, plyometrics, or VO2 intervals until cleared. Lower-body loading follows the post-op program and its gates (e.g. no squat past 90 degrees); do not suggest loads, ranges or exercises beyond what the program prescribes.",
+    "Lifts are Mon/Wed/Fri, legs and upper body in one session per the post-op program; cardio is Peloton (Tue/Thu/Sat), mostly Zone 2, per the program. Scheduled counts and the Zone 2 target in the data come from the current plan; judge adherence against them.",
     "Goal is a small calorie surplus with protein around 180 g/day, not a cut. Knee rehab is tracked in a separate app.",
   ].join("\n");

@@ -13,4 +13,14 @@ describe("weeksPostOp", () => {
       "about 9 weeks post-op",
     );
   });
+
+  it("matches program v2: legs and upper on lift days, impact still parked", () => {
+    const context = nickAiPlanContext(new Date("2026-10-24T12:00:00Z"));
+    expect(context).toContain(
+      "No running, jumping, plyometrics, or VO2 intervals until cleared.",
+    );
+    expect(context).toContain("legs and upper body");
+    expect(context).toContain("no squat past 90 degrees");
+    expect(context).not.toMatch(/upper body only|lower-body loading\./i);
+  });
 });
