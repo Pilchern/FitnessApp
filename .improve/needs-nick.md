@@ -1,0 +1,37 @@
+# Needs Nick
+
+Answer inline under each item (e.g. "Nick: yes"). The PM reads this at the start of every run. Ranked by urgency.
+
+## Open
+
+### N-002 (2026-10-20) Pogo hops start Fri 10/30 with no gate. Decide by Wed 10/28.
+Block 1 "landing prep" (squat to calf raise, snap-down to stick, low double-leg pogo) is ungated from program week 10 (`supabase/generators/program_v2.py:181-186`). Every later pogo/jump is behind `plyo_double`, which can't clear before 11/09. Your 10/16 PT note says "still unable: jumping". Thursday climb intervals also start in week 10, ungated (`:536`); threshold 4x4 from week 14, VO2 from week 19.
+**Decision:** (a) put landing prep behind `plyo_double` and add a `vo2` gate to the interval rides (v2.2 seed, applied to live with your OK), or (b) leave it and skip by hand unless the surgeon clears it. PM recommends (a).
+
+### N-003 (2026-10-20) Surgeon visit date conflict
+The plan doc says the surgeon visit is the week of 10/26. The program seed's week notes say "Kazaglis visit 11/10: review gates" (`program_v2.py:598, 666-667`). Is Kazaglis the surgeon, and which date is right? It decides when gates get reviewed. Can ride along with N-002's seed fix.
+**Decision:** correct date and role.
+
+### N-004 (2026-10-20) Fri 10/23 is a leg day, the day before the DEXA
+The scan protocol (plan §17) allows only upper-body lifting the day before. No code needed.
+**Decision:** skip the legs block on Fri 10/23? (y/n)
+
+### N-005 (2026-10-20) Three weekly Zone 2 targets (TD-040)
+The dashboard shows 150 this week and 105 from week 10 (it reads the program). The Monday review and insights use 95 (they read the templates). The test-day note says 150. `profiles.baseline_schedule` is written but never read.
+**Decision:** (1) Make the program the single source, and drop `baseline_schedule` (column drop, needs your OK)? (2) Does the Thursday climb ride count toward the Z2 target? (3) Retire one of the two weekly reviews?
+
+### N-006 (2026-10-20) Migration approvals, low urgency
+Three migrations are ready to build once you approve. Each is applied to live before merge.
+- B-10: link logged lifts to program sessions, so adherence history survives late logging.
+- B-11: security advisor fixes. Revoke anon GraphQL select (it currently exposes table structure, not rows), pin function search_path, turn on leaked-password protection.
+- B-12: archive about 20k junk Strava retry rows and mark the Strava connection disconnected.
+
+Separately, the production URL is public with no login. Keep it that way?
+**Decision:** approve any of B-10/B-11/B-12 by ID.
+
+### N-001 (2026-10-20) The improvement-cycle prompt is truncated
+The scheduled prompt stops at "Every agent's report to the PM uses this format:". The report format, value bar, hard limits, and every step after the team table are missing.
+Run 1 used PM defaults (`decisions.md` > "Operating defaults") and built 2 small items under them.
+**Decision:** paste the rest of the prompt into the scheduled task, or reply "defaults OK".
+
+## Answered
