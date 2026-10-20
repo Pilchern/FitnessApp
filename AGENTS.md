@@ -470,8 +470,8 @@ Migration rules:
 - Never edit existing migration files
 - New migration filename: YYYYMMDDHHMMSS_description.sql
 - Every migration must be safe to re-run (use IF NOT EXISTS, IF EXISTS)
-- Add updated_at trigger: SELECT create_updated_at_trigger('<table_name>');
-- Add RLS: ALTER TABLE <name> ENABLE ROW LEVEL SECURITY; plus policies for authenticated users
+- Add updated_at trigger: drop trigger if exists set_<table>_updated_at on public.<table>; create trigger set_<table>_updated_at before update on public.<table> for each row execute function public.set_updated_at();
+- Add RLS: ALTER TABLE <name> ENABLE ROW LEVEL SECURITY. Do not grant on the table to anon or authenticated; the app reads and writes only as service_role, and any such grant reopens advisor lints 0026/0027. Owner policies (TO authenticated USING (public.owns_row(user_id))) are optional.
 
 When evaluating schema changes:
 1. Does the new column need to be nullable (most additions should be nullable for safety)?

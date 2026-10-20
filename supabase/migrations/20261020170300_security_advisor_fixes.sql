@@ -15,8 +15,9 @@
 --    apps/web/src/lib/client/supabase.ts has no callers. service_role and
 --    postgres (pg_cron) keep their grants. RLS stays on and the policies stay
 --    in place; with no grant behind them they simply never apply.
---    To undo: grant select, insert, update, delete on all tables in schema
---    public to anon, authenticated; and reverse the default privileges.
+-- To undo: grant all on all tables in schema public to anon, authenticated;
+-- alter default privileges in schema public grant all on tables to anon, authenticated;
+-- alter function public.set_updated_at() reset search_path; alter function public.owns_row(uuid) reset search_path;
 revoke all on all tables in schema public from anon, authenticated;
 
 -- Stops tables created later by the role that runs migrations picking up the
