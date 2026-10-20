@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useBeep, useScreenWakeLock } from "@/lib/client/timer-cues";
 import type { Routine, RoutineStep } from "@/lib/routines";
 import { markHabitDoneAction } from "../actions";
 import {
@@ -24,8 +25,6 @@ type RoutinePlayerProps = {
   habitId: string | null;
   doneToday: boolean;
 };
-
-type WakeLockSentinelLike = { release: () => Promise<void> };
 
 export function RoutinePlayer({
   routine,
@@ -54,51 +53,19 @@ export function RoutinePlayer({
   }, [running]);
 
   // Keep the screen on while a routine runs (iOS 16.4+, Android).
-  const wakeLock = useRef<WakeLockSentinelLike | null>(null);
-  useEffect(() => {
-    if (!running) return;
-    const nav = navigator as Navigator & {
-      wakeLock?: { request: (type: "screen") => Promise<WakeLockSentinelLike> };
-    };
-    const acquire = () => {
-      nav.wakeLock
-        ?.request("screen")
-        .then((lock) => {
-          wakeLock.current = lock;
-        })
-        .catch(() => {});
-    };
-    const onVisible = () => {
-      if (document.visibilityState === "visible") acquire();
-    };
-    acquire();
-    document.addEventListener("visibilitychange", onVisible);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-      wakeLock.current?.release().catch(() => {});
-      wakeLock.current = null;
-    };
-  }, [running]);
+  useScreenWakeLock(running);
 
   // A short beep and buzz when a hold starts and when it ends, so the phone
-  // can sit on the floor. The audio context is made on the Start tap, which
-  // iOS requires.
-  const audio = useRef<AudioContext | null>(null);
-  const cue = useCallback((pulses: number) => {
-    navigator.vibrate?.(pulses > 1 ? [120, 80, 120] : 150);
-    const ctx = audio.current;
-    if (!ctx) return;
-    for (let i = 0; i < pulses; i += 1) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = 880;
-      gain.gain.value = 0.15;
-      osc.connect(gain).connect(ctx.destination);
-      const at = ctx.currentTime + i * 0.25;
-      osc.start(at);
-      osc.stop(at + 0.15);
-    }
-  }, []);
+  // can sit on the floor. The audio is unlocked on the Start tap, which iOS
+  // requires.
+  const { unlock: unlockAudio, beep } = useBeep();
+  const cue = useCallback(
+    (pulses: number) => {
+      navigator.vibrate?.(pulses > 1 ? [120, 80, 120] : 150);
+      beep(pulses);
+    },
+    [beep],
+  );
   const phaseKey = position.done
     ? "done"
     : `${position.index}-${position.phase}`;
@@ -118,15 +85,7 @@ export function RoutinePlayer({
   }, [position.done, running, total]);
 
   function start() {
-    try {
-      const Ctx =
-        window.AudioContext ??
-        (window as unknown as { webkitAudioContext?: typeof AudioContext })
-          .webkitAudioContext;
-      if (Ctx && !audio.current) audio.current = new Ctx();
-    } catch {
-      // No audio; the screen still shows the countdown.
-    }
+    unlockAudio();
     setStarted(true);
     setBase(0);
     lastPhase.current = `0-prep`;

@@ -10,6 +10,7 @@ import {
   type LoggerPlanExercise,
   type RestMeta,
 } from "@fitness-app/application";
+import { useBeep, useScreenWakeLock } from "@/lib/client/timer-cues";
 import {
   createEmptyStrengthSet,
   draftWasSaved,
@@ -35,6 +36,12 @@ import {
   type LastExercisePerformance,
   type StrengthDraft,
 } from "../helpers";
+import {
+  restBeepFresh,
+  restEndDue,
+  restRunning,
+  restSecondsLeft,
+} from "../rest-timer";
 import type {
   StrengthActionState,
   StrengthFormValues,
@@ -133,7 +140,7 @@ function Stepper({
         type="button"
         aria-label={`Decrease ${label}`}
         onClick={() => bump(-1)}
-        className="w-9 shrink-0 text-xl font-semibold text-ink/70 active:bg-pine/10"
+        className="w-11 shrink-0 text-xl font-semibold text-ink/70 active:bg-pine/10"
       >
         −
       </button>
@@ -149,7 +156,7 @@ function Stepper({
         type="button"
         aria-label={`Increase ${label}`}
         onClick={() => bump(1)}
-        className="w-9 shrink-0 text-xl font-semibold text-ink/70 active:bg-pine/10"
+        className="w-11 shrink-0 text-xl font-semibold text-ink/70 active:bg-pine/10"
       >
         +
       </button>
@@ -208,7 +215,9 @@ export function StrengthQuickForm({
   /** What comes next: "Right leg", "Next: A2 Pull-Up", "Then A1 Squat". */
   const [nextCue, setNextCue] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const vibrated = useRef(false);
+  /** The "rest over" beep and buzz has fired for the current rest. */
+  const restCued = useRef(false);
+  const { unlock: unlockAudio, beep } = useBeep();
   const draftChecked = useRef(false);
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   // A plan requested before this form mounted (e.g. before Edit -> Cancel)
@@ -337,22 +346,28 @@ export function StrengthQuickForm({
     return () => window.clearInterval(id);
   }, [restEndsAt]);
 
-  const restRemaining =
-    restEndsAt == null ? 0 : Math.max(0, Math.ceil((restEndsAt - now) / 1000));
+  const restRemaining = restSecondsLeft(restEndsAt, now);
+
+  // Keep the screen on through the rest; let it sleep once rest is over.
+  useScreenWakeLock(restRunning(restEndsAt, now));
 
   useEffect(() => {
-    if (restEndsAt != null && restRemaining === 0 && !vibrated.current) {
-      vibrated.current = true;
-      try {
-        navigator.vibrate?.([200, 100, 200]);
-      } catch {
-        // Vibration is a nicety; ignore unsupported browsers.
-      }
+    if (!restEndDue(restEndsAt, now, restCued.current)) return;
+    restCued.current = true;
+    // Back on the page long after rest ended: no stale beep, just the buzz.
+    if (restBeepFresh(restEndsAt, now)) beep(2);
+    try {
+      // Android buzz; iOS Safari ignores it, hence the beep.
+      navigator.vibrate?.([200, 100, 200]);
+    } catch {
+      // Vibration is a nicety; ignore unsupported browsers.
     }
-  }, [restEndsAt, restRemaining]);
+  }, [restEndsAt, now, beep]);
 
+  /** Called from a tap, which is when iOS lets the beep's audio start. */
   function startRest(seconds: number = restSeconds) {
-    vibrated.current = false;
+    unlockAudio();
+    restCued.current = false;
     setNow(Date.now());
     setRestEndsAt(Date.now() + seconds * 1000);
   }
@@ -659,7 +674,7 @@ export function StrengthQuickForm({
           return (
             <div
               key={`${group.key}-${group.indexes[0]}`}
-              className="rounded-[1.5rem] border border-ink/10 bg-white p-3 shadow-sm"
+              className="rounded-[1.5rem] border border-ink/10 bg-white px-2 py-3 shadow-sm sm:px-3"
             >
               <div className="flex items-start justify-between gap-2 px-1">
                 <div className="min-w-0">
@@ -701,7 +716,7 @@ export function StrengthQuickForm({
                     type="button"
                     aria-label={`Remove ${group.name}`}
                     onClick={() => removeExercise(group.indexes)}
-                    className="h-9 w-9 rounded-full text-lg text-ember active:bg-ember/10"
+                    className="h-11 w-11 rounded-full text-lg text-ember active:bg-ember/10"
                   >
                     ×
                   </button>
@@ -721,10 +736,13 @@ export function StrengthQuickForm({
                   return (
                     <div
                       key={index}
-                      className={`grid items-center gap-1.5 rounded-2xl p-1 ${
+                      className={`grid items-center gap-1 rounded-2xl p-0.5 ${
                         force || (timed && !timedWeight)
-                          ? "grid-cols-[1.75rem_1fr_3rem]"
-                          : "grid-cols-[1.75rem_1fr_1fr_3rem]"
+                          ? "grid-cols-[1.25rem_minmax(0,1fr)_2.75rem]"
+                          : timed
+                            ? "grid-cols-[1.25rem_minmax(0,1fr)_minmax(0,1fr)_2.75rem]"
+                            : // Weight ("182.5") needs more room than reps.
+                              "grid-cols-[1.25rem_minmax(0,1.2fr)_minmax(0,1fr)_2.75rem]"
                       } ${set.done ? "bg-pine/10" : ""}`}
                     >
                       <button
@@ -1003,7 +1021,7 @@ export function StrengthQuickForm({
                   type="button"
                   aria-label="Dismiss"
                   onClick={() => setNextCue(null)}
-                  className="h-9 w-9 shrink-0 text-lg text-white/70"
+                  className="h-11 w-11 shrink-0 text-lg text-white/70"
                 >
                   ×
                 </button>
@@ -1030,11 +1048,9 @@ export function StrengthQuickForm({
                       type="button"
                       onClick={() => {
                         setRestSeconds(option);
-                        vibrated.current = false;
-                        setNow(Date.now());
-                        setRestEndsAt(Date.now() + option * 1000);
+                        startRest(option);
                       }}
-                      className={`h-9 rounded-full px-2.5 text-xs font-semibold ${
+                      className={`h-11 rounded-full px-2.5 text-xs font-semibold ${
                         restSeconds === option
                           ? "bg-white text-ink"
                           : "text-white/70"
@@ -1050,7 +1066,7 @@ export function StrengthQuickForm({
                       setRestEndsAt(null);
                       setNextCue(null);
                     }}
-                    className="h-9 w-9 text-lg text-white/70"
+                    className="h-11 w-11 text-lg text-white/70"
                   >
                     ×
                   </button>
