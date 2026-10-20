@@ -483,7 +483,8 @@ function weekTargets(
   plan: TrainingPlan,
 ) {
   return {
-    zone2: summary.zone2TargetMinutes || plan.weeklyZone2TargetMinutes,
+    // 0 is a real target (no Zone 2 planned); only null/absent falls back.
+    zone2: summary.zone2TargetMinutes ?? plan.weeklyZone2TargetMinutes,
     lifts: summary.liftsScheduled || 3,
     rides: summary.cardioScheduled || 3,
   };

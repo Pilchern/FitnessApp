@@ -99,7 +99,7 @@ Read `CLAUDE.md` first. What changed on 2026-10-09, and what the live database n
 - Unverified at close: the first Health Auto Export push after the index migration and #43 (bedtime/wake fill). No push had arrived between 16:56 and 17:58 UTC. Check `sync_job_runs` for `apple_health_*` failures and `recovery_checkins.bedtime_local` counts.
 - After PT 10/14: edit only the cardio templates for the ramp. At surgeon clearance: turn the Tuesday ride into the VO2 4x4 template, flip `vo2Required`, clear `excludedMuscleGroups`, remove the plan context.
 - About 19,700 junk `sync_job_runs` rows from the Strava retry storm; clearing them is a hard delete, owner's call.
-- TD-040 (`profiles.baseline_schedule` unused; drop needs approval), TD-042 remainder (journal page kept), insight severity not persisted (needs a column and a ranking decision).
+- TD-040 (`profiles.baseline_schedule`: owner approved the drop 2026-10-20; code stops writing it, migration `20261020170100` is applied to live after that code deploys), TD-042 remainder (journal page kept), insight severity not persisted (needs a column and a ranking decision).
 - Left out of the index restore: `raw_import_events_provider_dedupe_idx` (about 420 duplicate raw events) and `sync_job_runs_active_dedupe_idx` (one stale pair); three retired-journal indexes also missing.
 
 ---

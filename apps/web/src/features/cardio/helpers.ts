@@ -53,21 +53,6 @@ export function buildCardioTemplatePresets(
   });
 }
 
-/**
- * Weekly Zone 2 target: the sum of targetZone2Minutes over cardio templates
- * that have a scheduled weekday (each runs once a week). Null when none set.
- */
-export function sumWeeklyZone2Target(templates: TrainingTemplate[]) {
-  let total = 0;
-  for (const template of templates) {
-    if (template.scheduledDayOfWeek == null) continue;
-    const value = (template.definition as { targetZone2Minutes?: unknown })
-      .targetZone2Minutes;
-    if (typeof value === "number" && Number.isFinite(value)) total += value;
-  }
-  return total > 0 ? total : null;
-}
-
 function todayIsoDate() {
   const now = new Date();
   const year = now.getFullYear();

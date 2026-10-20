@@ -270,10 +270,12 @@ export function calculateWeeklyReviewScore({
   const liftsCompleted = summary.liftsCompleted ?? 0;
   const ridesCompleted = summary.ridesCompleted ?? 0;
   const zone2Minutes = summary.zone2Minutes ?? 0;
-  // Targets come from the week's scheduled templates when the summary carries
+  // Targets come from the week's program schedule when the summary carries
   // them (the same source as the dashboard Plan card), else the plan defaults.
+  // A Zone 2 target of 0 is real (no Zone 2 rides planned); only null/absent
+  // falls back.
   const zone2Target =
-    summary.zone2TargetMinutes || plan.weeklyZone2TargetMinutes;
+    summary.zone2TargetMinutes ?? plan.weeklyZone2TargetMinutes;
   const liftsTarget = summary.liftsScheduled || 3;
   const ridesTarget = summary.cardioScheduled || 3;
   const vo2Completed = summary.vo2Completed === true;
@@ -305,12 +307,20 @@ export function calculateWeeklyReviewScore({
     {
       key: "zone2",
       label: "Zone 2 minutes",
-      score: clampScore(
-        roundWhole((Math.min(zone2Minutes, zone2Target) / zone2Target) * 10),
-        10,
-      ),
+      score:
+        zone2Target > 0
+          ? clampScore(
+              roundWhole(
+                (Math.min(zone2Minutes, zone2Target) / zone2Target) * 10,
+              ),
+              10,
+            )
+          : 10,
       maxScore: 10,
-      detail: `${zone2Minutes} / ${zone2Target} target Zone 2 minutes`,
+      detail:
+        zone2Target > 0
+          ? `${zone2Minutes} / ${zone2Target} target Zone 2 minutes`
+          : `${zone2Minutes} Zone 2 minutes (none planned this week)`,
     },
     {
       key: "vo2",

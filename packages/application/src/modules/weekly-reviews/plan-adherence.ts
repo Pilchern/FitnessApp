@@ -6,7 +6,11 @@ import type { TrainingTemplateService } from "../training/training-template";
 export type PlanAdherence = {
   liftsScheduled: number;
   cardioScheduled: number;
-  /** The week's planned Zone 2 minutes; null when nothing sets one. */
+  /**
+   * The week's planned Zone 2 minutes: 0 when the program plans none, null
+   * only when there is no program or template data (the score and insights
+   * then use the plan default).
+   */
   zone2TargetMinutes: number | null;
   /** Share of habit-days ticked across active habits, 0-100; null with no habits. */
   habitCompletionPct: number | null;
@@ -69,13 +73,8 @@ export async function loadWeekSchedule(
   const program = deps.programService
     ? await loadProgramWeekTargets(deps.programService, query)
     : null;
-  if (program) {
-    return {
-      ...program,
-      zone2TargetMinutes:
-        program.zone2TargetMinutes > 0 ? program.zone2TargetMinutes : null,
-    };
-  }
+  // A program week with no Zone 2 rides plans 0 minutes, not "unknown".
+  if (program) return program;
   // No active program covers this week: the templates are the plan.
   const [strength, cardio] = await Promise.all([
     deps.trainingTemplateService.listActiveStrengthTemplates({

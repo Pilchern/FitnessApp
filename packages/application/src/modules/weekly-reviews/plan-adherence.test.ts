@@ -97,6 +97,17 @@ describe("weekly score with plan adherence", () => {
     );
   });
 
+  it("treats a 0 Zone 2 target as none planned, not as the 140 default", () => {
+    const { scoreDetails } = calculateWeeklyReviewScore({
+      summary: { ...summary, zone2Minutes: 0, zone2TargetMinutes: 0 },
+      confidence: null,
+    });
+    const zone2 = scoreDetails.components.find((c) => c.key === "zone2");
+    expect(zone2?.score).toBe(10);
+    expect(zone2?.detail).toBe("0 Zone 2 minutes (none planned this week)");
+    expect(Number.isNaN(scoreDetails.totalScore)).toBe(false);
+  });
+
   it("round-trips the adherence fields of a stored summary", () => {
     expect(pickPlanAdherence(summary)).toEqual({
       liftsScheduled: 2,

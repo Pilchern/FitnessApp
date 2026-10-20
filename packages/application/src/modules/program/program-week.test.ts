@@ -167,6 +167,30 @@ describe("loadWeekSchedule", () => {
     });
   });
 
+  it("gives 0, not null, when the program week has no Zone 2 rides", async () => {
+    const base = v21Program();
+    const noZone2 = {
+      ...base,
+      sessions: base.sessions.map((s) =>
+        s.sessionType === "peloton"
+          ? { ...s, rideKind: "climb_intervals" as const }
+          : s,
+      ),
+    };
+    const out = await loadWeekSchedule(
+      {
+        programService: fakeProgramService(noZone2),
+        trainingTemplateService: templateService,
+      },
+      query(WEEK_10),
+    );
+    expect(out).toEqual({
+      liftsScheduled: 3,
+      cardioScheduled: 3,
+      zone2TargetMinutes: 0,
+    });
+  });
+
   it("falls back to the templates when no active program covers the week", async () => {
     const expected = {
       liftsScheduled: 3,

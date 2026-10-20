@@ -736,6 +736,23 @@ describe("insight rules", () => {
       );
       expect(insight?.explanation).toContain("110 min logged vs. 130 min");
     });
+
+    it("does not fire for a week that planned no Zone 2 (target 0)", () => {
+      const insights = buildInsights(
+        emptyInput({
+          weeklyReviews: [
+            makeWeeklyReview("2026-03-30", {
+              zone2Minutes: 0,
+              zone2TargetMinutes: 0,
+            }),
+          ],
+          now: TEST_NOW,
+        }),
+      );
+      expect(
+        insights.find((i) => i.insightType === "zone2_below_target"),
+      ).toBeUndefined();
+    });
   });
 
   // ── Rule: consecutive_strength_missed ──────────────────────────────────

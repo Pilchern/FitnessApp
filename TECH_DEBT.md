@@ -15,6 +15,12 @@ Daily habits reuse `supplements` / `supplement_logs` through a `kind` column (`s
 
 Owner decision 2026-10-20: the program is the single source for the weekly schedule and Zone 2 target. `profile-bootstrap.ts` no longer writes the column. `supabase/migrations/20261020170100_drop_profiles_baseline_schedule.sql` drops it: apply to live only after that code is deployed, then close this item.
 
+Left after the single-source change (`loadWeekSchedule` / `programWeekTargets`):
+
+- `apps/web/src/lib/training-plan.ts:14` hard-codes `weeklyZone2TargetMinutes: 140`. The score and insights use it only when a summary has no Z2 target (no review, or no program/template data); a program week with no Zone 2 rides now stores 0 and does not fall back.
+- `/program/review` and the dashboard adherence snapshot (`getAdherenceSnapshot`) measure against `settings.liftsPerWeek` / `ridesPerWeek`, not the program schedule. They can disagree with the plan card in a week with a gated or extra session.
+- The dashboard counts the program's anchor week (post-op week from `weekAnchorDate`); the weekly review counts the calendar week from `week_starts_on`. They line up only because the anchor (2026-08-17) is a Monday and `week_starts_on` is 1. The review counts its own seven dates, so a misaligned anchor would give different weeks, not wrong sums.
+
 ### TD-042 — Dead code left after retiring Strava, Peloton and the journal (low)
 
 `CardioSyncOrchestrator` and the `cardio` retry branch were deleted 2026-10-12 (session 5). Left: the `/journal` page, actions and `JournalEntryService` wiring, out of the nav since 2026-10-12. Kept because the page is the only way to read the old entries in the app (the data export also has them) and the dashboard still computes a journal streak; delete only when the owner says the entries can go dark. Keep the `strava`/`peloton` provider values: historical rows and cross-provider dedup use them.
