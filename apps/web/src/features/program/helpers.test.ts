@@ -4,9 +4,12 @@ import {
   formatShortDate,
   hardSetBand,
   limbSymmetryPct,
+  LATE_LOG_DAYS,
+  linkedLiftFor,
   sessionCompletion,
   SKIP_LABELS,
   ratioTone,
+  splitLoggedLifts,
 } from "./helpers";
 import {
   isForceSet,
@@ -54,6 +57,145 @@ describe("sessionCompletion", () => {
     expect(
       sessionCompletion({ ...base, type: "walk_jog", date: "2026-10-18" }),
     ).toBe("none");
+  });
+});
+
+describe("sessionCompletion with program links (B-10)", () => {
+  // Program week Mon 2026-10-19 .. Sun 2026-10-25; lifts Mon/Wed/Fri.
+  const MON = "mon-lift-session";
+  const WED = "wed-lift-session";
+  const FRI = "fri-lift-session";
+  const known = new Set([MON, WED, FRI]);
+  const rideDates = new Set<string>();
+
+  /** Completion of each lift day, as the program week shows it. */
+  function week(
+    lifts: {
+      id: string;
+      sessionDate: string;
+      programSessionId?: string | null;
+    }[],
+    today: string,
+  ) {
+    const { liftDates, linkedLifts } = splitLoggedLifts(lifts, known);
+    const day = (sessionId: string, date: string) =>
+      sessionCompletion({
+        type: "lift",
+        date,
+        today,
+        liftDates,
+        rideDates,
+        sessionId,
+        linkedLifts,
+      });
+    return {
+      mon: day(MON, "2026-10-19"),
+      wed: day(WED, "2026-10-21"),
+      fri: day(FRI, "2026-10-23"),
+    };
+  }
+
+  it("marks the linked session done", () => {
+    expect(
+      week(
+        [{ id: "a", sessionDate: "2026-10-19", programSessionId: MON }],
+        "2026-10-19",
+      ),
+    ).toEqual({ mon: "done", wed: "planned", fri: "planned" });
+  });
+
+  it("keeps the date match for unlinked lifts and older rows", () => {
+    expect(
+      week(
+        [
+          { id: "a", sessionDate: "2026-10-19", programSessionId: null },
+          { id: "b", sessionDate: "2026-10-21" },
+        ],
+        "2026-10-22",
+      ),
+    ).toEqual({ mon: "done", wed: "done", fri: "planned" });
+    // Without linkedLifts at all, the old call shape still matches by date.
+    expect(
+      sessionCompletion({
+        type: "lift",
+        date: "2026-10-19",
+        today: "2026-10-22",
+        liftDates: new Set(["2026-10-19"]),
+        rideDates,
+      }),
+    ).toBe("done");
+  });
+
+  it("counts a late log for Monday's session, not for the day it was logged", () => {
+    expect(
+      week(
+        [{ id: "a", sessionDate: "2026-10-20", programSessionId: MON }],
+        "2026-10-20",
+      ),
+    ).toEqual({ mon: "done", wed: "planned", fri: "planned" });
+    // Logged on Wednesday against Monday: Wednesday is still open.
+    expect(
+      week(
+        [{ id: "a", sessionDate: "2026-10-21", programSessionId: MON }],
+        "2026-10-21",
+      ),
+    ).toEqual({ mon: "done", wed: "today", fri: "planned" });
+  });
+
+  it("marks both sessions done when two are logged on one day", () => {
+    expect(
+      week(
+        [
+          { id: "a", sessionDate: "2026-10-21", programSessionId: MON },
+          { id: "b", sessionDate: "2026-10-21", programSessionId: WED },
+        ],
+        "2026-10-21",
+      ),
+    ).toEqual({ mon: "done", wed: "done", fri: "planned" });
+  });
+
+  it("matches only that week's occurrence of a weekly session", () => {
+    const lifts = [
+      { id: "a", programSessionId: MON, date: "2026-10-20" },
+      { id: "b", programSessionId: MON, date: "2026-10-26" },
+    ];
+    expect(linkedLiftFor(lifts, MON, "2026-10-19")?.id).toBe("a");
+    expect(linkedLiftFor(lifts, MON, "2026-10-26")?.id).toBe("b");
+    // A lift dated before the session, or past the late window, is not it.
+    expect(linkedLiftFor(lifts, MON, "2026-10-27")).toBeNull();
+    expect(
+      linkedLiftFor(
+        [{ id: "c", programSessionId: MON, date: "2026-10-26" }],
+        MON,
+        "2026-10-12",
+      ),
+    ).toBeNull();
+    expect(LATE_LOG_DAYS).toBe(6);
+  });
+
+  it("falls back to the date for a link to a session the program no longer has", () => {
+    const split = splitLoggedLifts(
+      [{ id: "a", sessionDate: "2026-10-19", programSessionId: "gone" }],
+      known,
+    );
+    expect(split.linkedLifts).toEqual([]);
+    expect([...split.liftDates]).toEqual(["2026-10-19"]);
+    expect(split.liftIdByDate.get("2026-10-19")).toBe("a");
+  });
+
+  it("an explicit skip still wins over a linked lift", () => {
+    expect(
+      sessionCompletion({
+        type: "lift",
+        date: "2026-10-19",
+        today: "2026-10-20",
+        liftDates: new Set(),
+        rideDates,
+        outcome: "skipped",
+        sessionId: MON,
+        linkedLifts: [{ id: "a", programSessionId: MON, date: "2026-10-19" }],
+      }),
+    ).toBe("skipped");
   });
 });
 

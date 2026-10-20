@@ -54,6 +54,8 @@ export type PlanRequest = {
   name: string;
   /** A template, or today's program lift (legs with per-leg and isometric work). */
   definition: { notes?: string | null; exercises: LoggerPlanExercise[] };
+  /** Today's program session, when the program's Start loaded it. */
+  programSessionId?: string | null;
 };
 
 type StrengthQuickFormProps = {
@@ -272,6 +274,7 @@ export function StrengthQuickForm({
     setValues((current) => ({
       ...current,
       sessionName: planRequest.name,
+      programSessionId: planRequest.programSessionId ?? undefined,
       sets: plan.exercises.flatMap((ex) =>
         planExerciseSets(ex, lastByExercise[exerciseKey(ex.exerciseName)]),
       ),
@@ -651,6 +654,13 @@ export function StrengthQuickForm({
           value={values.completedAsPlanned ? "true" : "false"}
         />
         <input type="hidden" name="notes" value={values.notes} />
+        {values.programSessionId ? (
+          <input
+            type="hidden"
+            name="programSessionId"
+            value={values.programSessionId}
+          />
+        ) : null}
 
         {!hasNamedSets ? (
           <p className="rounded-2xl border border-ink/10 bg-sand/45 px-4 py-6 text-center text-sm text-ink/70">
@@ -917,6 +927,8 @@ export function StrengthQuickForm({
                     setValues((c) => ({
                       ...c,
                       sessionDate: event.target.value,
+                      // Start linked today's session; another day matches by date.
+                      programSessionId: undefined,
                     }))
                   }
                 />

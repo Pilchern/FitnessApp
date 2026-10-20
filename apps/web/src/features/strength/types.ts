@@ -68,5 +68,7 @@ export type StrengthFormValues = {
   readinessPre: string;
   energyPost: string;
   completedAsPlanned: boolean;
+  /** The program session a program Start loaded; unset otherwise. */
+  programSessionId?: string;
   sets: StrengthSetFormValue[];
 };
