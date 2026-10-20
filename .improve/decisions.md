@@ -8,7 +8,10 @@
 - **Throughput:** at most 2 builds per run while the defaults are in force. WIP gate is 5 pending branches.
 
 ## Shipped
-(none from this cycle yet)
+| Date | PR | Item | Notes |
+|---|---|---|---|
+| 2026-10-20 | #88 | B-03 DEXA entry on /body, scale trend Withings-only | Merged same day on Nick's go-ahead, ahead of the 10/24 scan. |
+| 2026-10-20 | #87 | B-02 AI coaching context matches program v2 | Merged same day. The context now says no intervals until cleared, pending N-002. |
 
 ## Rejected / dropped
 (none yet)
@@ -32,5 +35,6 @@
 5. **Cheap to reverse.** Settings-driven thresholds over hard-coded ones; he flip-flops targets against real life (wake time changed 3 times in 12h).
 6. **Small PRs** (median about 140 lines). Large PRs only when he commissioned them.
 7. **Cited, honest numbers:** estimates labelled, methods checkable.
+7b. **Accepted both run-1 PRs within the hour** (plan-fit copy fix, time-boxed feature for a dated event). Confirms: plan fit plus a deadline gets merged fast.
 8. **Feedback comes in chat, not in PR comments.** No owner review comments exist. Read the session log and docs for his reactions.
 9. **Migrations:** applied to live with his approval before merge. Proposals with no migration ship faster.
