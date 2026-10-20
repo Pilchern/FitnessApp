@@ -1,4 +1,5 @@
 import {
+  INSIGHT_RUN_STATE_DATE,
   INSIGHT_RUN_STATE_TYPE,
   type InsightRepository,
   type InsightRunState,
@@ -228,34 +229,30 @@ export class SupabaseInsightRepository implements InsightRepository {
       .select("evidence")
       .eq("user_id", userId)
       .eq("insight_type", INSIGHT_RUN_STATE_TYPE)
-      .order("insight_date", { ascending: false })
-      .limit(1);
+      .eq("insight_date", INSIGHT_RUN_STATE_DATE)
+      .maybeSingle();
 
     throwOnError(response.error, "Load insight run state");
 
-    const row = response.data?.[0];
-    if (!row) {
+    if (!response.data) {
       return null;
     }
-    const parsed = runStateSchema.safeParse(row.evidence);
+    const parsed = runStateSchema.safeParse(response.data.evidence);
     return parsed.success ? parsed.data : null;
   }
 
   /**
-   * Run state lives in an `insights` row so no migration is needed. It is
-   * written as archived (deleted_at null, like a system retire), so listActive,
-   * the dashboard, /insights and the export never see it.
+   * Run state lives in one `insights` row per user (fixed sentinel
+   * insight_date) so no migration is needed. It is written as archived
+   * (deleted_at null, like a system retire), so listActive, the dashboard,
+   * /insights and the export never see it.
    */
-  async saveRunState(
-    userId: string,
-    runDate: string,
-    state: InsightRunState,
-  ): Promise<void> {
+  async saveRunState(userId: string, state: InsightRunState): Promise<void> {
     const response = await this.client.from("insights").upsert(
       {
         user_id: userId,
         insight_type: INSIGHT_RUN_STATE_TYPE,
-        insight_date: runDate,
+        insight_date: INSIGHT_RUN_STATE_DATE,
         status: "archived",
         title: "Insight generation state",
         body: "",

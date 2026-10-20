@@ -72,23 +72,40 @@ export class InsightOrchestrator {
     }));
 
     const runState = await this.readRunState(userId);
-    const nextRunState: InsightRunState = {
-      lastRunAt: null,
-      lastAiAttemptAt: runState?.lastAiAttemptAt ?? null,
+    const aiDue =
+      this.aiService !== null &&
+      (await this.isAiCallDue(userId, runState, now));
+
+    // Claim the run before any slow work: a concurrent load that reads this
+    // sees a fresh lastRunAt (refresh not due) and, when an AI call is about
+    // to happen, a fresh lastAiAttemptAt (AI not due), so two loads can't
+    // both call the API. The outcome is filled in after the call.
+    const claimed: InsightRunState = {
+      lastRunAt: now.toISOString(),
+      lastAiAttemptAt: aiDue
+        ? now.toISOString()
+        : (runState?.lastAiAttemptAt ?? null),
       lastAiOutcome: runState?.lastAiOutcome ?? null,
       consecutiveAiFailures: runState?.consecutiveAiFailures ?? 0,
     };
+    await this.writeRunState(userId, claimed);
 
     let aiUpserts: UpsertInsightInput[] = [];
-    if (this.aiService && (await this.isAiCallDue(userId, runState, now))) {
+    if (this.aiService && aiDue) {
       const result = await this.aiService.generate(engineInput);
-      if (result.status !== "disabled") {
+      if (result.status === "disabled") {
+        // Not an attempt: put back what was there before the claim.
+        await this.writeRunState(userId, {
+          ...claimed,
+          lastAiAttemptAt: runState?.lastAiAttemptAt ?? null,
+        });
+      } else {
         const failed = result.status === "failed";
-        nextRunState.lastAiAttemptAt = now.toISOString();
-        nextRunState.lastAiOutcome = failed ? "failed" : "succeeded";
-        nextRunState.consecutiveAiFailures = failed
-          ? nextRunState.consecutiveAiFailures + 1
-          : 0;
+        await this.writeRunState(userId, {
+          ...claimed,
+          lastAiOutcome: failed ? "failed" : "succeeded",
+          consecutiveAiFailures: failed ? claimed.consecutiveAiFailures + 1 : 0,
+        });
       }
       const aiInsights = result.status === "ok" ? result.insights : [];
       // The user's calendar date, not UTC's: an evening run in Chicago is
@@ -134,9 +151,6 @@ export class InsightOrchestrator {
     if (staleRuleIds.size > 0) {
       await this.repository.retireRuleInsights([...staleRuleIds], userId);
     }
-
-    nextRunState.lastRunAt = now.toISOString();
-    await this.writeRunState(userId, now, nextRunState);
 
     return active.filter((insight) => !staleRuleIds.has(insight.id));
   }
@@ -214,15 +228,10 @@ export class InsightOrchestrator {
 
   private async writeRunState(
     userId: string,
-    now: Date,
     state: InsightRunState,
   ): Promise<void> {
     try {
-      await this.repository.saveRunState(
-        userId,
-        now.toISOString().slice(0, 10),
-        state,
-      );
+      await this.repository.saveRunState(userId, state);
     } catch (error) {
       console.error("[InsightOrchestrator] Failed to save run state:", error);
     }

@@ -151,11 +151,7 @@ class InMemoryInsightRepository implements InsightRepository {
     return this.runState;
   }
 
-  async saveRunState(
-    _userId: string,
-    _runDate: string,
-    state: InsightRunState,
-  ): Promise<void> {
+  async saveRunState(_userId: string, state: InsightRunState): Promise<void> {
     this.runState = state;
   }
 }
@@ -623,6 +619,48 @@ describe("InsightOrchestrator.generateAndPersist — AI failure backoff", () => 
       now: new Date(start.getTime() + AI_INSIGHT_STALENESS_MS),
     });
     expect(aiService.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("claims the run before the AI call, so a concurrent load doesn't call the AI too", async () => {
+    const repository = new InMemoryInsightRepository();
+    let release: () => void = () => {};
+    const generate = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({ status: "ok", insights: [insight] });
+        }),
+    );
+    const aiService = { generate } as unknown as AiInsightService;
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
+
+    const first = orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: start,
+    });
+    // Let the first run reach the (still pending) AI call.
+    await vi.waitFor(() => expect(generate).toHaveBeenCalledTimes(1));
+    expect(repository.runState).toMatchObject({
+      lastRunAt: start.toISOString(),
+      lastAiAttemptAt: start.toISOString(),
+    });
+    expect(await orchestrator.isRefreshDue(userId, at(1))).toBe(false);
+
+    // A second load while the first is still waiting on the API.
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: at(1),
+    });
+    release();
+    await first;
+
+    expect(generate).toHaveBeenCalledTimes(1);
+    expect(repository.runState?.lastAiOutcome).toBe("succeeded");
   });
 
   it("does not record an attempt when AI insights are disabled", async () => {

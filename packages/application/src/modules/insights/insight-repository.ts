@@ -43,6 +43,11 @@ export type InsightRunState = {
 };
 
 export const INSIGHT_RUN_STATE_TYPE = "insight_run_state";
+/**
+ * Fixed insight_date for the run-state row, so the (user, type, date) unique
+ * key holds exactly one row per user.
+ */
+export const INSIGHT_RUN_STATE_DATE = "1970-01-01";
 
 export interface InsightRepository {
   /**
@@ -60,12 +65,8 @@ export interface InsightRepository {
    * archive, and skips anything not active or not rule-sourced.
    */
   retireRuleInsights(ids: string[], userId: string): Promise<void>;
-  /** The user's latest run state, or null before the first recorded run. */
+  /** The user's run state, or null before the first recorded run. */
   getRunState(userId: string): Promise<InsightRunState | null>;
-  /** Records run state, one row per user per runDate (YYYY-MM-DD). */
-  saveRunState(
-    userId: string,
-    runDate: string,
-    state: InsightRunState,
-  ): Promise<void>;
+  /** Replaces the user's run state (a single row per user). */
+  saveRunState(userId: string, state: InsightRunState): Promise<void>;
 }
