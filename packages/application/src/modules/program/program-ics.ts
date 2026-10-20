@@ -56,7 +56,8 @@ export type CalendarEvent = {
 /**
  * Planned lifts, rides and Sunday tests from `from` through `through`, at
  * the times in settings. Planned as if the knee check is normal; gated
- * sessions (walk-jog before the jog gate) are left out.
+ * sessions (walk-jog before the jog gate) are left out; a gated ride shows
+ * as the Zone 2 ride it runs as.
  */
 export function programCalendarEvents(
   program: TrainingProgram,
@@ -103,7 +104,7 @@ export function programCalendarEvents(
         date,
         start: timing[0] as string,
         minutes: timing[1] as number,
-        title: `${s.name} (wk ${plan.info.week})`,
+        title: `${planned.name} (wk ${plan.info.week})`,
         description: [ride, exercises.join(", ") || null, s.notes]
           .filter(Boolean)
           .join("\n"),

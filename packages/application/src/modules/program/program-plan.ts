@@ -200,8 +200,13 @@ export type PlannedRide = {
   note: string | null;
 };
 
+/** What a gated ride runs as until its gate is cleared. */
+export const GATED_RIDE_NAME = "Peloton Zone 2";
+
 export type PlannedSession = {
   session: ProgramSession;
+  /** What to call it today: a gated ride shows as Zone 2 until cleared. */
+  name: string;
   /** False when a gate or readiness keeps the whole session off today. */
   visible: boolean;
   hiddenReason: string | null;
@@ -246,6 +251,8 @@ function walkJogAllowed(
  * - knee_off: lift days swap the leg block for ROM + walk (upper still runs);
  *   climb intervals become Zone 2; walk-jog is off.
  * - hold: "normal only" exercises and walk-jog are off; loads repeat.
+ * - a ride whose gate is closed (intervals before clearance) is not hidden:
+ *   it runs as seated Zone 2 for the same minutes. Other gated sessions hide.
  * - walk-jog (jog gate cleared) cuts the same day's ride to 15-20 min.
  * Exercises outside their week window (from/until week) are left out.
  */
@@ -296,6 +303,7 @@ export function buildDayPlan(
       const allowed = walkJogAllowed(session, program.gates, date, readiness);
       return {
         session,
+        name: session.name,
         visible: allowed.ok,
         hiddenReason: allowed.reason,
         exercises,
@@ -305,9 +313,11 @@ export function buildDayPlan(
     }
 
     const gateOpen = isGateCleared(program.gates, session.gateKey, date);
+    const isRide = session.sessionType === "peloton";
 
+    let name = session.name;
     let ride: PlannedRide | null = null;
-    if (session.sessionType === "peloton") {
+    if (isRide) {
       ride = {
         kind: session.rideKind ?? "zone2",
         minutesMin: session.minutesMin,
@@ -315,6 +325,15 @@ export function buildDayPlan(
         structure: session.structure,
         note: null,
       };
+      if (!gateOpen) {
+        name = GATED_RIDE_NAME;
+        ride = {
+          ...ride,
+          kind: "zone2",
+          structure: null,
+          note: `Seated Zone 2 until "${gateLabel(program.gates, session.gateKey ?? "")}" is cleared (Settings).`,
+        };
+      }
       if (readiness === "knee_off" && ride.kind !== "zone2") {
         ride = {
           ...ride,
@@ -335,10 +354,12 @@ export function buildDayPlan(
       }
     }
 
+    const visible = gateOpen || isRide;
     return {
       session,
-      visible: gateOpen,
-      hiddenReason: gateOpen
+      name,
+      visible,
+      hiddenReason: visible
         ? null
         : `Waiting on gate: ${gateLabel(program.gates, session.gateKey ?? "")}`,
       exercises,

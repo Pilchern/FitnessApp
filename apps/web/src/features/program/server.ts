@@ -97,7 +97,7 @@ function sessionViews(
     return {
       id: s.session.id,
       type: s.session.sessionType,
-      name: s.session.name,
+      name: s.name,
       visible: s.visible,
       hiddenReason: s.hiddenReason,
       legBlockReplaced: s.legBlockReplaced,

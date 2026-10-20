@@ -430,6 +430,10 @@ describe("calendar export", () => {
       ["2026-10-29", "18:00", 45],
       ["2026-10-30", "18:00", 60],
     ]);
+    // Intervals gate closed: Thursday is on the calendar as the Zone 2 ride.
+    const thursday = events.find((e) => e.date === "2026-10-29")!;
+    expect(thursday.title).toBe("Peloton Zone 2 (wk 10)");
+    expect(thursday.description).toContain("Zone 2, 45–45 min");
     const open = programCalendarEvents(
       withGate(testProgram(), "jog", "2026-10-26"),
       "2026-10-27",
