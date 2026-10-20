@@ -153,3 +153,98 @@ describe("SupabaseStrengthSessionRepository.listByDateRange", () => {
     expect(result.every((session) => session.sets.length === 1)).toBe(true);
   });
 });
+
+describe("SupabaseStrengthSessionRepository program session link", () => {
+  const programSessionId = "33333333-3333-4333-8333-333333333333";
+
+  /** Records insert and update payloads; returns `stored` as the session row. */
+  function writeClient(stored: Row) {
+    const writes: { table: string; payload: Row }[] = [];
+    const from = (table: string) => {
+      const result = () =>
+        table === "strength_sessions"
+          ? { data: stored, error: null }
+          : { data: [], error: null };
+      const query = {
+        insert: (payload: Row) => {
+          writes.push({ table, payload });
+          return query;
+        },
+        update: (payload: Row) => {
+          writes.push({ table, payload });
+          return query;
+        },
+        select: () => query,
+        eq: () => query,
+        is: () => query,
+        single: () => Promise.resolve(result()),
+        then: (resolve: (value: unknown) => void) => resolve(result()),
+      };
+      return query;
+    };
+    const sessionWrite = () =>
+      writes.find((w) => w.table === "strength_sessions")?.payload;
+    return { client: { from } as never, sessionWrite };
+  }
+
+  const input = {
+    userId,
+    sessionDate: "2026-10-19",
+    sessionName: null,
+    notes: null,
+    completedAsPlanned: true,
+    source: {
+      sourceType: "manual" as const,
+      sourceProvider: null,
+      sourceExternalId: null,
+      importBatchId: null,
+      rawImportEventId: null,
+    },
+    sets: [
+      {
+        exerciseName: "Leg Press",
+        exerciseOrder: 0,
+        setNumber: 1,
+        reps: 10,
+        weight: 100,
+        isWarmup: false,
+        notes: null,
+      },
+    ],
+  };
+
+  it("saves the link from a program start and reads it back", async () => {
+    const { client, sessionWrite } = writeClient({
+      ...sessionRow(1),
+      program_session_id: programSessionId,
+    });
+    const saved = await new SupabaseStrengthSessionRepository(client).create({
+      ...input,
+      programSessionId,
+    });
+    expect(sessionWrite()?.program_session_id).toBe(programSessionId);
+    expect(saved.programSessionId).toBe(programSessionId);
+  });
+
+  it("leaves the column out for manual logging and reads old rows as unlinked", async () => {
+    const { client, sessionWrite } = writeClient(sessionRow(1));
+    const saved = await new SupabaseStrengthSessionRepository(client).create(
+      input,
+    );
+    expect(sessionWrite()).not.toHaveProperty("program_session_id");
+    expect(saved.programSessionId).toBeNull();
+  });
+
+  it("keeps an existing link when an edit does not send one", async () => {
+    const { client, sessionWrite } = writeClient({
+      ...sessionRow(1),
+      program_session_id: programSessionId,
+    });
+    const saved = await new SupabaseStrengthSessionRepository(client).update({
+      ...input,
+      id: sessionRow(1).id,
+    });
+    expect(sessionWrite()).not.toHaveProperty("program_session_id");
+    expect(saved.programSessionId).toBe(programSessionId);
+  });
+});

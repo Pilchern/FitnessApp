@@ -43,7 +43,13 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
-import { formatPrescription, sessionCompletion } from "./helpers";
+import {
+  formatPrescription,
+  linkedLiftFor,
+  sessionCompletion,
+  splitLoggedLifts,
+  type LinkedLift,
+} from "./helpers";
 import type {
   ProgramHeader,
   ProgramPageData,
@@ -85,7 +91,13 @@ function sessionViews(
   plan: DayPlan,
   ctx: Pick<
     ProgramContext,
-    "templates" | "outcomes" | "settings" | "today" | "liftDates" | "rideDates"
+    | "templates"
+    | "outcomes"
+    | "settings"
+    | "today"
+    | "liftDates"
+    | "linkedLifts"
+    | "rideDates"
   >,
 ): ProgramSessionView[] {
   const { templates, outcomes, settings } = ctx;
@@ -119,6 +131,8 @@ function sessionViews(
         liftDates: ctx.liftDates,
         rideDates: ctx.rideDates,
         outcome: outcome?.outcome ?? null,
+        sessionId: s.session.id,
+        linkedLifts: ctx.linkedLifts,
       }),
       exercises: s.exercises.map((p) => ({
         name: p.name,
@@ -165,10 +179,15 @@ export type ProgramContext = {
   sleepAverage: number | null;
   templates: TrainingTemplate[];
   runs: { date: string; runMinutes: number }[];
-  /** Days with a logged lift (any sets), and with a completed ride. */
+  /**
+   * Days with a logged lift (any sets) not linked to a program session, and
+   * with a completed ride.
+   */
   liftDates: Set<string>;
   rideDates: Set<string>;
-  /** Latest logged strength session per day, for "View". */
+  /** Logged lifts linked to the program session they fulfil. */
+  linkedLifts: LinkedLift[];
+  /** Latest unlinked strength session per day, for "View". */
   liftIdByDate: Map<string, string>;
 };
 
@@ -230,6 +249,10 @@ export async function loadProgramContext(
   };
   const statusOn = (date: string) =>
     kneeReadinessStatus(checks.find((c) => c.date === date) ?? null, settings);
+  const { liftDates, liftIdByDate, linkedLifts } = splitLoggedLifts(
+    logged,
+    new Set(loaded.sessions.map((s) => s.id)),
+  );
 
   return {
     program,
@@ -244,7 +267,8 @@ export async function loadProgramContext(
       settings.sleepAverageNights,
     ),
     templates,
-    liftDates: new Set(logged.map((l) => l.sessionDate)),
+    liftDates,
+    linkedLifts,
     // Same rule as the dashboard plan: a completed ride, not a planned row
     // or an "other" activity.
     rideDates: new Set(
@@ -255,7 +279,7 @@ export async function loadProgramContext(
         )
         .map((r) => r.sessionDate),
     ),
-    liftIdByDate: new Map(logged.map((l) => [l.sessionDate, l.id])),
+    liftIdByDate,
     runs: rides
       .filter((r) => r.runMinutes != null && r.runMinutes > 0)
       .map((r) => ({
@@ -308,7 +332,14 @@ function buildToday(ctx: ProgramContext): {
         : null,
       warmUp: settings.warmUp || null,
       gaitDrill: settings.gaitDrill || null,
-      loggedLiftId: ctx.liftIdByDate.get(today) ?? null,
+      // The lift linked to today's lift session first, else today's unlinked one.
+      loggedLiftId:
+        plan.sessions
+          .filter((s) => s.session.sessionType === "lift")
+          .map((s) => linkedLiftFor(ctx.linkedLifts, s.session.id, today)?.id)
+          .find((id) => id != null) ??
+        ctx.liftIdByDate.get(today) ??
+        null,
       week: buildWeek(ctx),
     },
   };

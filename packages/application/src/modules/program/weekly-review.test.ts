@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildWeeklyWeightTrend } from "../body-metrics/body-metric-helpers";
 import {
+  countLifts,
   dayStreak,
   executionBanner,
   liftWeekOverWeek,
@@ -46,6 +47,24 @@ describe("adherence scorecard", () => {
       romDays: { done: 5, target: 7 },
       pt: { attended: 1, scheduled: 2 },
     });
+  });
+
+  it("counts linked lifts once per program session, so two on one day count twice", () => {
+    const a = weekAdherence({
+      weekDates: WEEK,
+      liftDates: new Set(["2026-10-23"]),
+      linkedLifts: [
+        // Monday's session logged late on Wednesday, plus Wednesday's own.
+        { date: "2026-10-21", programSessionId: "mon" },
+        { date: "2026-10-21", programSessionId: "wed" },
+        // Last week's: outside this week.
+        { date: "2026-10-16", programSessionId: "fri" },
+      ],
+      rideDates: new Set(),
+      romDates: new Set(),
+    });
+    expect(a.lifts.done).toBe(3);
+    expect(countLifts(WEEK, new Set(["2026-10-19", "2026-10-21"]))).toBe(2);
   });
 
   it("defaults scheduled PT visits to the setting until entered", () => {

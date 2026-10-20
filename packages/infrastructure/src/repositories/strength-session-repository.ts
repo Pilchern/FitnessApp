@@ -22,6 +22,8 @@ const strengthSessionRowSchema = z.object({
   id: z.string().uuid(),
   user_id: z.string().uuid(),
   training_template_id: z.string().uuid().nullable(),
+  // Optional so rows read before the program-link migration still parse.
+  program_session_id: z.string().uuid().nullable().optional(),
   session_date: z.string(),
   session_name: z.string().nullable(),
   notes: z.string().nullable(),
@@ -99,6 +101,7 @@ function mapStrengthSessionRow(
     id: row.id,
     userId: row.user_id,
     trainingTemplateId: row.training_template_id,
+    programSessionId: row.program_session_id ?? null,
     sessionDate: row.session_date,
     sessionName: row.session_name,
     notes: row.notes,
@@ -127,8 +130,17 @@ function toStrengthSessionInsert(input: CreateStrengthSessionInput) {
     readiness_pre: input.readinessPre ?? null,
     energy_post: input.energyPost ?? null,
     completed_as_planned: input.completedAsPlanned,
+    ...programSessionColumn(input.programSessionId),
     ...toSourceColumns(input.source),
   };
+}
+
+/**
+ * Only sent when set, so saves work before the column exists, and an update
+ * without one (an edit, a Watch merge) keeps the link it has.
+ */
+function programSessionColumn(programSessionId: string | null | undefined) {
+  return programSessionId ? { program_session_id: programSessionId } : {};
 }
 
 function toStrengthSessionUpdate(input: UpdateStrengthSessionInput) {
@@ -140,6 +152,7 @@ function toStrengthSessionUpdate(input: UpdateStrengthSessionInput) {
     readiness_pre: input.readinessPre ?? null,
     energy_post: input.energyPost ?? null,
     completed_as_planned: input.completedAsPlanned,
+    ...programSessionColumn(input.programSessionId),
     ...toSourceColumns(input.source),
   };
 }

@@ -20,14 +20,39 @@ export type WeekAdherence = {
   pt: { attended: number | null; scheduled: number | null };
 };
 
+/** A logged lift linked to the program session it fulfils. */
+export type LinkedLiftDate = { date: IsoDate; programSessionId: string };
+
+/**
+ * Lifts done on `dates`: unlinked lifts once per day (`liftDates`), plus
+ * linked lifts once per program session. Two program sessions logged on one
+ * day count as two; without links the count is per day, as before.
+ */
+export function countLifts(
+  dates: IsoDate[],
+  liftDates: Set<IsoDate>,
+  linkedLifts: readonly LinkedLiftDate[] = [],
+) {
+  const inRange = new Set(dates);
+  const linked = new Set(
+    linkedLifts
+      .filter((l) => inRange.has(l.date))
+      .map((l) => l.programSessionId),
+  );
+  return dates.filter((d) => liftDates.has(d)).length + linked.size;
+}
+
 /**
  * The week's scorecard: leg sessions, rides and ROM-check days done in the
- * week's dates (each counted once per day), against the settings targets,
- * plus the manually entered PT visits.
+ * week's dates (each counted once per day; linked lifts once per program
+ * session), against the settings targets, plus the manually entered PT
+ * visits.
  */
 export function weekAdherence(input: {
   weekDates: IsoDate[];
+  /** Days with an unlinked lift (all lifts, when nothing is linked). */
   liftDates: Set<IsoDate>;
+  linkedLifts?: readonly LinkedLiftDate[];
   rideDates: Set<IsoDate>;
   romDates: Set<IsoDate>;
   pt?: { attended: number | null; scheduled: number | null } | null;
@@ -40,7 +65,10 @@ export function weekAdherence(input: {
   const count = (set: Set<IsoDate>) =>
     input.weekDates.filter((d) => set.has(d)).length;
   return {
-    lifts: { done: count(input.liftDates), target: s.liftsPerWeek },
+    lifts: {
+      done: countLifts(input.weekDates, input.liftDates, input.linkedLifts),
+      target: s.liftsPerWeek,
+    },
     rides: { done: count(input.rideDates), target: s.ridesPerWeek },
     romDays: { done: count(input.romDates), target: s.romDaysPerWeek },
     pt: {

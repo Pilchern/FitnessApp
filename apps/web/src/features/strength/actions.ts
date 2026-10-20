@@ -40,6 +40,7 @@ function buildStrengthPayload(userId: string, formData: FormData) {
     readinessPre: formData.get("readinessPre"),
     energyPost: formData.get("energyPost"),
     completedAsPlanned: formData.get("completedAsPlanned"),
+    programSessionId: formData.get("programSessionId"),
     setsPayload: formData.get("setsPayload"),
   });
 
@@ -53,6 +54,7 @@ function buildStrengthPayload(userId: string, formData: FormData) {
     readinessPre: parsed.readinessPre,
     energyPost: parsed.energyPost,
     completedAsPlanned: parsed.completedAsPlanned,
+    programSessionId: parsed.programSessionId,
     source: {
       sourceType: "manual" as const,
       sourceProvider: null,

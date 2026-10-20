@@ -28,6 +28,11 @@ export type StrengthSession = {
   id: EntityId;
   userId: UserId;
   trainingTemplateId: EntityId | null;
+  /**
+   * The program session this lift fulfils, when started from the program.
+   * Absent or null for manual logging and older rows (matched by date).
+   */
+  programSessionId?: EntityId | null;
   sessionDate: IsoDate;
   sessionName: string | null;
   notes: string | null;
