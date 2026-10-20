@@ -27,6 +27,32 @@ export function safeBearerEqual(provided: string, secret: string): boolean {
   return timingSafeEqual(a, b);
 }
 
+export type CronAuthFailure = {
+  status: 401 | 503;
+  error: "Unauthorized" | "cron_secret_not_configured";
+};
+
+/**
+ * The full auth decision for a cron request, as the route returns it: `null`
+ * when the request may run, otherwise the status and error body to send.
+ *
+ * Vercel Cron sends `GET` with `Authorization: Bearer $CRON_SECRET` when the
+ * project has a `CRON_SECRET` env var; Supabase pg_cron (trigger_cron_route)
+ * sends the same header with `POST`. Both go through here.
+ */
+export function checkCronAuthorization(
+  authHeader: string | null,
+  cronSecret: string | undefined,
+): CronAuthFailure | null {
+  if (!cronSecret) {
+    return { status: 503, error: "cron_secret_not_configured" };
+  }
+  if (!safeBearerEqual(authHeader ?? "", cronSecret)) {
+    return { status: 401, error: "Unauthorized" };
+  }
+  return null;
+}
+
 /**
  * Runs `fn` over `items` with at most `limit` in flight, preserving index
  * alignment between `items` and the returned array — the routes index

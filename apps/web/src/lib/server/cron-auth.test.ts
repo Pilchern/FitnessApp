@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { mapWithConcurrency, safeBearerEqual } from "./cron-auth";
+import {
+  checkCronAuthorization,
+  mapWithConcurrency,
+  safeBearerEqual,
+} from "./cron-auth";
 
 const SECRET = "s3cr3t-cron-token";
 
@@ -44,6 +48,39 @@ describe("safeBearerEqual", () => {
     const unicode = "sécret-🔐";
     expect(safeBearerEqual(`Bearer ${unicode}`, unicode)).toBe(true);
     expect(safeBearerEqual(`Bearer ${unicode}x`, unicode)).toBe(false);
+  });
+});
+
+describe("checkCronAuthorization", () => {
+  it("lets through the header Vercel Cron sends (Bearer $CRON_SECRET)", () => {
+    expect(checkCronAuthorization(`Bearer ${SECRET}`, SECRET)).toBeNull();
+  });
+
+  it("returns 401 for a missing header", () => {
+    expect(checkCronAuthorization(null, SECRET)).toEqual({
+      status: 401,
+      error: "Unauthorized",
+    });
+  });
+
+  it("returns 401 for a wrong token", () => {
+    expect(checkCronAuthorization("Bearer nope", SECRET)).toEqual({
+      status: 401,
+      error: "Unauthorized",
+    });
+  });
+
+  it("returns 503 when CRON_SECRET is not configured, even with a header", () => {
+    // An unset secret must never mean "open": `Bearer ` alone would otherwise
+    // match `Bearer ${""}`.
+    expect(checkCronAuthorization("Bearer ", undefined)).toEqual({
+      status: 503,
+      error: "cron_secret_not_configured",
+    });
+    expect(checkCronAuthorization("Bearer ", "")).toEqual({
+      status: 503,
+      error: "cron_secret_not_configured",
+    });
   });
 });
 
