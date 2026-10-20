@@ -247,4 +247,15 @@ describe("SupabaseStrengthSessionRepository program session link", () => {
     expect(sessionWrite()).not.toHaveProperty("program_session_id");
     expect(saved.programSessionId).toBe(programSessionId);
   });
+
+  it("clears the link when an update sends null", async () => {
+    const { client, sessionWrite } = writeClient(sessionRow(1));
+    const saved = await new SupabaseStrengthSessionRepository(client).update({
+      ...input,
+      id: sessionRow(1).id,
+      programSessionId: null,
+    });
+    expect(sessionWrite()).toHaveProperty("program_session_id", null);
+    expect(saved.programSessionId).toBeNull();
+  });
 });

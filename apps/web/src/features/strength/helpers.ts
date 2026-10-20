@@ -87,6 +87,18 @@ export function shiftIsoDate(isoDate: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * The program link an edit saves: cleared (null) when the edit moves the
+ * session to another date, since the link named the original day's session;
+ * otherwise undefined, which leaves the stored link alone.
+ */
+export function programLinkOnEdit(
+  stored: { sessionDate: string } | null,
+  sessionDate: string,
+): null | undefined {
+  return stored && stored.sessionDate !== sessionDate ? null : undefined;
+}
+
 /** "60s"; seconds match how timed sets are logged. */
 export function formatDuration(seconds: number) {
   return `${seconds}s`;

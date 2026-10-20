@@ -11,7 +11,7 @@ import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
 import { strengthSessionFormSchema } from "./form-schema";
-import { exerciseKey, shiftIsoDate } from "./helpers";
+import { exerciseKey, programLinkOnEdit, shiftIsoDate } from "./helpers";
 import type { StrengthActionState } from "./types";
 
 const templateExercisesSchema = z
@@ -182,7 +182,12 @@ export async function updateStrengthSessionAction(
       };
     }
 
-    await service.update(payload);
+    // A date change drops the program link; the lift then matches by date.
+    const stored = await service.getById(user.id, payload.id);
+    await service.update({
+      ...payload,
+      programSessionId: programLinkOnEdit(stored, payload.sessionDate),
+    });
     redirect(`/strength/${payload.id}`);
   } catch (error) {
     return parseActionError(error);

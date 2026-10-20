@@ -24,9 +24,11 @@ export type WeekAdherence = {
 export type LinkedLiftDate = { date: IsoDate; programSessionId: string };
 
 /**
- * Lifts done on `dates`: unlinked lifts once per day (`liftDates`), plus
- * linked lifts once per program session. Two program sessions logged on one
- * day count as two; without links the count is per day, as before.
+ * Lifts done on `dates`: linked lifts once per program session, plus days
+ * with only unlinked lifts (`liftDates`) once per day. Two program sessions
+ * logged on one day count as two; a manual lift beside a linked one that day
+ * adds nothing, as on the program card. Without links the count is per day,
+ * as before.
  */
 export function countLifts(
   dates: IsoDate[],
@@ -34,12 +36,13 @@ export function countLifts(
   linkedLifts: readonly LinkedLiftDate[] = [],
 ) {
   const inRange = new Set(dates);
-  const linked = new Set(
-    linkedLifts
-      .filter((l) => inRange.has(l.date))
-      .map((l) => l.programSessionId),
+  const linkedInRange = linkedLifts.filter((l) => inRange.has(l.date));
+  const linked = new Set(linkedInRange.map((l) => l.programSessionId));
+  const linkedDays = new Set(linkedInRange.map((l) => l.date));
+  return (
+    dates.filter((d) => liftDates.has(d) && !linkedDays.has(d)).length +
+    linked.size
   );
-  return dates.filter((d) => liftDates.has(d)).length + linked.size;
 }
 
 /**

@@ -136,11 +136,13 @@ function toStrengthSessionInsert(input: CreateStrengthSessionInput) {
 }
 
 /**
- * Only sent when set, so saves work before the column exists, and an update
- * without one (an edit, a Watch merge) keeps the link it has.
+ * Left out when undefined, so an update that does not mention the link (a
+ * Watch merge, an edit on the same date) keeps it; null clears it.
  */
 function programSessionColumn(programSessionId: string | null | undefined) {
-  return programSessionId ? { program_session_id: programSessionId } : {};
+  return programSessionId === undefined
+    ? {}
+    : { program_session_id: programSessionId };
 }
 
 function toStrengthSessionUpdate(input: UpdateStrengthSessionInput) {

@@ -909,6 +909,8 @@ export function StrengthQuickForm({
                     setValues((c) => ({
                       ...c,
                       sessionDate: event.target.value,
+                      // Start linked today's session; another day matches by date.
+                      programSessionId: undefined,
                     }))
                   }
                 />

@@ -67,6 +67,14 @@ describe("adherence scorecard", () => {
     expect(countLifts(WEEK, new Set(["2026-10-19", "2026-10-21"]))).toBe(2);
   });
 
+  it("counts a linked lift plus a manual lift on the same day once, as the card does", () => {
+    expect(
+      countLifts(WEEK, new Set(["2026-10-19"]), [
+        { date: "2026-10-19", programSessionId: "mon" },
+      ]),
+    ).toBe(1);
+  });
+
   it("defaults scheduled PT visits to the setting until entered", () => {
     const a = weekAdherence({
       weekDates: WEEK,

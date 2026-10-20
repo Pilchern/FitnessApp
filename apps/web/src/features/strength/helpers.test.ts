@@ -8,6 +8,7 @@ import {
   groupSetsByExercise,
   isTimedSet,
   parseStrengthDraft,
+  programLinkOnEdit,
   readyToAddLoad,
   renumberSets,
   repRangeTop,
@@ -18,6 +19,21 @@ import {
   startingWeight,
   templateRepTop,
 } from "./helpers";
+
+describe("programLinkOnEdit", () => {
+  it("clears the program link when an edit moves the session to another date", () => {
+    expect(programLinkOnEdit({ sessionDate: "2026-10-19" }, "2026-10-20")).toBe(
+      null,
+    );
+  });
+
+  it("leaves the link alone when the date is unchanged or the session is gone", () => {
+    expect(
+      programLinkOnEdit({ sessionDate: "2026-10-19" }, "2026-10-19"),
+    ).toBeUndefined();
+    expect(programLinkOnEdit(null, "2026-10-19")).toBeUndefined();
+  });
+});
 
 function set(
   exerciseName: string,
