@@ -11,8 +11,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *
  * One row per run: inserted as `running` when the route starts, updated to
  * `succeeded` or `failed` when it finishes. `user_id` is null (the run covers
- * every profile), which also keeps a failed heartbeat out of the
- * retry-failed-syncs sweep: that route skips rows without a user.
+ * every profile). The retry-failed-syncs sweep's query only selects rows with
+ * a user and a retryable job type (see that route's sweep-query.ts), so a
+ * failed heartbeat is never retried and never takes a slot in its batch.
+ *
+ * `trigger_type` is `scheduled` for Vercel Cron's GET and `manual` for a POST
+ * (pg_cron or a hand-run curl); see cronTriggerType.
  *
  *   select job_type, status, started_at, finished_at, result, error_message
  *   from sync_job_runs where job_type like 'cron_%' order by created_at desc;
@@ -27,6 +31,13 @@ export type CronHeartbeatJob =
 
 export function cronHeartbeatJobType(job: CronHeartbeatJob): string {
   return `cron_${job.replace(/-/g, "_")}`;
+}
+
+export type CronTriggerType = "scheduled" | "manual";
+
+/** Vercel Cron always sends GET; anything else was started by hand. */
+export function cronTriggerType(method: string): CronTriggerType {
+  return method === "GET" ? "scheduled" : "manual";
 }
 
 export type CronHeartbeatOutcome = {
@@ -49,6 +60,7 @@ function logPrefix(job: CronHeartbeatJob) {
 export async function startCronHeartbeat(
   client: SupabaseClient,
   job: CronHeartbeatJob,
+  triggerType: CronTriggerType,
   now: () => Date = () => new Date(),
 ): Promise<CronHeartbeat> {
   let runId: string | null = null;
@@ -60,7 +72,7 @@ export async function startCronHeartbeat(
         user_id: null,
         job_type: cronHeartbeatJobType(job),
         status: "running",
-        trigger_type: "scheduled",
+        trigger_type: triggerType,
         started_at: now().toISOString(),
       })
       .select("id")

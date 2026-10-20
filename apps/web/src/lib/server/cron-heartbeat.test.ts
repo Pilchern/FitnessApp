@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cronHeartbeatJobType, startCronHeartbeat } from "./cron-heartbeat";
+import {
+  cronHeartbeatJobType,
+  cronTriggerType,
+  startCronHeartbeat,
+} from "./cron-heartbeat";
 
 type Call =
   | { op: "insert"; table: string; row: Record<string, unknown> }
@@ -71,13 +75,28 @@ describe("cronHeartbeatJobType", () => {
   });
 });
 
+describe("cronTriggerType", () => {
+  it("records Vercel Cron's GET as scheduled and a POST as manual", () => {
+    expect(cronTriggerType("GET")).toBe("scheduled");
+    expect(cronTriggerType("POST")).toBe("manual");
+  });
+});
+
 describe("startCronHeartbeat", () => {
+  it("writes the trigger type it is given", async () => {
+    const { client, calls } = fakeClient();
+    await startCronHeartbeat(client, "insights-generate", "manual");
+
+    expect(calls[0].row.trigger_type).toBe("manual");
+  });
+
   it("inserts a running sync_job_runs row with no user, then marks it succeeded", async () => {
     const { client, calls } = fakeClient();
 
     const heartbeat = await startCronHeartbeat(
       client,
       "weekly-review-auto-finalize",
+      "scheduled",
       clock(),
     );
     await heartbeat.finish({ ok: true, summary: { drafted: 1, errors: 0 } });
@@ -116,6 +135,7 @@ describe("startCronHeartbeat", () => {
     const heartbeat = await startCronHeartbeat(
       client,
       "insights-generate",
+      "scheduled",
       clock(),
     );
     await heartbeat.finish({
@@ -137,9 +157,13 @@ describe("startCronHeartbeat", () => {
 
   it("uses only statuses and trigger types the live check constraints allow", async () => {
     const { client, calls } = fakeClient();
-    const ok = await startCronHeartbeat(client, "insights-generate");
+    const ok = await startCronHeartbeat(
+      client,
+      "insights-generate",
+      "scheduled",
+    );
     await ok.finish({ ok: true });
-    const bad = await startCronHeartbeat(client, "insights-generate");
+    const bad = await startCronHeartbeat(client, "insights-generate", "manual");
     await bad.finish({ ok: false });
 
     const statuses = ["queued", "running", "succeeded", "failed", "cancelled"];
@@ -154,7 +178,11 @@ describe("startCronHeartbeat", () => {
 
   it("only finishes once", async () => {
     const { client, calls } = fakeClient();
-    const heartbeat = await startCronHeartbeat(client, "insights-generate");
+    const heartbeat = await startCronHeartbeat(
+      client,
+      "insights-generate",
+      "scheduled",
+    );
     await heartbeat.finish({ ok: true });
     await heartbeat.finish({ ok: false, error: "late" });
 
@@ -167,7 +195,11 @@ describe("startCronHeartbeat", () => {
       insertError: { message: "permission denied" },
     });
 
-    const heartbeat = await startCronHeartbeat(client, "insights-generate");
+    const heartbeat = await startCronHeartbeat(
+      client,
+      "insights-generate",
+      "scheduled",
+    );
     await expect(heartbeat.finish({ ok: true })).resolves.toBeUndefined();
 
     expect(calls.filter((c) => c.op === "update")).toHaveLength(0);
@@ -178,7 +210,11 @@ describe("startCronHeartbeat", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { client } = fakeClient({ insertThrows: true });
 
-    const heartbeat = await startCronHeartbeat(client, "insights-generate");
+    const heartbeat = await startCronHeartbeat(
+      client,
+      "insights-generate",
+      "scheduled",
+    );
     await expect(heartbeat.finish({ ok: true })).resolves.toBeUndefined();
   });
 
@@ -186,7 +222,11 @@ describe("startCronHeartbeat", () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
     const { client } = fakeClient({ updateError: { message: "timeout" } });
 
-    const heartbeat = await startCronHeartbeat(client, "insights-generate");
+    const heartbeat = await startCronHeartbeat(
+      client,
+      "insights-generate",
+      "scheduled",
+    );
     await expect(heartbeat.finish({ ok: true })).resolves.toBeUndefined();
     expect(error).toHaveBeenCalled();
   });

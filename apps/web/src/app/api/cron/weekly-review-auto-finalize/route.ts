@@ -3,7 +3,10 @@ import {
   checkCronAuthorization,
   mapWithConcurrency,
 } from "@/lib/server/cron-auth";
-import { startCronHeartbeat } from "@/lib/server/cron-heartbeat";
+import {
+  cronTriggerType,
+  startCronHeartbeat,
+} from "@/lib/server/cron-heartbeat";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { createCoreServices } from "@/lib/server/services";
 import { getServerEnv } from "@/lib/server/env";
@@ -54,6 +57,7 @@ export async function GET(request: NextRequest) {
   const heartbeat = await startCronHeartbeat(
     adminClient,
     "weekly-review-auto-finalize",
+    cronTriggerType(request.method),
   );
 
   try {

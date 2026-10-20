@@ -3,7 +3,10 @@ import {
   checkCronAuthorization,
   mapWithConcurrency,
 } from "@/lib/server/cron-auth";
-import { startCronHeartbeat } from "@/lib/server/cron-heartbeat";
+import {
+  cronTriggerType,
+  startCronHeartbeat,
+} from "@/lib/server/cron-heartbeat";
 import {
   buildOverridesLookup,
   getWeekRangeFromStart,
@@ -53,7 +56,11 @@ export async function GET(request: NextRequest) {
   }
 
   const adminClient = createSupabaseAdminClient();
-  const heartbeat = await startCronHeartbeat(adminClient, "insights-generate");
+  const heartbeat = await startCronHeartbeat(
+    adminClient,
+    "insights-generate",
+    cronTriggerType(request.method),
+  );
 
   try {
     const { data: profiles, error } = await adminClient
