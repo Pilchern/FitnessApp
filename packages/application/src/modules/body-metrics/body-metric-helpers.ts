@@ -49,6 +49,11 @@ function findEarliestValue(
     .find((metric) => getValue(metric) != null);
 }
 
+/** The value when the row came from a device import, else null. */
+function scaleOnly(metric: BodyMetric, value: number | null) {
+  return metric.source.sourceType === "manual" ? null : value;
+}
+
 export function buildBodyMetricSummary(
   metrics: BodyMetric[],
 ): BodyMetricSummary {
@@ -63,7 +68,12 @@ export function buildBodyMetricSummary(
   );
   const latestWaist = findLatestValue(metrics, (metric) => metric.waistIn);
   const earliestWaist = findEarliestValue(metrics, (metric) => metric.waistIn);
-  const latestBodyFat = findLatestValue(metrics, (metric) => metric.bodyFatPct);
+  // Scale-only: a manual entry's body fat / fat-free mass is a DEXA reading
+  // (see latestScan), and mixing it with daily BIA hides the scan-vs-scale
+  // offset.
+  const latestBodyFat = findLatestValue(metrics, (metric) =>
+    scaleOnly(metric, metric.bodyFatPct),
+  );
   const latestMuscleMass = findLatestValue(
     metrics,
     (metric) => metric.muscleMassLb,
@@ -72,9 +82,8 @@ export function buildBodyMetricSummary(
     metrics,
     (metric) => metric.boneMassLb,
   );
-  const latestFatFreeMass = findLatestValue(
-    metrics,
-    (metric) => metric.fatFreeMassLb,
+  const latestFatFreeMass = findLatestValue(metrics, (metric) =>
+    scaleOnly(metric, metric.fatFreeMassLb),
   );
   const latestHydration = findLatestValue(
     metrics,
@@ -138,7 +147,8 @@ export function buildBodyFatTrend(metrics: BodyMetric[]) {
   return buildSparseTrendSeries(
     metrics,
     (metric) => metric.measuredOn,
-    (metric) => metric.bodyFatPct,
+    // Scale readings only, so a DEXA entry never plots as a fake dip.
+    (metric) => scaleOnly(metric, metric.bodyFatPct),
   );
 }
 
