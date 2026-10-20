@@ -131,7 +131,7 @@ export function ProgramSessionList({
                 s.type === "lift" && loggedLiftId ? (
                   <Link
                     href={`/strength/${loggedLiftId}`}
-                    className="rounded-full bg-pine/10 px-3 py-1 text-xs font-semibold text-pine"
+                    className="inline-flex h-11 items-center rounded-full bg-pine/10 px-4 text-xs font-semibold text-pine"
                   >
                     ✓ Done · View
                   </Link>
@@ -151,7 +151,7 @@ export function ProgramSessionList({
                   href={testDayUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs font-semibold text-pine underline"
+                  className="inline-flex h-11 items-center text-xs font-semibold text-pine underline"
                 >
                   Open PT Tracker
                 </a>

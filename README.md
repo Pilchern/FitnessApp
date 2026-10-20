@@ -1,6 +1,6 @@
 # FitnessApp
 
-Web-first health, fitness, recovery, body-composition, and journaling application scaffolded as a modular monorepo.
+Web-first health, fitness, recovery, and body-composition application scaffolded as a modular monorepo.
 
 ## Architecture at a glance
 
@@ -111,7 +111,7 @@ pnpm format:write
 Implemented now:
 
 - auth and protected app shell
-- cardio, recovery, body, weekly review, journal, insights, strength, nutrition, and settings modules
+- cardio, recovery, body, weekly review, insights, strength, nutrition, and settings modules
 - Supabase schema, seeds, and RLS
 - Four provider integrations with sync observability: Withings (OAuth, live), Apple Health (per-user webhook token; sleep, daily metrics, and workouts), Strava (code live but paywalled by Strava), Peloton (code live but blocked by Peloton's API)
 - Cross-provider duplicate detection with an explicit source-priority order, so the same ride or weigh-in arriving from two providers isn't double-counted
@@ -122,5 +122,5 @@ Implemented now:
 Still intentionally incomplete:
 
 - nutrition targets personalized to age, height, and biological sex — `profiles` has no such columns, so the BMR formula substitutes population defaults behind a safety floor and an in-UI disclosure (see TECH_DEBT.md TD-030)
-- browser-level e2e coverage for strength, recovery, nutrition, journal, insights, and settings
+- browser-level e2e coverage for strength, recovery, nutrition, insights, and settings
 - a UI for inspecting or replaying failed sync runs (the retry queue and dead-letter path themselves exist)

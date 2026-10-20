@@ -1,7 +1,6 @@
-import type { WeeklyReview, WeeklyReviewSummary } from "@fitness-app/domain";
+import type { WeeklyReview } from "@fitness-app/domain";
 import { BodyMetricService } from "../body-metrics/body-metric";
 import { CardioSessionService } from "../cardio/cardio-session";
-import { JournalEntryService } from "../journal/journal-entry";
 import { RecoveryCheckinService } from "../recovery/recovery-checkin";
 import { StrengthSessionSummaryService } from "../strength/strength-session-summary";
 import type { SupplementLogService } from "../supplements/supplement-log-repository";
@@ -23,8 +22,6 @@ import {
 
 export type WeeklyReviewAutoFinalizeDependencies = {
   weeklyReviewService: WeeklyReviewService;
-  /** Optional: when present a "weekly-reflection" journal entry is drafted too. */
-  journalService?: JournalEntryService;
   bodyMetricService: BodyMetricService;
   cardioService: CardioSessionService;
   recoveryService: RecoveryCheckinService;
@@ -48,35 +45,13 @@ export type WeeklyReviewAutoFinalizeProfile = {
 };
 
 export type WeeklyReviewAutoFinalizeOutcome =
-  | { status: "drafted"; journalDrafted: boolean; aiDrafted: boolean }
+  | { status: "drafted"; aiDrafted: boolean }
   | { status: "skipped"; aiDrafted: boolean };
-
-const monthAbbreviations = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
-
-function formatDisplayDate(isoDate: string): string {
-  const [, monthStr, dayStr] = isoDate.split("-");
-  const month = monthAbbreviations[parseInt(monthStr, 10) - 1] ?? monthStr;
-  const day = parseInt(dayStr, 10);
-  return `${month} ${day}`;
-}
 
 /**
  * Orchestrates the weekly-review-auto-finalize cron's per-user work:
- * drafting the auto-computed weekly review, drafting a journal reflection
- * entry, and (if AI is configured) generating an AI review draft.
+ * drafting the auto-computed weekly review and (if AI is configured)
+ * generating an AI review draft.
  *
  * This was previously inline in
  * apps/web/src/app/api/cron/weekly-review-auto-finalize/route.ts — moved
@@ -92,48 +67,18 @@ export class WeeklyReviewAutoFinalizeService {
    * Runs the full auto-finalize flow for a single user's profile. Errors
    * from the primary draft step propagate to the caller (the cron route's
    * mapWithConcurrency wrapper is responsible for isolating per-user
-   * failures); journal-draft and AI-draft failures are caught internally
-   * and fail soft, matching the pre-extraction behavior exactly.
+   * failures); AI-draft failures are caught internally and fail soft,
+   * matching the pre-extraction behavior exactly.
    */
   async finalizeForUser(
     profile: WeeklyReviewAutoFinalizeProfile,
   ): Promise<WeeklyReviewAutoFinalizeOutcome> {
     const draftResult = await this.draftReviewForUser(profile);
-
-    if (draftResult.status === "skipped") {
-      const aiDrafted = await this.maybeGenerateAiDraft(
-        profile.userId,
-        draftResult.review,
-      );
-      return { status: "skipped", aiDrafted };
-    }
-
-    let journalDrafted = false;
-    try {
-      if (this.deps.journalService) {
-        await this.draftJournalEntryForUser(
-          this.deps.journalService,
-          profile,
-          draftResult.weekStart,
-          draftResult.autoSummary,
-        );
-        journalDrafted = true;
-      }
-    } catch (journalErr) {
-      const message =
-        journalErr instanceof Error ? journalErr.message : "Unknown error";
-      console.error(
-        `[WeeklyReviewAutoFinalizeService] Journal draft failed for user ${profile.userId}:`,
-        message,
-      );
-    }
-
     const aiDrafted = await this.maybeGenerateAiDraft(
       profile.userId,
       draftResult.review,
     );
-
-    return { status: "drafted", journalDrafted, aiDrafted };
+    return { status: draftResult.status, aiDrafted };
   }
 
   private async maybeGenerateAiDraft(
@@ -154,12 +99,7 @@ export class WeeklyReviewAutoFinalizeService {
   private async draftReviewForUser(
     profile: WeeklyReviewAutoFinalizeProfile,
   ): Promise<
-    | {
-        status: "drafted";
-        review: WeeklyReview;
-        autoSummary: WeeklyReviewSummary;
-        weekStart: string;
-      }
+    | { status: "drafted"; review: WeeklyReview }
     | { status: "skipped"; review: WeeklyReview }
   > {
     const weekStartsOn = (profile.weekStartsOn ?? 1) as 0 | 1;
@@ -224,12 +164,7 @@ export class WeeklyReviewAutoFinalizeService {
       completedAt: null,
     });
 
-    return {
-      status: "drafted" as const,
-      review,
-      autoSummary,
-      weekStart: prevWeekStartIso,
-    };
+    return { status: "drafted" as const, review };
   }
 
   private async loadPlanAdherence(query: {
@@ -264,53 +199,6 @@ export class WeeklyReviewAutoFinalizeService {
       );
       return undefined;
     }
-  }
-
-  private async draftJournalEntryForUser(
-    journalService: JournalEntryService,
-    profile: WeeklyReviewAutoFinalizeProfile,
-    prevWeekStartIso: string,
-    autoSummary: WeeklyReviewSummary,
-  ): Promise<void> {
-    const title = `Week of ${formatDisplayDate(prevWeekStartIso)}`;
-
-    const existing = await journalService.listEntries({
-      userId: profile.userId,
-      startDate: prevWeekStartIso,
-      endDate: prevWeekStartIso,
-      tag: "weekly-reflection",
-    });
-
-    if (existing.some((e) => e.title === title)) return;
-
-    const { weekEnd } = getWeekRangeFromStart(prevWeekStartIso);
-    const lifts = autoSummary.liftsCompleted ?? 0;
-    const cardio = autoSummary.ridesCompleted ?? 0;
-    const sleepAvg =
-      autoSummary.sleepAverageHours != null
-        ? autoSummary.sleepAverageHours.toFixed(1)
-        : "—";
-    const readinessAvg = "—";
-
-    const body = `Weekly reflection — ${formatDisplayDate(prevWeekStartIso)} to ${formatDisplayDate(weekEnd)}
-
-This week: ${lifts} strength session${lifts !== 1 ? "s" : ""}, ${cardio} cardio session${cardio !== 1 ? "s" : ""}.
-Avg readiness: ${readinessAvg}/10. Sleep avg: ${sleepAvg} hrs.
-
-What went well?
-
-What would I do differently?
-
-One thing to focus on next week:`;
-
-    await journalService.create({
-      userId: profile.userId,
-      entryDate: prevWeekStartIso,
-      title,
-      body,
-      tags: ["weekly-reflection"],
-      relatedWeekStart: prevWeekStartIso,
-    });
   }
 
   /**

@@ -82,7 +82,7 @@ describe("summarizeExportCompleteness", () => {
         limit: EXPORT_DATE_RANGE_LIMIT,
       },
       {
-        section: "journalEntries",
+        section: "bodyMetrics",
         rowCount: 3,
         limit: EXPORT_DATE_RANGE_LIMIT,
       },

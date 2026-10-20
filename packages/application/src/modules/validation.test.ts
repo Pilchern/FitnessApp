@@ -6,7 +6,6 @@ import {
   createRecoveryCheckinSchema,
   createWeeklyReviewSchema,
   DEFAULT_DATE_RANGE_QUERY_LIMIT,
-  updateJournalEntrySchema,
 } from "../index";
 
 const userId = "11111111-1111-4111-8111-111111111111";
@@ -76,15 +75,6 @@ describe("application validation schemas", () => {
         status: "completed",
       }),
     ).toThrow(/completedAt/);
-  });
-
-  it("rejects journal entry updates without a patch payload", () => {
-    expect(() =>
-      updateJournalEntrySchema.parse({
-        id: "22222222-2222-4222-8222-222222222222",
-        userId,
-      }),
-    ).toThrow(/At least one field/);
   });
 });
 

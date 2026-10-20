@@ -14,10 +14,9 @@ import {
 
 describe("user-local today (timezone consistency)", () => {
   // BUG (c): the dashboard derived `today` from `new Date().toISOString()`,
-  // i.e. the UTC date, and handed it to computeJournalStreak — whose first act
-  // is `if (!dates.has(today)) return 0`. In America/Chicago the UTC date rolls
-  // at 19:00 local, so from 7pm to midnight every evening the dashboard told a
-  // user with an unbroken streak that their streak was 0.
+  // i.e. the UTC date. In America/Chicago the UTC date rolls at 19:00 local,
+  // so from 7pm to midnight every evening anything keyed on "today" read
+  // tomorrow's date.
   const eveningInChicago = new Date("2026-08-27T01:30:00Z"); // 20:30 on 8/26
 
   it("uses the user's local calendar date, not the UTC date", () => {
