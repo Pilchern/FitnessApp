@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BodyMetric } from "@fitness-app/domain";
 import {
+  bodyScanUpdateError,
   canEditBodyScan,
   formatBodyScanHint,
   toBodyFormValues,
@@ -94,15 +95,31 @@ describe("DEXA fields on the body form", () => {
   });
 });
 
+describe("bodyScanUpdateError (server guard on update)", () => {
+  it("allows DEXA fields on an existing manual row", () => {
+    expect(bodyScanUpdateError(metric())).toBeNull();
+  });
+
+  it("refuses DEXA fields on a Withings row", () => {
+    expect(
+      bodyScanUpdateError(metric({ source: withingsSource, weightLb: 177.6 })),
+    ).toMatch(/only be saved on a manual entry/);
+  });
+
+  it("refuses when the row cannot be found", () => {
+    expect(bodyScanUpdateError(null)).toMatch(/could not be found/);
+  });
+});
+
 describe("formatBodyScanHint", () => {
-  it("shows the scan date and lean mass", () => {
+  it("shows the scan date and fat-free mass", () => {
     expect(
       formatBodyScanHint({
         measuredOn: "2026-10-24",
         bodyFatPct: 19.2,
         fatFreeMassLb: 144.8,
       }),
-    ).toBe("Oct 24, 2026 · lean 144.8 lb");
+    ).toBe("Oct 24, 2026 · fat-free 144.8 lb");
   });
 
   it("shows only the date when lean mass is missing", () => {

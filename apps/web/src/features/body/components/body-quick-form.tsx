@@ -134,7 +134,7 @@ export function BodyQuickForm({
           <button
             type="button"
             onClick={() => setShowAdvanced((value) => !value)}
-            className="text-sm font-semibold text-pine underline-offset-4 hover:underline"
+            className="min-h-10 text-sm font-semibold text-pine underline-offset-4 hover:underline"
           >
             {showAdvanced
               ? "Hide optional fields"
@@ -144,15 +144,19 @@ export function BodyQuickForm({
             <button
               type="button"
               onClick={() => setShowScan((value) => !value)}
-              className="text-sm font-semibold text-pine underline-offset-4 hover:underline"
+              className="min-h-10 text-sm font-semibold text-pine underline-offset-4 hover:underline"
             >
               {showScan ? "Hide DEXA results" : "Add DEXA scan results"}
             </button>
           ) : null}
         </div>
 
-        {scanEditable && showScan ? (
-          <div className="rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4">
+        {/* Mounted (hidden) while collapsed so typed values still submit. */}
+        {scanEditable ? (
+          <div
+            hidden={!showScan}
+            className="rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4"
+          >
             <p className="text-sm font-semibold text-ink">DEXA scan</p>
             <p className="mt-1 text-xs text-ink/60">
               From the report&apos;s total row. Weight stays with Withings.
@@ -181,12 +185,13 @@ export function BodyQuickForm({
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-ink">
-                Lean mass (lb)
+                Lean + BMC (lb)
                 <input
                   className={fieldClassName()}
                   name="leanMassLb"
                   inputMode="decimal"
-                  placeholder="145.0"
+                  placeholder="152.0"
+                  aria-describedby="lean-bmc-help"
                   value={values.leanMassLb}
                   onChange={(event) =>
                     setValues((current) => ({
@@ -195,6 +200,13 @@ export function BodyQuickForm({
                     }))
                   }
                 />
+                <p
+                  id="lean-bmc-help"
+                  className="text-xs font-normal text-ink/60"
+                >
+                  Fat-free mass: the report&apos;s Lean+BMC, or Lean plus BMC
+                  added together
+                </p>
                 {state.fieldErrors?.leanMassLb ? (
                   <p className="text-xs text-ember">
                     {state.fieldErrors.leanMassLb}

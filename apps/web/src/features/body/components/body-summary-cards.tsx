@@ -67,7 +67,7 @@ export function BodySummaryCards({
           <SummaryStatCard
             label="Fat-free mass"
             value={formatBodyValue(summary.latestFatFreeMassLb, "lb")}
-            hint="Lean body mass"
+            hint="Scale BIA, includes bone"
           />
         ) : null}
         {summary.latestBoneMassLb != null ? (

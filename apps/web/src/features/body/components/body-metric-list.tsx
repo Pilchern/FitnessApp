@@ -56,12 +56,15 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
       {/* One row per day; tap for the full composition, edit and delete. */}
       <ul className="mt-3 divide-y divide-ink/10">
         {visible.map((metric) => {
+          // Manual body fat / fat-free mass is a DEXA entry; label it so it
+          // reads apart from the same day's Withings row.
+          const dexa = metric.source.sourceType === "manual" ? "DEXA " : "";
           const summary = [
             metric.weightLb != null
               ? formatBodyValue(metric.weightLb, "lb")
               : null,
             metric.bodyFatPct != null
-              ? formatBodyValue(metric.bodyFatPct, "%")
+              ? `${dexa}${formatBodyValue(metric.bodyFatPct, "%")}`
               : null,
             metric.waistIn != null
               ? `Waist ${formatBodyValue(metric.waistIn, "in")}`
@@ -72,7 +75,7 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
               ? `Muscle ${formatBodyValue(metric.muscleMassLb, "lb")}`
               : null,
             metric.fatFreeMassLb != null
-              ? `Fat-free ${formatBodyValue(metric.fatFreeMassLb, "lb")}`
+              ? `${dexa}Fat-free ${formatBodyValue(metric.fatFreeMassLb, "lb")}`
               : null,
             metric.boneMassLb != null
               ? `Bone ${formatBodyValue(metric.boneMassLb, "lb")}`

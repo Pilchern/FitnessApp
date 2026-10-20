@@ -7,8 +7,9 @@ export const bodyMetricFormSchema = z.object({
   waistIn: parseOptionalNumber(z.number().positive().max(120), "Waist"),
   waistHipIn: parseOptionalNumber(z.number().positive().max(120), "Hip waist"),
   waistGutIn: parseOptionalNumber(z.number().positive().max(120), "Gut waist"),
-  // DEXA results typed in from the scan report. Lean mass is entered in lb
-  // and stored as fat-free mass (lb and kg), like the Withings import.
+  // DEXA results typed in from the scan report. leanMassLb is the report's
+  // Lean + BMC in lb (fat-free mass, bone included, the same quantity the
+  // Withings import stores), saved as fat-free mass in lb and kg.
   bodyFatPct: parseOptionalNumber(
     z
       .number()
@@ -19,9 +20,9 @@ export const bodyMetricFormSchema = z.object({
   leanMassLb: parseOptionalNumber(
     z
       .number()
-      .min(60, "Lean mass must be between 60 and 300 lb")
-      .max(300, "Lean mass must be between 60 and 300 lb"),
-    "Lean mass",
+      .min(60, "Lean + BMC must be between 60 and 300 lb")
+      .max(300, "Lean + BMC must be between 60 and 300 lb"),
+    "Lean + BMC",
   ),
   sourceType: z.literal("manual"),
   notes: optionalString,

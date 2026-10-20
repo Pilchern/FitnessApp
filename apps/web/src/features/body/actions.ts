@@ -5,15 +5,16 @@ import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
 import { bodyMetricFormSchema } from "./form-schema";
-import { toBodyScanFields } from "./helpers";
+import { bodyScanUpdateError, toBodyScanFields } from "./helpers";
 import type { BodyActionState } from "./types";
 
 // Tape measurements, plus DEXA body fat and lean mass typed in from a scan
 // report. Weight comes from Withings, so the form never writes it: a DEXA
 // entry has no weight, and cross-provider dedup (which matches on weight)
 // never pairs it with that day's weigh-in. The DEXA inputs are rendered only
-// for new and manual rows and written only when submitted, so an update
-// leaves a Withings row's composition values (and its source) untouched.
+// for new and manual rows and written only when submitted, and the update
+// action refuses them for any non-manual row, so a Withings row's
+// composition values (and its source) stay untouched.
 function buildBodyMetricPayload(userId: string, formData: FormData) {
   const hasScanFields =
     formData.has("bodyFatPct") || formData.has("leanMassLb");
@@ -79,6 +80,16 @@ export async function updateBodyMetricAction(
       return {
         error: "A body metric id is required to update an entry.",
       };
+    }
+
+    // DEXA fields are only in the payload when they were submitted.
+    if (payload.bodyFatPct !== undefined) {
+      const scanError = bodyScanUpdateError(
+        await bodyMetricService.getById(user.id, payload.id),
+      );
+      if (scanError) {
+        return { error: scanError };
+      }
     }
 
     await bodyMetricService.update(payload);
