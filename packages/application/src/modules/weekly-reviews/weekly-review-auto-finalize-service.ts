@@ -6,8 +6,13 @@ import { RecoveryCheckinService } from "../recovery/recovery-checkin";
 import { StrengthSessionSummaryService } from "../strength/strength-session-summary";
 import type { SupplementLogService } from "../supplements/supplement-log-repository";
 import type { SupplementService } from "../supplements/supplement-repository";
+import type { ProgramService } from "../program/program-service";
 import type { TrainingTemplateService } from "../training/training-template";
-import { buildPlanAdherence, type PlanAdherence } from "./plan-adherence";
+import {
+  buildPlanAdherence,
+  loadWeekSchedule,
+  type PlanAdherence,
+} from "./plan-adherence";
 import type { AiWeeklyReviewService } from "./ai-weekly-review-service";
 import { WeeklyReviewService } from "./weekly-review";
 import {
@@ -26,6 +31,11 @@ export type WeeklyReviewAutoFinalizeDependencies = {
   strengthSummaryService: StrengthSessionSummaryService;
   /** Optional: when present the draft summary carries plan adherence. */
   trainingTemplateService?: TrainingTemplateService;
+  /**
+   * The schedule and Zone 2 target come from the active program; without it
+   * (or for a week no program block covers) the templates are the fallback.
+   */
+  programService?: ProgramService;
   supplementService?: SupplementService;
   supplementLogService?: SupplementLogService;
   /** null when ANTHROPIC_API_KEY isn't configured — AI drafting is skipped entirely. */
@@ -232,18 +242,16 @@ export class WeeklyReviewAutoFinalizeService {
     if (!trainingTemplateService || !supplementService || !supplementLogService)
       return undefined;
     try {
-      const [strength, cardio, supplements, habitLogs] = await Promise.all([
-        trainingTemplateService.listActiveStrengthTemplates({
-          userId: query.userId,
-        }),
-        trainingTemplateService.listActiveCardioTemplates({
-          userId: query.userId,
-        }),
+      const [schedule, supplements, habitLogs] = await Promise.all([
+        loadWeekSchedule(
+          { programService: this.deps.programService, trainingTemplateService },
+          query,
+        ),
         supplementService.listActive({ userId: query.userId }),
         supplementLogService.listByDateRange(query),
       ]);
       return buildPlanAdherence({
-        templates: [...strength, ...cardio],
+        schedule,
         habitIds: supplements
           .filter((s) => s.kind === "habit")
           .map((s) => s.id),

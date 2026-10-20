@@ -4,6 +4,7 @@ import {
   buildWeeklyReviewSummary,
   calculateWeeklyReviewScore,
   pickPlanAdherence,
+  templateWeekSchedule,
 } from "../../index";
 
 const templates = [
@@ -23,9 +24,9 @@ const templates = [
 ] as const;
 
 describe("buildPlanAdherence", () => {
-  it("counts scheduled templates and sums the Z2 target", () => {
+  it("fallback: counts scheduled templates and sums the Z2 target", () => {
     const out = buildPlanAdherence({
-      templates: [...templates],
+      schedule: templateWeekSchedule([...templates]),
       habitIds: [],
       habitLogs: [],
     });
@@ -44,7 +45,7 @@ describe("buildPlanAdherence", () => {
       taken,
     });
     const out = buildPlanAdherence({
-      templates: [],
+      schedule: templateWeekSchedule([]),
       habitIds: ["a", "b"],
       habitLogs: [
         log("a", "2026-10-05"),

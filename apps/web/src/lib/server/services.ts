@@ -161,6 +161,7 @@ export const createCoreServices = cache(async function createCoreServices(
     recoveryService,
     strengthSummaryService,
     trainingTemplateService,
+    programService,
     supplementService,
     supplementLogService,
     aiWeeklyReviewService,

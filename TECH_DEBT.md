@@ -11,9 +11,9 @@
 
 Daily habits reuse `supplements` / `supplement_logs` through a `kind` column (`supplement` | `habit`) added 2026-10-09 to avoid duplicating two tables, a repository, a service and the adherence summary for an identical shape. The cost is naming: code that handles habits says "supplement" (`SupplementChecklist`, `logSupplementsAction`, `supplementService`). If habits grow their own behavior (targets, streaks, schedules per day), split them into real `habits` tables then. Not worth doing before that.
 
-### TD-040 — `profiles.baseline_schedule` is dead config (low)
+### TD-040 — `profiles.baseline_schedule` is dead config (low, code done 2026-10-20; drop pending live apply)
 
-Seeded with a pre-injury weekly plan, written by `profile-bootstrap.ts`, read by nothing. The real schedule is `training_templates.scheduled_day_of_week`. Either delete the column or make the dashboard plan card read it; do not add a third source of truth.
+Owner decision 2026-10-20: the program is the single source for the weekly schedule and Zone 2 target. `profile-bootstrap.ts` no longer writes the column. `supabase/migrations/20261020170100_drop_profiles_baseline_schedule.sql` drops it: apply to live only after that code is deployed, then close this item.
 
 ### TD-042 — Dead code left after retiring Strava, Peloton and the journal (low)
 
@@ -25,7 +25,7 @@ Seeded with a pre-injury weekly plan, written by `profile-bootstrap.ts`, read by
 
 ### TD-041 — Two sources for the weekly Zone 2 target (closed 2026-10-12)
 
-Closed: the insight rules read `zone2TargetMinutes`, `liftsScheduled` and `cardioScheduled` from the weekly review summary (template-derived), with `NICK_TRAINING_PLAN` as the no-review fallback. The insights cron runs an hour after the review auto-finalize so the summary exists.
+Closed: the insight rules read `zone2TargetMinutes`, `liftsScheduled` and `cardioScheduled` from the weekly review summary, with `NICK_TRAINING_PLAN` as the no-review fallback. Since 2026-10-20 the summary counts come from the program week (`loadWeekSchedule`, same rules as the dashboard plan card); templates only for a week no program covers. The insights cron runs an hour after the review auto-finalize so the summary exists.
 
 ---
 

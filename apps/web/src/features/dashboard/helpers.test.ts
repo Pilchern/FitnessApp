@@ -301,12 +301,15 @@ describe("stripDayPrefix", () => {
 });
 
 describe("weekPlanFromProgram", () => {
+  // `scheduled` and `zone2Minutes` come from the shared program-week rules on
+  // the server (tested in packages/application program-week.test.ts).
   const session = (
     id: string,
     type: string,
     completion: string,
-    ride: { kind: string; minutesMax: number | null } | null = null,
-  ) => ({ id, type, name: id, visible: true, completion, ride });
+    zone2Minutes: number | null = null,
+    scheduled = type === "lift" || type === "peloton",
+  ) => ({ id, type, name: id, scheduled, zone2Minutes, completion });
   const week = [
     {
       date: "2026-10-19",
@@ -320,22 +323,14 @@ describe("weekPlanFromProgram", () => {
       isToday: false,
       sessions: [
         session("Accessory block", "accessory", "none"),
-        session("Peloton Zone 2", "peloton", "planned", {
-          kind: "zone2",
-          minutesMax: 45,
-        }),
+        session("Peloton Zone 2", "peloton", "planned", 45),
       ],
     },
     {
       date: "2026-10-23",
       dayOfWeek: 4,
       isToday: false,
-      sessions: [
-        session("Peloton climb intervals", "peloton", "planned", {
-          kind: "climb_intervals",
-          minutesMax: 45,
-        }),
-      ],
+      sessions: [session("Peloton climb intervals", "peloton", "planned")],
     },
   ];
 
@@ -353,6 +348,25 @@ describe("weekPlanFromProgram", () => {
 
   it("sums only Zone 2 ride lengths into the Zone 2 target", () => {
     expect(weekPlanFromProgram(week, "2026-10-19").zone2TargetMinutes).toBe(45);
+  });
+
+  it("leaves out sessions the program does not schedule (gate closed)", () => {
+    const plan = weekPlanFromProgram(
+      [
+        ...week,
+        {
+          date: "2026-10-24",
+          dayOfWeek: 6,
+          isToday: false,
+          sessions: [
+            session("Peloton Zone 2 (long)", "peloton", "planned", 60, false),
+          ],
+        },
+      ],
+      "2026-10-19",
+    );
+    expect(plan.days.flatMap((d) => d.items)).toHaveLength(3);
+    expect(plan.zone2TargetMinutes).toBe(45);
   });
 
   it("marks skips and past days", () => {

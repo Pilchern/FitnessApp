@@ -75,8 +75,7 @@ begin
     week_starts_on,
     goal_fat_loss,
     goal_preserve_muscle,
-    goal_improve_vo2,
-    baseline_schedule
+    goal_improve_vo2
   )
   values (
     v_profile_id,
@@ -87,16 +86,7 @@ begin
     1,
     true,
     true,
-    true,
-    '{
-      "monday": ["lift"],
-      "tuesday": ["zone2_peloton_45_60"],
-      "wednesday": ["lift"],
-      "thursday": ["vo2_peloton_30_40"],
-      "friday": ["lift"],
-      "saturday": ["long_zone2_peloton_45_75"],
-      "sunday": ["recovery"]
-    }'::jsonb
+    true
   )
   on conflict (user_id) do update
   set
@@ -106,8 +96,7 @@ begin
     week_starts_on = excluded.week_starts_on,
     goal_fat_loss = excluded.goal_fat_loss,
     goal_preserve_muscle = excluded.goal_preserve_muscle,
-    goal_improve_vo2 = excluded.goal_improve_vo2,
-    baseline_schedule = excluded.baseline_schedule;
+    goal_improve_vo2 = excluded.goal_improve_vo2;
 
   insert into public.training_templates (id, user_id, name, template_type, definition)
   values
