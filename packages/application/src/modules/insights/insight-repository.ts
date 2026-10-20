@@ -27,6 +27,23 @@ export type UpsertInsightInput = {
   insightDate: string;
 };
 
+/**
+ * Bookkeeping for insight generation, kept so a page visit can tell whether a
+ * refresh is due and a failing AI call backs off instead of retrying on every
+ * load. Stored without a migration as a non-active `insights` row of type
+ * INSIGHT_RUN_STATE_TYPE (see the Supabase repository), so no screen shows it.
+ */
+export type InsightRunState = {
+  /** When generateAndPersist last finished. */
+  lastRunAt: string | null;
+  /** When the AI service was last called, whatever the outcome. */
+  lastAiAttemptAt: string | null;
+  lastAiOutcome: "succeeded" | "failed" | null;
+  consecutiveAiFailures: number;
+};
+
+export const INSIGHT_RUN_STATE_TYPE = "insight_run_state";
+
 export interface InsightRepository {
   /**
    * Inserts new insights as active. For a (user, type, date) that already
@@ -43,4 +60,12 @@ export interface InsightRepository {
    * archive, and skips anything not active or not rule-sourced.
    */
   retireRuleInsights(ids: string[], userId: string): Promise<void>;
+  /** The user's latest run state, or null before the first recorded run. */
+  getRunState(userId: string): Promise<InsightRunState | null>;
+  /** Records run state, one row per user per runDate (YYYY-MM-DD). */
+  saveRunState(
+    userId: string,
+    runDate: string,
+    state: InsightRunState,
+  ): Promise<void>;
 }

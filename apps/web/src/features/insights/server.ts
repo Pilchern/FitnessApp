@@ -16,9 +16,30 @@ function sixMonthsAgoIsoDate() {
   return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Read-only: the stored active insights, with no generation, no AI call and
+ * no writes. The dashboard uses this, so Today never waits on the Anthropic
+ * API or a six-month history read.
+ */
+export async function getActiveInsights() {
+  const user = await requireCurrentUser();
+  const { insightOrchestrator } = await createCoreServices();
+  const insights = await insightOrchestrator.getActive(user.id);
+  return { insights, topInsights: insights.slice(0, 3) };
+}
+
+/**
+ * For /insights: regenerates when the last run is older than
+ * INSIGHT_REFRESH_INTERVAL_MS (the Monday cron also generates), otherwise
+ * returns the stored insights.
+ */
 export async function getInsightsData() {
   const user = await requireCurrentUser();
   const { insightOrchestrator, ...services } = await createCoreServices();
+
+  if (!(await insightOrchestrator.isRefreshDue(user.id))) {
+    return getActiveInsights();
+  }
 
   const startDate = sixMonthsAgoIsoDate();
   const [

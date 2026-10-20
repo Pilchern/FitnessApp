@@ -4,11 +4,13 @@ import type { AiInsightService, GeneratedInsight } from "./ai-insight-service";
 import type { InsightEngineInput } from "./insight-rules";
 import type {
   InsightRepository,
+  InsightRunState,
   PersistedInsight,
   UpsertInsightInput,
 } from "./insight-repository";
 import {
   AI_INSIGHT_STALENESS_MS,
+  INSIGHT_REFRESH_INTERVAL_MS,
   InsightOrchestrator,
 } from "./insight-orchestrator";
 
@@ -69,6 +71,12 @@ class FakeInsightRepository implements InsightRepository {
   async archive(): Promise<void> {}
 
   async retireRuleInsights(): Promise<void> {}
+
+  async getRunState(): Promise<InsightRunState | null> {
+    return null;
+  }
+
+  async saveRunState(): Promise<void> {}
 }
 
 /**
@@ -79,6 +87,7 @@ class FakeInsightRepository implements InsightRepository {
 class InMemoryInsightRepository implements InsightRepository {
   public rows: PersistedInsight[] = [];
   public retiredIds: string[] = [];
+  public runState: InsightRunState | null = null;
   private nextId = 1;
 
   async upsertMany(
@@ -136,6 +145,18 @@ class InMemoryInsightRepository implements InsightRepository {
         this.retiredIds.push(row.id);
       }
     }
+  }
+
+  async getRunState(): Promise<InsightRunState | null> {
+    return this.runState;
+  }
+
+  async saveRunState(
+    _userId: string,
+    _runDate: string,
+    state: InsightRunState,
+  ): Promise<void> {
+    this.runState = state;
   }
 }
 
@@ -267,7 +288,7 @@ function noRuleInsights(): Insight[] {
 
 function makeAiService(insights: GeneratedInsight[] = []): AiInsightService {
   return {
-    generateInsights: vi.fn().mockResolvedValue(insights),
+    generate: vi.fn().mockResolvedValue({ status: "ok", insights }),
   } as unknown as AiInsightService;
 }
 
@@ -289,7 +310,7 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
       now: new Date("2026-07-16T12:00:00.000Z"),
     });
 
-    expect(aiService.generateInsights).toHaveBeenCalledTimes(1);
+    expect(aiService.generate).toHaveBeenCalledTimes(1);
     expect(repository.upsertCalls[0]?.some((u) => u.sourceKind === "ai")).toBe(
       true,
     );
@@ -313,7 +334,7 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
 
     await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
 
-    expect(aiService.generateInsights).not.toHaveBeenCalled();
+    expect(aiService.generate).not.toHaveBeenCalled();
     expect(repository.upsertCalls).toHaveLength(0);
   });
 
@@ -339,7 +360,7 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
 
     await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
 
-    expect(aiService.generateInsights).toHaveBeenCalledTimes(1);
+    expect(aiService.generate).toHaveBeenCalledTimes(1);
   });
 
   it("ignores non-AI (rule) insights when determining staleness", async () => {
@@ -363,7 +384,7 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
     await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
 
     // Only a rule insight exists (however fresh) — that must not block the AI call.
-    expect(aiService.generateInsights).toHaveBeenCalledTimes(1);
+    expect(aiService.generate).toHaveBeenCalledTimes(1);
   });
 
   it("never calls the AI service when none is configured (aiService: null)", async () => {
@@ -406,8 +427,226 @@ describe("InsightOrchestrator.generateAndPersist — AI staleness gate", () => {
 
     await orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
 
-    expect(aiService.generateInsights).not.toHaveBeenCalled();
+    expect(aiService.generate).not.toHaveBeenCalled();
     expect(repository.upsertCalls[0]).toHaveLength(1);
     expect(repository.upsertCalls[0]?.[0]?.sourceKind).toBe("rule");
+  });
+});
+
+describe("InsightOrchestrator.getActive — dashboard read path", () => {
+  it("reads active insights and never writes, generates or calls the AI", async () => {
+    const repository = new InMemoryInsightRepository();
+    repository.rows = [makePersistedInsight({ id: "a" })];
+    const upsert = vi.spyOn(repository, "upsertMany");
+    const retire = vi.spyOn(repository, "retireRuleInsights");
+    const save = vi.spyOn(repository, "saveRunState");
+    const ruleEngine = vi.fn(noRuleInsights);
+    const aiService = makeAiService();
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      ruleEngine,
+    );
+
+    const result = await orchestrator.getActive(userId);
+
+    expect(result.map((i) => i.id)).toEqual(["a"]);
+    expect(upsert).not.toHaveBeenCalled();
+    expect(retire).not.toHaveBeenCalled();
+    expect(save).not.toHaveBeenCalled();
+    expect(ruleEngine).not.toHaveBeenCalled();
+    expect(aiService.generate).not.toHaveBeenCalled();
+  });
+});
+
+describe("InsightOrchestrator.isRefreshDue — /insights staleness guard", () => {
+  const now = new Date("2026-10-20T12:00:00.000Z");
+  const minutesAgo = (m: number) =>
+    new Date(now.getTime() - m * 60 * 1000).toISOString();
+
+  it("is due before any run has been recorded", async () => {
+    const orchestrator = new InsightOrchestrator(
+      new InMemoryInsightRepository(),
+      null,
+      noRuleInsights,
+    );
+    expect(await orchestrator.isRefreshDue(userId, now)).toBe(true);
+  });
+
+  it("is not due inside the interval and due once it has passed", async () => {
+    const repository = new InMemoryInsightRepository();
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      null,
+      noRuleInsights,
+    );
+
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: new Date(minutesAgo(30)),
+    });
+    expect(repository.runState?.lastRunAt).toBe(minutesAgo(30));
+    expect(await orchestrator.isRefreshDue(userId, now)).toBe(false);
+
+    const later = new Date(
+      new Date(minutesAgo(30)).getTime() + INSIGHT_REFRESH_INTERVAL_MS,
+    );
+    expect(await orchestrator.isRefreshDue(userId, later)).toBe(true);
+  });
+
+  it("treats an unreadable run state as due rather than failing the page", async () => {
+    const repository = new InMemoryInsightRepository();
+    vi.spyOn(repository, "getRunState").mockRejectedValue(new Error("boom"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      null,
+      noRuleInsights,
+    );
+    expect(await orchestrator.isRefreshDue(userId, now)).toBe(true);
+    errorSpy.mockRestore();
+  });
+});
+
+describe("InsightOrchestrator.generateAndPersist — AI failure backoff", () => {
+  const start = new Date("2026-10-20T12:00:00.000Z");
+  const at = (minutes: number) =>
+    new Date(start.getTime() + minutes * 60 * 1000);
+  const insight: GeneratedInsight = {
+    insightType: "trend",
+    title: "Title",
+    body: "Body",
+    severity: "info",
+  };
+
+  it("records a failure and waits out the backoff instead of retrying every run", async () => {
+    const repository = new InMemoryInsightRepository();
+    const aiService = {
+      generate: vi
+        .fn()
+        .mockResolvedValue({ status: "failed", reason: "timeout" }),
+    } as unknown as AiInsightService;
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
+    const run = (now: Date) =>
+      orchestrator.generateAndPersist({ ...baseEngineInput, userId, now });
+
+    await run(start);
+    expect(aiService.generate).toHaveBeenCalledTimes(1);
+    expect(repository.runState).toMatchObject({
+      lastAiOutcome: "failed",
+      consecutiveAiFailures: 1,
+      lastAiAttemptAt: start.toISOString(),
+    });
+
+    // Inside the 1h backoff: no call, failure count unchanged.
+    await run(at(10));
+    await run(at(59));
+    expect(aiService.generate).toHaveBeenCalledTimes(1);
+    expect(repository.runState?.consecutiveAiFailures).toBe(1);
+
+    // After 1h it tries again and fails; the next wait doubles to 2h.
+    await run(at(60));
+    expect(aiService.generate).toHaveBeenCalledTimes(2);
+    expect(repository.runState?.consecutiveAiFailures).toBe(2);
+    await run(at(60 + 119));
+    expect(aiService.generate).toHaveBeenCalledTimes(2);
+    await run(at(60 + 120));
+    expect(aiService.generate).toHaveBeenCalledTimes(3);
+  });
+
+  it("resets the failure count after a success", async () => {
+    const repository = new InMemoryInsightRepository();
+    repository.runState = {
+      lastRunAt: start.toISOString(),
+      lastAiAttemptAt: start.toISOString(),
+      lastAiOutcome: "failed",
+      consecutiveAiFailures: 3,
+    };
+    const aiService = makeAiService([insight]);
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
+
+    // 3 failures means a 4h wait.
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: at(239),
+    });
+    expect(aiService.generate).not.toHaveBeenCalled();
+
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: at(240),
+    });
+    expect(aiService.generate).toHaveBeenCalledTimes(1);
+    expect(repository.runState).toMatchObject({
+      lastAiOutcome: "succeeded",
+      consecutiveAiFailures: 0,
+    });
+  });
+
+  it("waits out the window after a success even if every AI insight was archived", async () => {
+    const repository = new InMemoryInsightRepository();
+    repository.runState = {
+      lastRunAt: start.toISOString(),
+      lastAiAttemptAt: start.toISOString(),
+      lastAiOutcome: "succeeded",
+      consecutiveAiFailures: 0,
+    };
+    // No active AI rows: before run state existed this read as "call now".
+    const aiService = makeAiService([insight]);
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
+
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: at(30),
+    });
+    expect(aiService.generate).not.toHaveBeenCalled();
+
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: new Date(start.getTime() + AI_INSIGHT_STALENESS_MS),
+    });
+    expect(aiService.generate).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not record an attempt when AI insights are disabled", async () => {
+    const repository = new InMemoryInsightRepository();
+    const aiService = {
+      generate: vi.fn().mockResolvedValue({ status: "disabled" }),
+    } as unknown as AiInsightService;
+    const orchestrator = new InsightOrchestrator(
+      repository,
+      aiService,
+      noRuleInsights,
+    );
+
+    await orchestrator.generateAndPersist({
+      ...baseEngineInput,
+      userId,
+      now: start,
+    });
+
+    expect(repository.runState).toEqual({
+      lastRunAt: start.toISOString(),
+      lastAiAttemptAt: null,
+      lastAiOutcome: null,
+      consecutiveAiFailures: 0,
+    });
   });
 });

@@ -231,3 +231,70 @@ describe("AiInsightService", () => {
     ).resolves.toEqual([]);
   });
 });
+
+describe("AiInsightService.generate — outcome and timeout", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  /** A fetch that never answers, and rejects only when its signal aborts. */
+  function hangingFetch() {
+    return vi.fn(
+      (_url: string, init?: { signal?: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(init.signal?.reason),
+          );
+        }),
+    );
+  }
+
+  it("aborts a hung request after the timeout and reports it as failed", async () => {
+    const fetchMock = hangingFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const startedAt = Date.now();
+    const result = await new AiInsightService({
+      ...config,
+      timeoutMs: 25,
+    }).generate(baseInput);
+
+    expect(result).toEqual({ status: "failed", reason: "timeout" });
+    expect(Date.now() - startedAt).toBeLessThan(2_000);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("sends a timeout signal by default", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(anthropicResponse(JSON.stringify(validPayload)));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await new AiInsightService(config).generate(baseInput);
+
+    expect(result.status).toBe("ok");
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("distinguishes disabled from failed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => "server error",
+        json: async () => ({}),
+      }),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      new AiInsightService({ ...config, enabled: false }).generate(baseInput),
+    ).resolves.toEqual({ status: "disabled" });
+    await expect(
+      new AiInsightService(config).generate(baseInput),
+    ).resolves.toEqual({ status: "failed", reason: "http_500" });
+  });
+});

@@ -26,7 +26,7 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
-import { getInsightsData } from "@/features/insights/server";
+import { getActiveInsights } from "@/features/insights/server";
 import {
   addDaysIsoDate,
   buildWeekPlan,
@@ -100,7 +100,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       startDate: daysAgo(90),
     }),
     weeklyReviewService.listRecent(user.id, 1),
-    getInsightsData(),
+    getActiveInsights(),
     nutritionService.listByDateRange({
       userId: user.id,
       startDate: daysAgo(6),
