@@ -13,6 +13,18 @@ export type BodyMetricSummary = {
   latestHydrationPct: number | null;
   latestVisceralFatIndex: number | null;
   latestSource: "manual" | "imported" | null;
+  /**
+   * The latest hand-entered body-composition reading (a DEXA scan, typed in
+   * from the report). Kept apart from the scale's daily BIA values above so
+   * the next Withings sync does not push it off the page.
+   */
+  latestScan: BodyScanReading | null;
+};
+
+export type BodyScanReading = {
+  measuredOn: string;
+  bodyFatPct: number | null;
+  fatFreeMassLb: number | null;
 };
 
 function roundOneDecimal(value: number) {
@@ -72,6 +84,11 @@ export function buildBodyMetricSummary(
     metrics,
     (metric) => metric.visceralFatIndex,
   );
+  const latestScan = findLatestValue(metrics, (metric) =>
+    metric.source.sourceType === "manual"
+      ? (metric.bodyFatPct ?? metric.fatFreeMassLb)
+      : null,
+  );
 
   return {
     latestWeightLb: latestWeight?.weightLb ?? null,
@@ -91,6 +108,13 @@ export function buildBodyMetricSummary(
     latestHydrationPct: latestHydration?.hydrationPct ?? null,
     latestVisceralFatIndex: latestVisceralFat?.visceralFatIndex ?? null,
     latestSource: latest?.source.sourceType ?? null,
+    latestScan: latestScan
+      ? {
+          measuredOn: latestScan.measuredOn,
+          bodyFatPct: latestScan.bodyFatPct,
+          fatFreeMassLb: latestScan.fatFreeMassLb,
+        }
+      : null,
   };
 }
 

@@ -5,18 +5,26 @@ import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
 import { bodyMetricFormSchema } from "./form-schema";
+import { toBodyScanFields } from "./helpers";
 import type { BodyActionState } from "./types";
 
-// Tape measurements only. Weight, body fat and muscle mass come from Withings,
-// so the form never writes them: a create leaves them null and an update
-// leaves a Withings row's values (and its source) untouched.
+// Tape measurements, plus DEXA body fat and lean mass typed in from a scan
+// report. Weight comes from Withings, so the form never writes it: a DEXA
+// entry has no weight, and cross-provider dedup (which matches on weight)
+// never pairs it with that day's weigh-in. The DEXA inputs are rendered only
+// for new and manual rows and written only when submitted, so an update
+// leaves a Withings row's composition values (and its source) untouched.
 function buildBodyMetricPayload(userId: string, formData: FormData) {
+  const hasScanFields =
+    formData.has("bodyFatPct") || formData.has("leanMassLb");
   const parsed = bodyMetricFormSchema.parse({
     id: formData.get("id"),
     measuredOn: formData.get("measuredOn"),
     waistIn: formData.get("waistIn"),
     waistHipIn: formData.get("waistHipIn"),
     waistGutIn: formData.get("waistGutIn"),
+    bodyFatPct: formData.get("bodyFatPct"),
+    leanMassLb: formData.get("leanMassLb"),
     sourceType: formData.get("sourceType"),
     notes: formData.get("notes"),
   });
@@ -28,6 +36,7 @@ function buildBodyMetricPayload(userId: string, formData: FormData) {
     waistIn: parsed.waistIn,
     waistHipIn: parsed.waistHipIn,
     waistGutIn: parsed.waistGutIn,
+    ...(hasScanFields ? toBodyScanFields(parsed) : {}),
     notes: parsed.notes || null,
   };
 }

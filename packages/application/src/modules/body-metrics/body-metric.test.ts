@@ -198,7 +198,75 @@ describe("body metric helpers", () => {
       latestHydrationPct: null,
       latestVisceralFatIndex: null,
       latestSource: "manual",
+      latestScan: {
+        measuredOn: "2026-03-29",
+        bodyFatPct: 23.5,
+        fatFreeMassLb: null,
+      },
     });
+  });
+
+  it("keeps a DEXA entry visible after the scale syncs, without touching weight", () => {
+    const base = metrics[2]!;
+    const withings = (measuredOn: string, weightLb: number, fat: number) => ({
+      ...base,
+      id: `withings-${measuredOn}`,
+      measuredOn,
+      weightLb,
+      bodyFatPct: fat,
+      fatFreeMassLb: 140.6,
+      source: {
+        sourceType: "imported" as const,
+        sourceProvider: "withings",
+        sourceExternalId: `w-${measuredOn}`,
+        importBatchId: null,
+        rawImportEventId: null,
+      },
+    });
+    // Manual DEXA row: body fat and lean mass, no weight.
+    const dexa: BodyMetric = {
+      ...base,
+      id: "dexa-1",
+      measuredOn: "2026-10-24",
+      bodyFatPct: 19.2,
+      fatFreeMassLb: 144.8,
+      fatFreeMassKg: 65.68,
+    };
+
+    const summary = buildBodyMetricSummary([
+      withings("2026-10-25", 178.2, 21.4),
+      dexa,
+      withings("2026-10-24", 177.6, 21.1),
+    ]);
+
+    expect(summary.latestScan).toEqual({
+      measuredOn: "2026-10-24",
+      bodyFatPct: 19.2,
+      fatFreeMassLb: 144.8,
+    });
+    // The scale's own numbers are unchanged by the DEXA row.
+    expect(summary.latestWeightLb).toBe(178.2);
+    expect(summary.latestBodyFatPct).toBe(21.4);
+    expect(summary.latestFatFreeMassLb).toBe(140.6);
+  });
+
+  it("has no scan when only the scale reports body composition", () => {
+    expect(
+      buildBodyMetricSummary([
+        {
+          ...metrics[2]!,
+          weightLb: 178,
+          bodyFatPct: 21,
+          source: {
+            sourceType: "imported",
+            sourceProvider: "withings",
+            sourceExternalId: "w-1",
+            importBatchId: null,
+            rawImportEventId: null,
+          },
+        },
+      ]).latestScan,
+    ).toBeNull();
   });
 
   it("builds sparse trends that skip missing values", () => {

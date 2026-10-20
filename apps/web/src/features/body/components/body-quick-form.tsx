@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 import type { BodyMetric } from "@fitness-app/domain";
 import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
-import { toBodyFormValues } from "../helpers";
+import { canEditBodyScan, toBodyFormValues } from "../helpers";
 import type { BodyActionState, BodyFormValues } from "../types";
 
 type BodyQuickFormProps = {
@@ -23,6 +23,10 @@ function fieldClassName() {
   return "h-11 rounded-2xl border border-ink/10 bg-white px-4 text-sm text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20";
 }
 
+function hasScanValues(values: BodyFormValues) {
+  return values.bodyFatPct !== "" || values.leanMassLb !== "";
+}
+
 function textAreaClassName() {
   return "min-h-24 rounded-2xl border border-ink/10 bg-white px-4 py-3 text-sm text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20";
 }
@@ -38,10 +42,17 @@ export function BodyQuickForm({
     toBodyFormValues(metric),
   );
   const [showAdvanced, setShowAdvanced] = useState(mode === "edit");
+  // DEXA inputs: new and manual rows only (never a Withings row's values).
+  const scanEditable = canEditBodyScan(metric);
+  const [showScan, setShowScan] = useState(() =>
+    hasScanValues(toBodyFormValues(metric)),
+  );
 
   useEffect(() => {
-    setValues(toBodyFormValues(metric));
+    const next = toBodyFormValues(metric);
+    setValues(next);
     setShowAdvanced(mode === "edit");
+    setShowScan(hasScanValues(next));
   }, [metric, mode]);
 
   return (
@@ -119,7 +130,7 @@ export function BodyQuickForm({
           </label>
         </div>
 
-        <div>
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
           <button
             type="button"
             onClick={() => setShowAdvanced((value) => !value)}
@@ -129,7 +140,70 @@ export function BodyQuickForm({
               ? "Hide optional fields"
               : "Add hip/gut waist or notes"}
           </button>
+          {scanEditable ? (
+            <button
+              type="button"
+              onClick={() => setShowScan((value) => !value)}
+              className="text-sm font-semibold text-pine underline-offset-4 hover:underline"
+            >
+              {showScan ? "Hide DEXA results" : "Add DEXA scan results"}
+            </button>
+          ) : null}
         </div>
+
+        {scanEditable && showScan ? (
+          <div className="rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4">
+            <p className="text-sm font-semibold text-ink">DEXA scan</p>
+            <p className="mt-1 text-xs text-ink/60">
+              From the report&apos;s total row. Weight stays with Withings.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-medium text-ink">
+                Body fat (%)
+                <input
+                  className={fieldClassName()}
+                  name="bodyFatPct"
+                  inputMode="decimal"
+                  placeholder="18.5"
+                  value={values.bodyFatPct}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      bodyFatPct: event.target.value,
+                    }))
+                  }
+                />
+                {state.fieldErrors?.bodyFatPct ? (
+                  <p className="text-xs text-ember">
+                    {state.fieldErrors.bodyFatPct}
+                  </p>
+                ) : null}
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-ink">
+                Lean mass (lb)
+                <input
+                  className={fieldClassName()}
+                  name="leanMassLb"
+                  inputMode="decimal"
+                  placeholder="145.0"
+                  value={values.leanMassLb}
+                  onChange={(event) =>
+                    setValues((current) => ({
+                      ...current,
+                      leanMassLb: event.target.value,
+                    }))
+                  }
+                />
+                {state.fieldErrors?.leanMassLb ? (
+                  <p className="text-xs text-ember">
+                    {state.fieldErrors.leanMassLb}
+                  </p>
+                ) : null}
+              </label>
+            </div>
+          </div>
+        ) : null}
 
         {showAdvanced ? (
           <div className="grid gap-4 rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4 md:grid-cols-2">

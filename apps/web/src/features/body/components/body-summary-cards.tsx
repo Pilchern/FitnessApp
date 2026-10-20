@@ -4,6 +4,7 @@ import type {
 } from "@fitness-app/application";
 import { SummaryStatCard } from "@/components/shared/summary-stat-card";
 import {
+  formatBodyScanHint,
   formatBodyValue,
   formatChange,
   formatWeeklyWeightHint,
@@ -36,6 +37,13 @@ export function BodySummaryCards({
           hint={formatWeeklyWeightHint(weeklyWeight)}
           tone="accent"
         />
+        {summary.latestScan ? (
+          <SummaryStatCard
+            label="DEXA body fat"
+            value={formatBodyValue(summary.latestScan.bodyFatPct, "%")}
+            hint={formatBodyScanHint(summary.latestScan)}
+          />
+        ) : null}
         {summary.latestWaistIn != null ? (
           <SummaryStatCard
             label="Waist"

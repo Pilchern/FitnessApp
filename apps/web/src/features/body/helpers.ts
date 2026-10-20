@@ -1,4 +1,7 @@
-import type { WeeklyWeightTrend } from "@fitness-app/application";
+import type {
+  BodyScanReading,
+  WeeklyWeightTrend,
+} from "@fitness-app/application";
 import type { BodyMetric } from "@fitness-app/domain";
 import type { BodyFormValues } from "./types";
 
@@ -14,6 +17,35 @@ function numberToInput(value: number | null) {
   return value == null ? "" : `${value}`;
 }
 
+const KG_TO_LB = 2.2046226218;
+
+/**
+ * Maps the form's DEXA inputs onto body_metrics columns. Lean mass goes to
+ * fat-free mass in both units (the Withings import fills both too); kg is
+ * rounded to 2 decimals like the import. Weight is never part of it.
+ */
+export function toBodyScanFields(input: {
+  bodyFatPct: number | null;
+  leanMassLb: number | null;
+}) {
+  return {
+    bodyFatPct: input.bodyFatPct,
+    fatFreeMassLb: input.leanMassLb,
+    fatFreeMassKg:
+      input.leanMassLb == null
+        ? null
+        : Number((input.leanMassLb / KG_TO_LB).toFixed(2)),
+  };
+}
+
+/**
+ * The DEXA inputs are only for hand-entered rows. Editing a Withings row must
+ * not show (or resubmit) the scale's own body fat and fat-free mass.
+ */
+export function canEditBodyScan(metric: BodyMetric | null) {
+  return metric == null || metric.source.sourceType === "manual";
+}
+
 export function toBodyFormValues(metric: BodyMetric | null): BodyFormValues {
   if (!metric) {
     return {
@@ -21,17 +53,22 @@ export function toBodyFormValues(metric: BodyMetric | null): BodyFormValues {
       waistIn: "",
       waistHipIn: "",
       waistGutIn: "",
+      bodyFatPct: "",
+      leanMassLb: "",
       sourceType: "manual",
       notes: "",
     };
   }
 
+  const scanEditable = canEditBodyScan(metric);
   return {
     id: metric.id,
     measuredOn: metric.measuredOn,
     waistIn: numberToInput(metric.waistIn),
     waistHipIn: numberToInput(metric.waistHipIn),
     waistGutIn: numberToInput(metric.waistGutIn),
+    bodyFatPct: scanEditable ? numberToInput(metric.bodyFatPct) : "",
+    leanMassLb: scanEditable ? numberToInput(metric.fatFreeMassLb) : "",
     sourceType: "manual",
     notes: metric.notes ?? "",
   };
@@ -65,6 +102,14 @@ export function formatChange(value: number | null, unit: string) {
   const prefix = value > 0 ? "+" : "";
   const arrow = value > 0 ? " ↑" : value < 0 ? " ↓" : "";
   return `${prefix}${value.toFixed(1)} ${unit}${arrow} vs first logged`;
+}
+
+/** Scan date, plus lean mass when the scan entry has it. */
+export function formatBodyScanHint(scan: BodyScanReading) {
+  const date = formatBodyDate(scan.measuredOn);
+  return scan.fatFreeMassLb == null
+    ? date
+    : `${date} · lean ${formatBodyValue(scan.fatFreeMassLb, "lb")}`;
 }
 
 /** Same basis as the dashboard: 7-day average and its change vs last week. */
