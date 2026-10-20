@@ -11,10 +11,22 @@
 | Date | PR | Item | Notes |
 |---|---|---|---|
 | 2026-10-20 | #88 | B-03 DEXA entry on /body, scale trend Withings-only | Merged same day on Nick's go-ahead, ahead of the 10/24 scan. |
+| 2026-10-20 | #89 | B-15 journal code removed (TD-042) | Table kept. |
+| 2026-10-20 | #90 | B-11 security advisor fixes | Migration applied live 16:18 UTC. |
+| 2026-10-20 | #91 | B-06/07/16 phone UX: 44px targets, rest beep + wake lock, home-screen icon | |
+| 2026-10-20 | #94 | B-10 lifts linked to program sessions | Migration applied live; 1 of 4 lifts backfilled. |
+| 2026-10-20 | #93 | B-05 Monday crons never ran (root vercel.json ignored) + heartbeat | First real run Mon 10-26. |
+| 2026-10-20 | #96 | B-01/B-19 program v2.2 gates (landing prep, interval rides) | Migration applied live before merge; check passed. |
+| 2026-10-20 | #92 | B-04 dashboard read-only insights, after() refresh, AI timeout/backoff | |
 | 2026-10-20 | #87 | B-02 AI coaching context matches program v2 | Merged same day. The context now says no intervals until cleared, pending N-002. |
 
 ## Rejected / dropped
 (none yet)
+
+## Run 2 notes
+- Nick: "go ahead with all of that", then "finish up, merge and close out". Every approved item shipped the same day.
+- Builders exceeded scope when files overlapped (#89 touched the cron route and docs). Future briefs should name the off-limits files explicitly. That worked for the rest.
+- Every branch needed at least one review fix round; reviews caught real bugs (stale links, double counts, fake DEXA dip, unsafe AI wording). Keep the fresh-reviewer rule.
 
 ## Do not propose
 - Calorie logger. (plan §15.7)

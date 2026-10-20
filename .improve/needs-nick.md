@@ -16,6 +16,14 @@ The plan doc says the surgeon visit is the week of 10/26. The program seed's wee
 Anyone with the URL can see the app. RLS still protects the data from the anon key, but the server renders your data for any visitor. Options: (a) keep it as is, (b) Vercel deployment protection (Hobby: preview-only), (c) a single shared-password gate in middleware.
 **Decision:** a / b / c.
 
+### N-008 (2026-10-20) Program v2.3 safety fixes before 11/30
+Review of v2.2 found week 14+ items that need a seed change (B-25): an ungated Suitcase Carry, a two-leg Broad Jump shown as a fallback for single-leg jumps, a Deceleration Drill unlocked by the walk-jog gate, and barbell fallbacks shown while the barbell gate is closed.
+**Decision:** OK to build and apply v2.3 next run? (PM rec: yes)
+
+### N-009 (2026-10-20) Supabase: leaked-password protection and leftover seed_staging schema
+(a) Leaked-password protection: Auth → Sign In / Providers → Email → "Prevent use of leaked passwords" (Pro plan; no effect since there is no password sign-in). (b) `drop schema seed_staging cascade;` clears the last search_path warning (the connector won't run DROP). Both optional.
+**Decision:** do either, or ignore.
+
 ## Answered
 
 ### N-001 (2026-10-20) The improvement-cycle prompt is truncated
