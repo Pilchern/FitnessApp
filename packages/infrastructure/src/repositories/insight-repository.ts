@@ -1,10 +1,20 @@
-import type {
-  InsightRepository,
-  PersistedInsight,
-  UpsertInsightInput,
+import {
+  INSIGHT_RUN_STATE_DATE,
+  INSIGHT_RUN_STATE_TYPE,
+  type InsightRepository,
+  type InsightRunState,
+  type PersistedInsight,
+  type UpsertInsightInput,
 } from "@fitness-app/application";
 import { z } from "zod";
 import { type AppSupabaseClient, throwOnError } from "./shared";
+
+const runStateSchema = z.object({
+  lastRunAt: z.string().nullable().default(null),
+  lastAiAttemptAt: z.string().nullable().default(null),
+  lastAiOutcome: z.enum(["succeeded", "failed"]).nullable().default(null),
+  consecutiveAiFailures: z.number().int().min(0).default(0),
+});
 
 const insightRowSchema = z.object({
   id: z.string().uuid(),
@@ -211,6 +221,48 @@ export class SupabaseInsightRepository implements InsightRepository {
       .eq("source_kind", "rule");
 
     throwOnError(response.error, "Retire rule insights");
+  }
+
+  async getRunState(userId: string): Promise<InsightRunState | null> {
+    const response = await this.client
+      .from("insights")
+      .select("evidence")
+      .eq("user_id", userId)
+      .eq("insight_type", INSIGHT_RUN_STATE_TYPE)
+      .eq("insight_date", INSIGHT_RUN_STATE_DATE)
+      .maybeSingle();
+
+    throwOnError(response.error, "Load insight run state");
+
+    if (!response.data) {
+      return null;
+    }
+    const parsed = runStateSchema.safeParse(response.data.evidence);
+    return parsed.success ? parsed.data : null;
+  }
+
+  /**
+   * Run state lives in one `insights` row per user (fixed sentinel
+   * insight_date) so no migration is needed. It is written as archived
+   * (deleted_at null, like a system retire), so listActive, the dashboard,
+   * /insights and the export never see it.
+   */
+  async saveRunState(userId: string, state: InsightRunState): Promise<void> {
+    const response = await this.client.from("insights").upsert(
+      {
+        user_id: userId,
+        insight_type: INSIGHT_RUN_STATE_TYPE,
+        insight_date: INSIGHT_RUN_STATE_DATE,
+        status: "archived",
+        title: "Insight generation state",
+        body: "",
+        evidence: state,
+        source_kind: "rule",
+      },
+      { onConflict: "user_id,insight_type,insight_date" },
+    );
+
+    throwOnError(response.error, "Save insight run state");
   }
 
   async listActive(userId: string): Promise<PersistedInsight[]> {

@@ -26,7 +26,11 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
-import { getInsightsData } from "@/features/insights/server";
+import { after } from "next/server";
+import {
+  getActiveInsights,
+  refreshInsightsIfDue,
+} from "@/features/insights/server";
 import {
   addDaysIsoDate,
   buildWeekPlan,
@@ -100,7 +104,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       startDate: daysAgo(90),
     }),
     weeklyReviewService.listRecent(user.id, 1),
-    getInsightsData(),
+    getActiveInsights(),
     nutritionService.listByDateRange({
       userId: user.id,
       startDate: daysAgo(6),
@@ -131,6 +135,15 @@ export async function getDashboardData(): Promise<DashboardData> {
       endDate: today,
     }),
   ]);
+
+  // Rendering stays read-only. Once the response is sent, regenerate if the
+  // last run is an hour or more old, so the next load shows fresh insights
+  // even when /insights is never opened.
+  after(() =>
+    refreshInsightsIfDue(user.id).catch((error) =>
+      console.error("[dashboard] insight refresh", error),
+    ),
+  );
 
   const cardioThisWeek = settledOrNull(cardioThisWeekResult) ?? [];
   const recovery = settledOrNull(recoveryResult) ?? [];

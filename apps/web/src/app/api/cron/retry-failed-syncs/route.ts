@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { mapWithConcurrency, safeBearerEqual } from "@/lib/server/cron-auth";
 import {
   MAX_RETRY_ATTEMPTS,
+  RETRYABLE_JOB_TYPES,
   RETRY_SPAWNED_TRIGGER_TYPE,
   computeRetryBackoff,
   isEligibleForDeadLetter,
   isQueueEntry,
   resolveRetryTarget,
 } from "@fitness-app/jobs";
+import { applySweepFilters } from "./sweep-query";
 import { createWithingsSyncOrchestrator } from "@/lib/server/integrations";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { getServerEnv } from "@/lib/server/env";
@@ -43,8 +45,9 @@ type SweepOutcome = "retried" | "dead_lettered" | "still_failed";
  *
  * Eligibility: status = 'failed', trigger_type is not 'retry' (rows the
  * orchestrator writes for a retry attempt are records, not queue entries; see
- * isQueueEntry), attempt_count < MAX_RETRY_ATTEMPTS, and scheduled_for is
- * null or in the past (immediately eligible / backoff has elapsed).
+ * isQueueEntry), attempt_count < MAX_RETRY_ATTEMPTS, scheduled_for is
+ * null or in the past (immediately eligible / backoff has elapsed), user_id
+ * set, and job_type in RETRYABLE_JOB_TYPES (see sweep-query.ts).
  *
  * Backoff: scheduled_for = now + (nextAttemptCount^2) * 5 minutes (see
  * packages/jobs/src/orchestration/retry-sweep.ts for the exact formula and
@@ -84,15 +87,18 @@ export async function GET(request: NextRequest) {
   const client = createSupabaseAdminClient();
   const nowIso = new Date().toISOString();
 
-  const { data, error } = await client
-    .from("sync_job_runs")
-    .select("id, user_id, job_type, trigger_type, attempt_count, payload")
-    .eq("status", "failed")
-    .neq("trigger_type", RETRY_SPAWNED_TRIGGER_TYPE)
-    .lt("attempt_count", MAX_RETRY_ATTEMPTS)
-    .or(`scheduled_for.is.null,scheduled_for.lte.${nowIso}`)
-    .order("created_at", { ascending: true })
-    .limit(SWEEP_BATCH_LIMIT);
+  const { data, error } = await applySweepFilters(
+    client
+      .from("sync_job_runs")
+      .select("id, user_id, job_type, trigger_type, attempt_count, payload"),
+    {
+      nowIso,
+      retrySpawnedTriggerType: RETRY_SPAWNED_TRIGGER_TYPE,
+      maxAttempts: MAX_RETRY_ATTEMPTS,
+      retryableJobTypes: RETRYABLE_JOB_TYPES,
+      limit: SWEEP_BATCH_LIMIT,
+    },
+  );
 
   if (error) {
     console.error(

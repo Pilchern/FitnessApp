@@ -5,7 +5,15 @@ export type AiInsightConfig = {
   apiKey: string;
   model: string;
   enabled: boolean;
+  /** Abort the API request after this long. Defaults to AI_INSIGHT_TIMEOUT_MS. */
+  timeoutMs?: number;
 };
+
+/**
+ * Upper bound on one Anthropic call. Without it a hung request held the page
+ * render open until the platform killed the function.
+ */
+export const AI_INSIGHT_TIMEOUT_MS = 8_000;
 
 export type GeneratedInsight = {
   insightType: string;
@@ -20,6 +28,15 @@ const generatedInsightSchema = z.object({
   message: z.string(),
   severity: z.enum(["info", "warning", "positive"]),
 });
+
+/**
+ * "failed" covers every path that should back off before the next attempt:
+ * timeout, network error, non-2xx, and an unusable response.
+ */
+export type AiInsightResult =
+  | { status: "ok"; insights: GeneratedInsight[] }
+  | { status: "disabled" }
+  | { status: "failed"; reason: string };
 
 const responseSchema = z.array(generatedInsightSchema).min(1).max(10);
 
@@ -115,11 +132,19 @@ function buildContext(input: InsightEngineInput): string {
 export class AiInsightService {
   constructor(private readonly config: AiInsightConfig) {}
 
+  /** Insights only, with every failure flattened to []. */
   async generateInsights(
     input: InsightEngineInput,
   ): Promise<GeneratedInsight[]> {
+    const result = await this.generate(input);
+    return result.status === "ok" ? result.insights : [];
+  }
+
+  async generate(
+    input: InsightEngineInput & { recentJournalEntries?: string[] },
+  ): Promise<AiInsightResult> {
     if (!this.config.enabled) {
-      return [];
+      return { status: "disabled" };
     }
 
     const context = buildContext(input);
@@ -145,9 +170,11 @@ Rules:
 - If the data suggests a possible injury, illness, overtraining, or a pattern a doctor or physical therapist should weigh in on, say so plainly and recommend they consult one — don't try to resolve it yourself
 - Do not use guilt, shame, or alarmist language (e.g. "you're falling behind," "this is dangerous") — state what the data shows and what to consider next, plainly and without pressure`;
 
+    const timeoutMs = this.config.timeoutMs ?? AI_INSIGHT_TIMEOUT_MS;
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
+        signal: AbortSignal.timeout(timeoutMs),
         headers: {
           "x-api-key": this.config.apiKey,
           "anthropic-version": "2023-06-01",
@@ -164,7 +191,7 @@ Rules:
         console.error(
           `[AiInsightService] API error ${response.status}: ${await response.text()}`,
         );
-        return [];
+        return { status: "failed", reason: `http_${response.status}` };
       }
 
       const data = (await response.json()) as {
@@ -173,7 +200,7 @@ Rules:
       const textBlock = data.content.find((block) => block.type === "text");
       if (!textBlock?.text) {
         console.error("[AiInsightService] No text block in response");
-        return [];
+        return { status: "failed", reason: "no_text_block" };
       }
 
       const parsed = responseSchema.safeParse(
@@ -184,18 +211,27 @@ Rules:
           "[AiInsightService] Invalid response shape:",
           parsed.error.message,
         );
-        return [];
+        return { status: "failed", reason: "invalid_shape" };
       }
 
-      return parsed.data.map((item) => ({
-        insightType: item.insightType,
-        title: item.title,
-        body: item.message,
-        severity: item.severity,
-      }));
+      return {
+        status: "ok",
+        insights: parsed.data.map((item) => ({
+          insightType: item.insightType,
+          title: item.title,
+          body: item.message,
+          severity: item.severity,
+        })),
+      };
     } catch (error) {
+      if (error instanceof Error && error.name === "TimeoutError") {
+        console.error(
+          `[AiInsightService] Request timed out after ${timeoutMs}ms`,
+        );
+        return { status: "failed", reason: "timeout" };
+      }
       console.error("[AiInsightService] Failed to generate insights:", error);
-      return [];
+      return { status: "failed", reason: "error" };
     }
   }
 }

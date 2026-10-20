@@ -129,6 +129,7 @@ const fridayExercises = [
     primaryMuscle: null,
     readinessRequirement: "normal",
     loadKind: "bodyweight",
+    gateKey: "plyo",
     setsMin: 3,
     setsMax: 3,
     repsMin: 5,
@@ -206,6 +207,7 @@ function weekSessions(blockId: string, thursday: "zone2" | "climb_intervals") {
       minutesMin: 45,
       minutesMax: 45,
       structure: thursday === "climb_intervals" ? "5 x 3 min seated" : null,
+      gateKey: thursday === "climb_intervals" ? "intervals" : null,
     }),
   ];
 }
@@ -266,7 +268,12 @@ export function testProgram(): TrainingProgram {
       ...weekSessions("b1", "climb_intervals"),
       ...weekSessions("b2", "climb_intervals"),
     ],
-    gates: [gate("barbell_squat"), gate("plyo"), gate("jog")],
+    gates: [
+      gate("barbell_squat"),
+      gate("plyo"),
+      gate("jog"),
+      gate("intervals"),
+    ],
   };
 }
 

@@ -30,8 +30,8 @@ Lifts Mon/Wed/Fri (legs and upper in one session, supersets). Accessory block pl
 | Mon | Office | Legs + Push | 43 / 49 |
 | Tue | Office | Accessory circuit, then Peloton Zone 2 30-45 min | 10-12 + ride |
 | Wed | WFH, PT 7:40 | Single-leg + Pull | 46 / 47 |
-| Thu | Office | Accessory circuit, then Peloton (Zone 2 in wk 9; climb intervals 45 min from wk 10) | 10-12 + ride |
-| Fri | WFH, PT 7:40 | Quad + Arms (landing prep from wk 10, normal knee check only) | 46 / 56 |
+| Thu | Office | Accessory circuit, then Peloton (Zone 2 in wk 9; from wk 10 climb intervals 45 min once the `intervals` gate is cleared, seated Zone 2 45 min until then) | 10-12 + ride |
+| Fri | WFH, PT 7:40 | Quad + Arms (landing prep from wk 10 once the `plyo_double` gate is cleared, normal knee check only) | 46 / 56 |
 | Sat | Off | Peloton Zone 2 (long) 45-60 min | ride |
 | Sun | Off | Test day + walk | - |
 
@@ -59,7 +59,7 @@ Wed Single-leg + Pull:
 - C1 Slider Hamstring Curl 3 x 10-12 / C2 Face Pull 3 x 15-20 / C3 Dumbbell Curl 2 x 12-15
 
 Fri Quad + Arms:
-- Landing prep from week 10, normal knee check only: Squat to Calf Raise 2 x 10, Snap-Down to Stick 3 x 5, Double-Leg Pogo (low) 2 x 10
+- Landing prep from week 10, behind the `plyo_double` gate (v2.2, 2026-10-20: PT 10/16 "still unable: jumping") and a normal knee check: Squat to Calf Raise 2 x 10, Snap-Down to Stick 3 x 5, Double-Leg Pogo (low) 2 x 10
 - A1 Spanish Squat 3 x 45 s / A2 Chin-Up 3 x 3-5
 - Isometric Knee Extension (90°) 5 x 5 s per leg, peak force
 - C1 Heel-Elevated Goblet Squat (to 90°) 3 x 12 / C2 Close-Grip Bench Press 3 x 8-10
@@ -91,7 +91,7 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
   - One change per ride (resistance or length, not both). Next morning: swelling and pain unchanged, keep or progress; swelling up or pain above 2/10, roll back to the last good level for 2-3 rides.
   - Ride length about +10% a week at most: 40 + 40 + 60 = 140 min now (templates), then 45 + 45 + 60, toward 150+ min of Zone 2 (Attia about 3 hr/wk; Huberman 150-200).
   - Hold, do not progress, when resting HR is up 3+ bpm, readiness is red, or Zone 2 heart rate creeps up at the same watts across a week.
-- VO2 work (4x4 at 184-208 W, recovery about 87 W) stays parked until the surgeon visit AND pain is 2/10 or less AND no swelling after Z2. Pre-injury this was a Saturday session.
+- VO2 work (4x4 at 184-208 W, recovery about 87 W) stays parked until the surgeon visit AND pain is 2/10 or less AND no swelling after Z2. Pre-injury this was a Saturday session. In the app (v2.2, 2026-10-20) every interval ride (climb, 4 x 4, VO2) waits on the `intervals` gate ("Bike intervals (climb, threshold, VO2)", earliest 2026-10-26) and runs as seated Zone 2 for the same minutes until it is cleared in Settings.
 - Target structure [stated 2026-10-12]: three rides Tue/Thu/Sat, two Zone 2 and one VO2 4x4. Until the VO2 gate above is met, all three stay Zone 2 (the current templates). At the switch the VO2 ride goes on Tuesday [assumed: first ride of the week, the 4x4 is the shortest session on an office day, and Saturday stays the long Zone 2]. Two Z2 rides carry the weekly Z2 total, so the 150 min target means about 60 + 90 min, or accept less Z2 for the VO2 work.
 - No running, jumping or plyometrics. The patellar tendon is the weak link in a BTB graft; plyo needs a clinician sign-off.
 - Return-to-run criteria (all required): full extension; flexion within 5% of the other knee; trace effusion at most; pain 2/10 or less; quad strength at least 80% LSI. Villena 2025 markers: single-leg press 1.25x bodyweight, 30 step-and-holds, Y-balance 90% or better. Ask PT to measure quad dynamometry on both legs.
