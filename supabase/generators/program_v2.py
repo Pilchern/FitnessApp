@@ -11,7 +11,7 @@ from pathlib import Path
 
 OUT_MIGRATION = Path(sys.argv[1])
 OUT_CHUNKS = Path(sys.argv[2])
-VERSION = "program v2.1, 2026-10-19"
+VERSION = "program v2.2, 2026-10-20"
 PROGRAM = "ACL return"
 
 # ---------------------------------------------------------------- library cues
@@ -131,7 +131,8 @@ L, U = "legs", "upper"
 PER_LEG, PER_SIDE = "per_leg", "per_side"
 DB, BB, BW, BAND, CUFF = "dumbbell", "barbell", "bodyweight", "band", "cuff"
 LEFT = "Left first."
-LAND = "Landing prep, normal knee check only. Land quiet, knees over toes, hold 2 s."
+LAND = ("Landing prep: waits on the plyo_double gate (PT sign-off), then normal knee check only. "
+        "Land quiet, knees over toes, hold 2 s.")
 PLYO = "Normal knee check only. Quality only: end the set if landings get loud or the knee caves."
 SHOULDER = "Shoulder emphasis (Settings). "
 
@@ -179,10 +180,17 @@ def b1_wed():
 
 
 def landing_prep(fw=10):
+    """v2.2: all three wait on plyo_double (PT 10/16: still unable to jump). The squat to
+    calf raise has no flight, but it is the jump take-off drilled at speed and only exists
+    to lead into the pogo; squats to 90° and calf raises already run ungated, so gating it
+    costs nothing and keeps the landing-prep unit under one sign-off."""
     return [
-        ex(0, "Squat to Calf Raise", L, "plyo", 2, 10, ready="normal", fw=fw, notes=LAND),
-        ex(1, "Snap-Down to Stick", L, "plyo", 3, 5, ready="normal", fw=fw, notes=LAND),
-        ex(2, "Double-Leg Pogo (low)", L, "plyo", 2, 10, ready="normal", fw=fw, notes=LAND),
+        ex(0, "Squat to Calf Raise", L, "plyo", 2, 10, ready="normal", fw=fw, gate="plyo_double",
+           notes=LAND),
+        ex(1, "Snap-Down to Stick", L, "plyo", 3, 5, ready="normal", fw=fw, gate="plyo_double",
+           notes=LAND),
+        ex(2, "Double-Leg Pogo (low)", L, "plyo", 2, 10, ready="normal", fw=fw, gate="plyo_double",
+           notes=LAND),
     ]
 
 
@@ -255,13 +263,13 @@ def b2_wed():
 
 
 def b2_fri():
+    # v2.2: no fallbacks. They were the landing prep (now behind the same gate) and a
+    # low pogo (a jump), so a closed plyo_double greys these out instead.
     return [
-        ex(0, "Double-Leg Pogo", L, "plyo", 3, 15, ready="normal", gate="plyo_double",
-           sub="Squat to Calf Raise", sub_reps=10, notes=PLYO + " Fallback: Block 1 landing prep."),
-        ex(1, "Drop-Squat Landing", L, "plyo", 3, 5, ready="normal", gate="plyo_double",
-           sub="Snap-Down to Stick", notes=PLYO),
+        ex(0, "Double-Leg Pogo", L, "plyo", 3, 15, ready="normal", gate="plyo_double", notes=PLYO),
+        ex(1, "Drop-Squat Landing", L, "plyo", 3, 5, ready="normal", gate="plyo_double", notes=PLYO),
         ex(2, 'Box Jump (12", step down)', L, "plyo", 4, 3, ready="normal", gate="plyo_double",
-           sub="Double-Leg Pogo (low)", sub_reps=10, notes=PLYO),
+           notes=PLYO),
         ex(3, "Single-Leg Hop in Place", L, "plyo", 2, 10, ready="normal", side=PER_LEG,
            gate="plyo_single", notes=PLYO + " " + LEFT),
         ex(10, "Front Squat", L, "main", 3, (6, 8), ss="A1", muscle="quads", load=BB, rir=2,
@@ -533,17 +541,20 @@ GOLF_FULL = ("golf", "Golf: full swing (staged)", None, None, None,
 Z2_TUE = ("peloton", "Peloton Zone 2", "zone2", 30, 45, None, None, False, None)
 Z2_SAT = ("peloton", "Peloton Zone 2 (long)", "zone2", 45, 60, None, None, False, None)
 THU_Z2 = ("peloton", "Peloton Zone 2", "zone2", 30, 45, None, None, False, None)
+# v2.2: every interval ride waits on the intervals gate (plan §5: surgeon visit, pain 2/10
+# or less, no swelling; §1: no standing climbs). Until then the engine runs it as a seated
+# Zone 2 ride of the same length; clearing the gate restores the intervals.
 THU_CLIMB = ("peloton", "Peloton climb intervals", "climb_intervals", 45, 45,
              "10 min warm-up; 5 x 3 min seated, cadence 60–70, RPE 7, 3 min easy between; cool-down.",
-             None, False, None)
+             "intervals", False, None)
 THU_4X4 = ("peloton", "Peloton 4 x 4", "threshold_intervals", 40, 45,
            "10 min warm-up; 4 x 4 min at RPE 8, 3 min easy between; cool-down.",
-           None, False, None)
+           "intervals", False, None)
 THU_VO2 = ("peloton", "Peloton VO2 max", "vo2_intervals", 45, 45,
-           "10 min warm-up; 4 x 4 min at RPE 8–9, 4 min easy between; cool-down.", None, False, None)
+           "10 min warm-up; 4 x 4 min at RPE 8–9, 4 min easy between; cool-down.", "intervals", False, None)
 THU_VO2_ALT = ("peloton", "Peloton VO2 max", "vo2_intervals", 40, 45,
                "Odd post-op weeks: 4 x 4 min at RPE 8–9, 4 min easy between. Even weeks: 8 x 30 s hard / 90 s easy. "
-               "10 min warm-up and cool-down.", None, False, None)
+               "10 min warm-up and cool-down.", "intervals", False, None)
 ACCESSORY = ("accessory", "Accessory circuit (before the ride)", None, 10, 12, None, None, False,
              "One circuit, A1–A4, 2 rounds. Rest after each round.")
 
@@ -640,7 +651,7 @@ BLOCKS = [
              (1, 0): lift("Lower heavy + Push", rts_mon(), MON_NOTE),
              (2, 0): ("accessory", "Injury prevention (15 min)", None, 15, 15, None, None, False,
                       "Permanent. The right ACL is now the higher-risk knee.", prevention()),
-             (2, 1): ("peloton", "Peloton VO2 max", "vo2_intervals", 40, 45, THU_VO2[5], None, False, None),
+             (2, 1): ("peloton", "Peloton VO2 max", "vo2_intervals", 40, 45, THU_VO2[5], "intervals", False, None),
              (3, 0): ("run", "Run", None, 20, 60, "Per the triathlon plan once it starts; weekly run minutes up 10% at most.", "jog", False, None),
              (4, 0): lift("Lower single-leg/power + Pull", rts_thu(), MON_NOTE),
              (5, 0): ("accessory", "Injury prevention (15 min)", None, 15, 15, None, None, False,
@@ -662,7 +673,7 @@ BLOCKS = [
 DELOAD_WEEKS = {13, 18, 27, 32, 37, 38}
 WEEK_NOTES = {
     9: "On-ramp: find loads.",
-    10: "Block 1. Landing prep starts Friday (normal knee check only).",
+    10: "Block 1. Landing prep waits on the two-leg plyo gate; Thursday rides Zone 2 until bike intervals are cleared (Settings).",
     12: "Kazaglis visit 11/10: review the barbell, depth_past_90 and jog gates.",
     13: "Deload + test. Kazaglis 11/10, PT progress note 11/19: review gates. Full test battery Sunday 11/22.",
     18: "Holiday deload. Test Sunday 12/27.",
@@ -681,6 +692,7 @@ GATES = [
     ("ke_full_range", "Knee extension full range (90→0°)", None, None),
     ("nordic", "Nordic curls", None, None),
     ("jog", "Jogging (walk-jog)", "2026-10-26", None),
+    ("intervals", "Bike intervals (climb, threshold, VO2)", "2026-10-26", None),
     ("plyo_double", "Plyometrics, two-leg", "2026-11-09", None),
     ("plyo_single", "Plyometrics, single-leg", "2026-11-09", None),
     ("golf_short", "Golf short game", None, None),
@@ -732,6 +744,9 @@ for b in BLOCKS:
     for key, sess in (b.get("sessions") or {}).items():
         if sess[0] == "walk_jog":
             assert key[0] not in (1, 3, 5)
+        assert sess[6] is None or sess[6] in {k for k, *_ in GATES}, sess[6]
+        if sess[0] == "peloton" and sess[2] != "zone2":
+            assert sess[6] == "intervals", (b["name"], key, sess[1])
         if len(sess) < 10:
             continue
         rows = sess[9]
@@ -994,6 +1009,8 @@ def template_def(day_rows, title):
             continue
         if r["fw"] is not None and r["fw"] > 10:
             continue  # starts after Block 1's first week (RFESS from week 11 noted on the split squat)
+        if r["gate"] and not r["sub"]:
+            continue  # gated with no fallback (landing prep): the program card shows it once cleared
         name = r["sub"] if r["gate"] else r["name"]
         reps = None if r["measure"] != "reps" else (r["srmax"] if r["gate"] and r["srmax"] else r["rmax"])
         bits = []

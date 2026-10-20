@@ -92,7 +92,7 @@ export const DEFAULT_WARM_UP =
 export const DEFAULT_PROGRAM_RULES = [
   "Order: readiness check, warm-up, gait drill, plyos/power, main pairs, accessories.",
   "Supersets: alternate A1 and A2, rest after the pair. Per-leg work: left then right, no rest between.",
-  "Lift days: 55-60 min, at most 4 upper-body movements.",
+  "Lift days: about an hour (43-63 min), at most 4 upper-body movements.",
   "Main lifts never to failure. Accessories may go to RIR 1.",
   "Double progression: every set at the top of the range at the target RIR or better, then +5 lb barbell / next DB / +2.5 lb cuff / +5 s holds. Otherwise repeat.",
   "Per-leg lifts: left first; its reps set the target; the right matches at the same load. Progress off the left only.",

@@ -509,22 +509,67 @@ describe("gates", () => {
 });
 
 describe("day plan", () => {
-  it("has no landing prep in the On-ramp and gates the pogo from week 10", () => {
+  it("has no landing prep in the On-ramp and gates all landing prep from week 10", () => {
     const p = testProgram();
     const onramp = buildDayPlan(p, "2026-10-23", "normal");
     expect(onramp.info.block?.name).toBe("On-ramp");
-    const block1 = buildDayPlan(p, "2026-10-30", "normal");
-    const statuses = Object.fromEntries(
-      block1.sessions[0]!.exercises.map((e) => [e.name, e.status]),
-    );
-    expect(statuses).toMatchObject({
-      "Snap-Down to Stick": "active",
+    const statuses = (program: typeof p) =>
+      Object.fromEntries(
+        buildDayPlan(
+          program,
+          "2026-10-30",
+          "normal",
+        ).sessions[0]!.exercises.map((e) => [e.name, e.status]),
+      );
+    expect(statuses(p)).toMatchObject({
+      "Snap-Down to Stick": "locked",
       "Double-Leg Pogo": "locked",
+    });
+    expect(statuses(withGate(p, "plyo", "2026-10-30"))).toMatchObject({
+      "Snap-Down to Stick": "active",
+      "Double-Leg Pogo": "active",
     });
   });
 
+  it("runs a gated interval ride as seated Zone 2, same length, until cleared", () => {
+    const closed = buildDayPlan(testProgram(), "2026-10-29", "normal")
+      .sessions[0]!;
+    expect(closed).toMatchObject({
+      name: "Peloton Zone 2",
+      visible: true,
+      hiddenReason: null,
+    });
+    expect(closed.ride).toMatchObject({
+      kind: "zone2",
+      minutesMin: 45,
+      minutesMax: 45,
+      structure: null,
+    });
+    expect(closed.ride?.note).toContain('"intervals" is cleared');
+
+    const open = buildDayPlan(
+      withGate(testProgram(), "intervals", "2026-10-29"),
+      "2026-10-29",
+      "normal",
+    ).sessions[0]!;
+    expect(open.name).toBe(open.session.name);
+    expect(open.ride).toMatchObject({
+      kind: "climb_intervals",
+      minutesMax: 45,
+      structure: "5 x 3 min seated",
+      note: null,
+    });
+  });
+
+  it("still hides gated sessions that are not rides", () => {
+    const walkJog = buildDayPlan(testProgram(), "2026-10-27", "normal")
+      .sessions[0]!;
+    expect(walkJog.session.sessionType).toBe("walk_jog");
+    expect(walkJog.visible).toBe(false);
+  });
+
   it("swaps the leg block on a knee day off and turns climbs into Zone 2", () => {
-    const p = testProgram();
+    const p = withGate(testProgram(), "intervals", "2026-10-26");
     expect(
       buildDayPlan(p, "2026-10-26", "knee_off").sessions[0]!.legBlockReplaced,
     ).toBe(true);
