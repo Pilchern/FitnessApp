@@ -18,6 +18,7 @@
 | 2026-10-20 | #93 | B-05 Monday crons never ran (root vercel.json ignored) + heartbeat | First real run Mon 10-26. |
 | 2026-10-20 | #96 | B-01/B-19 program v2.2 gates (landing prep, interval rides) | Migration applied live before merge; check passed. |
 | 2026-10-20 | #92 | B-04 dashboard read-only insights, after() refresh, AI timeout/backoff | |
+| 2026-10-20 | #95 | B-08 one schedule/Z2 source (TD-040) | Deployed. baseline_schedule DROP not applied: the Supabase connector holds DROP for confirmation (see N-010). |
 | 2026-10-20 | #87 | B-02 AI coaching context matches program v2 | Merged same day. The context now says no intervals until cleared, pending N-002. |
 
 ## Rejected / dropped

@@ -24,6 +24,10 @@ Review of v2.2 found week 14+ items that need a seed change (B-25): an ungated S
 (a) Leaked-password protection: Auth → Sign In / Providers → Email → "Prevent use of leaked passwords" (Pro plan; no effect since there is no password sign-in). (b) `drop schema seed_staging cascade;` clears the last search_path warning (the connector won't run DROP). Both optional.
 **Decision:** do either, or ignore.
 
+### N-010 (2026-10-20) Drop profiles.baseline_schedule by hand
+The connector won't run DROP without manual confirmation. The column is now unused (#95 deployed), so leaving it is harmless.
+**Action:** in the Supabase SQL editor, run `alter table public.profiles drop column if exists baseline_schedule;`. It's optional and can wait.
+
 ## Answered
 
 ### N-001 (2026-10-20) The improvement-cycle prompt is truncated
