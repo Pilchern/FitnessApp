@@ -10,6 +10,7 @@ import {
   type LoggerPlanExercise,
   type RestMeta,
 } from "@fitness-app/application";
+import { useBeep, useScreenWakeLock } from "@/lib/client/timer-cues";
 import {
   createEmptyStrengthSet,
   draftWasSaved,
@@ -35,6 +36,7 @@ import {
   type LastExercisePerformance,
   type StrengthDraft,
 } from "../helpers";
+import { restEndDue, restRunning, restSecondsLeft } from "../rest-timer";
 import type {
   StrengthActionState,
   StrengthFormValues,
@@ -208,7 +210,9 @@ export function StrengthQuickForm({
   /** What comes next: "Right leg", "Next: A2 Pull-Up", "Then A1 Squat". */
   const [nextCue, setNextCue] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const vibrated = useRef(false);
+  /** The "rest over" beep and buzz has fired for the current rest. */
+  const restCued = useRef(false);
+  const { unlock: unlockAudio, beep } = useBeep();
   const draftChecked = useRef(false);
   const [restoredAt, setRestoredAt] = useState<number | null>(null);
   // A plan requested before this form mounted (e.g. before Edit -> Cancel)
@@ -337,22 +341,27 @@ export function StrengthQuickForm({
     return () => window.clearInterval(id);
   }, [restEndsAt]);
 
-  const restRemaining =
-    restEndsAt == null ? 0 : Math.max(0, Math.ceil((restEndsAt - now) / 1000));
+  const restRemaining = restSecondsLeft(restEndsAt, now);
+
+  // Keep the screen on through the rest; let it sleep once rest is over.
+  useScreenWakeLock(restRunning(restEndsAt, now));
 
   useEffect(() => {
-    if (restEndsAt != null && restRemaining === 0 && !vibrated.current) {
-      vibrated.current = true;
-      try {
-        navigator.vibrate?.([200, 100, 200]);
-      } catch {
-        // Vibration is a nicety; ignore unsupported browsers.
-      }
+    if (!restEndDue(restEndsAt, now, restCued.current)) return;
+    restCued.current = true;
+    beep(2);
+    try {
+      // Android buzz; iOS Safari ignores it, hence the beep.
+      navigator.vibrate?.([200, 100, 200]);
+    } catch {
+      // Vibration is a nicety; ignore unsupported browsers.
     }
-  }, [restEndsAt, restRemaining]);
+  }, [restEndsAt, now, beep]);
 
+  /** Called from a tap, which is when iOS lets the beep's audio start. */
   function startRest(seconds: number = restSeconds) {
-    vibrated.current = false;
+    unlockAudio();
+    restCued.current = false;
     setNow(Date.now());
     setRestEndsAt(Date.now() + seconds * 1000);
   }
@@ -1033,9 +1042,7 @@ export function StrengthQuickForm({
                       type="button"
                       onClick={() => {
                         setRestSeconds(option);
-                        vibrated.current = false;
-                        setNow(Date.now());
-                        setRestEndsAt(Date.now() + option * 1000);
+                        startRest(option);
                       }}
                       className={`h-9 rounded-full px-2.5 text-xs font-semibold ${
                         restSeconds === option
