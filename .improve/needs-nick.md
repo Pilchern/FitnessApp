@@ -4,6 +4,10 @@ Answer inline under each item (e.g. "Nick: yes"). The PM reads this at the start
 
 ## Open
 
+### N-000 (2026-10-20) Merge PR #88 before Sat 10/24
+The DEXA entry only helps if it's live before the scan. #87 (AI coaching text) has no deadline.
+**Decision:** merge #88 (and #87) or say what to change.
+
 ### N-002 (2026-10-20) Pogo hops start Fri 10/30 with no gate. Decide by Wed 10/28.
 Block 1 "landing prep" (squat to calf raise, snap-down to stick, low double-leg pogo) is ungated from program week 10 (`supabase/generators/program_v2.py:181-186`). Every later pogo/jump is behind `plyo_double`, which can't clear before 11/09. Your 10/16 PT note says "still unable: jumping". Thursday climb intervals also start in week 10, ungated (`:536`); threshold 4x4 from week 14, VO2 from week 19.
 **Decision:** (a) put landing prep behind `plyo_double` and add a `vo2` gate to the interval rides (v2.2 seed, applied to live with your OK), or (b) leave it and skip by hand unless the surgeon clears it. PM recommends (a).

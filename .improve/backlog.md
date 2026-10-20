@@ -5,8 +5,8 @@ Score = Value x Confidence x Taste / Effort. Value, Confidence, Taste 1-5; Effor
 | ID | Item | V | C | T | E | Score | Nick | Status |
 |---|---|---|---|---|---|---|---|---|
 | B-01 | Gate Block 1 landing prep (pogo, snap-down) behind `plyo_double`; decide on Thu climb/threshold/VO2 rides; fix "Kazaglis 11/10" note. v2.2 seed. | 5 | 5 | 5 | 2 | 62.5 | y (N-002, N-003) | blocked on Nick, deadline Fri 10/30 |
-| B-02 | Stale AI plan context and insight copy ("lifts upper body only", "no lower-body loading") | 4 | 5 | 5 | 1 | 100 | n | building (run 1) |
-| B-03 | DEXA body fat % and lean mass on the manual body form, no migration | 4 | 4 | 5 | 1 | 80 | n | building (run 1), deadline Sat 10/24 |
+| B-02 | Stale AI plan context and insight copy ("lifts upper body only", "no lower-body loading") | 4 | 5 | 5 | 1 | 100 | n | kept, PR #87 |
+| B-03 | DEXA body fat % and lean mass on the manual body form, no migration | 4 | 4 | 5 | 1 | 80 | n | kept, PR #88 (merge before Sat 10/24) |
 | B-04 | Dashboard stops generating/persisting insights on every load; timeout on the Claude call | 3 | 4 | 4 | 2 | 24 | n | ready |
 | B-05 | Verify Monday Vercel crons (auto-finalize, insights) and add a heartbeat row | 3 | 3 | 4 | 1 | 36 | n | ready (investigation first) |
 | B-06 | Program Today card and logger stepper buttons up to 44px | 2 | 5 | 5 | 1 | 50 | n | ready |
@@ -21,6 +21,8 @@ Score = Value x Confidence x Taste / Effort. Value, Confidence, Taste 1-5; Effor
 | B-15 | Delete dead journal code (TD-042) | 1 | 5 | 4 | 1 | 20 | n | ready |
 | B-16 | Web app manifest and home-screen icon | 1 | 5 | 3 | 1 | 15 | n | ready |
 | B-17 | Nutrition: one-tap fuel entry from Today, or cut it | ? | 2 | 4 | 2 | - | - | revisit 11/03; fuel entry is 1 day old, data immature |
+| B-19 | Lift-day length text "55-60 min" vs v2.1 ~43-63 min (program_v2_engine.sql:65, program-settings.ts:95) | 1 | 5 | 4 | 1 | 20 | y (seed) | fold into B-01 seed |
+| B-20 | Regional DEXA (per-leg) + thigh tape fields + scan-type marker | 2 | 3 | 4 | 2 | 12 | y (migration) | after 10/24 if Nick wants it |
 | B-18 | TD-043 atomic set save (RPC) | 2 | 4 | 3 | 2 | 12 | y (migration) | parked |
 
 ## Evidence index
