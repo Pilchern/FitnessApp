@@ -4,18 +4,19 @@ import {
   addDays,
   buildDayPlan,
   buildLiftLoggerPlan,
+  countableSession,
   exerciseProgress,
+  isScheduledSession,
+  plannedZone2Minutes,
   getZonedDate,
   isGateCleared,
   kneeOffStreak,
-  kneeReadinessStatus,
   lastSetsByExercise,
   legExerciseIndex,
   programMilestones,
-  programSettingsFromRows,
   programWeekDates,
   programWeekInfo,
-  applySettingGates,
+  resolveProgram,
   isSettingGate,
   nextBlockStart,
   estimatePlannedSession,
@@ -106,6 +107,7 @@ function sessionViews(
     const outcome = outcomes.find(
       (o) => o.programSessionId === s.session.id && o.date === plan.date,
     );
+    const countable = countableSession(s);
     return {
       id: s.session.id,
       type: s.session.sessionType,
@@ -114,6 +116,8 @@ function sessionViews(
       hiddenReason: s.hiddenReason,
       legBlockReplaced: s.legBlockReplaced,
       ride: s.ride,
+      scheduled: isScheduledSession(countable),
+      zone2Minutes: plannedZone2Minutes(countable),
       structure: s.ride ? null : s.session.structure,
       isOptional: s.session.isOptional,
       notes: s.session.notes,
@@ -242,13 +246,11 @@ export async function loadProgramContext(
   const logged = lifts
     .filter((l) => l.sets.length > 0)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const settings = programSettingsFromRows(settingRows);
-  const program = {
-    ...loaded,
-    gates: applySettingGates(loaded.gates, settings),
-  };
-  const statusOn = (date: string) =>
-    kneeReadinessStatus(checks.find((c) => c.date === date) ?? null, settings);
+  const { program, settings, statusOn } = resolveProgram(
+    loaded,
+    settingRows,
+    checks,
+  );
   const { liftDates, liftIdByDate, linkedLifts } = splitLoggedLifts(
     logged,
     new Set(loaded.sessions.map((s) => s.id)),

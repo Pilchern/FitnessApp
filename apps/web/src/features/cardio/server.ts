@@ -3,6 +3,7 @@ import "server-only";
 import {
   buildCardioWeeklyTotals,
   getCurrentWeekRangeForUser,
+  templateWeekSchedule,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import {
@@ -11,7 +12,7 @@ import {
 } from "@/lib/server/services";
 import { weekPlanFromProgram } from "@/features/dashboard/helpers";
 import { getProgramToday } from "@/features/program/server";
-import { buildCardioTemplatePresets, sumWeeklyZone2Target } from "./helpers";
+import { buildCardioTemplatePresets } from "./helpers";
 import type { CardioPageData } from "./types";
 
 export async function getCardioPageData(
@@ -25,21 +26,23 @@ export async function getCardioPageData(
     profile?.weekStartsOn ?? 1,
   );
 
-  const [templates, sessions, editingSession, programToday] = await Promise.all(
-    [
-      trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
-      cardioService.listByDateRange({ userId: user.id }),
-      editSessionId
-        ? cardioService.getById(user.id, editSessionId)
-        : Promise.resolve(null),
-      // The program sets the week's Zone 2 target (same as the dashboard); the
-      // templates are the fallback when it cannot load.
-      getProgramToday().catch((error) => {
+  const [templates, sessions, editingSession, program] = await Promise.all([
+    trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
+    cardioService.listByDateRange({ userId: user.id }),
+    editSessionId
+      ? cardioService.getById(user.id, editSessionId)
+      : Promise.resolve(null),
+    // The program sets the week's Zone 2 target (same as the dashboard).
+    // A load error shows no target rather than the template numbers.
+    getProgramToday().then(
+      (today) => ({ ok: true as const, today }),
+      (error) => {
         console.error("Program failed to load for the cardio target", error);
-        return null;
-      }),
-    ],
-  );
+        return { ok: false as const, today: null };
+      },
+    ),
+  ]);
+  const programToday = program.today;
 
   const currentWeekSessions = sessions.filter(
     (session) =>
@@ -50,10 +53,13 @@ export async function getCardioPageData(
     templates: buildCardioTemplatePresets(templates),
     sessions,
     weeklyTotals: buildCardioWeeklyTotals(currentWeekSessions),
-    zone2TargetMinutes: programToday
-      ? weekPlanFromProgram(programToday.week, programToday.today)
-          .zone2TargetMinutes
-      : sumWeeklyZone2Target(templates),
+    zone2TargetMinutes: !program.ok
+      ? null
+      : programToday
+        ? weekPlanFromProgram(programToday.week, programToday.today)
+            .zone2TargetMinutes
+        : // No active program: the templates are the plan.
+          templateWeekSchedule(templates).zone2TargetMinutes,
     editingSession,
     formError:
       editSessionId && !editingSession

@@ -182,7 +182,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 2. After PT 10/14: edit the cardio templates' targetZone2Minutes and durations for the 40/40/60 ramp. No code change needed.
 3. [done 2026-10-09] Weekly review: include plan adherence (sessions done of scheduled) and habit completion in the auto summary and the AI draft.
 4. [done 2026-10-09] Dashboard: show the weigh-in trend next to protein-hit days, since the rehab goal is a small surplus.
-5. Decide TD-040 (delete profiles.baseline_schedule or drive the plan card from it; do not keep three sources of truth).
+5. [done 2026-10-20] Decide TD-040: the program is the single source for the weekly schedule and Zone 2 target (templates only for a week no program covers); profiles.baseline_schedule is retired and dropped after deploy.
 6. At surgeon clearance: swap templates to full-body lifts, add the VO2 session template, add a run-walk cardio sessionKind only if the domain needs it.
 7. Do not build: a calorie logger, a knee rehab module, or a generic habit engine. Split habits out of the supplements tables only if they need per-day schedules or targets (TD-039).
 

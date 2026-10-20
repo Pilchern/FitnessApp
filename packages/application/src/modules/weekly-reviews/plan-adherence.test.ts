@@ -4,6 +4,7 @@ import {
   buildWeeklyReviewSummary,
   calculateWeeklyReviewScore,
   pickPlanAdherence,
+  templateWeekSchedule,
 } from "../../index";
 
 const templates = [
@@ -23,9 +24,9 @@ const templates = [
 ] as const;
 
 describe("buildPlanAdherence", () => {
-  it("counts scheduled templates and sums the Z2 target", () => {
+  it("fallback: counts scheduled templates and sums the Z2 target", () => {
     const out = buildPlanAdherence({
-      templates: [...templates],
+      schedule: templateWeekSchedule([...templates]),
       habitIds: [],
       habitLogs: [],
     });
@@ -44,7 +45,7 @@ describe("buildPlanAdherence", () => {
       taken,
     });
     const out = buildPlanAdherence({
-      templates: [],
+      schedule: templateWeekSchedule([]),
       habitIds: ["a", "b"],
       habitLogs: [
         log("a", "2026-10-05"),
@@ -94,6 +95,17 @@ describe("weekly score with plan adherence", () => {
     expect(scoreDetails.components.find((c) => c.key === "lifts")?.detail).toBe(
       "2/3 target lifts logged",
     );
+  });
+
+  it("treats a 0 Zone 2 target as none planned, not as the 140 default", () => {
+    const { scoreDetails } = calculateWeeklyReviewScore({
+      summary: { ...summary, zone2Minutes: 0, zone2TargetMinutes: 0 },
+      confidence: null,
+    });
+    const zone2 = scoreDetails.components.find((c) => c.key === "zone2");
+    expect(zone2?.score).toBe(10);
+    expect(zone2?.detail).toBe("0 Zone 2 minutes (none planned this week)");
+    expect(Number.isNaN(scoreDetails.totalScore)).toBe(false);
   });
 
   it("round-trips the adherence fields of a stored summary", () => {

@@ -45,6 +45,14 @@ export type ProgramSessionView = {
   hiddenReason: string | null;
   legBlockReplaced: boolean;
   ride: PlannedRide | null;
+  /**
+   * Counts toward the week's scheduled lifts and rides, and the Zone 2
+   * minutes it adds to the week's target. Set on the server from the shared
+   * program-week rules (`isScheduledSession`, `plannedZone2Minutes`), so the
+   * dashboard and the weekly review count the same way.
+   */
+  scheduled: boolean;
+  zone2Minutes: number | null;
   exercises: ProgramExerciseView[];
   upperTemplateName: string | null;
   /** Session structure (test day, golf, runs); rides use `ride`. */

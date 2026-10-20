@@ -3,6 +3,7 @@ import type {
   BodyMetric,
   CardioSession,
   RecoveryCheckin,
+  TrainingProgram,
   WeeklyReview,
   WeeklyReviewAiDraft,
 } from "@fitness-app/domain";
@@ -14,6 +15,11 @@ import type { RecoveryCheckinRepository } from "../recovery/recovery-checkin";
 import { RecoveryCheckinService } from "../recovery/recovery-checkin";
 import type { StrengthSessionSummaryRepository } from "../strength/strength-session-summary";
 import { StrengthSessionSummaryService } from "../strength/strength-session-summary";
+import { v21Program } from "../program/program-fixtures.test-helpers";
+import type { ProgramService } from "../program/program-service";
+import type { SupplementLogService } from "../supplements/supplement-log-repository";
+import type { SupplementService } from "../supplements/supplement-repository";
+import type { TrainingTemplateService } from "../training/training-template";
 import type { AiWeeklyReviewService } from "./ai-weekly-review-service";
 import type { WeeklyReviewRepository } from "./weekly-review";
 import { WeeklyReviewService } from "./weekly-review";
@@ -194,6 +200,70 @@ function buildDeps(overrides?: {
     },
   };
 }
+
+describe("WeeklyReviewAutoFinalizeService plan adherence", () => {
+  const templates = [
+    { templateType: "strength", scheduledDayOfWeek: 1, definition: {} },
+    {
+      templateType: "cardio",
+      scheduledDayOfWeek: 2,
+      definition: { targetZone2Minutes: 95 },
+    },
+  ];
+  const adherenceDeps = (program: TrainingProgram | null) => ({
+    ...buildDeps().deps,
+    trainingTemplateService: {
+      listActiveStrengthTemplates: async () =>
+        templates.filter((t) => t.templateType === "strength"),
+      listActiveCardioTemplates: async () =>
+        templates.filter((t) => t.templateType === "cardio"),
+    } as unknown as TrainingTemplateService,
+    programService: {
+      getActiveProgram: async () => program,
+      listSettings: async () => [],
+      listKneeChecks: async () => [],
+    } as unknown as ProgramService,
+    supplementService: {
+      listActive: async () => [],
+    } as unknown as SupplementService,
+    supplementLogService: {
+      listByDateRange: async () => [],
+    } as unknown as SupplementLogService,
+  });
+
+  async function draftedSummary(program: TrainingProgram | null) {
+    // Monday 2026-10-26: the review is for post-op week 9 (Oct 19-25).
+    vi.useFakeTimers({ now: new Date("2026-10-26T14:00:00Z") });
+    try {
+      const deps = adherenceDeps(program);
+      const repo = new FakeWeeklyReviewRepository();
+      deps.weeklyReviewService = new WeeklyReviewService(repo);
+      await new WeeklyReviewAutoFinalizeService(deps).finalizeForUser({
+        userId,
+        weekStartsOn: 1,
+      });
+      return repo.created[0]?.summary;
+    } finally {
+      vi.useRealTimers();
+    }
+  }
+
+  it("takes the scheduled sessions and Zone 2 target from the program week", async () => {
+    expect(await draftedSummary(v21Program())).toMatchObject({
+      liftsScheduled: 3,
+      cardioScheduled: 3,
+      zone2TargetMinutes: 150,
+    });
+  });
+
+  it("falls back to the templates without an active program", async () => {
+    expect(await draftedSummary(null)).toMatchObject({
+      liftsScheduled: 1,
+      cardioScheduled: 1,
+      zone2TargetMinutes: 95,
+    });
+  });
+});
 
 describe("WeeklyReviewAutoFinalizeService", () => {
   it("drafts a new review when none exists yet, with no AI service configured", async () => {

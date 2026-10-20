@@ -3,16 +3,6 @@ import { cache } from "react";
 import type { OwnerUser } from "./auth";
 import { createSupabaseRequestClient } from "./supabase";
 
-const defaultBaselineSchedule = {
-  monday: ["lift"],
-  tuesday: ["zone2_peloton_45_60"],
-  wednesday: ["lift"],
-  thursday: ["vo2_peloton_30_40"],
-  friday: ["lift"],
-  saturday: ["long_zone2_peloton_45_75"],
-  sunday: ["recovery"],
-};
-
 function fallbackDisplayName(user: OwnerUser) {
   const explicitName =
     typeof user.user_metadata?.display_name === "string"
@@ -64,7 +54,6 @@ export const ensureProfileForUser = cache(async function ensureProfileForUser(
         goal_fat_loss: true,
         goal_preserve_muscle: true,
         goal_improve_vo2: true,
-        baseline_schedule: defaultBaselineSchedule,
       },
       {
         onConflict: "user_id",

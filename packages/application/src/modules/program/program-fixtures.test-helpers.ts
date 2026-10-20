@@ -290,3 +290,83 @@ export function withGate(
     ),
   };
 }
+
+/**
+ * Shaped like post-op program v2.1: lifts Mon/Wed/Fri, rides Tue/Thu/Sat.
+ * Week 9 rides are all Zone 2 (45 + 45 + 60 = 150); from week 10 Thursday is
+ * climb intervals (45 + 60 = 105) and Tuesday has a gated walk-jog first.
+ */
+export function v21Program(): TrainingProgram {
+  const week = (blockId: string, thursday: "zone2" | "climb_intervals") => [
+    session({ id: `${blockId}-mon`, blockId, dayOfWeek: 1 }),
+    session({ id: `${blockId}-wed`, blockId, dayOfWeek: 3 }),
+    session({ id: `${blockId}-fri`, blockId, dayOfWeek: 5 }),
+    session({
+      id: `${blockId}-tue-acc`,
+      blockId,
+      dayOfWeek: 2,
+      sessionType: "accessory",
+    }),
+    session({
+      id: `${blockId}-tue-ride`,
+      blockId,
+      dayOfWeek: 2,
+      sortOrder: 2,
+      sessionType: "peloton",
+      rideKind: "zone2",
+      minutesMin: 30,
+      minutesMax: 45,
+    }),
+    session({
+      id: `${blockId}-thu-ride`,
+      blockId,
+      dayOfWeek: 4,
+      sortOrder: 1,
+      sessionType: "peloton",
+      rideKind: thursday,
+      minutesMin: thursday === "zone2" ? 30 : 45,
+      minutesMax: 45,
+    }),
+    session({
+      id: `${blockId}-sat-ride`,
+      blockId,
+      dayOfWeek: 6,
+      sortOrder: 1,
+      sessionType: "peloton",
+      rideKind: "zone2",
+      minutesMin: 45,
+      minutesMax: 60,
+    }),
+    session({
+      id: `${blockId}-sun`,
+      blockId,
+      dayOfWeek: 0,
+      sessionType: "test",
+    }),
+  ];
+  return {
+    id: "p",
+    userId: "u",
+    name: "Post-op v2.1",
+    version: "2.1",
+    weekAnchorDate: "2026-08-17",
+    returnToSportWeek: 39,
+    testDayUrl: null,
+    notes: null,
+    blocks: [block("k0", "On-ramp", 9, 9), block("k1", "Build", 10, 12)],
+    weeks: [],
+    sessions: [
+      ...week("k0", "zone2"),
+      ...week("k1", "climb_intervals"),
+      session({
+        id: "k1-tue-walkjog",
+        blockId: "k1",
+        dayOfWeek: 2,
+        sortOrder: 1,
+        sessionType: "walk_jog",
+        gateKey: "jog",
+      }),
+    ],
+    gates: [gate("jog")],
+  };
+}

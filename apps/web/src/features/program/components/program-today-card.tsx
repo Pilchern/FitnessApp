@@ -258,9 +258,7 @@ export function ProgramTodayCard({
   const ride = today.sessions.find((s) => s.type === "peloton" && s.visible);
   const liftPending = lift != null && isPending(lift);
   const ridePending = ride != null && isPending(ride);
-  const tracked = today.sessions.filter(
-    (s) => s.visible && (s.type === "lift" || s.type === "peloton"),
-  );
+  const tracked = today.sessions.filter((s) => s.scheduled);
   const allDone = tracked.length > 0 && tracked.every(isDone);
   const sleepLow =
     today.sleepAverageHours != null &&

@@ -470,9 +470,9 @@ function evaluateMissingWeeklyReview(input: InsightEngineInput) {
 
 /**
  * The week's targets: from the stored weekly review when it carries them
- * (summed from the scheduled templates, the same source as the dashboard Plan
- * card and the weekly score), else the plan defaults. Editing the cardio
- * templates after a ramp change therefore moves the insights too.
+ * (counted from the program week by `loadWeekSchedule`, the same rules as the
+ * dashboard Plan card; templates only for a week no program covers), else the
+ * plan defaults.
  */
 function weekTargets(
   summary: {
@@ -483,7 +483,8 @@ function weekTargets(
   plan: TrainingPlan,
 ) {
   return {
-    zone2: summary.zone2TargetMinutes || plan.weeklyZone2TargetMinutes,
+    // 0 is a real target (no Zone 2 planned); only null/absent falls back.
+    zone2: summary.zone2TargetMinutes ?? plan.weeklyZone2TargetMinutes,
     lifts: summary.liftsScheduled || 3,
     rides: summary.cardioScheduled || 3,
   };

@@ -8,6 +8,7 @@ import {
   calculateWeeklyReviewScore,
   getLastCompletedWeekStart,
   getWeekRangeFromStart,
+  loadWeekSchedule,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { createCoreServices } from "@/lib/server/services";
@@ -26,6 +27,7 @@ export async function getWeeklyReviewPageData(
     weeklyReviewService,
     nutritionService,
     trainingTemplateService,
+    programService,
     supplementService,
     supplementLogService,
   } = await createCoreServices();
@@ -50,8 +52,7 @@ export async function getWeeklyReviewPageData(
     nutritionLogs,
     review,
     latestReview,
-    strengthTemplates,
-    cardioTemplates,
+    schedule,
     supplements,
     habitLogs,
   ] = await Promise.all([
@@ -65,8 +66,16 @@ export async function getWeeklyReviewPageData(
       weekStart,
     }),
     weeklyReviewService.getLatest(user.id),
-    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
-    trainingTemplateService.listActiveCardioTemplates({ userId: user.id }),
+    // Same week schedule as the Monday auto-finalize and the dashboard: the
+    // program, with the templates only for a week no program covers. A read
+    // error leaves adherence out (as the cron does), never template numbers.
+    loadWeekSchedule(
+      { programService, trainingTemplateService },
+      dateRangeQuery,
+    ).catch((error) => {
+      console.error("Week schedule unavailable for the weekly review", error);
+      return null;
+    }),
     supplementService.listActive({ userId: user.id }),
     supplementLogService.listByDateRange(dateRangeQuery),
   ]);
@@ -76,11 +85,15 @@ export async function getWeeklyReviewPageData(
     cardioSessions,
     recoveryCheckins,
     liftsCompleted,
-    adherence: buildPlanAdherence({
-      templates: [...strengthTemplates, ...cardioTemplates],
-      habitIds: supplements.filter((s) => s.kind === "habit").map((s) => s.id),
-      habitLogs,
-    }),
+    adherence: schedule
+      ? buildPlanAdherence({
+          schedule,
+          habitIds: supplements
+            .filter((s) => s.kind === "habit")
+            .map((s) => s.id),
+          habitLogs,
+        })
+      : undefined,
   });
 
   const nutritionSummary =

@@ -55,7 +55,7 @@ export type WeekPlanDay = {
 
 export type WeekPlan = {
   days: WeekPlanDay[];
-  /** Sum of targetZone2Minutes over the cardio templates scheduled this week. */
+  /** The week's Zone 2 target (program, or the templates as the fallback). */
   zone2TargetMinutes: number;
 };
 
@@ -181,16 +181,20 @@ export type ProgramWeekInput = {
     id: string;
     type: string;
     name: string;
-    visible: boolean;
+    /** Counts toward the week (shared program-week rule, set on the server). */
+    scheduled: boolean;
+    /** Zone 2 minutes this session adds to the week's target. */
+    zone2Minutes: number | null;
     completion: string;
-    ride: { kind: string; minutesMax: number | null } | null;
   }[];
 }[];
 
 /**
  * The dashboard week from the program (the source of truth), not the
  * templates: lifts and rides only, done once logged, skips shown as skips.
- * The Zone 2 target is the sum of this week's Zone 2 ride lengths.
+ * Which sessions count (`scheduled`) and their Zone 2 minutes are set on the
+ * server by the shared program-week rules the weekly review also counts with
+ * (`programWeekTargets` in @fitness-app/application); this only lays them out.
  */
 export function weekPlanFromProgram(
   week: ProgramWeekInput,
@@ -203,16 +207,14 @@ export function weekPlanFromProgram(
     isToday: day.isToday,
     isPast: day.date < today,
     items: day.sessions
-      .filter((s) => s.visible && (s.type === "lift" || s.type === "peloton"))
+      .filter((s) => s.scheduled)
       .map((s) => {
-        const zone2 =
-          s.ride?.kind === "zone2" ? (s.ride.minutesMax ?? null) : null;
-        if (zone2) zone2TargetMinutes += zone2;
+        zone2TargetMinutes += s.zone2Minutes ?? 0;
         return {
           templateId: s.id,
           name: s.name,
           kind: s.type === "lift" ? ("strength" as const) : ("cardio" as const),
-          targetZone2Minutes: zone2,
+          targetZone2Minutes: s.zone2Minutes,
           done: s.completion === "done",
           skipped: s.completion === "skipped" || s.completion === "stopped",
         };
