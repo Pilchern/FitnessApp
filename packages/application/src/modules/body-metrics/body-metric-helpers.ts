@@ -13,6 +13,18 @@ export type BodyMetricSummary = {
   latestHydrationPct: number | null;
   latestVisceralFatIndex: number | null;
   latestSource: "manual" | "imported" | null;
+  /**
+   * The latest hand-entered body-composition reading (a DEXA scan, typed in
+   * from the report). Kept apart from the scale's daily BIA values above so
+   * the next Withings sync does not push it off the page.
+   */
+  latestScan: BodyScanReading | null;
+};
+
+export type BodyScanReading = {
+  measuredOn: string;
+  bodyFatPct: number | null;
+  fatFreeMassLb: number | null;
 };
 
 function roundOneDecimal(value: number) {
@@ -37,6 +49,11 @@ function findEarliestValue(
     .find((metric) => getValue(metric) != null);
 }
 
+/** The value when the row came from a device import, else null. */
+function scaleOnly(metric: BodyMetric, value: number | null) {
+  return metric.source.sourceType === "manual" ? null : value;
+}
+
 export function buildBodyMetricSummary(
   metrics: BodyMetric[],
 ): BodyMetricSummary {
@@ -51,7 +68,12 @@ export function buildBodyMetricSummary(
   );
   const latestWaist = findLatestValue(metrics, (metric) => metric.waistIn);
   const earliestWaist = findEarliestValue(metrics, (metric) => metric.waistIn);
-  const latestBodyFat = findLatestValue(metrics, (metric) => metric.bodyFatPct);
+  // Scale-only: a manual entry's body fat / fat-free mass is a DEXA reading
+  // (see latestScan), and mixing it with daily BIA hides the scan-vs-scale
+  // offset.
+  const latestBodyFat = findLatestValue(metrics, (metric) =>
+    scaleOnly(metric, metric.bodyFatPct),
+  );
   const latestMuscleMass = findLatestValue(
     metrics,
     (metric) => metric.muscleMassLb,
@@ -60,9 +82,8 @@ export function buildBodyMetricSummary(
     metrics,
     (metric) => metric.boneMassLb,
   );
-  const latestFatFreeMass = findLatestValue(
-    metrics,
-    (metric) => metric.fatFreeMassLb,
+  const latestFatFreeMass = findLatestValue(metrics, (metric) =>
+    scaleOnly(metric, metric.fatFreeMassLb),
   );
   const latestHydration = findLatestValue(
     metrics,
@@ -71,6 +92,11 @@ export function buildBodyMetricSummary(
   const latestVisceralFat = findLatestValue(
     metrics,
     (metric) => metric.visceralFatIndex,
+  );
+  const latestScan = findLatestValue(metrics, (metric) =>
+    metric.source.sourceType === "manual"
+      ? (metric.bodyFatPct ?? metric.fatFreeMassLb)
+      : null,
   );
 
   return {
@@ -91,6 +117,13 @@ export function buildBodyMetricSummary(
     latestHydrationPct: latestHydration?.hydrationPct ?? null,
     latestVisceralFatIndex: latestVisceralFat?.visceralFatIndex ?? null,
     latestSource: latest?.source.sourceType ?? null,
+    latestScan: latestScan
+      ? {
+          measuredOn: latestScan.measuredOn,
+          bodyFatPct: latestScan.bodyFatPct,
+          fatFreeMassLb: latestScan.fatFreeMassLb,
+        }
+      : null,
   };
 }
 
@@ -114,7 +147,8 @@ export function buildBodyFatTrend(metrics: BodyMetric[]) {
   return buildSparseTrendSeries(
     metrics,
     (metric) => metric.measuredOn,
-    (metric) => metric.bodyFatPct,
+    // Scale readings only, so a DEXA entry never plots as a fake dip.
+    (metric) => scaleOnly(metric, metric.bodyFatPct),
   );
 }
 

@@ -1,4 +1,7 @@
-import type { WeeklyWeightTrend } from "@fitness-app/application";
+import type {
+  BodyScanReading,
+  WeeklyWeightTrend,
+} from "@fitness-app/application";
 import type { BodyMetric } from "@fitness-app/domain";
 import type { BodyFormValues } from "./types";
 
@@ -14,6 +17,50 @@ function numberToInput(value: number | null) {
   return value == null ? "" : `${value}`;
 }
 
+const KG_TO_LB = 2.2046226218;
+
+/**
+ * Maps the form's DEXA inputs onto body_metrics columns. `leanMassLb` is the
+ * report's Lean + BMC (fat-free mass, bone included) and goes to fat-free
+ * mass in both units (the Withings import fills both too); kg is rounded to
+ * 2 decimals like the import. Weight is never part of it.
+ */
+export function toBodyScanFields(input: {
+  bodyFatPct: number | null;
+  leanMassLb: number | null;
+}) {
+  return {
+    bodyFatPct: input.bodyFatPct,
+    fatFreeMassLb: input.leanMassLb,
+    fatFreeMassKg:
+      input.leanMassLb == null
+        ? null
+        : Number((input.leanMassLb / KG_TO_LB).toFixed(2)),
+  };
+}
+
+/**
+ * The DEXA inputs are only for hand-entered rows. Editing a Withings row must
+ * not show (or resubmit) the scale's own body fat and fat-free mass.
+ */
+export function canEditBodyScan(metric: BodyMetric | null) {
+  return metric == null || metric.source.sourceType === "manual";
+}
+
+/**
+ * Server-side guard for an update that carries DEXA fields: only an existing
+ * manual row may take them, so a hand-built POST cannot overwrite a Withings
+ * row's body fat or fat-free mass. Returns the error to show, or null.
+ */
+export function bodyScanUpdateError(existing: BodyMetric | null) {
+  if (!existing) {
+    return "The body metric entry you tried to edit could not be found.";
+  }
+  return canEditBodyScan(existing)
+    ? null
+    : "DEXA results can only be saved on a manual entry, not a Withings reading.";
+}
+
 export function toBodyFormValues(metric: BodyMetric | null): BodyFormValues {
   if (!metric) {
     return {
@@ -21,17 +68,22 @@ export function toBodyFormValues(metric: BodyMetric | null): BodyFormValues {
       waistIn: "",
       waistHipIn: "",
       waistGutIn: "",
+      bodyFatPct: "",
+      leanMassLb: "",
       sourceType: "manual",
       notes: "",
     };
   }
 
+  const scanEditable = canEditBodyScan(metric);
   return {
     id: metric.id,
     measuredOn: metric.measuredOn,
     waistIn: numberToInput(metric.waistIn),
     waistHipIn: numberToInput(metric.waistHipIn),
     waistGutIn: numberToInput(metric.waistGutIn),
+    bodyFatPct: scanEditable ? numberToInput(metric.bodyFatPct) : "",
+    leanMassLb: scanEditable ? numberToInput(metric.fatFreeMassLb) : "",
     sourceType: "manual",
     notes: metric.notes ?? "",
   };
@@ -65,6 +117,14 @@ export function formatChange(value: number | null, unit: string) {
   const prefix = value > 0 ? "+" : "";
   const arrow = value > 0 ? " ↑" : value < 0 ? " ↓" : "";
   return `${prefix}${value.toFixed(1)} ${unit}${arrow} vs first logged`;
+}
+
+/** Scan date, plus fat-free mass when the scan entry has it. */
+export function formatBodyScanHint(scan: BodyScanReading) {
+  const date = formatBodyDate(scan.measuredOn);
+  return scan.fatFreeMassLb == null
+    ? date
+    : `${date} · fat-free ${formatBodyValue(scan.fatFreeMassLb, "lb")}`;
 }
 
 /** Same basis as the dashboard: 7-day average and its change vs last week. */

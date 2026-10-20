@@ -23,7 +23,7 @@ export async function BodyScreen({
     <div className="space-y-4 lg:space-y-6">
       <PageHeader
         title="Body"
-        subtitle="Weight and body fat sync from Withings. Log tape measurements here."
+        subtitle="Weight and body fat sync from Withings. Log tape measurements and DEXA results here."
       />
 
       <BodySummaryCards

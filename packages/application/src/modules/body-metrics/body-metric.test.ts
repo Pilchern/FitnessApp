@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildBodyFatTrend,
   buildBodyMetricSummary,
   buildBodyWaistTrend,
   buildBodyWeightTrend,
@@ -191,14 +192,111 @@ describe("body metric helpers", () => {
       weightChangeLb: -2.2,
       latestWaistIn: 34.3,
       waistChangeIn: -0.7,
-      latestBodyFatPct: 23.5,
+      // Manual rows never feed the scale's body fat; see latestScan.
+      latestBodyFatPct: null,
       latestMuscleMassLb: 144.3,
       latestBoneMassLb: null,
       latestFatFreeMassLb: null,
       latestHydrationPct: null,
       latestVisceralFatIndex: null,
       latestSource: "manual",
+      latestScan: {
+        measuredOn: "2026-03-29",
+        bodyFatPct: 23.5,
+        fatFreeMassLb: null,
+      },
     });
+  });
+
+  const withings = (
+    measuredOn: string,
+    weightLb: number,
+    fat: number,
+  ): BodyMetric => ({
+    ...metrics[2]!,
+    id: `withings-${measuredOn}`,
+    measuredOn,
+    weightLb,
+    bodyFatPct: fat,
+    fatFreeMassLb: 140.6,
+    source: {
+      sourceType: "imported",
+      sourceProvider: "withings",
+      sourceExternalId: `w-${measuredOn}`,
+      importBatchId: null,
+      rawImportEventId: null,
+    },
+  });
+  // Manual DEXA row: body fat and lean mass, no weight.
+  const dexa: BodyMetric = {
+    ...metrics[2]!,
+    id: "dexa-1",
+    measuredOn: "2026-10-24",
+    bodyFatPct: 19.2,
+    fatFreeMassLb: 144.8,
+    fatFreeMassKg: 65.68,
+  };
+
+  it("keeps a DEXA entry visible after the scale syncs, without touching weight", () => {
+    const summary = buildBodyMetricSummary([
+      withings("2026-10-25", 178.2, 21.4),
+      dexa,
+      withings("2026-10-24", 177.6, 21.1),
+    ]);
+
+    expect(summary.latestScan).toEqual({
+      measuredOn: "2026-10-24",
+      bodyFatPct: 19.2,
+      fatFreeMassLb: 144.8,
+    });
+    // The scale's own numbers are unchanged by the DEXA row.
+    expect(summary.latestWeightLb).toBe(178.2);
+    expect(summary.latestBodyFatPct).toBe(21.4);
+    expect(summary.latestFatFreeMassLb).toBe(140.6);
+  });
+
+  it("keeps the dashboard/scale body fat on the scale when DEXA is the newest row", () => {
+    // Dashboard "Body fat" and the /body scale cards read these two fields.
+    const summary = buildBodyMetricSummary([
+      { ...dexa, measuredOn: "2026-10-25" },
+      withings("2026-10-24", 177.6, 21.1),
+    ]);
+
+    expect(summary.latestBodyFatPct).toBe(21.1);
+    expect(summary.latestFatFreeMassLb).toBe(140.6);
+    expect(summary.latestScan?.bodyFatPct).toBe(19.2);
+  });
+
+  it("plots only scale readings on the body-fat trend", () => {
+    expect(
+      buildBodyFatTrend([
+        withings("2026-10-25", 178.2, 21.4),
+        dexa,
+        withings("2026-10-23", 177.4, 21.0),
+      ]),
+    ).toEqual([
+      { date: "2026-10-23", value: 21.0 },
+      { date: "2026-10-25", value: 21.4 },
+    ]);
+  });
+
+  it("has no scan when only the scale reports body composition", () => {
+    expect(
+      buildBodyMetricSummary([
+        {
+          ...metrics[2]!,
+          weightLb: 178,
+          bodyFatPct: 21,
+          source: {
+            sourceType: "imported",
+            sourceProvider: "withings",
+            sourceExternalId: "w-1",
+            importBatchId: null,
+            rawImportEventId: null,
+          },
+        },
+      ]).latestScan,
+    ).toBeNull();
   });
 
   it("builds sparse trends that skip missing values", () => {

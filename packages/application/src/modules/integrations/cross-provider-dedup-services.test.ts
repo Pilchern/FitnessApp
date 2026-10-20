@@ -608,6 +608,48 @@ describe("BodyMetricService.upsertImported cross-provider handling", () => {
     expect(result.crossProvider.outcome).toBe("insert");
   });
 
+  it("stores the scale's weigh-in on a day that already has a manual DEXA entry", async () => {
+    // A DEXA result typed into the body form: manual (top priority), body
+    // fat and lean mass, no weight. With no weight there is nothing to match
+    // on, so the Withings reading must be stored and the DEXA row kept.
+    const repository = createBodyMetricRepository([
+      storedMetric({
+        id: "dexa-1",
+        weightLb: null,
+        bodyFatPct: 19.2,
+        fatFreeMassLb: 144.8,
+        fatFreeMassKg: 65.68,
+        source: {
+          sourceType: "manual",
+          sourceProvider: null,
+          sourceExternalId: null,
+          importBatchId: null,
+          rawImportEventId: null,
+        },
+      }),
+    ]);
+    const service = new BodyMetricService(repository as never);
+
+    const result = await service.upsertImported({
+      ...importedAppleHealthWeight,
+      weightLb: 177.6,
+      weightKg: 80.56,
+      bodyFatPct: 21.1,
+      source: {
+        ...importedAppleHealthWeight.source,
+        sourceProvider: "withings",
+        sourceExternalId: "withings-1",
+      },
+    });
+
+    expect(repository.upsertImported).toHaveBeenCalledTimes(1);
+    expect(repository.upsertImported).toHaveBeenCalledWith(
+      expect.objectContaining({ weightLb: 177.6, bodyFatPct: 21.1 }),
+    );
+    expect(repository.archive).not.toHaveBeenCalled();
+    expect(result.crossProvider.outcome).toBe("insert");
+  });
+
   it("still rejects a manual source", async () => {
     const repository = createBodyMetricRepository([]);
     const service = new BodyMetricService(repository as never);
