@@ -36,7 +36,12 @@ import {
   type LastExercisePerformance,
   type StrengthDraft,
 } from "../helpers";
-import { restEndDue, restRunning, restSecondsLeft } from "../rest-timer";
+import {
+  restBeepFresh,
+  restEndDue,
+  restRunning,
+  restSecondsLeft,
+} from "../rest-timer";
 import type {
   StrengthActionState,
   StrengthFormValues,
@@ -349,7 +354,8 @@ export function StrengthQuickForm({
   useEffect(() => {
     if (!restEndDue(restEndsAt, now, restCued.current)) return;
     restCued.current = true;
-    beep(2);
+    // Back on the page long after rest ended: no stale beep, just the buzz.
+    if (restBeepFresh(restEndsAt, now)) beep(2);
     try {
       // Android buzz; iOS Safari ignores it, hence the beep.
       navigator.vibrate?.([200, 100, 200]);
@@ -710,7 +716,7 @@ export function StrengthQuickForm({
                     type="button"
                     aria-label={`Remove ${group.name}`}
                     onClick={() => removeExercise(group.indexes)}
-                    className="h-9 w-9 rounded-full text-lg text-ember active:bg-ember/10"
+                    className="h-11 w-11 rounded-full text-lg text-ember active:bg-ember/10"
                   >
                     ×
                   </button>
@@ -1015,7 +1021,7 @@ export function StrengthQuickForm({
                   type="button"
                   aria-label="Dismiss"
                   onClick={() => setNextCue(null)}
-                  className="h-9 w-9 shrink-0 text-lg text-white/70"
+                  className="h-11 w-11 shrink-0 text-lg text-white/70"
                 >
                   ×
                 </button>
@@ -1044,7 +1050,7 @@ export function StrengthQuickForm({
                         setRestSeconds(option);
                         startRest(option);
                       }}
-                      className={`h-9 rounded-full px-2.5 text-xs font-semibold ${
+                      className={`h-11 rounded-full px-2.5 text-xs font-semibold ${
                         restSeconds === option
                           ? "bg-white text-ink"
                           : "text-white/70"
@@ -1060,7 +1066,7 @@ export function StrengthQuickForm({
                       setRestEndsAt(null);
                       setNextCue(null);
                     }}
-                    className="h-9 w-9 text-lg text-white/70"
+                    className="h-11 w-11 text-lg text-white/70"
                   >
                     ×
                   </button>

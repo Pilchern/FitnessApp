@@ -67,8 +67,9 @@ export function useBeep() {
             .webkitAudioContext;
         if (Ctx) audio.current = new Ctx();
       }
-      // iOS suspends an idle context (e.g. after the phone locks).
-      if (audio.current?.state === "suspended") {
+      // iOS leaves an idle context "suspended" or "interrupted" (e.g. after
+      // the phone locks or a call).
+      if (audio.current && audio.current.state !== "running") {
         audio.current.resume().catch(() => {});
       }
     } catch {

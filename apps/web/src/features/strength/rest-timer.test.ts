@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { restEndDue, restRunning, restSecondsLeft } from "./rest-timer";
+import {
+  restBeepFresh,
+  restEndDue,
+  restRunning,
+  restSecondsLeft,
+} from "./rest-timer";
 
 const START = 1_700_000_000_000;
 
@@ -37,8 +42,14 @@ describe("restEndDue", () => {
     expect(restEndDue(endsAt, START + 60_000, true)).toBe(false);
   });
 
-  it("still fires when the tick lands late (throttled timer)", () => {
-    expect(restEndDue(START + 60_000, START + 75_000, false)).toBe(true);
+  it("still fires when the tick lands late, beeping only within 30s", () => {
+    const endsAt = START + 60_000;
+    expect(restEndDue(endsAt, START + 75_000, false)).toBe(true);
+    expect(restBeepFresh(endsAt, START + 75_000)).toBe(true);
+    expect(restBeepFresh(endsAt, endsAt + 30_000)).toBe(true);
+    expect(restEndDue(endsAt, endsAt + 5 * 60_000, false)).toBe(true);
+    expect(restBeepFresh(endsAt, endsAt + 30_001)).toBe(false);
+    expect(restBeepFresh(endsAt, endsAt + 5 * 60_000)).toBe(false);
   });
 
   it("does not fire with no rest", () => {

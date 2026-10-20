@@ -20,3 +20,14 @@ export function restEndDue(
 ): boolean {
   return endsAt != null && !cued && restSecondsLeft(endsAt, now) === 0;
 }
+
+/** How late the "rest over" beep may still play. */
+export const REST_BEEP_GRACE_MS = 30_000;
+
+/**
+ * The rest ended recently enough to beep. A tick that lands minutes late
+ * (phone locked, app in the background) should not beep out of nowhere.
+ */
+export function restBeepFresh(endsAt: number | null, now: number): boolean {
+  return endsAt != null && now - endsAt <= REST_BEEP_GRACE_MS;
+}
