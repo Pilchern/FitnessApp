@@ -9,6 +9,7 @@ import type {
   StrengthSession,
 } from "@fitness-app/domain";
 import { addDays } from "./program-calendar";
+import type { QuadDrop } from "./knee-tests";
 import {
   DEFAULT_PROGRAM_SETTINGS,
   type ProgramSettings,
@@ -26,7 +27,8 @@ type LoadSteps = Pick<
   | "dumbbellFineStepLb"
   | "dumbbellCoarseStepLb"
   | "dumbbellFineLimitLb"
->;
+> &
+  Partial<Pick<ProgramSettings, "dumbbellMaxLb">>;
 
 export function nextDumbbell(
   load: number,
@@ -54,6 +56,33 @@ export function nextLoad(
       return null;
   }
 }
+
+/** True when a dumbbell load is at (or past) the heaviest dumbbell owned. */
+export function atDumbbellMax(
+  load: number,
+  kind: LoadKind,
+  steps: LoadSteps = DEFAULT_PROGRAM_SETTINGS,
+) {
+  return (
+    kind === "dumbbell" &&
+    steps.dumbbellMaxLb != null &&
+    load >= steps.dumbbellMaxLb
+  );
+}
+
+/** Caps a dumbbell load at the heaviest dumbbell; other kinds pass through. */
+export function capDumbbell(
+  load: number,
+  kind: LoadKind,
+  steps: LoadSteps = DEFAULT_PROGRAM_SETTINGS,
+) {
+  return kind === "dumbbell" && steps.dumbbellMaxLb != null
+    ? Math.min(load, steps.dumbbellMaxLb)
+    : load;
+}
+
+export const DUMBBELL_MAX_REASON = (maxLb: number) =>
+  `Dumbbells top out at ${maxLb} lb: hold the load and follow the exercise note (slower tempo first, then the barbell).`;
 
 /** Rounds down to a load the equipment can make. */
 export function roundDownToLoadStep(
@@ -237,6 +266,8 @@ export type SuggestLoadInput = {
   isDeload: boolean;
   /** Average sleep over the last few nights; null when there is no data. */
   sleepAverageHours?: number | null;
+  /** Left quad crane-test drop past the setting (knee-tests.ts); holds loads. */
+  quadDrop?: QuadDrop | null;
   settings?: ProgramSettings;
 };
 
@@ -265,13 +296,14 @@ export function sleepAverageHours(
 
 /**
  * Why an earned increase is held back today, or null: only on a normal knee
- * check, outside a deload, and when recent sleep averages at least the
- * setting (6.5 h).
+ * check, outside a deload, when recent sleep averages at least the setting
+ * (6.5 h), and when the left quad crane test has not dropped past its
+ * setting (65 N) week over week.
  */
 export function progressionLock(
   input: Pick<
     SuggestLoadInput,
-    "readiness" | "isDeload" | "sleepAverageHours" | "settings"
+    "readiness" | "isDeload" | "sleepAverageHours" | "quadDrop" | "settings"
   >,
 ): string | null {
   const settings = input.settings ?? DEFAULT_PROGRAM_SETTINGS;
@@ -287,7 +319,15 @@ export function progressionLock(
   ) {
     return `Sleep averaged ${input.sleepAverageHours.toFixed(1)} h over ${settings.sleepAverageNights} nights (under ${settings.sleepMinHoursForIncrease}): no load increase.`;
   }
+  if (input.quadDrop && input.quadDrop.dropN > settings.quadDropHoldN) {
+    return quadDropReason(input.quadDrop);
+  }
   return null;
+}
+
+/** The progression-lock line for a left quad crane-test drop. */
+export function quadDropReason(drop: QuadDrop) {
+  return `Left quad down ${drop.dropN} N on the ${drop.date} crane test (${drop.previousLeft} to ${drop.left} N): repeat last loads.`;
 }
 
 /** RIR an exercise must reach to earn an increase: its target, else the setting. */
@@ -336,7 +376,9 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
       input.scheme.repsMax as number,
       input.repLadder ?? [],
     );
-    const start = newBlockStartLoad(working, steps, input.loadKind, settings);
+    const raw = newBlockStartLoad(working, steps, input.loadKind, settings);
+    const start =
+      raw != null ? capDumbbell(raw, input.loadKind, settings) : null;
     if (start != null) {
       const range = [input.scheme.repsMin, input.scheme.repsMax]
         .filter((v, i, all) => v != null && (i === 0 || v !== all[0]))
@@ -345,7 +387,7 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
         load: start,
         kind: "new_block",
         held: false,
-        reason: `Suggested start for ${range} reps: last block's top load x ${settings.newBlockLoadMultiplier}${Math.abs(steps) > 1 ? `^${Math.abs(steps)}` : ""}${steps < 0 ? " (divided: more reps)" : ""}. Edit if it feels off.`,
+        reason: `Suggested start for ${range} reps: last block's top load x ${settings.newBlockLoadMultiplier}${Math.abs(steps) > 1 ? `^${Math.abs(steps)}` : ""}${steps < 0 ? " (divided: more reps)" : ""}${raw != null && start < raw ? `, capped at the ${start} lb dumbbell max` : ""}. Edit if it feels off.`,
       };
     }
   }
@@ -361,8 +403,20 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
         : "Same as last time.",
     };
   }
+  if (earned && !lock && atDumbbellMax(lastLoad, input.loadKind, settings)) {
+    return {
+      load: lastLoad,
+      kind: "same",
+      held: true,
+      reason: DUMBBELL_MAX_REASON(settings.dumbbellMaxLb),
+    };
+  }
   if (earned && !lock) {
-    const next = nextLoad(lastLoad, input.loadKind, settings) ?? lastLoad;
+    const next = capDumbbell(
+      nextLoad(lastLoad, input.loadKind, settings) ?? lastLoad,
+      input.loadKind,
+      settings,
+    );
     return {
       load: next,
       kind: "increase",
@@ -398,6 +452,7 @@ export function suggestHoldSeconds(input: {
   readiness: KneeReadinessStatus | null;
   isDeload: boolean;
   sleepAverageHours?: number | null;
+  quadDrop?: QuadDrop | null;
   settings?: ProgramSettings;
 }): HoldSuggestion {
   const settings = input.settings ?? DEFAULT_PROGRAM_SETTINGS;

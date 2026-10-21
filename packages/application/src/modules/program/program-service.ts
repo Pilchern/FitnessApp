@@ -1,6 +1,7 @@
 import type {
   IsoDate,
   KneeCheck,
+  KneeTest,
   ProgramSessionOutcome,
   ProgramWeeklyCheckin,
   TrainingProgram,
@@ -132,6 +133,12 @@ export interface ProgramRepository {
     toWeekStart: IsoDate,
   ): Promise<ProgramWeeklyCheckin[]>;
   saveWeeklyCheckin(input: SaveWeeklyCheckinInput): Promise<void>;
+  /** Live knee_tests rows (PT Tracker sync) between two dates, oldest first. */
+  listKneeTests(
+    userId: UserId,
+    startDate: IsoDate,
+    endDate: IsoDate,
+  ): Promise<KneeTest[]>;
 }
 
 export class ProgramService {
@@ -189,5 +196,9 @@ export class ProgramService {
     return this.repository.saveWeeklyCheckin(
       saveWeeklyCheckinSchema.parse(input),
     );
+  }
+
+  async listKneeTests(userId: UserId, startDate: IsoDate, endDate: IsoDate) {
+    return this.repository.listKneeTests(userId, startDate, endDate);
   }
 }

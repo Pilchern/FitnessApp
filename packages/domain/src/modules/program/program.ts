@@ -200,6 +200,22 @@ export type ProgramWeeklyCheckin = {
   notes: string | null;
 };
 
+/**
+ * One measured knee value synced from the PT Tracker (knee_tests): a crane
+ * trial, a hop, a tape reading. side L = operated knee, R = other, null when
+ * the value has no side.
+ */
+export type KneeTest = {
+  testDate: IsoDate;
+  testType: string;
+  side: "L" | "R" | null;
+  value: number;
+  unit: string;
+  repIndex: number;
+  source: string;
+  notes: string | null;
+};
+
 /** One target or threshold row, edited in Settings. */
 export type TrainingSetting = {
   id: EntityId;

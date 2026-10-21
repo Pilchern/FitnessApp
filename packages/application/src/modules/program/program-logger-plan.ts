@@ -29,6 +29,7 @@ import {
   type LoadSuggestion,
   type ProgressionSet,
 } from "./program-progression";
+import type { QuadDrop } from "./knee-tests";
 
 /** One exercise for the lift logger; the template shape plus program extras. */
 export type LoggerPlanExercise = {
@@ -126,6 +127,8 @@ export type BuildLiftPlanInput = {
   /** A linked upper-body template, run after the program rows unchanged. */
   upper: { notes: string | null; exercises: UpperTemplateExercise[] } | null;
   sleepAverageHours?: number | null;
+  /** Left quad crane-test drop past the setting: holds every leg increase. */
+  quadDrop?: QuadDrop | null;
   settings?: ProgramSettings;
 };
 
@@ -183,6 +186,7 @@ function programRow(
           readiness: input.readiness,
           isDeload: input.info.isDeload,
           sleepAverageHours: input.sleepAverageHours ?? null,
+          quadDrop: p.part === "legs" ? (input.quadDrop ?? null) : null,
           settings,
         })
       : null;
@@ -215,6 +219,7 @@ function programRow(
     readiness: input.readiness,
     isDeload: input.info.isDeload,
     sleepAverageHours: input.sleepAverageHours ?? null,
+    quadDrop: p.part === "legs" ? (input.quadDrop ?? null) : null,
     settings,
   });
   const pullUp = pullUpLoadCue(p.name, history?.sets ?? [], settings);

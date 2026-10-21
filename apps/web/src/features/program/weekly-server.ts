@@ -8,12 +8,15 @@ import {
   dayStreak,
   executionBanner,
   kneeReadinessStatus,
+  kneeTestSummary,
+  latestValue,
   legExerciseIndex,
   liftWeekOverWeek,
   nutritionWeek,
   pickWeeklyFocus,
   postOpWeek,
   programWeekInfo,
+  quadLsiTrend,
   readinessCounts,
   sessionsForBlock,
   sleepWeek,
@@ -272,6 +275,42 @@ function focusMetrics(input: {
   ];
 }
 
+/**
+ * One point per post-op week: the week's last crane-test LSI and walking
+ * asymmetry from the PT Tracker, else the hand-typed check-in.
+ */
+function markerTrend(input: {
+  anchor: string;
+  first: number;
+  week: number;
+  checkins: {
+    weekStart: string;
+    quadLsiPct: number | null;
+    walkingAsymmetryPct: number | null;
+  }[];
+  lsi: { date: string; lsi: number }[];
+  asymmetry: { testDate: string; value: number }[];
+}): WeeklyReviewData["trend"] {
+  const points: WeeklyReviewData["trend"] = [];
+  for (let w = input.first; w <= input.week; w += 1) {
+    const { start, end } = weekDateRange(input.anchor, w);
+    const within = (d: string) => d >= start && d <= end;
+    const lsi = input.lsi.filter((p) => within(p.date)).at(-1)?.lsi;
+    const asym = input.asymmetry
+      .filter((p) => within(p.testDate))
+      .at(-1)?.value;
+    const checkin = input.checkins.find((c) => c.weekStart === start);
+    const point = {
+      week: w,
+      quadLsiPct: lsi ?? checkin?.quadLsiPct ?? null,
+      walkingAsymmetryPct: asym ?? checkin?.walkingAsymmetryPct ?? null,
+    };
+    if (point.quadLsiPct != null || point.walkingAsymmetryPct != null)
+      points.push(point);
+  }
+  return points;
+}
+
 /** Everything for the Sunday review of post-op week `weekParam` (default: this week). */
 export async function getWeeklyReviewData(
   weekParam?: number,
@@ -299,35 +338,64 @@ export async function getWeeklyReviewData(
     recoveryService,
     bodyMetricService,
   } = await createCoreServices();
-  const [activity, checkins, nutrition, recovery, body, checks, profile] =
-    await Promise.all([
-      loadActivity(
-        user.id,
-        program,
-        [firstStart, addDays(range.start, -7)].sort()[0]!,
-        range.end,
-      ),
-      programService.listWeeklyCheckins(user.id, firstStart, range.start),
-      nutritionService.listByDateRange({
-        userId: user.id,
-        startDate: range.start,
-        endDate: range.end,
-      }),
-      recoveryService.listByDateRange({
-        userId: user.id,
-        startDate: range.start,
-        endDate: range.end,
-      }),
-      bodyMetricService.listByDateRange({
-        userId: user.id,
-        startDate: addDays(range.end, -7 * (settings.weightRiseWeeks + 1)),
-        endDate: range.end,
-      }),
-      programService.listKneeChecks(user.id, range.start, range.end),
-      getCachedUserProfile(user.id),
-    ]);
+  const [
+    activity,
+    checkins,
+    nutrition,
+    recovery,
+    body,
+    checks,
+    profile,
+    kneeTests,
+  ] = await Promise.all([
+    loadActivity(
+      user.id,
+      program,
+      [firstStart, addDays(range.start, -7)].sort()[0]!,
+      range.end,
+    ),
+    programService.listWeeklyCheckins(user.id, firstStart, range.start),
+    nutritionService.listByDateRange({
+      userId: user.id,
+      startDate: range.start,
+      endDate: range.end,
+    }),
+    recoveryService.listByDateRange({
+      userId: user.id,
+      startDate: range.start,
+      endDate: range.end,
+    }),
+    bodyMetricService.listByDateRange({
+      userId: user.id,
+      startDate: addDays(range.end, -7 * (settings.weightRiseWeeks + 1)),
+      endDate: range.end,
+    }),
+    programService.listKneeChecks(user.id, range.start, range.end),
+    getCachedUserProfile(user.id),
+    programService.listKneeTests(user.id, addDays(firstStart, -14), range.end),
+  ]);
 
   const checkin = checkins.find((c) => c.weekStart === range.start) ?? null;
+  // PT Tracker numbers first (synced knee_tests), the hand-typed check-in as
+  // the fallback for weeks before the sync.
+  const knee = kneeTestSummary({
+    tests: kneeTests,
+    sessions: activity.sessions,
+    upTo: range.end,
+    quadDropHoldN: settings.quadDropHoldN,
+  });
+  const inWeek = (date: string | undefined) =>
+    date != null && date >= range.start && date <= range.end;
+  const weekQuadLsi =
+    (inWeek(knee.quad90?.date) ? knee.quad90?.lsi : null) ??
+    checkin?.quadLsiPct ??
+    null;
+  const weekAsymmetry =
+    (inWeek(knee.walkingAsymmetry?.date)
+      ? knee.walkingAsymmetry?.value
+      : null) ??
+    checkin?.walkingAsymmetryPct ??
+    null;
   const adherence = weekAdherence({
     weekDates,
     liftDates: activity.liftDates,
@@ -424,7 +492,7 @@ export async function getWeeklyReviewData(
       proteinTarget: fuel.proteinTarget,
       sleepAvg: sleep.avgHours,
       quadSets,
-      asymmetry: checkin?.walkingAsymmetryPct ?? null,
+      asymmetry: weekAsymmetry,
       settings,
     }),
   );
@@ -459,8 +527,8 @@ export async function getWeeklyReviewData(
       weekOverWeekLb: weight.weekOverWeekLb,
     },
     sleep,
-    quadLsiPct: checkin?.quadLsiPct ?? null,
-    walkingAsymmetryPct: checkin?.walkingAsymmetryPct ?? null,
+    quadLsiPct: weekQuadLsi,
+    walkingAsymmetryPct: weekAsymmetry,
     focus,
   };
 
@@ -469,13 +537,20 @@ export async function getWeeklyReviewData(
     currentWeek,
     firstWeek: first,
     checkin,
-    trend: checkins
-      .filter((c) => c.quadLsiPct != null || c.walkingAsymmetryPct != null)
-      .map((c) => ({
-        week: postOpWeek(program.weekAnchorDate, c.weekStart),
-        quadLsiPct: c.quadLsiPct,
-        walkingAsymmetryPct: c.walkingAsymmetryPct,
-      })),
+    trend: markerTrend({
+      anchor: program.weekAnchorDate,
+      first,
+      week,
+      checkins,
+      lsi: quadLsiTrend(kneeTests),
+      asymmetry: kneeTests.filter((t) => t.testType === "walking_asymmetry"),
+    }),
+    knee,
+    kneeAsOf:
+      latestValue(
+        kneeTests.filter((t) => t.source === "pt_tracker"),
+        "quad_iso_90",
+      )?.date ?? null,
     targets: {
       lsi: [settings.lsiTarget1, settings.lsiTarget2, settings.lsiTarget3],
       asymmetry: settings.walkingAsymmetryTargetPct,

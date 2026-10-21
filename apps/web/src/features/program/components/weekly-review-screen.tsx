@@ -118,6 +118,78 @@ function MarkerTrend({
   );
 }
 
+function lsiValue(r: WeeklyReviewData["knee"]["quad90"]) {
+  if (!r) return "–";
+  const src = r.source === "pt_tracker" ? "crane" : "logged";
+  return `${fmt(r.lsi, "%")} (L ${r.left} / R ${r.right} N, ${formatShortDate(r.date)}, ${src})`;
+}
+
+/** The gate numbers from the PT Tracker sync, against the LSI target lines. */
+function KneeTestsCard({ data }: { data: WeeklyReviewData }) {
+  const k = data.knee;
+  const [line1] = data.targets.lsi;
+  const below = (r: typeof k.quad90) =>
+    r?.lsi != null && line1 != null && r.lsi < line1;
+  return (
+    <section className={card}>
+      <h2 className="font-display text-lg text-ink">Knee tests</h2>
+      <p className="mt-1 text-xs text-ink/60">
+        {data.kneeAsOf
+          ? `From the PT Tracker (crane test ${formatShortDate(data.kneeAsOf)}) and logged isometrics. LSI = L / R.`
+          : "No PT Tracker sync yet: sign in under PT Tracker Settings, Cloud sync. Logged isometrics still count."}
+      </p>
+      {k.quadDrop ? (
+        <p
+          role="alert"
+          className="mt-2 rounded-xl bg-ember/10 px-3 py-2 text-sm font-semibold text-ember"
+        >
+          Left quad down {k.quadDrop.dropN} N ({k.quadDrop.previousLeft} to{" "}
+          {k.quadDrop.left} N): leg loads held.
+        </p>
+      ) : null}
+      <ul className="mt-2 divide-y divide-ink/10">
+        <Row
+          label="Quad LSI 90°"
+          value={lsiValue(k.quad90)}
+          flag={below(k.quad90)}
+        />
+        <Row
+          label="Quad LSI 60°"
+          value={lsiValue(k.quad60)}
+          flag={below(k.quad60)}
+        />
+        <Row
+          label="H:Q (ham / quad)"
+          value={
+            k.hq
+              ? `L ${fmt(k.hq.left)} · R ${fmt(k.hq.right)} (${formatShortDate(k.hq.date)})`
+              : "–"
+          }
+          flag={
+            k.hq?.left != null && k.hq.right != null && k.hq.left < k.hq.right
+          }
+        />
+        <Row
+          label="Walking asymmetry"
+          value={
+            k.walkingAsymmetry
+              ? `${k.walkingAsymmetry.value}% (${formatShortDate(k.walkingAsymmetry.date)})`
+              : "–"
+          }
+          flag={
+            k.walkingAsymmetry != null &&
+            k.walkingAsymmetry.value >= data.targets.asymmetry
+          }
+        />
+      </ul>
+      <p className="mt-2 text-xs text-ink/50">
+        Lines: {data.targets.lsi.join(" / ")}% LSI, walking asymmetry under{" "}
+        {data.targets.asymmetry}%.
+      </p>
+    </section>
+  );
+}
+
 export function WeeklyReviewScreen({ data }: { data: WeeklyReviewData }) {
   const a = data.adherence;
   const n = data.nutrition;
@@ -247,6 +319,8 @@ export function WeeklyReviewScreen({ data }: { data: WeeklyReviewData }) {
             />
           </ul>
         </section>
+
+        <KneeTestsCard data={data} />
 
         <section className={`${card} space-y-4`}>
           <h2 className="font-display text-lg text-ink">Your entries</h2>

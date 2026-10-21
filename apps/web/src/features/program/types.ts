@@ -6,6 +6,8 @@ import type {
   SleepWeek,
   WeekAdherence,
   WalkJogAdvice,
+  QuadDrop,
+  KneeTestSummary,
   ExerciseProgressPoint,
   HardSetCount,
   LoggerPlan,
@@ -94,6 +96,8 @@ export type ProgramToday = {
   redFlag: { name: string; phone: string | null };
   sleepAverageHours: number | null;
   sleepMinHours: number;
+  /** Left quad crane-test drop past the setting: leg loads held. */
+  quadDrop: QuadDrop | null;
   /** Next walk-jog, once the jog gate is cleared. */
   walkJog: WalkJogAdvice | null;
   /** Lift-day warm-up, items separated by "; ". */
@@ -189,6 +193,10 @@ export type WeeklyReviewData = {
     quadLsiPct: number | null;
     walkingAsymmetryPct: number | null;
   }[];
+  /** PT Tracker knee tests as of the week's end (quad LSI 90° / 60°, H:Q, walking, the quad-drop hold). */
+  knee: KneeTestSummary;
+  /** Newest synced crane test, any week; null until the PT Tracker has synced. */
+  kneeAsOf: string | null;
   targets: {
     lsi: number[];
     asymmetry: number;

@@ -331,6 +331,13 @@ export function ProgramTodayCard({
         </p>
       ) : null}
 
+      {today.quadDrop && liftPending ? (
+        <p className="rounded-2xl border border-ember/30 bg-ember/10 px-4 py-2 text-xs text-ink/80">
+          Left quad down {today.quadDrop.dropN} N on the {today.quadDrop.date}{" "}
+          crane test: hold leg loads. Check sleep, swelling and load.
+        </p>
+      ) : null}
+
       <ProgramSessionList
         sessions={today.sessions}
         testDayUrl={today.testDayUrl}
