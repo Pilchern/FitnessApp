@@ -49,6 +49,7 @@ export * from "./shared/trend-series";
 export * from "./modules/program/program-calendar";
 export * from "./modules/program/knee-readiness";
 export * from "./modules/program/program-progression";
+export * from "./modules/program/knee-tests";
 export * from "./modules/program/program-plan";
 export * from "./modules/program/program-service";
 export * from "./modules/program/program-logger-plan";

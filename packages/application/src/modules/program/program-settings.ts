@@ -10,10 +10,14 @@ export type ProgramSettings = {
   dumbbellFineStepLb: number;
   dumbbellFineLimitLb: number;
   dumbbellCoarseStepLb: number;
+  /** Heaviest dumbbell owned: suggested DB loads stop here. */
+  dumbbellMaxLb: number;
   cuffStepLb: number;
   progressionMinRir: number;
   sleepMinHoursForIncrease: number;
   sleepAverageNights: number;
+  /** Hold loads when the left quad crane test drops more than this week over week. */
+  quadDropHoldN: number;
   hardSetMaxRir: number;
   quadSetsMin: number;
   quadSetsMax: number;
@@ -111,10 +115,12 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   dumbbellFineStepLb: 2.5,
   dumbbellFineLimitLb: 25,
   dumbbellCoarseStepLb: 5,
+  dumbbellMaxLb: 52.5,
   cuffStepLb: 2.5,
   progressionMinRir: 2,
   sleepMinHoursForIncrease: 6.5,
   sleepAverageNights: 3,
+  quadDropHoldN: 65,
   hardSetMaxRir: 4,
   quadSetsMin: 12,
   quadSetsMax: 16,

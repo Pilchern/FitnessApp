@@ -18,6 +18,7 @@ import type {
   UpdateSettingInput,
 } from "@fitness-app/application";
 import type {
+  KneeTest,
   ProgramSessionOutcome,
   ProgramWeeklyCheckin,
   TrainingSetting,
@@ -181,6 +182,17 @@ const checkinRowSchema = z.object({
   pt_visits_attended: num,
   quad_lsi_pct: z.coerce.number().nullable(),
   walking_asymmetry_pct: z.coerce.number().nullable(),
+  notes: z.string().nullable(),
+});
+
+const kneeTestRowSchema = z.object({
+  test_date: z.string(),
+  test_type: z.string(),
+  side: z.enum(["L", "R"]).nullable(),
+  value: z.coerce.number(),
+  unit: z.string(),
+  rep_index: z.number(),
+  source: z.string(),
   notes: z.string().nullable(),
 });
 
@@ -616,5 +628,37 @@ export class SupabaseProgramRepository implements ProgramRepository {
       { onConflict: "user_id,week_start" },
     );
     throwOnError(response.error, "Save weekly check-in");
+  }
+
+  async listKneeTests(
+    userId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<KneeTest[]> {
+    const response = await this.client
+      .from("knee_tests")
+      .select(
+        "test_date, test_type, side, value, unit, rep_index, source, notes",
+      )
+      .eq("user_id", userId)
+      .gte("test_date", startDate)
+      .lte("test_date", endDate)
+      .is("deleted_at", null)
+      .order("test_date", { ascending: true })
+      .limit(5000);
+    throwOnError(response.error, "List knee tests");
+    return kneeTestRowSchema
+      .array()
+      .parse(response.data ?? [])
+      .map((row) => ({
+        testDate: row.test_date,
+        testType: row.test_type,
+        side: row.side,
+        value: row.value,
+        unit: row.unit,
+        repIndex: row.rep_index,
+        source: row.source,
+        notes: row.notes,
+      }));
   }
 }

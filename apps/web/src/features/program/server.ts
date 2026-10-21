@@ -12,6 +12,7 @@ import {
   isGateCleared,
   kneeOffStreak,
   lastSetsByExercise,
+  leftQuadDrop,
   legExerciseIndex,
   programMilestones,
   programWeekDates,
@@ -29,6 +30,7 @@ import {
   type DatedKneeCheck,
   type DayPlan,
   type ProgramSettings,
+  type QuadDrop,
   type UpperTemplateExercise,
 } from "@fitness-app/application";
 import {
@@ -66,6 +68,8 @@ const PROGRESS_POINTS = 8;
 /** Knee checks loaded for the streak and walk-jog rules. */
 const CHECK_LOOKBACK_DAYS = 21;
 const RUN_LOOKBACK_DAYS = 60;
+/** Two crane tests at most 14 days stale need about a month of rows. */
+const KNEE_TEST_LOOKBACK_DAYS = 35;
 
 export async function zonedToday(userId: string) {
   const profile = await getCachedUserProfile(userId);
@@ -181,6 +185,8 @@ export type ProgramContext = {
   statusOn: (date: string) => KneeReadinessStatus | null;
   outcomes: ProgramSessionOutcome[];
   sleepAverage: number | null;
+  /** Left quad crane-test drop past the setting (PT Tracker); holds leg loads. */
+  quadDrop: QuadDrop | null;
   templates: TrainingTemplate[];
   runs: { date: string; runMinutes: number }[];
   /**
@@ -212,37 +218,50 @@ export async function loadProgramContext(
   if (!loaded) return null;
 
   const outcomeStart = extraOutcomeStart ?? today;
-  const [settingRows, checks, outcomes, recovery, templates, rides, lifts] =
-    await Promise.all([
-      programService.listSettings(user.id),
-      programService.listKneeChecks(
-        user.id,
-        addDays(today, -CHECK_LOOKBACK_DAYS),
-        addDays(today, 7),
-      ),
-      programService.listOutcomes(
-        user.id,
-        outcomeStart < today ? outcomeStart : today,
-        addDays(today, 7),
-      ),
-      recoveryService.listByDateRange({
-        userId: user.id,
-        startDate: addDays(today, -7),
-        endDate: today,
-      }),
-      trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
-      cardioService.listByDateRange({
-        userId: user.id,
-        startDate: addDays(today, -RUN_LOOKBACK_DAYS),
-        endDate: today,
-      }),
-      // The program week holding today starts at most 6 days back.
-      strengthService.listByDateRange({
-        userId: user.id,
-        startDate: addDays(outcomeStart < today ? outcomeStart : today, -7),
-        endDate: today,
-      }),
-    ]);
+  const [
+    settingRows,
+    checks,
+    outcomes,
+    recovery,
+    templates,
+    rides,
+    lifts,
+    kneeTests,
+  ] = await Promise.all([
+    programService.listSettings(user.id),
+    programService.listKneeChecks(
+      user.id,
+      addDays(today, -CHECK_LOOKBACK_DAYS),
+      addDays(today, 7),
+    ),
+    programService.listOutcomes(
+      user.id,
+      outcomeStart < today ? outcomeStart : today,
+      addDays(today, 7),
+    ),
+    recoveryService.listByDateRange({
+      userId: user.id,
+      startDate: addDays(today, -7),
+      endDate: today,
+    }),
+    trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
+    cardioService.listByDateRange({
+      userId: user.id,
+      startDate: addDays(today, -RUN_LOOKBACK_DAYS),
+      endDate: today,
+    }),
+    // The program week holding today starts at most 6 days back.
+    strengthService.listByDateRange({
+      userId: user.id,
+      startDate: addDays(outcomeStart < today ? outcomeStart : today, -7),
+      endDate: today,
+    }),
+    programService.listKneeTests(
+      user.id,
+      addDays(today, -KNEE_TEST_LOOKBACK_DAYS),
+      today,
+    ),
+  ]);
   const logged = lifts
     .filter((l) => l.sets.length > 0)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -268,6 +287,7 @@ export async function loadProgramContext(
       today,
       settings.sleepAverageNights,
     ),
+    quadDrop: leftQuadDrop(kneeTests, today, settings.quadDropHoldN),
     templates,
     liftDates,
     linkedLifts,
@@ -321,6 +341,7 @@ function buildToday(ctx: ProgramContext): {
       redFlag: { name: settings.orthoName, phone: settings.orthoPhone },
       sleepAverageHours: ctx.sleepAverage,
       sleepMinHours: settings.sleepMinHoursForIncrease,
+      quadDrop: ctx.quadDrop,
       walkJog: jogCleared
         ? walkJogAdvice({
             runs: ctx.runs,
@@ -397,6 +418,7 @@ export async function getStrengthProgramPlan(
             history: lastSetsByExercise(sessions),
             upper: upperFor(ctx.templates, lift.session.upperTemplateId),
             sleepAverageHours: ctx.sleepAverage,
+            quadDrop: ctx.quadDrop,
             settings: ctx.settings,
           }),
   };
