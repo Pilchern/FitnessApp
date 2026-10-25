@@ -6,6 +6,8 @@ import {
   buildBodyWaistTrend,
   buildBodyWeightTrend,
   buildWeeklyWeightTrend,
+  dexaAdjustedBodyFat,
+  dexaCalibrations,
   getZonedDate,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
@@ -19,10 +21,11 @@ export async function getBodyPageData(
   editMetricId?: string,
 ): Promise<BodyPageData> {
   const user = await requireCurrentUser();
-  const { bodyMetricService } = await createCoreServices();
-  const [metrics, profile] = await Promise.all([
+  const { bodyMetricService, dexaScanService } = await createCoreServices();
+  const [metrics, profile, scans] = await Promise.all([
     bodyMetricService.listByDateRange({ userId: user.id }),
     getCachedUserProfile(user.id),
+    dexaScanService.list(user.id),
   ]);
   // getZonedDate's UTC fields hold the user's local date (see dashboard).
   const today = getZonedDate(profile?.timezone || "UTC")
@@ -33,8 +36,12 @@ export async function getBodyPageData(
     ? await bodyMetricService.getById(user.id, editMetricId)
     : null;
 
+  const calibrations = dexaCalibrations(scans, metrics);
+
   return {
     metrics,
+    latestDexa: scans.at(-1) ?? null,
+    adjustedBodyFat: dexaAdjustedBodyFat(calibrations, metrics, today),
     summary: buildBodyMetricSummary(metrics),
     weeklyWeight: buildWeeklyWeightTrend(metrics, today),
     weightTrend: buildBodyWeightTrend(chartWindow),

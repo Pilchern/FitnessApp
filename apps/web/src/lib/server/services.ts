@@ -8,6 +8,7 @@ import {
   buildInsights,
   CardioSessionService,
   DailyActivityMetricService,
+  DexaScanService,
   ExerciseOverrideService,
   InsightOrchestrator,
   NutritionLogService,
@@ -29,6 +30,7 @@ import {
   SupabaseBodyMetricRepository,
   SupabaseCardioSessionRepository,
   SupabaseDailyActivityMetricRepository,
+  SupabaseDexaScanRepository,
   SupabaseExerciseOverrideRepository,
   SupabaseInsightRepository,
   SupabaseNutritionLogRepository,
@@ -140,6 +142,9 @@ export const createCoreServices = cache(async function createCoreServices(
   const dailyActivityService = new DailyActivityMetricService(
     new SupabaseDailyActivityMetricRepository(resolvedClient),
   );
+  const dexaScanService = new DexaScanService(
+    new SupabaseDexaScanRepository(resolvedClient),
+  );
   const exerciseOverrideService = new ExerciseOverrideService(
     new SupabaseExerciseOverrideRepository(resolvedClient),
   );
@@ -175,6 +180,7 @@ export const createCoreServices = cache(async function createCoreServices(
     supplementService,
     supplementLogService,
     dailyActivityService,
+    dexaScanService,
     exerciseOverrideService,
     programService,
     insightRepository,

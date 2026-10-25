@@ -54,6 +54,7 @@ export async function refreshInsightsIfDue(
     recentBody,
     recentStrength,
     exerciseOverrides,
+    recentNutrition,
   ] = await Promise.all([
     getCachedUserProfile(userId),
     services.weeklyReviewService.listRecent(userId, 8),
@@ -62,6 +63,7 @@ export async function refreshInsightsIfDue(
     services.bodyMetricService.listByDateRange({ userId, startDate }),
     services.strengthService.listByDateRange({ userId, startDate }),
     services.exerciseOverrideService.listActive({ userId }),
+    services.nutritionService.listByDateRange({ userId, startDate }),
   ]);
   const exerciseOverridesLookup = buildOverridesLookup(exerciseOverrides);
 
@@ -90,6 +92,7 @@ export async function refreshInsightsIfDue(
     recoveryCheckins: recentRecovery,
     weeklyReviews,
     strengthSessions: recentStrength,
+    nutritionLogs: recentNutrition,
     exerciseOverrides: exerciseOverridesLookup,
     liftsCompletedByWeek: Object.fromEntries(liftPairs),
     now: new Date(),

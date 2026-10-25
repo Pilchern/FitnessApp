@@ -30,6 +30,11 @@ export const moduleNavigationItems = [
     description: "Weight and measurements over time.",
   },
   {
+    href: "/body/dexa",
+    title: "DEXA",
+    description: "Scans, targets and the Withings offset.",
+  },
+  {
     href: "/nutrition",
     title: "Nutrition",
     description: "Daily nutrition habits.",

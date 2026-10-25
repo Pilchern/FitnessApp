@@ -94,7 +94,7 @@ export function NutritionQuickForm({
               className={fieldClassName()}
               name="proteinGrams"
               inputMode="numeric"
-              placeholder="180"
+              placeholder="200"
               value={values.proteinGrams}
               onChange={(event) =>
                 setValues((current) => ({
@@ -110,7 +110,7 @@ export function NutritionQuickForm({
             ) : null}
           </label>
           <label className="grid min-w-0 gap-2 text-sm font-medium text-ink">
-            Calories (optional)
+            Calories
             <input
               className={fieldClassName()}
               name="calories"
@@ -127,6 +127,71 @@ export function NutritionQuickForm({
               <p className="text-xs text-ember">{state.fieldErrors.calories}</p>
             ) : null}
           </label>
+          <div className="col-span-2 grid grid-cols-3 gap-3">
+            <label className="grid min-w-0 gap-2 text-sm font-medium text-ink">
+              Net carbs (g)
+              <input
+                className={fieldClassName()}
+                name="netCarbsGrams"
+                inputMode="numeric"
+                placeholder="255"
+                value={values.netCarbsGrams}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    netCarbsGrams: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.netCarbsGrams ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.netCarbsGrams}
+                </p>
+              ) : null}
+            </label>
+            <label className="grid min-w-0 gap-2 text-sm font-medium text-ink">
+              Fat (g)
+              <input
+                className={fieldClassName()}
+                name="fatGrams"
+                inputMode="numeric"
+                placeholder="70"
+                value={values.fatGrams}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    fatGrams: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.fatGrams ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.fatGrams}
+                </p>
+              ) : null}
+            </label>
+            <label className="grid min-w-0 gap-2 text-sm font-medium text-ink">
+              Fiber (g)
+              <input
+                className={fieldClassName()}
+                name="fiberGrams"
+                inputMode="numeric"
+                placeholder="38"
+                value={values.fiberGrams}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    fiberGrams: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.fiberGrams ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.fiberGrams}
+                </p>
+              ) : null}
+            </label>
+          </div>
           <label className="col-span-2 flex cursor-pointer items-center gap-3 text-sm font-medium text-ink">
             <input
               type="checkbox"

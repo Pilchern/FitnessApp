@@ -25,7 +25,9 @@ import {
   weeklyHardLegSets,
   weeklySummaryText,
   weekStreak,
+  weeklyScoreboard,
   type FocusMetric,
+  type ScoreboardRow,
   type ProgramSettings,
   type WeekAdherence,
 } from "@fitness-app/application";
@@ -560,4 +562,66 @@ export async function getWeeklyReviewData(
     surplusBanner: weight.surplusThrottle,
     summaryText: weeklySummaryText(summaryInput),
   };
+}
+
+/** Weeks shown on the scoreboard, newest first. */
+const SCOREBOARD_WEEKS = 12;
+
+/**
+ * The Sunday scoreboard: one row per post-op week (newest first) from the
+ * program's first week, at most 12. Null without an active program.
+ */
+export async function getWeeklyScoreboard(): Promise<ScoreboardRow[] | null> {
+  const ctx = await loadProgramContext();
+  if (!ctx) return null;
+  const user = await requireCurrentUser();
+  const { program, today } = ctx;
+  const current = postOpWeek(program.weekAnchorDate, today);
+  const first = Math.max(
+    firstProgramWeek(program),
+    current - SCOREBOARD_WEEKS + 1,
+  );
+  const weeks = [];
+  for (let w = first; w <= current; w += 1) {
+    weeks.push({ week: w, ...weekDateRange(program.weekAnchorDate, w) });
+  }
+  if (weeks.length === 0) return [];
+  const start = weeks[0]!.start;
+  const end = weeks.at(-1)!.end;
+  const {
+    bodyMetricService,
+    nutritionService,
+    dailyActivityService,
+    programService,
+  } = await createCoreServices();
+  const [body, nutrition, activity, kneeTests, checkins] = await Promise.all([
+    bodyMetricService.listByDateRange({
+      userId: user.id,
+      startDate: start,
+      endDate: end,
+      limit: 2000,
+    }),
+    nutritionService.listByDateRange({
+      userId: user.id,
+      startDate: start,
+      endDate: end,
+      limit: 2000,
+    }),
+    dailyActivityService.listByDateRange({
+      userId: user.id,
+      startDate: start,
+      endDate: end,
+      limit: 2000,
+    }),
+    programService.listKneeTests(user.id, start, end),
+    programService.listWeeklyCheckins(user.id, start, end),
+  ]);
+  return weeklyScoreboard({
+    weeks,
+    body,
+    nutrition,
+    kneeTests,
+    activity,
+    checkins,
+  }).reverse();
 }

@@ -56,6 +56,12 @@ export const nutritionLogFormSchema = z.object({
     "Protein",
   ),
   calories: parseOptionalNumber(z.number().int().min(0).max(10000), "Calories"),
+  netCarbsGrams: parseOptionalNumber(
+    z.number().int().min(0).max(1500),
+    "Net carbs",
+  ),
+  fatGrams: parseOptionalNumber(z.number().int().min(0).max(1000), "Fat"),
+  fiberGrams: parseOptionalNumber(z.number().int().min(0).max(300), "Fiber"),
   creatineTaken: parseBooleanCheckbox,
   protein50By9am: parseBooleanCheckbox,
   notes: optionalString,

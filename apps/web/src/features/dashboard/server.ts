@@ -13,6 +13,11 @@ import {
   buildTrendNotes,
   buildWeeklyWeightTrend,
   computeDailyReadiness,
+  dexaAdjustedBodyFat,
+  dexaCalibrations,
+  nextDexaScan,
+  parseDexaDates,
+  programSettingsFromRows,
   getCurrentWeekRangeForUser,
   getZonedDate,
 } from "@fitness-app/application";
@@ -57,6 +62,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     supplementService,
     supplementLogService,
     dailyActivityService,
+    dexaScanService,
+    programService,
   } = await createCoreServices();
 
   const profile = await getCachedUserProfile(user.id);
@@ -87,6 +94,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     habitDefsResult,
     habitLogsResult,
     dailyActivityResult,
+    dexaScansResult,
+    settingsResult,
   ] = await Promise.allSettled([
     cardioService.listByDateRange({
       userId: user.id,
@@ -134,6 +143,8 @@ export async function getDashboardData(): Promise<DashboardData> {
       startDate: daysAgo(365),
       endDate: today,
     }),
+    dexaScanService.list(user.id),
+    programService.listSettings(user.id),
   ]);
 
   // Rendering stays read-only. Once the response is sent, regenerate if the
@@ -178,6 +189,20 @@ export async function getDashboardData(): Promise<DashboardData> {
         };
 
   const bodyMetricSummary = buildBodyMetricSummary(recentBody);
+  const dexaScans = settledOrNull(dexaScansResult) ?? [];
+  const nextDexa = nextDexaScan({
+    plannedDates: parseDexaDates(
+      programSettingsFromRows(settledOrNull(settingsResult) ?? [])
+        .dexaNextDates,
+    ),
+    scans: dexaScans,
+    today,
+  });
+  const adjustedBodyFat = dexaAdjustedBodyFat(
+    dexaCalibrations(dexaScans, recentBody),
+    recentBody,
+    today,
+  );
   const latestBodyDate =
     [...recentBody]
       .filter((m) => m.weightLb != null)
@@ -254,6 +279,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     weekPlan,
     latestWeightLb: bodyMetricSummary.latestWeightLb,
     latestBodyFatPct: bodyMetricSummary.latestBodyFatPct,
+    adjustedBodyFatPct: adjustedBodyFat?.estimatePct ?? null,
+    nextDexa,
     latestBodyDate,
     weeklyWeight: buildWeeklyWeightTrend(recentBody, today),
     proteinHit: todayNutrition

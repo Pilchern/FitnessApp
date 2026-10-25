@@ -2,6 +2,7 @@ import { createNutritionLogAction, updateNutritionLogAction } from "../actions";
 import { getNutritionPageData } from "../server";
 import { NutritionLogList } from "./nutrition-log-list";
 import { NutritionQuickForm } from "./nutrition-quick-form";
+import { MacroAveragesCard } from "./macro-averages-card";
 import { NutritionSummaryCards } from "./nutrition-summary-cards";
 import { PageHeader } from "@/components/shared/page-header";
 
@@ -20,8 +21,10 @@ export async function NutritionScreen({
     <div className="space-y-4 lg:space-y-6">
       <PageHeader
         title="Nutrition"
-        subtitle="Protein first, then the daily checks. Calories are optional."
+        subtitle="Protein first, then calories and macros, then the daily checks."
       />
+
+      <MacroAveragesCard week={data.macroWeek} />
 
       <NutritionSummaryCards summary={data.summary} targets={data.targets} />
 

@@ -1,6 +1,11 @@
 import "server-only";
 
-import { buildNutritionAdherenceSummary } from "@fitness-app/application";
+import {
+  buildNutritionAdherenceSummary,
+  getZonedDate,
+  macroWeek,
+  programSettingsFromRows,
+} from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { createCoreServices } from "@/lib/server/services";
 import type { NutritionPageData } from "./types";
@@ -9,12 +14,18 @@ export async function getNutritionPageData(
   editLogId?: string,
 ): Promise<NutritionPageData> {
   const user = await requireCurrentUser();
-  const { nutritionService, profileService } = await createCoreServices();
+  const { nutritionService, profileService, programService } =
+    await createCoreServices();
 
-  const [logs, profile] = await Promise.all([
+  const [logs, profile, settingRows] = await Promise.all([
     nutritionService.listByDateRange({ userId: user.id }),
     profileService.getByUserId(user.id),
+    programService.listSettings(user.id),
   ]);
+  const settings = programSettingsFromRows(settingRows);
+  const today = getZonedDate(profile?.timezone || "UTC")
+    .toISOString()
+    .slice(0, 10);
 
   const summaryWindow = logs.slice(0, 7);
   const editingLog = editLogId
@@ -24,6 +35,13 @@ export async function getNutritionPageData(
   return {
     logs,
     summary: buildNutritionAdherenceSummary(summaryWindow),
+    macroWeek: macroWeek(logs, today, {
+      calories: profile?.dailyCaloriesTarget ?? null,
+      proteinGrams: profile?.dailyProteinGramsTarget ?? null,
+      netCarbsGrams: settings.netCarbsTargetG,
+      fatGrams: settings.fatTargetG,
+      fiberGrams: profile?.dailyFiberGramsTarget ?? null,
+    }),
     editingLog,
     targets: {
       dailyProteinGramsTarget: profile?.dailyProteinGramsTarget ?? null,

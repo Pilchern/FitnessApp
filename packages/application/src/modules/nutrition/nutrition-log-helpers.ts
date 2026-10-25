@@ -81,3 +81,78 @@ export function buildNutritionAdherenceSummary(
     adherencePct,
   };
 }
+
+export type MacroKey =
+  | "calories"
+  | "proteinGrams"
+  | "netCarbsGrams"
+  | "fatGrams"
+  | "fiberGrams";
+
+export type MacroAverage = {
+  key: MacroKey;
+  label: string;
+  unit: string;
+  /** Mean over the days in the window that have this value. */
+  avg: number | null;
+  daysWithValue: number;
+  target: number | null;
+};
+
+export type MacroWeek = {
+  start: string;
+  end: string;
+  /** Days in the window with calories logged (the "logged in Cronometer" count). */
+  daysLogged: number;
+  macros: MacroAverage[];
+};
+
+const MACROS: { key: MacroKey; label: string; unit: string }[] = [
+  { key: "calories", label: "Calories", unit: "kcal" },
+  { key: "proteinGrams", label: "Protein", unit: "g" },
+  { key: "netCarbsGrams", label: "Net carbs", unit: "g" },
+  { key: "fatGrams", label: "Fat", unit: "g" },
+  { key: "fiberGrams", label: "Fiber", unit: "g" },
+];
+
+function shiftDate(date: string, days: number) {
+  return new Date(Date.parse(`${date}T12:00:00Z`) + days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/**
+ * 7-day averages of each macro for the window ending `end` (inclusive),
+ * against the daily targets. A day missing a value is left out of that
+ * macro's average, not counted as zero.
+ */
+export function macroWeek(
+  logs: Pick<NutritionLog, "logDate" | MacroKey>[],
+  end: string,
+  targets: Partial<Record<MacroKey, number | null>>,
+  days = 7,
+): MacroWeek {
+  const start = shiftDate(end, -(days - 1));
+  const inWindow = logs.filter((l) => l.logDate >= start && l.logDate <= end);
+  return {
+    start,
+    end,
+    daysLogged: new Set(
+      inWindow.filter((l) => l.calories != null).map((l) => l.logDate),
+    ).size,
+    macros: MACROS.map((m) => {
+      const values = inWindow
+        .map((l) => l[m.key])
+        .filter((v): v is number => v != null);
+      return {
+        ...m,
+        avg:
+          values.length > 0
+            ? Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+            : null,
+        daysWithValue: values.length,
+        target: targets[m.key] ?? null,
+      };
+    }),
+  };
+}

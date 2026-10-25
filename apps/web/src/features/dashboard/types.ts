@@ -2,6 +2,7 @@ import type {
   DailyReadiness,
   PeerFitness,
   DailyStrain,
+  NextDexaScan,
   SleepPlan,
   PersistedInsight,
   TrendNote,
@@ -38,6 +39,10 @@ export type DashboardData = {
   weekPlan: WeekPlan;
   latestWeightLb: number | null;
   latestBodyFatPct: number | null;
+  /** Withings 7-day avg + latest DEXA offset; an estimate, not a reading. */
+  adjustedBodyFatPct: number | null;
+  /** Next planned DEXA, with a countdown. */
+  nextDexa: NextDexaScan | null;
   latestBodyDate: string | null;
   weeklyWeight: WeeklyWeightTrend;
   /** Protein-hit days over the last 7; null when nothing is logged. */

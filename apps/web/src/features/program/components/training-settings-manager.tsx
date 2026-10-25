@@ -14,6 +14,7 @@ const TEXT_KEYS = new Set([
   "warm_up",
   "program_rules",
   "gait_drill",
+  "dexa_next_dates",
 ]);
 /** Long text: edited in a text area. */
 const LONG_TEXT_KEYS = new Set(["warm_up", "program_rules", "gait_drill"]);

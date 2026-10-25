@@ -5,6 +5,8 @@ type BodySnapshotCardProps = {
   today: string;
   latestWeightLb: number | null;
   latestBodyFatPct: number | null;
+  /** DEXA-adjusted estimate of the Withings 7-day average. */
+  adjustedBodyFatPct: number | null;
   latestBodyDate: string | null;
   weeklyWeight: WeeklyWeightTrend;
   vo2Max: { value: number; date: string } | null;
@@ -50,6 +52,7 @@ export function BodySnapshotCard({
   today,
   latestWeightLb,
   latestBodyFatPct,
+  adjustedBodyFatPct,
   latestBodyDate,
   weeklyWeight,
   vo2Max,
@@ -94,7 +97,15 @@ export function BodySnapshotCard({
           />
         ) : null}
         {latestBodyFatPct != null ? (
-          <Stat label="Body fat" value={`${latestBodyFatPct.toFixed(1)}%`} />
+          <Stat
+            label="Body fat (Withings)"
+            value={`${latestBodyFatPct.toFixed(1)}%`}
+            sub={
+              adjustedBodyFatPct != null
+                ? `DEXA-adj. est. ≈${adjustedBodyFatPct.toFixed(1)}%`
+                : null
+            }
+          />
         ) : null}
         {vo2Max ? (
           <Stat

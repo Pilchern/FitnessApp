@@ -92,6 +92,9 @@ export function BodyMetricList({ metrics, deleted }: BodyMetricListProps) {
             metric.waistGutIn != null
               ? `Waist (gut) ${formatBodyValue(metric.waistGutIn, "in")}`
               : null,
+            metric.thighLIn != null || metric.thighRIn != null
+              ? `Thighs L ${formatBodyValue(metric.thighLIn ?? null, "in")} / R ${formatBodyValue(metric.thighRIn ?? null, "in")}`
+              : null,
           ].filter(Boolean);
           const fromWithings =
             metric.source.sourceType === "imported" &&

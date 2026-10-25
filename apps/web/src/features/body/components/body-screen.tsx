@@ -23,12 +23,14 @@ export async function BodyScreen({
     <div className="space-y-4 lg:space-y-6">
       <PageHeader
         title="Body"
-        subtitle="Weight and body fat sync from Withings. Log tape measurements and DEXA results here."
+        subtitle="Weight and body fat sync from Withings. Log tape measurements here; DEXA scans have their own page."
       />
 
       <BodySummaryCards
         summary={data.summary}
         weeklyWeight={data.weeklyWeight}
+        latestDexa={data.latestDexa}
+        adjustedBodyFat={data.adjustedBodyFat}
       />
 
       {error ? (

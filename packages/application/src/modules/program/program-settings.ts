@@ -51,6 +51,9 @@ export type ProgramSettings = {
   caloriesLiftDayMin: number;
   caloriesLiftDayMax: number;
   caloriesRestDay: number;
+  /** Daily macro targets beside the profile's kcal, protein and fiber. */
+  netCarbsTargetG: number;
+  fatTargetG: number;
   proteinFlagBelowG: number;
   sleepFlagBelowH: number;
   weightRiseLbPerWeek: number;
@@ -85,6 +88,22 @@ export type ProgramSettings = {
   shoulderEmphasis: number;
   /** Lift-day gait drill, after the warm-up. */
   gaitDrill: string;
+  // Body composition targets (DEXA, 2026-10-24 baseline). The quad strength
+  // LSI return-to-sport gate is lsiTarget3.
+  almiTargetJan27: number;
+  almiTargetOct27: number;
+  almiTarget2029: number;
+  legLeanLsiTargetJan27: number;
+  legLeanLsiTargetOct27: number;
+  dexaBfTargetJan27: number;
+  dexaBfTargetOct27: number;
+  dexaBfTarget2029: number;
+  /** Waist at the navel, at or under. */
+  waistTargetIn: number;
+  /** DEXA visceral fat, hold under. */
+  vatMaxLb: number;
+  /** Planned DEXA scans, "YYYY-MM-DD, YYYY-MM-DD". */
+  dexaNextDates: string;
 };
 
 export const DEFAULT_GAIT_DRILL =
@@ -151,7 +170,9 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   calendarTestMinutes: 30,
   caloriesLiftDayMin: 2400,
   caloriesLiftDayMax: 2500,
-  caloriesRestDay: 2200,
+  caloriesRestDay: 2450,
+  netCarbsTargetG: 255,
+  fatTargetG: 70,
   proteinFlagBelowG: 160,
   sleepFlagBelowH: 7,
   weightRiseLbPerWeek: 0.5,
@@ -178,6 +199,17 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   newBlockLoadMultiplier: 1.1,
   shoulderEmphasis: 0,
   gaitDrill: DEFAULT_GAIT_DRILL,
+  almiTargetJan27: 8.25,
+  almiTargetOct27: 8.7,
+  almiTarget2029: 9.5,
+  legLeanLsiTargetJan27: 94,
+  legLeanLsiTargetOct27: 97,
+  dexaBfTargetJan27: 21.5,
+  dexaBfTargetOct27: 17.5,
+  dexaBfTarget2029: 15,
+  waistTargetIn: 34.5,
+  vatMaxLb: 0.25,
+  dexaNextDates: "2027-01-16, 2027-04-16",
 };
 
 /**
@@ -213,6 +245,7 @@ const TEXT_KEYS = new Set<keyof ProgramSettings>([
   "warmUp",
   "programRules",
   "gaitDrill",
+  "dexaNextDates",
 ]);
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
