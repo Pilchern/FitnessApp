@@ -101,8 +101,9 @@ export function splitLoggedLifts(
  * sets (manual logging, older rows) exists that day. `liftDates` holds only
  * unlinked lifts, so a late log never marks the day it was logged on.
  * Rides are done once any ride is logged or synced (a skipped one does not
- * count). An explicit skip or red-flag stop wins over everything, so a
- * skipped day reads as a choice, not a silent miss. Test days and walk-jog
+ * count). An explicit skip or red-flag stop wins, so a skipped day reads
+ * as a choice, not a silent miss; a skipped lift made up later (a linked
+ * lift dated after it) reads as done. Test days and walk-jog
  * are not tracked.
  */
 export function sessionCompletion(input: {
@@ -117,13 +118,17 @@ export function sessionCompletion(input: {
   linkedLifts?: readonly LinkedLift[];
 }): SessionCompletion {
   const { type, date, today } = input;
-  if (input.outcome) return input.outcome;
+  if (input.outcome === "stopped") return "stopped";
   const tracked = type === "lift" || type === "peloton";
-  if (!tracked) return "none";
+  if (!tracked) return input.outcome ?? "none";
   const linked =
     type === "lift" && input.sessionId != null
       ? linkedLiftFor(input.linkedLifts ?? [], input.sessionId, date)
       : null;
+  // A skipped lift made up on a later day counts as done.
+  if (input.outcome === "skipped") {
+    return linked != null && linked.date > date ? "done" : "skipped";
+  }
   const done =
     type === "lift"
       ? linked != null || input.liftDates.has(date)
@@ -132,6 +137,54 @@ export function sessionCompletion(input: {
   if (date < today) return "missed";
   if (date === today) return "today";
   return "planned";
+}
+
+export type MakeUpCall =
+  | { eligible: true; warning: string | null }
+  | { eligible: false; reason: string };
+
+/**
+ * Can this lift be made up today? Only a missed or skipped (not red-flag
+ * stopped) lift from earlier in the same post-op week, on a day with no lift
+ * of its own and none logged yet, so a make-up never spills into the next
+ * block or stacks two leg sessions on one day. Warns when the next lift is
+ * tomorrow (back-to-back leg days). The knee check still gates the logger.
+ */
+export function makeUpCall(input: {
+  type: ProgramSessionType;
+  completion: SessionCompletion;
+  date: string;
+  today: string;
+  /** First day of the post-op week holding today. */
+  weekStart: string;
+  todayHasLift: boolean;
+  liftedToday: boolean;
+  liftTomorrow: boolean;
+}): MakeUpCall {
+  if (input.type !== "lift") return { eligible: false, reason: "Not a lift." };
+  if (input.completion !== "missed" && input.completion !== "skipped") {
+    return { eligible: false, reason: "Nothing to make up." };
+  }
+  if (!(input.date < input.today) || input.date < input.weekStart) {
+    return { eligible: false, reason: "Only earlier days this week." };
+  }
+  if (input.todayHasLift) {
+    return { eligible: false, reason: "Today has its own lift." };
+  }
+  if (input.liftedToday) {
+    return { eligible: false, reason: "Already lifted today." };
+  }
+  return {
+    eligible: true,
+    warning: input.liftTomorrow
+      ? "Next lift is tomorrow: back-to-back leg days."
+      : null,
+  };
+}
+
+/** /strength link that loads `sessionId` (scheduled on `date`) as a make-up. */
+export function makeUpHref(sessionId: string, date: string) {
+  return `/strength?makeup=${encodeURIComponent(sessionId)}&date=${date}`;
 }
 
 const RANGE_DASH = "–";

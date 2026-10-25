@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { LoggerPlan } from "@fitness-app/application";
 import type { StrengthProgramPlan } from "../types";
 import { KneeCheckPanel } from "./knee-check-panel";
+import { formatShortDate } from "../helpers";
 import { ProgramHeaderLine } from "./program-today-card";
 import { RedFlagControl, SkipControl } from "./session-outcome-controls";
 
@@ -20,8 +21,13 @@ export function ProgramPlanCallout({
   programPlan,
   onStart,
 }: ProgramPlanCalloutProps) {
-  const { today, plan } = programPlan;
-  const lift = today.sessions.find((s) => s.type === "lift" && s.visible);
+  const { today, plan, makeUp } = programPlan;
+  // A make-up loads a missed lift from earlier this week; otherwise today's.
+  const lift = makeUp
+    ? today.week
+        .find((d) => d.date === makeUp.date)
+        ?.sessions.find((s) => s.id === programPlan.sessionId)
+    : today.sessions.find((s) => s.type === "lift" && s.visible);
 
   // Logged: say so and get out of the way. The logger below still works for
   // an extra session.
@@ -51,8 +57,22 @@ export function ProgramPlanCallout({
       <div>
         <ProgramHeaderLine today={today} compact />
         <h2 className="mt-1 font-display text-2xl text-ink">
-          {lift?.name ?? "Today's lift"}
+          {makeUp ? `Make up: ${makeUp.name}` : (lift?.name ?? "Today's lift")}
         </h2>
+        {makeUp ? (
+          <p className="text-sm text-ink/65">
+            Missed {formatShortDate(makeUp.date)}. Logging it links it to that
+            day.{" "}
+            <Link href="/strength" className="font-semibold text-pine">
+              Cancel
+            </Link>
+          </p>
+        ) : null}
+        {makeUp?.warning ? (
+          <p className="mt-1 rounded-2xl border border-ember/30 bg-ember/10 px-3 py-2 text-sm text-ember">
+            {makeUp.warning}
+          </p>
+        ) : null}
         {lift?.upperTemplateName ? (
           <p className="text-sm text-ink/65">then {lift.upperTemplateName}</p>
         ) : null}
@@ -91,7 +111,7 @@ export function ProgramPlanCallout({
         </p>
       ) : null}
 
-      {lift ? (
+      {lift && !makeUp ? (
         <div className="flex flex-wrap items-center gap-2">
           <SkipControl session={lift} date={today.today} />
           {!lift.outcome ? (
@@ -119,7 +139,8 @@ export function ProgramPlanCallout({
         </>
       ) : (
         <p className="text-sm text-ink/60">
-          Answer the knee check to load today&apos;s session.
+          Answer the knee check to load{" "}
+          {makeUp ? "the make-up" : "today's session"}.
         </p>
       )}
     </section>

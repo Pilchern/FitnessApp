@@ -118,8 +118,20 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
                     </span>
                     {s.visible && c ? (
                       <span className={`shrink-0 text-xs ${c.tone}`}>
+                        {s.makeUp ? (
+                          <Link
+                            href={s.makeUp.href}
+                            className="mr-2 font-semibold text-pine underline-offset-2 hover:underline"
+                          >
+                            Make up
+                          </Link>
+                        ) : null}
                         {c.label}
-                        {s.outcome ? ` · ${SKIP_LABELS[s.outcome.reason]}` : ""}
+                        {s.madeUpOn
+                          ? ` · made up ${dayShort(new Date(`${s.madeUpOn}T12:00:00Z`).getUTCDay())}`
+                          : s.outcome && s.completion !== "done"
+                            ? ` · ${SKIP_LABELS[s.outcome.reason]}`
+                            : ""}
                       </span>
                     ) : null}
                   </li>

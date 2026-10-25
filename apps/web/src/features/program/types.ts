@@ -69,6 +69,10 @@ export type ProgramSessionView = {
   outcome: Pick<ProgramSessionOutcome, "outcome" | "reason"> | null;
   /** Done once logged (lifts and rides), else missed/today/planned. */
   completion: SessionCompletion;
+  /** Done by a lift logged on this later date (a make-up). */
+  madeUpOn: string | null;
+  /** Set on an earlier missed/skipped lift this week that can be made up today. */
+  makeUp: { href: string; warning: string | null } | null;
 };
 
 export type ProgramHeader = {
@@ -105,6 +109,14 @@ export type ProgramToday = {
   gaitDrill: string | null;
   /** Today's logged strength session, for the "View" link once done. */
   loggedLiftId: string | null;
+  /** The most recent lift this week that can be made up today. */
+  makeUp: {
+    sessionId: string;
+    date: string;
+    name: string;
+    href: string;
+    warning: string | null;
+  } | null;
   /** The program week holding today, Monday to Sunday. */
   week: ProgramWeekDay[];
 };
@@ -143,8 +155,10 @@ export type ProgramPageData = {
 
 export type StrengthProgramPlan = {
   today: ProgramToday;
-  /** Today's lift session (for skip and red-flag outcomes). */
+  /** Today's lift session, or the missed one being made up (skip, red flag and the saved lift's link). */
   sessionId: string;
+  /** Making up a missed lift: its scheduled date and name; null for today's lift. */
+  makeUp: { date: string; name: string; warning: string | null } | null;
   /** Null until the knee check is in, or when today has no lift. */
   plan: LoggerPlan | null;
 };
