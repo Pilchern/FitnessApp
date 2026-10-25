@@ -192,6 +192,8 @@ Answer first, direct, short. Smallest clean change reusing existing patterns. Na
 
 ## 17. Body composition plan, pending the 2026-10-24 DEXA [stated/assumed 2026-10-14]
 
+Update 2026-10-25 [fact]: baseline DEXA done (22.8% body fat, 42.1 lb fat, 135.2 lb lean, ALMI 8.04, FFMI 19.3, leg lean LSI 90.1, VAT 0.09 lb). BF is above 18%, so Path B (no bulk). Locked 12-week plan: about 2,450 kcal, 200 g protein, 255 g net carbs, 70 g fat, 38 g fiber; rescans about 2027-01-16 and mid-April 2027, then every 6 months. Targets live in Settings > Body composition and show on /body/dexa; the drafts below are superseded where they conflict.
+
 Goal [stated]: visibly lean and muscular by late May/early June 2027, built for hiking, golf, sports and longevity, not maximum size. Lock the targets below once the DEXA is back; until then they are drafts.
 
 Starting point (Withings BIA, mid-October; directional only, foot-to-foot BIA is skewed by the atrophied, swollen left leg) [fact]: about 177-178 lb, about 21% body fat, about 141 lb lean, FFMI about 19. Weight down about 14 lb from spring 2026; flat since mid-September. Roughly half the loss is inferred to be lower body (operated thigh and glute, 3-7 lb) plus water and glycogen (3-5 lb); fat about 5-7 lb. Drivers: post-op unloading, a no-appetite week, stopping cannabis (appetite drop is a known withdrawal effect). Nick is lower-body heavy, so leg loss is likely at the high end.
