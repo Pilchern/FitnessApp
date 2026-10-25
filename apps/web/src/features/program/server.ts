@@ -36,6 +36,7 @@ import {
 import {
   isStrengthTemplateDefinition,
   type KneeReadinessStatus,
+  type ProgramMakeUp,
   type ProgramSessionOutcome,
   type StrengthSession,
   type TrainingProgram,
@@ -47,6 +48,7 @@ import {
   getCachedUserProfile,
 } from "@/lib/server/services";
 import {
+  applyRideMakeUps,
   formatPrescription,
   linkedLiftFor,
   makeUpCall,
@@ -105,6 +107,8 @@ function sessionViews(
     | "liftDates"
     | "linkedLifts"
     | "rideDates"
+    | "rawRideDates"
+    | "makeUps"
   >,
 ): ProgramSessionView[] {
   const { templates, outcomes, settings } = ctx;
@@ -144,7 +148,8 @@ function sessionViews(
         sessionId: s.session.id,
         linkedLifts: ctx.linkedLifts,
       }),
-      madeUpOn: madeUpOn(ctx, s.session.id, plan.date),
+      madeUpOn: madeUpOn(ctx, s.session, plan.date),
+      rideMakeUpPending: rideMakeUpPending(ctx, s.session, plan.date),
       makeUp: null,
       exercises: s.exercises.map((p) => ({
         name: p.name,
@@ -159,14 +164,44 @@ function sessionViews(
   });
 }
 
-/** The later day a linked lift made this session up on, else null. */
-function madeUpOn(
-  ctx: Pick<ProgramContext, "linkedLifts">,
+function rideMakeUpFor(
+  ctx: Pick<ProgramContext, "makeUps">,
   sessionId: string,
   date: string,
 ) {
-  const linked = linkedLiftFor(ctx.linkedLifts, sessionId, date);
+  return (
+    ctx.makeUps.find(
+      (m) => m.programSessionId === sessionId && m.scheduledDate === date,
+    ) ?? null
+  );
+}
+
+/**
+ * The later day this session was made up on: a linked lift dated after it,
+ * or a ride make-up with a ride that day. Else null.
+ */
+function madeUpOn(
+  ctx: Pick<ProgramContext, "linkedLifts" | "makeUps" | "rawRideDates">,
+  session: { id: string; sessionType: string },
+  date: string,
+) {
+  if (session.sessionType === "peloton") {
+    const m = rideMakeUpFor(ctx, session.id, date);
+    return m && ctx.rawRideDates.has(m.madeUpOn) ? m.madeUpOn : null;
+  }
+  const linked = linkedLiftFor(ctx.linkedLifts, session.id, date);
   return linked && linked.date > date ? linked.date : null;
+}
+
+/** A ride make-up set for a day with no ride (yet): that day, else null. */
+function rideMakeUpPending(
+  ctx: Pick<ProgramContext, "makeUps" | "rawRideDates">,
+  session: { id: string; sessionType: string },
+  date: string,
+) {
+  if (session.sessionType !== "peloton") return null;
+  const m = rideMakeUpFor(ctx, session.id, date);
+  return m && !ctx.rawRideDates.has(m.madeUpOn) ? m.madeUpOn : null;
 }
 
 function upperFor(
@@ -209,6 +244,10 @@ export type ProgramContext = {
    */
   liftDates: Set<string>;
   rideDates: Set<string>;
+  /** Ride days as logged, before make-ups move a ride to its scheduled day. */
+  rawRideDates: Set<string>;
+  /** Ride make-ups for the last two weeks. */
+  makeUps: ProgramMakeUp[];
   /** Logged lifts linked to the program session they fulfil. */
   linkedLifts: LinkedLift[];
   /** Latest unlinked strength session per day, for "View". */
@@ -241,6 +280,7 @@ export async function loadProgramContext(
     rides,
     lifts,
     kneeTests,
+    makeUps,
   ] = await Promise.all([
     programService.listSettings(user.id),
     programService.listKneeChecks(
@@ -275,7 +315,18 @@ export async function loadProgramContext(
       addDays(today, -KNEE_TEST_LOOKBACK_DAYS),
       today,
     ),
+    programService.listMakeUps(user.id, addDays(today, -13), today),
   ]);
+  // Same rule as the dashboard plan: a completed ride, not a planned row or
+  // an "other" activity.
+  const rawRideDates = new Set(
+    rides
+      .filter(
+        (r) =>
+          r.plannedVsCompleted === "completed" && r.sessionKind !== "other",
+      )
+      .map((r) => r.sessionDate),
+  );
   const logged = lifts
     .filter((l) => l.sets.length > 0)
     .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -305,16 +356,9 @@ export async function loadProgramContext(
     templates,
     liftDates,
     linkedLifts,
-    // Same rule as the dashboard plan: a completed ride, not a planned row
-    // or an "other" activity.
-    rideDates: new Set(
-      rides
-        .filter(
-          (r) =>
-            r.plannedVsCompleted === "completed" && r.sessionKind !== "other",
-        )
-        .map((r) => r.sessionDate),
-    ),
+    rawRideDates,
+    makeUps,
+    rideDates: applyRideMakeUps(rawRideDates, makeUps),
     liftIdByDate,
     runs: rides
       .filter((r) => r.runMinutes != null && r.runMinutes > 0)
@@ -371,7 +415,7 @@ function buildToday(ctx: ProgramContext): {
       warmUp: settings.warmUp || null,
       gaitDrill: settings.gaitDrill || null,
       // The lift linked to today's lift session first, else today's unlinked one.
-      makeUp: latestMakeUp(week),
+      makeUps: todayMakeUps(week),
       loggedLiftId:
         plan.sessions
           .filter((s) => s.session.sessionType === "lift")
@@ -384,10 +428,8 @@ function buildToday(ctx: ProgramContext): {
   };
 }
 
-function hasVisibleLift(plan: DayPlan) {
-  return plan.sessions.some(
-    (s) => s.session.sessionType === "lift" && s.visible,
-  );
+function hasVisible(plan: DayPlan, type: "lift" | "peloton") {
+  return plan.sessions.some((s) => s.session.sessionType === type && s.visible);
 }
 
 /**
@@ -403,14 +445,27 @@ function buildWeek(ctx: ProgramContext): ProgramWeekDay[] {
     const plan = buildDayPlan(program, date, kneeStatus, settings);
     return { date, kneeStatus, plan };
   });
-  const todayHasLift = days.some(
-    (d) => d.date === today && hasVisibleLift(d.plan),
+  const todayPlan = days.find((d) => d.date === today)?.plan;
+  const tomorrowPlan = buildDayPlan(
+    program,
+    tomorrow,
+    ctx.statusOn(tomorrow),
+    settings,
   );
-  const liftTomorrow = hasVisibleLift(
-    buildDayPlan(program, tomorrow, ctx.statusOn(tomorrow), settings),
-  );
-  const liftedToday =
-    ctx.liftDates.has(today) || ctx.linkedLifts.some((l) => l.date === today);
+  const byType = {
+    lift: {
+      todayHasOwn: todayPlan ? hasVisible(todayPlan, "lift") : false,
+      alreadyToday:
+        ctx.liftDates.has(today) ||
+        ctx.linkedLifts.some((l) => l.date === today),
+      nextTomorrow: hasVisible(tomorrowPlan, "lift"),
+    },
+    peloton: {
+      todayHasOwn: todayPlan ? hasVisible(todayPlan, "peloton") : false,
+      alreadyToday: ctx.makeUps.some((m) => m.madeUpOn === today),
+      nextTomorrow: hasVisible(tomorrowPlan, "peloton"),
+    },
+  };
   return days.map(({ date, kneeStatus, plan }) => ({
     date,
     dayOfWeek: plan.info.dayOfWeek,
@@ -418,44 +473,66 @@ function buildWeek(ctx: ProgramContext): ProgramWeekDay[] {
     kneeStatus,
     sessions: sessionViews(plan, ctx).map((view) => {
       if (!view.visible) return view;
+      if (view.type !== "lift" && view.type !== "peloton") return view;
       const call = makeUpCall({
         type: view.type,
         completion: view.completion,
         date,
         today,
         weekStart: dates[0] ?? today,
-        todayHasLift,
-        liftedToday,
-        liftTomorrow,
+        ...byType[view.type],
       });
-      return call.eligible
-        ? {
-            ...view,
-            makeUp: {
-              href: makeUpHref(view.id, date),
-              warning: call.warning,
-            },
-          }
-        : view;
+      if (!call.eligible) return view;
+      return {
+        ...view,
+        makeUp:
+          view.type === "lift"
+            ? {
+                kind: "lift" as const,
+                href: makeUpHref(view.id, date),
+                warning: call.warning,
+              }
+            : { kind: "ride" as const, href: null, warning: call.warning },
+      };
     }),
   }));
 }
 
-/** The most recent lift this week that can be made up today. */
-function latestMakeUp(week: ProgramWeekDay[]): ProgramToday["makeUp"] {
+/**
+ * Make-ups for the Today card, newest first: the latest lift and the latest
+ * ride that can be made up today, and any ride make-up already set for today.
+ */
+function todayMakeUps(week: ProgramWeekDay[]): ProgramToday["makeUps"] {
+  const out: ProgramToday["makeUps"] = [];
+  const seen = new Set<string>();
   for (const day of [...week].reverse()) {
-    const s = day.sessions.find((v) => v.makeUp);
-    if (s?.makeUp) {
-      return {
-        sessionId: s.id,
-        date: day.date,
-        name: s.name,
-        href: s.makeUp.href,
-        warning: s.makeUp.warning,
-      };
+    for (const s of day.sessions) {
+      if (s.rideMakeUpPending) {
+        out.push({
+          kind: "ride",
+          sessionId: s.id,
+          date: day.date,
+          name: s.name,
+          href: null,
+          warning: null,
+          pendingOn: s.rideMakeUpPending,
+        });
+        seen.add("ride");
+      } else if (s.makeUp && !seen.has(s.makeUp.kind)) {
+        out.push({
+          kind: s.makeUp.kind,
+          sessionId: s.id,
+          date: day.date,
+          name: s.name,
+          href: s.makeUp.href,
+          warning: s.makeUp.warning,
+          pendingOn: null,
+        });
+        seen.add(s.makeUp.kind);
+      }
     }
   }
-  return null;
+  return out;
 }
 
 /** Today's program for the dashboard card. Null without an active program. */

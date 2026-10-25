@@ -2,6 +2,7 @@ import type {
   IsoDate,
   KneeCheck,
   KneeTest,
+  ProgramMakeUp,
   ProgramSessionOutcome,
   ProgramWeeklyCheckin,
   TrainingProgram,
@@ -105,6 +106,28 @@ export const saveWeeklyCheckinSchema = z
 
 export type SaveWeeklyCheckinInput = z.infer<typeof saveWeeklyCheckinSchema>;
 
+export const saveMakeUpSchema = z
+  .object({
+    userId: uuidSchema,
+    programSessionId: uuidSchema,
+    scheduledDate: isoDateSchema,
+    madeUpOn: isoDateSchema,
+  })
+  .refine((v) => v.madeUpOn > v.scheduledDate, {
+    message: "A make-up must be after the scheduled day.",
+    path: ["madeUpOn"],
+  });
+
+export type SaveMakeUpInput = z.infer<typeof saveMakeUpSchema>;
+
+export const cancelMakeUpSchema = z.object({
+  userId: uuidSchema,
+  programSessionId: uuidSchema,
+  scheduledDate: isoDateSchema,
+});
+
+export type CancelMakeUpInput = z.infer<typeof cancelMakeUpSchema>;
+
 export interface ProgramRepository {
   /** The active program with blocks, weeks, sessions, exercises and gates. */
   getActiveProgram(userId: UserId): Promise<TrainingProgram | null>;
@@ -139,6 +162,15 @@ export interface ProgramRepository {
     startDate: IsoDate,
     endDate: IsoDate,
   ): Promise<KneeTest[]>;
+  /** Live make-ups whose scheduled date is in the range. */
+  listMakeUps(
+    userId: UserId,
+    startDate: IsoDate,
+    endDate: IsoDate,
+  ): Promise<ProgramMakeUp[]>;
+  /** One live make-up per session occurrence; saving again replaces it. */
+  saveMakeUp(input: SaveMakeUpInput): Promise<void>;
+  cancelMakeUp(input: CancelMakeUpInput): Promise<void>;
 }
 
 export class ProgramService {
@@ -200,5 +232,17 @@ export class ProgramService {
 
   async listKneeTests(userId: UserId, startDate: IsoDate, endDate: IsoDate) {
     return this.repository.listKneeTests(userId, startDate, endDate);
+  }
+
+  async listMakeUps(userId: UserId, startDate: IsoDate, endDate: IsoDate) {
+    return this.repository.listMakeUps(userId, startDate, endDate);
+  }
+
+  async saveMakeUp(input: unknown) {
+    return this.repository.saveMakeUp(saveMakeUpSchema.parse(input));
+  }
+
+  async cancelMakeUp(input: unknown) {
+    return this.repository.cancelMakeUp(cancelMakeUpSchema.parse(input));
   }
 }

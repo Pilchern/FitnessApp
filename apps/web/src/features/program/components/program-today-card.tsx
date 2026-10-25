@@ -7,6 +7,7 @@ import type {
 import { AdherenceBanners, Scorecard, StreakLine } from "./adherence";
 import { STATUS_LABEL, dayShort } from "../helpers";
 import { KneeCheckPanel } from "./knee-check-panel";
+import { MakeUpControl } from "./make-up-control";
 import { SkipControl } from "./session-outcome-controls";
 import { RIDE_KIND_LABEL, type WalkJogAdvice } from "@fitness-app/application";
 
@@ -310,26 +311,35 @@ export function ProgramTodayCard({
 
       {snapshot ? <AdherenceBanners snapshot={snapshot} /> : null}
 
-      {today.makeUp ? (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-pine/25 bg-pine/5 px-4 py-3">
+      {today.makeUps.map((m) => (
+        <div
+          key={`${m.sessionId}-${m.date}`}
+          className="flex items-center justify-between gap-3 rounded-2xl border border-pine/25 bg-pine/5 px-4 py-3"
+        >
           <div className="min-w-0 text-sm">
             <p className="font-semibold text-ink">
-              Missed{" "}
-              {dayShort(new Date(`${today.makeUp.date}T12:00:00Z`).getUTCDay())}
-              : {today.makeUp.name}
+              {m.pendingOn ? "Make-up today" : "Missed"}{" "}
+              {dayShort(new Date(`${m.date}T12:00:00Z`).getUTCDay())}: {m.name}
             </p>
             <p className="text-xs text-ink/60">
-              {today.makeUp.warning ?? "No lift today, so you can make it up."}
+              {m.pendingOn
+                ? "The ride you log or sync today counts for that day."
+                : (m.warning ??
+                  (m.kind === "lift"
+                    ? "No lift today, so you can make it up."
+                    : "No ride today, so you can make it up."))}
             </p>
           </div>
-          <Link
-            href={today.makeUp.href}
-            className="inline-flex h-11 shrink-0 items-center rounded-full bg-pine px-4 text-sm font-semibold text-white"
-          >
-            Make up
-          </Link>
+          <MakeUpControl
+            kind={m.kind}
+            sessionId={m.sessionId}
+            date={m.date}
+            href={m.href}
+            pending={m.pendingOn != null}
+            variant="button"
+          />
         </div>
-      ) : null}
+      ))}
 
       {today.showGoBackWeek ? (
         <div

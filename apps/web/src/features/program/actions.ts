@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
+import { getProgramToday } from "./server";
 import type { ProgramActionState } from "./types";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
@@ -215,6 +216,73 @@ export async function saveWeeklyCheckinAction(
     revalidatePath("/program/review");
     revalidateProgramViews();
     return { saved: true };
+  } catch (error) {
+    return parseActionError(error);
+  }
+}
+
+const makeUpSchema = z.object({
+  programSessionId: z.string().uuid(),
+  date: isoDate,
+});
+
+/**
+ * Make up a missed ride today: the ride logged or synced today counts for
+ * the missed day. Checked against the same rule as the "Make up" link
+ * (makeUpCall), so a stale page cannot set an ineligible one.
+ */
+export async function setRideMakeUpAction(
+  _previous: ProgramActionState,
+  formData: FormData,
+): Promise<ProgramActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const parsed = makeUpSchema.parse({
+      programSessionId: formData.get("programSessionId"),
+      date: formData.get("date"),
+    });
+    const today = await getProgramToday();
+    const eligible = today?.week
+      .find((d) => d.date === parsed.date)
+      ?.sessions.find(
+        (s) => s.id === parsed.programSessionId && s.makeUp?.kind === "ride",
+      );
+    if (!today || !eligible) {
+      return { error: "That ride can't be made up today." };
+    }
+    const { programService } = await createCoreServices();
+    await programService.saveMakeUp({
+      userId: user.id,
+      programSessionId: parsed.programSessionId,
+      scheduledDate: parsed.date,
+      madeUpOn: today.today,
+    });
+    revalidateProgramViews();
+    return { saved: true };
+  } catch (error) {
+    return parseActionError(error);
+  }
+}
+
+/** Undo a ride make-up. */
+export async function cancelRideMakeUpAction(
+  _previous: ProgramActionState,
+  formData: FormData,
+): Promise<ProgramActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const parsed = makeUpSchema.parse({
+      programSessionId: formData.get("programSessionId"),
+      date: formData.get("date"),
+    });
+    const { programService } = await createCoreServices();
+    await programService.cancelMakeUp({
+      userId: user.id,
+      programSessionId: parsed.programSessionId,
+      scheduledDate: parsed.date,
+    });
+    revalidateProgramViews();
+    return {};
   } catch (error) {
     return parseActionError(error);
   }

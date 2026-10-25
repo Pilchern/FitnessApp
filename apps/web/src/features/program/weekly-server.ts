@@ -37,7 +37,7 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
-import { splitLoggedLifts } from "./helpers";
+import { applyRideMakeUps, splitLoggedLifts } from "./helpers";
 import { loadProgramContext } from "./server";
 import type { AdherenceSnapshot, WeeklyReviewData } from "./types";
 
@@ -61,8 +61,9 @@ async function loadActivity(
     cardioService,
     supplementService,
     supplementLogService,
+    programService,
   } = await createCoreServices();
-  const [sessions, rides, habits, habitLogs] = await Promise.all([
+  const [sessions, rides, habits, habitLogs, makeUps] = await Promise.all([
     strengthService.listByDateRange({
       userId,
       startDate: start,
@@ -81,6 +82,7 @@ async function loadActivity(
       startDate: start,
       endDate: end,
     }),
+    programService.listMakeUps(userId, start, end),
   ]);
   const romIds = new Set(
     habits
@@ -100,10 +102,14 @@ async function loadActivity(
     sessions,
     liftDates,
     linkedLifts,
-    rideDates: new Set(
-      rides
-        .filter((r) => r.plannedVsCompleted !== "skipped")
-        .map((r) => r.sessionDate),
+    // A ride on a make-up day counts for the missed day it stands in for.
+    rideDates: applyRideMakeUps(
+      new Set(
+        rides
+          .filter((r) => r.plannedVsCompleted !== "skipped")
+          .map((r) => r.sessionDate),
+      ),
+      makeUps,
     ),
     romDates: new Set(
       habitLogs
