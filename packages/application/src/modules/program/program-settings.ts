@@ -102,6 +102,8 @@ export type ProgramSettings = {
   waistTargetIn: number;
   /** DEXA visceral fat, hold under. */
   vatMaxLb: number;
+  /** Planned DEXA scans, "YYYY-MM-DD, YYYY-MM-DD". */
+  dexaNextDates: string;
 };
 
 export const DEFAULT_GAIT_DRILL =
@@ -207,6 +209,7 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   dexaBfTarget2029: 15,
   waistTargetIn: 34.5,
   vatMaxLb: 0.25,
+  dexaNextDates: "2027-01-16, 2027-04-16",
 };
 
 /**
@@ -242,6 +245,7 @@ const TEXT_KEYS = new Set<keyof ProgramSettings>([
   "warmUp",
   "programRules",
   "gaitDrill",
+  "dexaNextDates",
 ]);
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 

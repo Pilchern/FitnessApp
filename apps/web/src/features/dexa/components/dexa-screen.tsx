@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { SummaryStatCard } from "@/components/shared/summary-stat-card";
 import { formatDexaDelta, formatNumber, formatScanDate } from "../helpers";
 import { getDexaPageData } from "../server";
+import { DexaCountdown } from "./dexa-countdown";
 import { DexaScanForm } from "./dexa-scan-form";
 import { TargetProgressList } from "./target-progress-list";
 
@@ -141,6 +142,12 @@ export async function DexaScreen() {
           <p className="text-sm text-ink/70">No DEXA scans yet.</p>
         </section>
       )}
+
+      {data.nextScan ? (
+        <section className={panel}>
+          <DexaCountdown next={data.nextScan} card={false} />
+        </section>
+      ) : null}
 
       <section className={panel}>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">

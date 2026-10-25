@@ -9,6 +9,7 @@ import { WeekPlanCard } from "@/features/dashboard/components/week-plan-card";
 import { TrendNotesCard } from "@/features/dashboard/components/trend-notes-card";
 import { BodySnapshotCard } from "@/features/dashboard/components/body-snapshot-card";
 import { PeerFitnessCard } from "@/features/dashboard/components/peer-fitness-card";
+import { DexaCountdown } from "@/features/dexa/components/dexa-countdown";
 import { StrainSleepCard } from "@/features/dashboard/components/strain-sleep-card";
 import { getProgramToday } from "@/features/program/server";
 import { getAdherenceSnapshot } from "@/features/program/weekly-server";
@@ -140,6 +141,7 @@ export default async function DashboardPage() {
             vo2Max={data.activity.vo2Max}
             proteinHit={data.proteinHit}
           />
+          {data.nextDexa ? <DexaCountdown next={data.nextDexa} /> : null}
           <PeerFitnessCard peerFitness={data.peerFitness} />
         </div>
       </div>

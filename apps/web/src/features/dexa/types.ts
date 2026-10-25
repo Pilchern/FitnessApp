@@ -3,6 +3,7 @@ import type {
   DexaCalibration,
   DexaComparison,
   DexaFieldSpec,
+  NextDexaScan,
   TargetProgress,
 } from "@fitness-app/application";
 import type { DexaScan } from "@fitness-app/domain";
@@ -12,6 +13,7 @@ export type DexaPageData = {
   comparison: DexaComparison | null;
   calibrations: DexaCalibration[];
   adjustedBodyFat: AdjustedBodyFat | null;
+  nextScan: NextDexaScan | null;
   fields: DexaFieldSpec[];
   targets: TargetProgress[];
   /** Facility, machine and height from the latest scan, to prefill the form. */

@@ -9,6 +9,8 @@ import {
   dexaTargetProgress,
   getZonedDate,
   latestQuadLsi,
+  nextDexaScan,
+  parseDexaDates,
   programSettingsFromRows,
   quadLsiTrend,
 } from "@fitness-app/application";
@@ -76,6 +78,11 @@ export async function getDexaPageData(): Promise<DexaPageData> {
     comparison,
     calibrations,
     adjustedBodyFat: dexaAdjustedBodyFat(calibrations, body, today),
+    nextScan: nextDexaScan({
+      plannedDates: parseDexaDates(settings.dexaNextDates),
+      scans,
+      today,
+    }),
     fields: DEXA_FIELDS,
     targets: dexaTargetProgress({
       scans,
