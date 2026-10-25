@@ -18,7 +18,8 @@ export type InsightType =
   | "muscle_group_neglected"
   | "push_pull_imbalance"
   | "deload_suggested"
-  | "cardio_target_consistently_exceeded";
+  | "cardio_target_consistently_exceeded"
+  | "calorie_calibration";
 
 export type Insight = {
   id: EntityId;

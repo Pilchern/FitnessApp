@@ -63,3 +63,4 @@ export * from "./modules/body-composition/dexa";
 export * from "./modules/body-composition/dexa-targets";
 export * from "./modules/body-composition/dexa-calibration";
 export * from "./modules/program/weekly-scoreboard";
+export * from "./modules/insights/calorie-calibration";

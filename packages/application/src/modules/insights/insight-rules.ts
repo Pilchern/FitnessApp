@@ -8,6 +8,7 @@ import type {
   ExerciseCatalogEntry,
   Insight,
   IsoDate,
+  NutritionLog,
   RecoveryCheckin,
   StrengthSession,
   WeeklyReview,
@@ -19,6 +20,10 @@ import {
 } from "../weekly-reviews/weekly-review-helpers";
 import { getZonedDate } from "../../shared/timezone";
 import { computeMuscleGroupVolume } from "../strength/muscle-group-volume";
+import {
+  calorieCalibration,
+  calorieCalibrationInsight,
+} from "./calorie-calibration";
 
 export type InsightEngineInput = {
   bodyMetrics: BodyMetric[];
@@ -27,6 +32,8 @@ export type InsightEngineInput = {
   weeklyReviews: WeeklyReview[];
   strengthSessions: StrengthSession[];
   liftsCompletedByWeek: Record<IsoDate, number>;
+  /** Daily kcal for the weekly calorie calibration; omitted = rule off. */
+  nutritionLogs?: Pick<NutritionLog, "logDate" | "calories">[];
   /** Per-user exercise catalog overrides (TD-021), checked before the built-in catalog when classifying strength sets. */
   exerciseOverrides?: ReadonlyMap<string, ExerciseCatalogEntry>;
   now?: Date;
@@ -642,7 +649,7 @@ function evaluateWeightTrendingUp(input: InsightEngineInput) {
     "caution",
     "Weight trending up",
     `Weight has increased ${delta} lb over the past 4 weeks.`,
-    "Faster than the +0.25-0.5 lb/week rebuild pace. Trim the surplus and keep protein at 180 g. No cut until full training returns.",
+    "Faster than the +0.25-0.5 lb/week rebuild pace. Trim the surplus and keep protein at 200 g. No cut until full training returns.",
     {
       weekStarts: last4.map((r) => r.weekStart),
       weights: ordered,
@@ -901,6 +908,21 @@ const severityRank: Record<Insight["severity"], number> = {
   positive: 1,
 };
 
+function evaluateCalorieCalibration(input: InsightEngineInput) {
+  if (!input.nutritionLogs) return null;
+  const today = toIsoDateUtc(
+    getZonedDate(input.timezone || "UTC", input.now ?? new Date()),
+  );
+  return calorieCalibrationInsight(
+    calorieCalibration({
+      today,
+      bodyMetrics: input.bodyMetrics,
+      nutritionLogs: input.nutritionLogs,
+      strengthSessions: input.strengthSessions,
+    }),
+  );
+}
+
 export function buildInsights(input: InsightEngineInput): Insight[] {
   const insights = [
     evaluateCardioBelowTarget(input),
@@ -919,6 +941,7 @@ export function buildInsights(input: InsightEngineInput): Insight[] {
     evaluatePushPullImbalance(input),
     evaluateDeloadSuggested(input),
     evaluateCardioTargetConsistentlyExceeded(input),
+    evaluateCalorieCalibration(input),
   ].filter((insight): insight is Insight => insight != null);
 
   return insights.sort((left, right) => {
