@@ -144,6 +144,8 @@ const exerciseRowSchema = z.object({
   substitute_reps_max: num.optional().default(null),
   superset_group: z.string().nullable().optional().default(null),
   superset_order: num.optional().default(null),
+  // Optional so rows read before the v2.10 migration still parse.
+  left_extra_sets: num.optional().default(null),
   notes: z.string().nullable(),
 });
 
@@ -243,6 +245,7 @@ function mapExercise(row: z.infer<typeof exerciseRowSchema>): ProgramExercise {
     loadKind: row.load_kind,
     setsMin: row.sets_min,
     setsMax: row.sets_max,
+    leftExtraSets: row.left_extra_sets ?? 0,
     repsMin: row.reps_min,
     repsMax: row.reps_max,
     rirTarget: row.rir_target,

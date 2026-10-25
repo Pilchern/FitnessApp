@@ -77,6 +77,8 @@ export type PlannedExercise = {
   lockedReason: string | null;
   scheme: PrescriptionScheme;
   sets: number;
+  /** Per-leg work: extra left-leg sets after the L/R pairs (0 = none). */
+  leftExtraSets?: number;
 };
 
 export type PlanContext = {
@@ -117,6 +119,10 @@ export function planExercise(
     loadKind: exercise.loadKind,
     scheme,
     sets,
+    leftExtraSets:
+      exercise.sideMode === "per_leg" && sets > 0
+        ? (exercise.leftExtraSets ?? 0)
+        : 0,
   };
 
   const closed = closedGate(ctx.gates, exercise, ctx.date);

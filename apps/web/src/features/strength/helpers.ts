@@ -549,7 +549,7 @@ export function withRightRepsFromLeft<
 
 /**
  * Logger rows for one plan exercise. Per-leg work alternates left then right
- * (L1, R1, L2, R2). Program leg work takes the engine's load as is; template
+ * (L1, R1, L2, R2), then any extra left-leg sets. Program leg work takes the engine's load as is; template
  * exercises keep the last-logged prefill. Timed and isometric work prefill
  * seconds; isometrics also get an empty peak-newtons field.
  */
@@ -562,42 +562,49 @@ export function planExerciseSets(
   const force = ex.measure === "force";
   const timed = ex.measure === "time" || force;
   const rows: (StrengthSetFormValue & { done: boolean })[] = [];
+  // Extra left-leg sets come after the L/R pairs: L1 R1 ... L3 R3 L4.
+  const extraLeft = ex.sideMode === "per_leg" ? (ex.leftExtraSets ?? 0) : 0;
+  const slots: { i: number; side: "left" | "right" | null }[] = [];
   for (let i = 0; i < ex.targetSets; i += 1) {
-    for (const side of sides) {
-      const weight = timed
+    for (const side of sides) slots.push({ i, side });
+  }
+  for (let k = 0; k < extraLeft; k += 1) {
+    slots.push({ i: ex.targetSets + k, side: "left" });
+  }
+  for (const { i, side } of slots) {
+    const weight = timed
+      ? ""
+      : ex.program
+        ? ex.targetWeight != null
+          ? String(ex.targetWeight)
+          : ""
+        : startingWeight(last, i, ex.targetWeight, ex.targetReps);
+    const seconds = timed
+      ? ex.targetSeconds != null
+        ? String(ex.targetSeconds)
+        : force
+          ? "5"
+          : ""
+      : ex.program
         ? ""
-        : ex.program
-          ? ex.targetWeight != null
-            ? String(ex.targetWeight)
-            : ""
-          : startingWeight(last, i, ex.targetWeight, ex.targetReps);
-      const seconds = timed
-        ? ex.targetSeconds != null
-          ? String(ex.targetSeconds)
-          : force
-            ? "5"
-            : ""
-        : ex.program
-          ? ""
-          : startingDuration(last, i);
-      rows.push({
-        exerciseName: ex.exerciseName,
-        setNumber: rows.length + 1,
-        reps: !timed && ex.targetReps != null ? String(ex.targetReps) : "",
-        weight,
-        rir: !timed && ex.targetRir != null ? String(ex.targetRir) : "",
-        isWarmup: false,
-        durationSeconds: seconds,
-        distanceMeters:
-          ex.measure === "distance" && ex.targetDistanceMeters != null
-            ? String(ex.targetDistanceMeters)
-            : "",
-        notes: "",
-        done: false,
-        ...(side ? { side } : {}),
-        ...(force ? { peakForceNewtons: "" } : {}),
-      });
-    }
+        : startingDuration(last, i);
+    rows.push({
+      exerciseName: ex.exerciseName,
+      setNumber: rows.length + 1,
+      reps: !timed && ex.targetReps != null ? String(ex.targetReps) : "",
+      weight,
+      rir: !timed && ex.targetRir != null ? String(ex.targetRir) : "",
+      isWarmup: false,
+      durationSeconds: seconds,
+      distanceMeters:
+        ex.measure === "distance" && ex.targetDistanceMeters != null
+          ? String(ex.targetDistanceMeters)
+          : "",
+      notes: "",
+      done: false,
+      ...(side ? { side } : {}),
+      ...(force ? { peakForceNewtons: "" } : {}),
+    });
   }
   return rows;
 }

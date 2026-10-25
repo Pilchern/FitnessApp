@@ -36,6 +36,8 @@ export type LoggerPlanExercise = {
   exerciseName: string;
   exerciseOrder: number;
   targetSets: number;
+  /** Per-leg program work: extra left-leg sets after the L/R pairs. */
+  leftExtraSets?: number;
   targetReps: number | null;
   targetWeight: number | null;
   targetRir: number | null;
@@ -157,6 +159,7 @@ function programRow(
     exerciseName: p.name,
     exerciseOrder: 0,
     targetSets: p.sets,
+    leftExtraSets: p.leftExtraSets ?? 0,
     targetRir: p.scheme.rirTarget,
     sideMode: p.exercise.sideMode,
     measure: p.exercise.measure,
@@ -328,6 +331,7 @@ export function restMetaFromPlan(exercises: LoggerPlanExercise[]): RestMeta {
         {
           name: ex.exerciseName,
           sets: ex.targetSets,
+          leftExtraSets: ex.leftExtraSets ?? 0,
           measure: ex.measure ?? "reps",
           sideMode: ex.sideMode ?? "bilateral",
           category: ex.category ?? null,
@@ -354,7 +358,22 @@ export function restForTick(
   if (!set) return null;
   const item = meta[programExerciseKey(set.exerciseName)];
   if (!item) return null;
-  const side = set.side === "left" || set.side === "right" ? set.side : null;
+  // A left set with no right set after it (an extra left-leg set) rests
+  // like the end of the pair, not "Right leg" next.
+  const trailingLeft =
+    set.side === "left" &&
+    !sets.some(
+      (s, i) =>
+        i > index &&
+        s.side === "right" &&
+        programExerciseKey(s.exerciseName) ===
+          programExerciseKey(set.exerciseName),
+    );
+  const side = trailingLeft
+    ? null
+    : set.side === "left" || set.side === "right"
+      ? set.side
+      : null;
   const hasOpenSet = (name: string) =>
     sets.some(
       (s, i) =>

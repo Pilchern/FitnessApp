@@ -65,6 +65,14 @@ describe("session time budget", () => {
     ).toBe(3 * (80 + 60));
   });
 
+  it("an extra left-leg set adds one side's work and one rest", () => {
+    expect(
+      workingSeconds([
+        item({ name: "Step-Up", sideMode: "per_leg", leftExtraSets: 1 }),
+      ]),
+    ).toBe(3 * (80 + 60) + (40 + 60));
+  });
+
   it("timed and isometric work uses the hold time", () => {
     expect(
       workingSeconds([

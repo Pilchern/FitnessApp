@@ -53,6 +53,20 @@ describe("program rest on tick (supersets and per-leg)", () => {
       { exerciseName: "Curl", side: "" as const },
     ].map((s, i) => ({ ...s, done: done[i] ?? false }));
 
+  it("an extra left-leg set (no right after it) rests like the end of the pair", () => {
+    const extra = [
+      { exerciseName: "Step-Up", side: "left" as const, done: true },
+      { exerciseName: "Step-Up", side: "right" as const, done: true },
+      { exerciseName: "Pull-Up", side: "" as const, done: true },
+      { exerciseName: "Step-Up", side: "left" as const, done: false },
+      { exerciseName: "Pull-Up", side: "" as const, done: false },
+    ];
+    expect(restForTick(extra, 3, meta)).toEqual({
+      seconds: 0,
+      next: "Next: A2 Pull-Up",
+    });
+  });
+
   it("left leg goes straight to the right leg", () => {
     expect(restForTick(sets([]), 0, meta)).toEqual({
       seconds: 0,

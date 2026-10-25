@@ -142,9 +142,9 @@ function range(min: number | null, max: number | null) {
   return `${min}${RANGE_DASH}${max}`;
 }
 
-/** "3 x 10–12 @ RIR 2 per leg", "3 x 20 s per leg", "5 x 5 s, peak N per leg". */
+/** "3 x 10–12 @ RIR 2 per leg", "3 x 20 s per leg", "5 x 5 s, peak N per leg"; ", +1 left" for extra left-leg sets. */
 export function formatPrescription(
-  p: Pick<PlannedExercise, "sets" | "scheme"> & {
+  p: Pick<PlannedExercise, "sets" | "scheme" | "leftExtraSets"> & {
     exercise: Pick<
       PlannedExercise["exercise"],
       "measure" | "sideMode" | "secondsTarget" | "tempo"
@@ -158,8 +158,10 @@ export function formatPrescription(
       : p.exercise.sideMode === "per_side"
         ? " per side"
         : "";
+  const extra = p.leftExtraSets ?? 0;
+  const left = extra > 0 ? `, +${extra} left` : "";
   if (p.exercise.measure === "distance") {
-    return `${p.sets} x ${p.exercise.distanceMetersTarget ?? "?"} m${perLeg}`;
+    return `${p.sets} x ${p.exercise.distanceMetersTarget ?? "?"} m${perLeg}${left}`;
   }
   if (p.exercise.measure === "time") {
     const seconds = p.exercise.secondsTarget;
@@ -167,15 +169,15 @@ export function formatPrescription(
       seconds != null && seconds >= 120
         ? `${seconds / 60} min`
         : `${seconds ?? "?"} s`;
-    return `${p.sets} x ${time}${perLeg}`;
+    return `${p.sets} x ${time}${perLeg}${left}`;
   }
   if (p.exercise.measure === "force") {
-    return `${p.sets} x ${p.exercise.secondsTarget ?? 5} s, peak N${perLeg}`;
+    return `${p.sets} x ${p.exercise.secondsTarget ?? 5} s, peak N${perLeg}${left}`;
   }
   const reps = range(p.scheme.repsMin, p.scheme.repsMax) ?? "?";
   const rir = p.scheme.rirTarget != null ? ` @ RIR ${p.scheme.rirTarget}` : "";
   const tempo = p.exercise.tempo ? `, ${p.exercise.tempo}` : "";
-  return `${p.sets} x ${reps}${rir}${perLeg}${tempo}`;
+  return `${p.sets} x ${reps}${rir}${perLeg}${tempo}${left}`;
 }
 
 export const STATUS_LABEL: Record<PlannedExerciseStatus, string | null> = {
