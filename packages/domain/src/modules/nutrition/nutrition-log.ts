@@ -15,6 +15,10 @@ export type NutritionLog = {
   calories?: number | null;
   creatineTaken?: boolean | null;
   protein50By9am?: boolean | null;
+  /** Grams per day, from manual entry or the Cronometer import. */
+  netCarbsGrams?: number | null;
+  fatGrams?: number | null;
+  fiberGrams?: number | null;
   notes: string | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

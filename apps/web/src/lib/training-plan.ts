@@ -48,5 +48,5 @@ export const nickAiPlanContext = (now: Date = new Date()) =>
     `Recovering from ACL reconstruction (patellar tendon graft), about ${weeksPostOp(now)} weeks post-op; surgeon visit week of 2026-10-26.`,
     "No running, jumping, plyometrics, or VO2 intervals until cleared. Leg work follows the post-op program and its gates; do not suggest specific lower-body exercises, loads or ranges. Not yet allowed: squat past 90 degrees, loaded or farmer carries, barbell back squat, loaded step-ups to higher boxes, heavy standing presses.",
     "Lifts are Mon/Wed/Fri, legs and upper body in one session. Cardio is seated Peloton Tue/Thu/Sat, Zone 2. No standing climbs, intervals, VO2 4x4 or Power Zone classes until cleared; do not suggest adding intensity. Scheduled counts and the Zone 2 target in the data come from the current plan; judge adherence against them.",
-    "Goal is a small calorie surplus with protein around 180 g/day, not a cut. Knee tests, gait and return-to-sport gates are tracked in a separate app (PT Tracker).",
+    "Goal is about 2,450 kcal with protein around 200 g/day (lean regain after the 2026-10-24 DEXA), not a cut. Knee tests, gait and return-to-sport gates are tracked in a separate app (PT Tracker).",
   ].join("\n");

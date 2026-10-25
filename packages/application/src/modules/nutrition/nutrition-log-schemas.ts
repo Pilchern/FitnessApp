@@ -19,6 +19,9 @@ const nutritionLogBaseSchema = z.object({
   calories: z.number().int().min(0).max(10000).nullable().optional(),
   creatineTaken: z.boolean().nullable().optional(),
   protein50By9am: z.boolean().nullable().optional(),
+  netCarbsGrams: z.number().int().min(0).max(1500).nullable().optional(),
+  fatGrams: z.number().int().min(0).max(1000).nullable().optional(),
+  fiberGrams: z.number().int().min(0).max(300).nullable().optional(),
   notes: optionalTrimmedStringSchema,
 });
 
@@ -46,6 +49,9 @@ export const updateNutritionLogSchema = nutritionLogBaseSchema
         "calories",
         "creatineTaken",
         "protein50By9am",
+        "netCarbsGrams",
+        "fatGrams",
+        "fiberGrams",
         "notes",
       ]),
     {

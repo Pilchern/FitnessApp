@@ -29,6 +29,9 @@ const nutritionLogRowSchema = z.object({
   calories: z.number().int().nullable().optional(),
   creatine_taken: z.boolean().nullable().optional(),
   protein_50_by_9am: z.boolean().nullable().optional(),
+  net_carbs_grams: z.number().int().nullable().optional(),
+  fat_grams: z.number().int().nullable().optional(),
+  fiber_grams: z.number().int().nullable().optional(),
   notes: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -52,6 +55,9 @@ function mapRow(row: NutritionLogRow): NutritionLog {
     calories: row.calories ?? null,
     creatineTaken: row.creatine_taken ?? null,
     protein50By9am: row.protein_50_by_9am ?? null,
+    netCarbsGrams: row.net_carbs_grams ?? null,
+    fatGrams: row.fat_grams ?? null,
+    fiberGrams: row.fiber_grams ?? null,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -81,6 +87,11 @@ function toInsert(input: CreateNutritionLogInput) {
     ...(input.protein50By9am != null
       ? { protein_50_by_9am: input.protein50By9am }
       : {}),
+    ...(input.netCarbsGrams != null
+      ? { net_carbs_grams: input.netCarbsGrams }
+      : {}),
+    ...(input.fatGrams != null ? { fat_grams: input.fatGrams } : {}),
+    ...(input.fiberGrams != null ? { fiber_grams: input.fiberGrams } : {}),
   };
 }
 
@@ -97,6 +108,9 @@ function toUpdate(input: UpdateNutritionLogInput) {
     calories: input.calories,
     creatine_taken: input.creatineTaken,
     protein_50_by_9am: input.protein50By9am,
+    net_carbs_grams: input.netCarbsGrams,
+    fat_grams: input.fatGrams,
+    fiber_grams: input.fiberGrams,
     notes: input.notes,
   });
 }

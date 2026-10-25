@@ -151,8 +151,8 @@ describe("nutrition week", () => {
       proteinTarget: 180,
       proteinFlag: false,
       caloriesAvg: 2300,
-      // lift day 2450 (midpoint of 2400-2500), rest day 2200
-      caloriesTargetAvg: 2325,
+      // lift day 2450 (midpoint of 2400-2500), rest day 2450 (flat plan)
+      caloriesTargetAvg: 2450,
       creatineDays: 2,
       protein50Days: 1,
     });

@@ -51,6 +51,9 @@ export type ProgramSettings = {
   caloriesLiftDayMin: number;
   caloriesLiftDayMax: number;
   caloriesRestDay: number;
+  /** Daily macro targets beside the profile's kcal, protein and fiber. */
+  netCarbsTargetG: number;
+  fatTargetG: number;
   proteinFlagBelowG: number;
   sleepFlagBelowH: number;
   weightRiseLbPerWeek: number;
@@ -165,7 +168,9 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   calendarTestMinutes: 30,
   caloriesLiftDayMin: 2400,
   caloriesLiftDayMax: 2500,
-  caloriesRestDay: 2200,
+  caloriesRestDay: 2450,
+  netCarbsTargetG: 255,
+  fatTargetG: 70,
   proteinFlagBelowG: 160,
   sleepFlagBelowH: 7,
   weightRiseLbPerWeek: 0.5,

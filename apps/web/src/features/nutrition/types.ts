@@ -1,4 +1,7 @@
-import type { NutritionAdherenceSummary } from "@fitness-app/application";
+import type {
+  MacroWeek,
+  NutritionAdherenceSummary,
+} from "@fitness-app/application";
 import type { NutritionLog } from "@fitness-app/domain";
 
 export type NutritionTargets = {
@@ -10,6 +13,8 @@ export type NutritionTargets = {
 export type NutritionPageData = {
   logs: NutritionLog[];
   summary: NutritionAdherenceSummary;
+  /** Last 7 days' macro averages vs the daily targets. */
+  macroWeek: MacroWeek;
   editingLog: NutritionLog | null;
   targets: NutritionTargets;
   formError?: string;
@@ -31,6 +36,9 @@ export type NutritionFormValues = {
   alcoholCount: string;
   proteinGrams: string;
   calories: string;
+  netCarbsGrams: string;
+  fatGrams: string;
+  fiberGrams: string;
   creatineTaken: boolean;
   protein50By9am: boolean;
   notes: string;
