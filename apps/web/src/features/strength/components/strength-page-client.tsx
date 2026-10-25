@@ -92,7 +92,7 @@ export function StrengthPageClient({
         <div className="flex justify-end">
           <RedFlagControl
             sessionId={programPlan.sessionId}
-            date={programPlan.today.today}
+            date={programPlan.makeUp?.date ?? programPlan.today.today}
             contact={programPlan.today.redFlag}
           />
         </div>

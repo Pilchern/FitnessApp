@@ -6,6 +6,8 @@ import {
   limbSymmetryPct,
   LATE_LOG_DAYS,
   linkedLiftFor,
+  makeUpCall,
+  makeUpHref,
   sessionCompletion,
   SKIP_LABELS,
   ratioTone,
@@ -196,6 +198,84 @@ describe("sessionCompletion with program links (B-10)", () => {
         linkedLifts: [{ id: "a", programSessionId: MON, date: "2026-10-19" }],
       }),
     ).toBe("skipped");
+  });
+
+  it("a skipped lift made up on a later day reads as done", () => {
+    expect(
+      sessionCompletion({
+        type: "lift",
+        date: "2026-10-19",
+        today: "2026-10-21",
+        liftDates: new Set(),
+        rideDates,
+        outcome: "skipped",
+        sessionId: MON,
+        linkedLifts: [{ id: "a", programSessionId: MON, date: "2026-10-20" }],
+      }),
+    ).toBe("done");
+  });
+
+  it("a red-flag stop is never overridden by a later lift", () => {
+    expect(
+      sessionCompletion({
+        type: "lift",
+        date: "2026-10-19",
+        today: "2026-10-21",
+        liftDates: new Set(),
+        rideDates,
+        outcome: "stopped",
+        sessionId: MON,
+        linkedLifts: [{ id: "a", programSessionId: MON, date: "2026-10-20" }],
+      }),
+    ).toBe("stopped");
+  });
+});
+
+describe("makeUpCall", () => {
+  // Week of Mon 2026-10-26; Friday's lift missed, today is Saturday.
+  const base = {
+    type: "lift" as const,
+    completion: "missed" as const,
+    date: "2026-10-30",
+    today: "2026-10-31",
+    weekStart: "2026-10-26",
+    todayHasLift: false,
+    liftedToday: false,
+    liftTomorrow: false,
+  };
+
+  it("offers a missed or skipped lift from earlier this week", () => {
+    expect(makeUpCall(base)).toEqual({ eligible: true, warning: null });
+    expect(makeUpCall({ ...base, completion: "skipped" }).eligible).toBe(true);
+  });
+
+  it("warns when the next lift is tomorrow", () => {
+    expect(makeUpCall({ ...base, liftTomorrow: true })).toEqual({
+      eligible: true,
+      warning: "Next lift is tomorrow: back-to-back leg days.",
+    });
+  });
+
+  it("never stacks two leg sessions on one day", () => {
+    expect(makeUpCall({ ...base, todayHasLift: true })).toEqual({
+      eligible: false,
+      reason: "Today has its own lift.",
+    });
+    expect(makeUpCall({ ...base, liftedToday: true }).eligible).toBe(false);
+  });
+
+  it("stays inside the post-op week and skips done, stopped and future work", () => {
+    expect(makeUpCall({ ...base, date: "2026-10-23" }).eligible).toBe(false);
+    expect(makeUpCall({ ...base, date: "2026-10-31" }).eligible).toBe(false);
+    expect(makeUpCall({ ...base, completion: "done" }).eligible).toBe(false);
+    expect(makeUpCall({ ...base, completion: "stopped" }).eligible).toBe(false);
+    expect(makeUpCall({ ...base, type: "peloton" }).eligible).toBe(false);
+  });
+
+  it("links to the logger with the session and its date", () => {
+    expect(makeUpHref("abc", "2026-10-30")).toBe(
+      "/strength?makeup=abc&date=2026-10-30",
+    );
   });
 });
 

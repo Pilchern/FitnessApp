@@ -5,7 +5,7 @@ import type {
   ProgramToday,
 } from "../types";
 import { AdherenceBanners, Scorecard, StreakLine } from "./adherence";
-import { STATUS_LABEL } from "../helpers";
+import { STATUS_LABEL, dayShort } from "../helpers";
 import { KneeCheckPanel } from "./knee-check-panel";
 import { SkipControl } from "./session-outcome-controls";
 import { RIDE_KIND_LABEL, type WalkJogAdvice } from "@fitness-app/application";
@@ -309,6 +309,27 @@ export function ProgramTodayCard({
       ) : null}
 
       {snapshot ? <AdherenceBanners snapshot={snapshot} /> : null}
+
+      {today.makeUp ? (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-pine/25 bg-pine/5 px-4 py-3">
+          <div className="min-w-0 text-sm">
+            <p className="font-semibold text-ink">
+              Missed{" "}
+              {dayShort(new Date(`${today.makeUp.date}T12:00:00Z`).getUTCDay())}
+              : {today.makeUp.name}
+            </p>
+            <p className="text-xs text-ink/60">
+              {today.makeUp.warning ?? "No lift today, so you can make it up."}
+            </p>
+          </div>
+          <Link
+            href={today.makeUp.href}
+            className="inline-flex h-11 shrink-0 items-center rounded-full bg-pine px-4 text-sm font-semibold text-white"
+          >
+            Make up
+          </Link>
+        </div>
+      ) : null}
 
       {today.showGoBackWeek ? (
         <div

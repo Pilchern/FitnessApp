@@ -33,6 +33,7 @@ async function zonedToday(userId: string) {
 
 export async function getStrengthPageData(
   editSessionId?: string,
+  makeUp?: { sessionId: string; date: string } | null,
 ): Promise<StrengthPageData> {
   const user = await requireCurrentUser();
   const { strengthService, trainingTemplateService, exerciseOverrideService } =
@@ -57,7 +58,7 @@ export async function getStrengthPageData(
   let programPlan = null;
   if (!editSessionId) {
     try {
-      programPlan = await getStrengthProgramPlan(sessions);
+      programPlan = await getStrengthProgramPlan(sessions, makeUp);
     } catch (error) {
       console.error("Program plan failed to load", error);
     }

@@ -10,13 +10,16 @@ type StrengthScreenProps = {
   editSessionId?: string;
   /** Set by delete/archive/schedule actions when they fail. */
   error?: string;
+  /** Load this missed program lift instead of today's. */
+  makeUp?: { sessionId: string; date: string } | null;
 };
 
 export async function StrengthScreen({
   editSessionId,
   error,
+  makeUp = null,
 }: StrengthScreenProps) {
-  const data = await getStrengthPageData(editSessionId);
+  const data = await getStrengthPageData(editSessionId, makeUp);
 
   return (
     <div className="space-y-4 lg:space-y-6">

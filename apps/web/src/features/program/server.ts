@@ -49,6 +49,8 @@ import {
 import {
   formatPrescription,
   linkedLiftFor,
+  makeUpCall,
+  makeUpHref,
   sessionCompletion,
   splitLoggedLifts,
   type LinkedLift,
@@ -142,6 +144,8 @@ function sessionViews(
         sessionId: s.session.id,
         linkedLifts: ctx.linkedLifts,
       }),
+      madeUpOn: madeUpOn(ctx, s.session.id, plan.date),
+      makeUp: null,
       exercises: s.exercises.map((p) => ({
         name: p.name,
         part: p.part,
@@ -153,6 +157,16 @@ function sessionViews(
       })),
     };
   });
+}
+
+/** The later day a linked lift made this session up on, else null. */
+function madeUpOn(
+  ctx: Pick<ProgramContext, "linkedLifts">,
+  sessionId: string,
+  date: string,
+) {
+  const linked = linkedLiftFor(ctx.linkedLifts, sessionId, date);
+  return linked && linked.date > date ? linked.date : null;
 }
 
 function upperFor(
@@ -326,6 +340,7 @@ function buildToday(ctx: ProgramContext): {
     today,
   );
   const jogCleared = isGateCleared(program.gates, "jog", today);
+  const week = buildWeek(ctx);
   return {
     plan,
     view: {
@@ -356,6 +371,7 @@ function buildToday(ctx: ProgramContext): {
       warmUp: settings.warmUp || null,
       gaitDrill: settings.gaitDrill || null,
       // The lift linked to today's lift session first, else today's unlinked one.
+      makeUp: latestMakeUp(week),
       loggedLiftId:
         plan.sessions
           .filter((s) => s.session.sessionType === "lift")
@@ -363,25 +379,83 @@ function buildToday(ctx: ProgramContext): {
           .find((id) => id != null) ??
         ctx.liftIdByDate.get(today) ??
         null,
-      week: buildWeek(ctx),
+      week,
     },
   };
 }
 
-/** The program week holding today, each session with its completion. */
+function hasVisibleLift(plan: DayPlan) {
+  return plan.sessions.some(
+    (s) => s.session.sessionType === "lift" && s.visible,
+  );
+}
+
+/**
+ * The program week holding today, each session with its completion, and a
+ * make-up link on earlier missed or skipped lifts that can be done today.
+ */
 function buildWeek(ctx: ProgramContext): ProgramWeekDay[] {
   const { program, today, settings } = ctx;
-  return programWeekDates(program, today).map((date) => {
+  const dates = programWeekDates(program, today);
+  const tomorrow = addDays(today, 1);
+  const days = dates.map((date) => {
     const kneeStatus = ctx.statusOn(date);
     const plan = buildDayPlan(program, date, kneeStatus, settings);
-    return {
-      date,
-      dayOfWeek: plan.info.dayOfWeek,
-      isToday: date === today,
-      kneeStatus,
-      sessions: sessionViews(plan, ctx),
-    };
+    return { date, kneeStatus, plan };
   });
+  const todayHasLift = days.some(
+    (d) => d.date === today && hasVisibleLift(d.plan),
+  );
+  const liftTomorrow = hasVisibleLift(
+    buildDayPlan(program, tomorrow, ctx.statusOn(tomorrow), settings),
+  );
+  const liftedToday =
+    ctx.liftDates.has(today) || ctx.linkedLifts.some((l) => l.date === today);
+  return days.map(({ date, kneeStatus, plan }) => ({
+    date,
+    dayOfWeek: plan.info.dayOfWeek,
+    isToday: date === today,
+    kneeStatus,
+    sessions: sessionViews(plan, ctx).map((view) => {
+      if (!view.visible) return view;
+      const call = makeUpCall({
+        type: view.type,
+        completion: view.completion,
+        date,
+        today,
+        weekStart: dates[0] ?? today,
+        todayHasLift,
+        liftedToday,
+        liftTomorrow,
+      });
+      return call.eligible
+        ? {
+            ...view,
+            makeUp: {
+              href: makeUpHref(view.id, date),
+              warning: call.warning,
+            },
+          }
+        : view;
+    }),
+  }));
+}
+
+/** The most recent lift this week that can be made up today. */
+function latestMakeUp(week: ProgramWeekDay[]): ProgramToday["makeUp"] {
+  for (const day of [...week].reverse()) {
+    const s = day.sessions.find((v) => v.makeUp);
+    if (s?.makeUp) {
+      return {
+        sessionId: s.id,
+        date: day.date,
+        name: s.name,
+        href: s.makeUp.href,
+        warning: s.makeUp.warning,
+      };
+    }
+  }
+  return null;
 }
 
 /** Today's program for the dashboard card. Null without an active program. */
@@ -392,35 +466,66 @@ export async function getProgramToday(): Promise<ProgramToday | null> {
 
 /**
  * Today's lift for /strength: the knee check state, and once it is in, the
- * combined plan with suggested leg loads.
+ * combined plan with suggested leg loads. With `makeUp` (a session id and its
+ * scheduled date) it loads that missed lift instead, when it is still
+ * eligible (see makeUpCall); the saved lift links to it, which marks that
+ * day done. Today's knee check gates both.
  */
 export async function getStrengthProgramPlan(
   sessions: StrengthSession[],
+  makeUp?: { sessionId: string; date: string } | null,
 ): Promise<StrengthProgramPlan | null> {
   const ctx = await loadProgramContext();
   if (!ctx) return null;
   const { view, plan } = buildToday(ctx);
-  const lift = plan.sessions.find(
-    (s) => s.session.sessionType === "lift" && s.visible,
-  );
+  const target = makeUp
+    ? view.week
+        .find((d) => d.date === makeUp.date)
+        ?.sessions.find((s) => s.id === makeUp.sessionId && s.makeUp)
+    : null;
+  const sourcePlan = target
+    ? buildDayPlan(ctx.program, makeUp!.date, view.kneeStatus, ctx.settings)
+    : plan;
+  const lift = target
+    ? sourcePlan.sessions.find((s) => s.session.id === target.id)
+    : plan.sessions.find((s) => s.session.sessionType === "lift" && s.visible);
   if (!lift) return null;
+  const loggerPlan =
+    view.kneeStatus == null
+      ? null
+      : buildLiftLoggerPlan({
+          program: ctx.program,
+          planned: lift,
+          info: sourcePlan.info,
+          readiness: view.kneeStatus,
+          history: lastSetsByExercise(sessions),
+          upper: upperFor(ctx.templates, lift.session.upperTemplateId),
+          sleepAverageHours: ctx.sleepAverage,
+          quadDrop: ctx.quadDrop,
+          settings: ctx.settings,
+        });
   return {
     today: view,
     sessionId: lift.session.id,
+    makeUp: target
+      ? {
+          date: makeUp!.date,
+          name: target.name,
+          warning: target.makeUp?.warning ?? null,
+        }
+      : null,
     plan:
-      view.kneeStatus == null
-        ? null
-        : buildLiftLoggerPlan({
-            program: ctx.program,
-            planned: lift,
-            info: plan.info,
-            readiness: view.kneeStatus,
-            history: lastSetsByExercise(sessions),
-            upper: upperFor(ctx.templates, lift.session.upperTemplateId),
-            sleepAverageHours: ctx.sleepAverage,
-            quadDrop: ctx.quadDrop,
-            settings: ctx.settings,
-          }),
+      loggerPlan && target
+        ? {
+            ...loggerPlan,
+            notes: [
+              `Make-up for ${target.name}, scheduled ${makeUp!.date}.`,
+              loggerPlan.notes,
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
+          }
+        : loggerPlan,
   };
 }
 
