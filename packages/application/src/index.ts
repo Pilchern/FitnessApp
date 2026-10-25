@@ -61,3 +61,4 @@ export * from "./modules/program/session-budget";
 export * from "./modules/program/program-week";
 export * from "./modules/body-composition/dexa";
 export * from "./modules/body-composition/dexa-targets";
+export * from "./modules/body-composition/dexa-calibration";

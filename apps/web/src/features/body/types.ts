@@ -1,12 +1,16 @@
 import type {
+  AdjustedBodyFat,
   BodyMetricSummary,
   SparseTrendPoint,
   WeeklyWeightTrend,
 } from "@fitness-app/application";
-import type { BodyMetric } from "@fitness-app/domain";
+import type { BodyMetric, DexaScan } from "@fitness-app/domain";
 
 export type BodyPageData = {
   metrics: BodyMetric[];
+  latestDexa: DexaScan | null;
+  /** Withings 7-day average + the latest DEXA offset; an estimate. */
+  adjustedBodyFat: AdjustedBodyFat | null;
   summary: BodyMetricSummary;
   weeklyWeight: WeeklyWeightTrend;
   weightTrend: SparseTrendPoint[];

@@ -13,6 +13,8 @@ import {
   buildTrendNotes,
   buildWeeklyWeightTrend,
   computeDailyReadiness,
+  dexaAdjustedBodyFat,
+  dexaCalibrations,
   getCurrentWeekRangeForUser,
   getZonedDate,
 } from "@fitness-app/application";
@@ -57,6 +59,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     supplementService,
     supplementLogService,
     dailyActivityService,
+    dexaScanService,
   } = await createCoreServices();
 
   const profile = await getCachedUserProfile(user.id);
@@ -87,6 +90,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     habitDefsResult,
     habitLogsResult,
     dailyActivityResult,
+    dexaScansResult,
   ] = await Promise.allSettled([
     cardioService.listByDateRange({
       userId: user.id,
@@ -134,6 +138,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       startDate: daysAgo(365),
       endDate: today,
     }),
+    dexaScanService.list(user.id),
   ]);
 
   // Rendering stays read-only. Once the response is sent, regenerate if the
@@ -178,6 +183,12 @@ export async function getDashboardData(): Promise<DashboardData> {
         };
 
   const bodyMetricSummary = buildBodyMetricSummary(recentBody);
+  const dexaScans = settledOrNull(dexaScansResult) ?? [];
+  const adjustedBodyFat = dexaAdjustedBodyFat(
+    dexaCalibrations(dexaScans, recentBody),
+    recentBody,
+    today,
+  );
   const latestBodyDate =
     [...recentBody]
       .filter((m) => m.weightLb != null)
@@ -254,6 +265,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     weekPlan,
     latestWeightLb: bodyMetricSummary.latestWeightLb,
     latestBodyFatPct: bodyMetricSummary.latestBodyFatPct,
+    adjustedBodyFatPct: adjustedBodyFat?.estimatePct ?? null,
     latestBodyDate,
     weeklyWeight: buildWeeklyWeightTrend(recentBody, today),
     proteinHit: todayNutrition

@@ -4,6 +4,8 @@ import {
   addDays,
   compareDexaScans,
   DEXA_FIELDS,
+  dexaAdjustedBodyFat,
+  dexaCalibrations,
   dexaTargetProgress,
   getZonedDate,
   latestQuadLsi,
@@ -67,9 +69,13 @@ export async function getDexaPageData(): Promise<DexaPageData> {
   const quadFirst = quadLsiTrend(kneeTests)[0] ?? null;
   const quadLatest = latestQuadLsi(kneeTests, sessions, 90, today);
 
+  const calibrations = dexaCalibrations(scans, body);
+
   return {
     scans,
     comparison,
+    calibrations,
+    adjustedBodyFat: dexaAdjustedBodyFat(calibrations, body, today),
     fields: DEXA_FIELDS,
     targets: dexaTargetProgress({
       scans,

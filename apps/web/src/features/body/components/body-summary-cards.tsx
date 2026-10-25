@@ -1,9 +1,14 @@
+import Link from "next/link";
 import type {
+  AdjustedBodyFat,
   BodyMetricSummary,
   WeeklyWeightTrend,
 } from "@fitness-app/application";
+import type { DexaScan } from "@fitness-app/domain";
 import { SummaryStatCard } from "@/components/shared/summary-stat-card";
 import {
+  formatAdjustedHint,
+  formatBodyDate,
   formatBodyValue,
   formatChange,
   formatWeeklyWeightHint,
@@ -12,11 +17,15 @@ import {
 type BodySummaryCardsProps = {
   summary: BodyMetricSummary;
   weeklyWeight: WeeklyWeightTrend;
+  latestDexa: DexaScan | null;
+  adjustedBodyFat: AdjustedBodyFat | null;
 };
 
 export function BodySummaryCards({
   summary,
   weeklyWeight,
+  latestDexa,
+  adjustedBodyFat,
 }: BodySummaryCardsProps) {
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
@@ -45,9 +54,26 @@ export function BodySummaryCards({
         ) : null}
         {summary.latestBodyFatPct != null ? (
           <SummaryStatCard
-            label="Body fat"
+            label="Body fat (Withings)"
             value={formatBodyValue(summary.latestBodyFatPct, "%")}
+            hint="Raw scale reading"
           />
+        ) : null}
+        {adjustedBodyFat ? (
+          <SummaryStatCard
+            label="DEXA-adjusted estimate"
+            value={`≈ ${formatBodyValue(adjustedBodyFat.estimatePct, "%")}`}
+            hint={formatAdjustedHint(adjustedBodyFat)}
+          />
+        ) : null}
+        {latestDexa ? (
+          <Link href="/body/dexa" className="block">
+            <SummaryStatCard
+              label="DEXA body fat"
+              value={formatBodyValue(latestDexa.bodyFatPct, "%")}
+              hint={`${formatBodyDate(latestDexa.scanDate)} scan · open DEXA`}
+            />
+          </Link>
         ) : null}
         {summary.latestMuscleMassLb != null ? (
           <SummaryStatCard

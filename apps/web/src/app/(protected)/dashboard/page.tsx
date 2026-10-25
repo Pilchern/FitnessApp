@@ -134,6 +134,7 @@ export default async function DashboardPage() {
             today={data.today}
             latestWeightLb={data.latestWeightLb}
             latestBodyFatPct={data.latestBodyFatPct}
+            adjustedBodyFatPct={data.adjustedBodyFatPct}
             latestBodyDate={data.latestBodyDate}
             weeklyWeight={data.weeklyWeight}
             vo2Max={data.activity.vo2Max}

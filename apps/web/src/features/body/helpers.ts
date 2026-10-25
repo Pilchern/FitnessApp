@@ -1,4 +1,7 @@
-import type { WeeklyWeightTrend } from "@fitness-app/application";
+import type {
+  AdjustedBodyFat,
+  WeeklyWeightTrend,
+} from "@fitness-app/application";
 import type { BodyMetric } from "@fitness-app/domain";
 import type { BodyFormValues } from "./types";
 
@@ -86,4 +89,10 @@ export function formatSourceLabel(
   sourceType: BodyMetric["source"]["sourceType"],
 ) {
   return sourceType === "manual" ? "Manual" : "Imported";
+}
+
+/** "Estimate: Withings 7-day avg 21.2% + offset +1.6 (Oct 24, 2026 DEXA)". */
+export function formatAdjustedHint(adjusted: AdjustedBodyFat) {
+  const sign = adjusted.offsetPct >= 0 ? "+" : "";
+  return `Estimate: Withings 7-day avg ${adjusted.withingsAvgPct.toFixed(1)}% ${sign}${adjusted.offsetPct.toFixed(1)} (${formatBodyDate(adjusted.offsetScanDate)} DEXA)`;
 }

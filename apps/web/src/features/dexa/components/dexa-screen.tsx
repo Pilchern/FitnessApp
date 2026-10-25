@@ -144,6 +144,53 @@ export async function DexaScreen() {
 
       <section className={panel}>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
+          Withings vs DEXA
+        </p>
+        {data.adjustedBodyFat ? (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <SummaryStatCard
+              label="Withings 7-day avg"
+              value={formatNumber(data.adjustedBodyFat.withingsAvgPct, 1, "%")}
+              hint={`Raw, ${data.adjustedBodyFat.withingsReadings} readings`}
+            />
+            <SummaryStatCard
+              label="DEXA-adjusted estimate"
+              value={`≈ ${formatNumber(data.adjustedBodyFat.estimatePct, 1, "%")}`}
+              hint="Estimate, not a scan"
+              tone="accent"
+            />
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-ink/60">
+            No estimate: needs a scan with Withings readings that week and a
+            Withings reading in the last 7 days.
+          </p>
+        )}
+        <ul className="mt-4 divide-y divide-ink/5 text-sm">
+          {data.calibrations.map((c) => (
+            <li key={c.scanDate} className="flex justify-between gap-3 py-1.5">
+              <span className="text-ink/70">
+                {formatScanDate(c.scanDate)}: DEXA{" "}
+                {formatNumber(c.dexaBodyFatPct, 1, "%")} vs Withings{" "}
+                {formatNumber(c.withingsAvgPct, 1, "%")}
+              </span>
+              <span className="tabular-nums text-ink">
+                {c.offsetPct == null
+                  ? "no Withings data"
+                  : `${c.offsetPct >= 0 ? "+" : ""}${c.offsetPct.toFixed(1)} pts`}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <MethodNote>
+          Offset = DEXA body fat minus the Withings average over the 7 days
+          ending on scan day. The estimate adds the newest offset to the current
+          Withings 7-day average. Withings values are never changed.
+        </MethodNote>
+      </section>
+
+      <section className={panel}>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
           Targets
         </p>
         <TargetProgressList targets={data.targets} />

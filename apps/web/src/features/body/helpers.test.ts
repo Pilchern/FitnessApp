@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BodyMetric } from "@fitness-app/domain";
-import { toBodyFormValues } from "./helpers";
+import { formatAdjustedHint, toBodyFormValues } from "./helpers";
 
 function metric(overrides: Partial<BodyMetric> = {}): BodyMetric {
   return {
@@ -43,5 +43,19 @@ describe("toBodyFormValues", () => {
     expect(values.waistIn).toBe("34.8");
     expect(values).not.toHaveProperty("bodyFatPct");
     expect(values).not.toHaveProperty("leanMassLb");
+  });
+});
+
+describe("formatAdjustedHint", () => {
+  it("labels the estimate and shows the offset it used", () => {
+    expect(
+      formatAdjustedHint({
+        withingsAvgPct: 21.16,
+        withingsReadings: 3,
+        offsetPct: 1.64,
+        offsetScanDate: "2026-10-24",
+        estimatePct: 22.8,
+      }),
+    ).toBe("Estimate: Withings 7-day avg 21.2% +1.6 (Oct 24, 2026 DEXA)");
   });
 });
