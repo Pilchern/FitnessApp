@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ProgramPageData } from "../types";
+import { MakeUpControl } from "./make-up-control";
 import {
   dayShort,
   formatShortDate,
@@ -118,20 +119,25 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
                     </span>
                     {s.visible && c ? (
                       <span className={`shrink-0 text-xs ${c.tone}`}>
-                        {s.makeUp ? (
-                          <Link
-                            href={s.makeUp.href}
-                            className="mr-2 font-semibold text-pine underline-offset-2 hover:underline"
-                          >
-                            Make up
-                          </Link>
+                        {s.makeUp || s.rideMakeUpPending ? (
+                          <span className="mr-2">
+                            <MakeUpControl
+                              kind={s.type === "lift" ? "lift" : "ride"}
+                              sessionId={s.id}
+                              date={day.date}
+                              href={s.makeUp?.href ?? null}
+                              pending={s.rideMakeUpPending != null}
+                            />
+                          </span>
                         ) : null}
                         {c.label}
                         {s.madeUpOn
                           ? ` · made up ${dayShort(new Date(`${s.madeUpOn}T12:00:00Z`).getUTCDay())}`
-                          : s.outcome && s.completion !== "done"
-                            ? ` · ${SKIP_LABELS[s.outcome.reason]}`
-                            : ""}
+                          : s.rideMakeUpPending
+                            ? " · make-up today"
+                            : s.outcome && s.completion !== "done"
+                              ? ` · ${SKIP_LABELS[s.outcome.reason]}`
+                              : ""}
                       </span>
                     ) : null}
                   </li>

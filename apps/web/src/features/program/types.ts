@@ -71,8 +71,17 @@ export type ProgramSessionView = {
   completion: SessionCompletion;
   /** Done by a lift logged on this later date (a make-up). */
   madeUpOn: string | null;
-  /** Set on an earlier missed/skipped lift this week that can be made up today. */
-  makeUp: { href: string; warning: string | null } | null;
+  /** A ride make-up set for this date with no ride yet: the date. */
+  rideMakeUpPending: string | null;
+  /**
+   * Set on an earlier missed/skipped lift or ride this week that can be
+   * made up today. Lifts open the logger (`href`); rides are set with
+   * setRideMakeUpAction.
+   */
+  makeUp:
+    | { kind: "lift"; href: string; warning: string | null }
+    | { kind: "ride"; href: null; warning: string | null }
+    | null;
 };
 
 export type ProgramHeader = {
@@ -109,14 +118,19 @@ export type ProgramToday = {
   gaitDrill: string | null;
   /** Today's logged strength session, for the "View" link once done. */
   loggedLiftId: string | null;
-  /** The most recent lift this week that can be made up today. */
-  makeUp: {
+  /** Lift and ride make-ups for today (see todayMakeUps). */
+  makeUps: {
+    kind: "lift" | "ride";
     sessionId: string;
+    /** The missed session's scheduled date. */
     date: string;
     name: string;
-    href: string;
+    /** Lifts: the logger link. */
+    href: string | null;
     warning: string | null;
-  } | null;
+    /** Rides: set for this day, waiting on a ride. */
+    pendingOn: string | null;
+  }[];
   /** The program week holding today, Monday to Sunday. */
   week: ProgramWeekDay[];
 };

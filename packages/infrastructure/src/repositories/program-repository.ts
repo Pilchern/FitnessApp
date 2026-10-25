@@ -8,10 +8,12 @@ import type {
   TrainingProgram,
 } from "@fitness-app/domain";
 import type {
+  CancelMakeUpInput,
   ClearOutcomeInput,
   DatedKneeCheck,
   ProgramRepository,
   SaveKneeCheckInput,
+  SaveMakeUpInput,
   SaveOutcomeInput,
   SaveWeeklyCheckinInput,
   SetGateClearedInput,
@@ -19,6 +21,7 @@ import type {
 } from "@fitness-app/application";
 import type {
   KneeTest,
+  ProgramMakeUp,
   ProgramSessionOutcome,
   ProgramWeeklyCheckin,
   TrainingSetting,
@@ -196,6 +199,12 @@ const kneeTestRowSchema = z.object({
   rep_index: z.number(),
   source: z.string(),
   notes: z.string().nullable(),
+});
+
+const makeUpRowSchema = z.object({
+  program_session_id: z.string().uuid(),
+  scheduled_date: z.string(),
+  made_up_on: z.string(),
 });
 
 const kneeRowSchema = z.object({
@@ -663,5 +672,65 @@ export class SupabaseProgramRepository implements ProgramRepository {
         source: row.source,
         notes: row.notes,
       }));
+  }
+
+  async listMakeUps(
+    userId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<ProgramMakeUp[]> {
+    const response = await this.client
+      .from("program_makeups")
+      .select("program_session_id, scheduled_date, made_up_on")
+      .eq("user_id", userId)
+      .gte("scheduled_date", startDate)
+      .lte("scheduled_date", endDate)
+      .is("deleted_at", null);
+    throwOnError(response.error, "List make-ups");
+    return makeUpRowSchema
+      .array()
+      .parse(response.data ?? [])
+      .map((row) => ({
+        programSessionId: row.program_session_id,
+        scheduledDate: row.scheduled_date,
+        madeUpOn: row.made_up_on,
+      }));
+  }
+
+  async saveMakeUp(input: SaveMakeUpInput) {
+    // Partial unique index (live rows only), so no PostgREST upsert.
+    const existing = await this.client
+      .from("program_makeups")
+      .select("id")
+      .eq("user_id", input.userId)
+      .eq("program_session_id", input.programSessionId)
+      .eq("scheduled_date", input.scheduledDate)
+      .is("deleted_at", null)
+      .maybeSingle();
+    throwOnError(existing.error, "Find make-up");
+    const response = existing.data
+      ? await this.client
+          .from("program_makeups")
+          .update({ made_up_on: input.madeUpOn })
+          .eq("id", existing.data.id)
+          .eq("user_id", input.userId)
+      : await this.client.from("program_makeups").insert({
+          user_id: input.userId,
+          program_session_id: input.programSessionId,
+          scheduled_date: input.scheduledDate,
+          made_up_on: input.madeUpOn,
+        });
+    throwOnError(response.error, "Save make-up");
+  }
+
+  async cancelMakeUp(input: CancelMakeUpInput) {
+    const response = await this.client
+      .from("program_makeups")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("user_id", input.userId)
+      .eq("program_session_id", input.programSessionId)
+      .eq("scheduled_date", input.scheduledDate)
+      .is("deleted_at", null);
+    throwOnError(response.error, "Cancel make-up");
   }
 }

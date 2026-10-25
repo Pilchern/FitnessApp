@@ -144,11 +144,12 @@ export type MakeUpCall =
   | { eligible: false; reason: string };
 
 /**
- * Can this lift be made up today? Only a missed or skipped (not red-flag
- * stopped) lift from earlier in the same post-op week, on a day with no lift
- * of its own and none logged yet, so a make-up never spills into the next
- * block or stacks two leg sessions on one day. Warns when the next lift is
- * tomorrow (back-to-back leg days). The knee check still gates the logger.
+ * Can this lift or ride be made up today? Only a missed or skipped (not
+ * red-flag stopped) session from earlier in the same post-op week, so a
+ * make-up never spills into the next block. Never two of the same kind on
+ * one day: not on a day with its own lift (ride) or once one is logged
+ * (planned) today. A lift and a ride on the same day is fine. Warns before
+ * back-to-back leg days. The knee check still gates the lift logger.
  */
 export function makeUpCall(input: {
   type: ProgramSessionType;
@@ -157,29 +158,65 @@ export function makeUpCall(input: {
   today: string;
   /** First day of the post-op week holding today. */
   weekStart: string;
-  todayHasLift: boolean;
-  liftedToday: boolean;
-  liftTomorrow: boolean;
+  /** Today has its own session of this type. */
+  todayHasOwn: boolean;
+  /** A session of this type is already logged (or a ride make-up planned) today. */
+  alreadyToday: boolean;
+  /** Tomorrow has a session of this type. */
+  nextTomorrow: boolean;
 }): MakeUpCall {
-  if (input.type !== "lift") return { eligible: false, reason: "Not a lift." };
+  if (input.type !== "lift" && input.type !== "peloton") {
+    return { eligible: false, reason: "Only lifts and rides." };
+  }
+  const lift = input.type === "lift";
   if (input.completion !== "missed" && input.completion !== "skipped") {
     return { eligible: false, reason: "Nothing to make up." };
   }
   if (!(input.date < input.today) || input.date < input.weekStart) {
     return { eligible: false, reason: "Only earlier days this week." };
   }
-  if (input.todayHasLift) {
-    return { eligible: false, reason: "Today has its own lift." };
+  if (input.todayHasOwn) {
+    return {
+      eligible: false,
+      reason: lift ? "Today has its own lift." : "Today has its own ride.",
+    };
   }
-  if (input.liftedToday) {
-    return { eligible: false, reason: "Already lifted today." };
+  if (input.alreadyToday) {
+    return {
+      eligible: false,
+      reason: lift
+        ? "Already lifted today."
+        : "A ride make-up is already set for today.",
+    };
   }
   return {
     eligible: true,
-    warning: input.liftTomorrow
-      ? "Next lift is tomorrow: back-to-back leg days."
-      : null,
+    warning:
+      lift && input.nextTomorrow
+        ? "Next lift is tomorrow: back-to-back leg days."
+        : null,
   };
+}
+
+export type RideMakeUp = { scheduledDate: string; madeUpOn: string };
+
+/**
+ * Ride dates with make-ups applied: a ride on a make-up day counts for the
+ * scheduled day instead (and not again for its own day, so the week counts
+ * it once). A make-up with no ride that day changes nothing.
+ */
+export function applyRideMakeUps(
+  rideDates: ReadonlySet<string>,
+  makeUps: readonly RideMakeUp[],
+): Set<string> {
+  const out = new Set(rideDates);
+  for (const m of makeUps) {
+    if (rideDates.has(m.madeUpOn)) {
+      out.delete(m.madeUpOn);
+      out.add(m.scheduledDate);
+    }
+  }
+  return out;
 }
 
 /** /strength link that loads `sessionId` (scheduled on `date`) as a make-up. */

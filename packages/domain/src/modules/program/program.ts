@@ -218,6 +218,16 @@ export type KneeTest = {
   notes: string | null;
 };
 
+/**
+ * A missed session done on a later day. Used for rides: the ride logged or
+ * synced on `madeUpOn` counts for `scheduledDate` instead.
+ */
+export type ProgramMakeUp = {
+  programSessionId: EntityId;
+  scheduledDate: IsoDate;
+  madeUpOn: IsoDate;
+};
+
 /** One target or threshold row, edited in Settings. */
 export type TrainingSetting = {
   id: EntityId;

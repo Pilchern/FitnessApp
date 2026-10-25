@@ -6,6 +6,7 @@ import {
   limbSymmetryPct,
   LATE_LOG_DAYS,
   linkedLiftFor,
+  applyRideMakeUps,
   makeUpCall,
   makeUpHref,
   sessionCompletion,
@@ -239,9 +240,9 @@ describe("makeUpCall", () => {
     date: "2026-10-30",
     today: "2026-10-31",
     weekStart: "2026-10-26",
-    todayHasLift: false,
-    liftedToday: false,
-    liftTomorrow: false,
+    todayHasOwn: false,
+    alreadyToday: false,
+    nextTomorrow: false,
   };
 
   it("offers a missed or skipped lift from earlier this week", () => {
@@ -250,26 +251,43 @@ describe("makeUpCall", () => {
   });
 
   it("warns when the next lift is tomorrow", () => {
-    expect(makeUpCall({ ...base, liftTomorrow: true })).toEqual({
+    expect(makeUpCall({ ...base, nextTomorrow: true })).toEqual({
       eligible: true,
       warning: "Next lift is tomorrow: back-to-back leg days.",
     });
   });
 
   it("never stacks two leg sessions on one day", () => {
-    expect(makeUpCall({ ...base, todayHasLift: true })).toEqual({
+    expect(makeUpCall({ ...base, todayHasOwn: true })).toEqual({
       eligible: false,
       reason: "Today has its own lift.",
     });
-    expect(makeUpCall({ ...base, liftedToday: true }).eligible).toBe(false);
+    expect(makeUpCall({ ...base, alreadyToday: true }).eligible).toBe(false);
   });
 
-  it("stays inside the post-op week and skips done, stopped and future work", () => {
+  it("offers a missed ride on a day without its own ride, lift or not", () => {
+    // Sunday: lifted this morning, Saturday's ride missed.
+    const ride = {
+      ...base,
+      type: "peloton" as const,
+      date: "2026-10-31",
+      today: "2026-11-01",
+      nextTomorrow: true,
+    };
+    expect(makeUpCall(ride)).toEqual({ eligible: true, warning: null });
+    expect(makeUpCall({ ...ride, todayHasOwn: true })).toEqual({
+      eligible: false,
+      reason: "Today has its own ride.",
+    });
+    expect(makeUpCall({ ...ride, alreadyToday: true }).eligible).toBe(false);
+  });
+
+  it("stays inside the post-op week and skips done, stopped and other work", () => {
     expect(makeUpCall({ ...base, date: "2026-10-23" }).eligible).toBe(false);
     expect(makeUpCall({ ...base, date: "2026-10-31" }).eligible).toBe(false);
     expect(makeUpCall({ ...base, completion: "done" }).eligible).toBe(false);
     expect(makeUpCall({ ...base, completion: "stopped" }).eligible).toBe(false);
-    expect(makeUpCall({ ...base, type: "peloton" }).eligible).toBe(false);
+    expect(makeUpCall({ ...base, type: "walk_jog" }).eligible).toBe(false);
   });
 
   it("links to the logger with the session and its date", () => {
@@ -616,5 +634,24 @@ describe("scorecard tone", () => {
   it("does not paint a week still in progress as short", () => {
     expect(ratioTone(1, 3, { inProgress: true })).toBe("none");
     expect(ratioTone(3, 3, { inProgress: true })).toBe("met");
+  });
+});
+
+describe("applyRideMakeUps", () => {
+  it("moves a make-up day's ride to the missed day, counted once", () => {
+    const rides = new Set(["2026-10-20", "2026-10-25"]);
+    const out = applyRideMakeUps(rides, [
+      { scheduledDate: "2026-10-24", madeUpOn: "2026-10-25" },
+    ]);
+    expect([...out].sort()).toEqual(["2026-10-20", "2026-10-24"]);
+    // The input set is not changed.
+    expect(rides.has("2026-10-25")).toBe(true);
+  });
+
+  it("changes nothing until there is a ride on the make-up day", () => {
+    const out = applyRideMakeUps(new Set(["2026-10-20"]), [
+      { scheduledDate: "2026-10-24", madeUpOn: "2026-10-25" },
+    ]);
+    expect([...out]).toEqual(["2026-10-20"]);
   });
 });
