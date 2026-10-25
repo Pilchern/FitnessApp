@@ -2,6 +2,7 @@ export * from "./shared/ids";
 export * from "./shared/source";
 export * from "./modules/profiles/user-profile";
 export * from "./modules/body-metrics/body-metric";
+export * from "./modules/body-composition/dexa-scan";
 export * from "./modules/cardio/cardio-session";
 export * from "./modules/daily-activity/daily-activity-metric";
 export * from "./modules/integrations/import-batch";

@@ -27,8 +27,6 @@ export type BodyFormValues = {
   waistIn: string;
   waistHipIn: string;
   waistGutIn: string;
-  bodyFatPct: string;
-  leanMassLb: string;
   sourceType: "manual";
   notes: string;
 };

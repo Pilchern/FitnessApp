@@ -59,3 +59,4 @@ export * from "./modules/program/weekly-review";
 export * from "./modules/program/program-ics";
 export * from "./modules/program/session-budget";
 export * from "./modules/program/program-week";
+export * from "./modules/body-composition/dexa";
