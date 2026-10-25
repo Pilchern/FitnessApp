@@ -6,6 +6,7 @@ import { SummaryStatCard } from "@/components/shared/summary-stat-card";
 import { formatDexaDelta, formatNumber, formatScanDate } from "../helpers";
 import { getDexaPageData } from "../server";
 import { DexaScanForm } from "./dexa-scan-form";
+import { TargetProgressList } from "./target-progress-list";
 
 const panel =
   "rounded-[1.75rem] border border-ink/10 bg-white/80 p-5 shadow-panel";
@@ -140,6 +141,18 @@ export async function DexaScreen() {
           <p className="text-sm text-ink/70">No DEXA scans yet.</p>
         </section>
       )}
+
+      <section className={panel}>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
+          Targets
+        </p>
+        <TargetProgressList targets={data.targets} />
+        <MethodNote label="Where the targets live">
+          Edit them in Settings, Body composition. The quad strength gate is the
+          Review group&apos;s LSI line 3. The bar is the share of the way from
+          the first reading to the next target not yet met.
+        </MethodNote>
+      </section>
 
       <section className={panel}>
         <details>

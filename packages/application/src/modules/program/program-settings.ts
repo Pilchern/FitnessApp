@@ -85,6 +85,20 @@ export type ProgramSettings = {
   shoulderEmphasis: number;
   /** Lift-day gait drill, after the warm-up. */
   gaitDrill: string;
+  // Body composition targets (DEXA, 2026-10-24 baseline). The quad strength
+  // LSI return-to-sport gate is lsiTarget3.
+  almiTargetJan27: number;
+  almiTargetOct27: number;
+  almiTarget2029: number;
+  legLeanLsiTargetJan27: number;
+  legLeanLsiTargetOct27: number;
+  dexaBfTargetJan27: number;
+  dexaBfTargetOct27: number;
+  dexaBfTarget2029: number;
+  /** Waist at the navel, at or under. */
+  waistTargetIn: number;
+  /** DEXA visceral fat, hold under. */
+  vatMaxLb: number;
 };
 
 export const DEFAULT_GAIT_DRILL =
@@ -178,6 +192,16 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   newBlockLoadMultiplier: 1.1,
   shoulderEmphasis: 0,
   gaitDrill: DEFAULT_GAIT_DRILL,
+  almiTargetJan27: 8.25,
+  almiTargetOct27: 8.7,
+  almiTarget2029: 9.5,
+  legLeanLsiTargetJan27: 94,
+  legLeanLsiTargetOct27: 97,
+  dexaBfTargetJan27: 21.5,
+  dexaBfTargetOct27: 17.5,
+  dexaBfTarget2029: 15,
+  waistTargetIn: 34.5,
+  vatMaxLb: 0.25,
 };
 
 /**

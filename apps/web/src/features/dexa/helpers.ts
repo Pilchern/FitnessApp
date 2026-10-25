@@ -22,3 +22,10 @@ export function formatScanDate(value: string) {
     year: "numeric",
   }).format(new Date(`${value}T12:00:00`));
 }
+
+/** "8.25", "94.0%", "34.5 in". */
+export function formatTarget(value: number, dp: number, unit: string) {
+  const text = value.toFixed(dp);
+  if (!unit) return text;
+  return unit === "%" ? `${text}%` : `${text} ${unit}`;
+}
