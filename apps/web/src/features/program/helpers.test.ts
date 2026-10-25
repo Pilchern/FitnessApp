@@ -225,6 +225,14 @@ describe("formatPrescription", () => {
         exercise: { ...exercise, sideMode: "per_leg", tempo: "3-1-1" },
       }),
     ).toBe("3 x 12 @ RIR 2 per leg, 3-1-1");
+    expect(
+      formatPrescription({
+        sets: 3,
+        leftExtraSets: 1,
+        scheme,
+        exercise: { ...exercise, sideMode: "per_leg" },
+      }),
+    ).toBe("3 x 10–12 @ RIR 2 per leg, +1 left");
   });
 
   it("formats time and force work", () => {
@@ -400,6 +408,29 @@ describe("plan rows for the logger", () => {
       ["left", "7.5", "12"],
       ["right", "7.5", "12"],
     ]);
+  });
+
+  it("adds extra left-leg sets after the pairs", () => {
+    const rows = planExerciseSets(
+      { ...base, sideMode: "per_leg", program: true, leftExtraSets: 1 },
+      undefined,
+    );
+    expect(rows.map((r) => r.side)).toEqual([
+      "left",
+      "right",
+      "left",
+      "right",
+      "left",
+    ]);
+    expect(rows.map((r) => r.setNumber)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("ignores extra left sets on bilateral work", () => {
+    const rows = planExerciseSets(
+      { ...base, program: true, leftExtraSets: 1 },
+      undefined,
+    );
+    expect(rows).toHaveLength(2);
   });
 
   it("gives isometrics seconds and an empty newton field", () => {

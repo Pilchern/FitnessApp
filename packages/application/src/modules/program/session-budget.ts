@@ -28,6 +28,8 @@ type BudgetSettings = Pick<
 export type BudgetItem = {
   name: string;
   sets: number;
+  /** Per-leg work: extra left-only sets (one side each). */
+  leftExtraSets?: number;
   measure: ExerciseMeasure;
   sideMode: SideMode;
   category: ProgramExerciseCategory | null;
@@ -113,8 +115,11 @@ export function workingSeconds(
       const item = group[0] as BudgetItem;
       total +=
         item.sets *
-        (sides(item) * workSeconds(item, settings) +
-          restSecondsFor(item.category, settings));
+          (sides(item) * workSeconds(item, settings) +
+            restSecondsFor(item.category, settings)) +
+        (item.leftExtraSets ?? 0) *
+          (workSeconds(item, settings) +
+            restSecondsFor(item.category, settings));
       continue;
     }
     const rounds = Math.max(...group.map((i) => i.sets));
@@ -125,6 +130,12 @@ export function workingSeconds(
         }
       }
       total += settings.restPairSeconds;
+    }
+    // Extra left sets inside a superset: one side, then the pair rest.
+    for (const item of group) {
+      total +=
+        (item.leftExtraSets ?? 0) *
+        (workSeconds(item, settings) + settings.restPairSeconds);
     }
   }
   return total;
@@ -230,6 +241,7 @@ export function plannedBudgetItems(planned: PlannedSession): BudgetItem[] {
     .map((p) => ({
       name: p.name,
       sets: p.sets,
+      leftExtraSets: p.leftExtraSets ?? 0,
       measure: p.exercise.measure,
       sideMode: p.exercise.sideMode,
       category: p.exercise.category,

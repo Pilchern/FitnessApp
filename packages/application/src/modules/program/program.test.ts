@@ -486,6 +486,20 @@ describe("gates", () => {
     });
   });
 
+  it("carries extra left-leg sets on per-leg work only", () => {
+    const stepUp = exercise({
+      name: "Petersen Step-Up",
+      sideMode: "per_leg",
+      leftExtraSets: 1,
+    });
+    expect(planExercise(stepUp, ctx).leftExtraSets).toBe(1);
+    const bilateral = exercise({ name: "Goblet Squat", leftExtraSets: 1 });
+    expect(planExercise(bilateral, ctx).leftExtraSets).toBe(0);
+    expect(planExercise(exercise({ name: "Old row" }), ctx).leftExtraSets).toBe(
+      0,
+    );
+  });
+
   it("greys out a gated exercise with no substitute", () => {
     const pogo = exercise({ name: "Pogo", gateKey: "plyo" });
     expect(planExercise(pogo, ctx)).toMatchObject({

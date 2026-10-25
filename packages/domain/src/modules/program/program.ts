@@ -67,6 +67,8 @@ export type ProgramExercise = {
   /** Null fields fall back to the block's scheme. */
   setsMin: number | null;
   setsMax: number | null;
+  /** Per-leg work: extra sets for the left (operated) leg only. */
+  leftExtraSets?: number;
   repsMin: number | null;
   repsMax: number | null;
   rirTarget: number | null;
