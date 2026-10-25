@@ -52,7 +52,7 @@ export function BodyQuickForm({
             {mode === "edit" ? "Edit measurements" : "Log measurements"}
           </h2>
           <p className="mt-1 text-sm text-ink/60">
-            Waist at the navel, monthly.
+            Waist at the navel; thighs 6 in above the kneecap.
           </p>
         </div>
 
@@ -115,6 +115,44 @@ export function BodyQuickForm({
             />
             {state.fieldErrors?.waistIn ? (
               <p className="text-xs text-ember">{state.fieldErrors.waistIn}</p>
+            ) : null}
+          </label>
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Left thigh (in)
+            <input
+              className={fieldClassName()}
+              name="thighLIn"
+              inputMode="decimal"
+              placeholder="22.0"
+              value={values.thighLIn}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  thighLIn: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.thighLIn ? (
+              <p className="text-xs text-ember">{state.fieldErrors.thighLIn}</p>
+            ) : null}
+          </label>
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Right thigh (in)
+            <input
+              className={fieldClassName()}
+              name="thighRIn"
+              inputMode="decimal"
+              placeholder="23.0"
+              value={values.thighRIn}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  thighRIn: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.thighRIn ? (
+              <p className="text-xs text-ember">{state.fieldErrors.thighRIn}</p>
             ) : null}
           </label>
         </div>

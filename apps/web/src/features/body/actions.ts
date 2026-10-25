@@ -16,6 +16,8 @@ function buildBodyMetricPayload(userId: string, formData: FormData) {
     waistIn: formData.get("waistIn"),
     waistHipIn: formData.get("waistHipIn"),
     waistGutIn: formData.get("waistGutIn"),
+    thighLIn: formData.get("thighLIn"),
+    thighRIn: formData.get("thighRIn"),
     sourceType: formData.get("sourceType"),
     notes: formData.get("notes"),
   });
@@ -27,6 +29,8 @@ function buildBodyMetricPayload(userId: string, formData: FormData) {
     waistIn: parsed.waistIn,
     waistHipIn: parsed.waistHipIn,
     waistGutIn: parsed.waistGutIn,
+    thighLIn: parsed.thighLIn,
+    thighRIn: parsed.thighRIn,
     notes: parsed.notes || null,
   };
 }

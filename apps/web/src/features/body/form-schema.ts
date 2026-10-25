@@ -7,6 +7,8 @@ export const bodyMetricFormSchema = z.object({
   waistIn: parseOptionalNumber(z.number().positive().max(120), "Waist"),
   waistHipIn: parseOptionalNumber(z.number().positive().max(120), "Hip waist"),
   waistGutIn: parseOptionalNumber(z.number().positive().max(120), "Gut waist"),
+  thighLIn: parseOptionalNumber(z.number().positive().max(60), "Left thigh"),
+  thighRIn: parseOptionalNumber(z.number().positive().max(60), "Right thigh"),
   sourceType: z.literal("manual"),
   notes: optionalString,
 });

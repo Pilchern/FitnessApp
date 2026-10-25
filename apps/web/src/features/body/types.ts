@@ -31,6 +31,8 @@ export type BodyFormValues = {
   waistIn: string;
   waistHipIn: string;
   waistGutIn: string;
+  thighLIn: string;
+  thighRIn: string;
   sourceType: "manual";
   notes: string;
 };

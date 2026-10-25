@@ -11,6 +11,9 @@ export type BodyMetric = {
   waistCm: number | null;
   waistHipIn: number | null;
   waistGutIn: number | null;
+  /** Thigh circumference 6 in above the kneecap; L is the operated leg. */
+  thighLIn?: number | null;
+  thighRIn?: number | null;
   bodyFatPct: number | null;
   muscleMassLb: number | null;
   muscleMassKg: number | null;

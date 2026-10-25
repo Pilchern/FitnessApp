@@ -24,6 +24,8 @@ export function toBodyFormValues(metric: BodyMetric | null): BodyFormValues {
       waistIn: "",
       waistHipIn: "",
       waistGutIn: "",
+      thighLIn: "",
+      thighRIn: "",
       sourceType: "manual",
       notes: "",
     };
@@ -35,6 +37,8 @@ export function toBodyFormValues(metric: BodyMetric | null): BodyFormValues {
     waistIn: numberToInput(metric.waistIn),
     waistHipIn: numberToInput(metric.waistHipIn),
     waistGutIn: numberToInput(metric.waistGutIn),
+    thighLIn: numberToInput(metric.thighLIn ?? null),
+    thighRIn: numberToInput(metric.thighRIn ?? null),
     sourceType: "manual",
     notes: metric.notes ?? "",
   };
