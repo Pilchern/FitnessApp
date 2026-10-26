@@ -270,6 +270,13 @@ export const EXERCISE_CATALOG: ExerciseCatalogEntry[] = [
     aliases: ["rdl", "rdls", "romanian deadlifts", "dumbbell rdl", "db rdl"],
   },
   {
+    canonicalName: "Good Morning",
+    muscleGroup: "hamstrings",
+    movementPattern: "legs",
+    category: "compound",
+    aliases: ["good mornings", "barbell good morning", "bb good morning"],
+  },
+  {
     canonicalName: "Leg Curl",
     muscleGroup: "hamstrings",
     movementPattern: "legs",

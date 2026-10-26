@@ -30,7 +30,7 @@ Lifts Mon/Wed/Fri (legs and upper in one session, supersets). Accessory block pl
 | Mon | Office | Legs + Push | 43 / 49 |
 | Tue | Office | Accessory circuit, then Peloton Zone 2 30-45 min | 10-12 + ride |
 | Wed | WFH, PT 7:40 | Single-leg + Pull | 46 / 47 |
-| Thu | Office | Accessory circuit, then Peloton (Zone 2 in wk 9; from wk 10 climb intervals 45 min once the `intervals` gate is cleared, seated Zone 2 45 min until then) | 10-12 + ride |
+| Thu | Office | Accessory circuit, then Peloton (Zone 2 in wk 9; from wk 10 seated tempo intervals at cadence 85-95, 45 min, once the `intervals` gate is cleared, seated Zone 2 45 min until then) | 10-12 + ride |
 | Fri | WFH, PT 7:40 | Quad + Arms (landing prep from wk 10 once the `plyo_double` gate is cleared, normal knee check only) | 46 / 56 |
 | Sat | Off | Peloton Zone 2 (long) 45-60 min | ride |
 | Sun | Off | Test day + walk | - |
