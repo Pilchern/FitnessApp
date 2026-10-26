@@ -193,7 +193,8 @@ export function isPlannedToday(p: PlannedExercise) {
 
 export const RIDE_KIND_LABEL: Record<RideKind, string> = {
   zone2: "Zone 2",
-  climb_intervals: "Climb intervals",
+  // The DB value predates v2.12, which made the Block 1 ride seated tempo.
+  climb_intervals: "Tempo intervals",
   threshold_intervals: "4 x 4 min intervals",
   vo2_intervals: "VO2 max intervals",
 };
