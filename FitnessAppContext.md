@@ -358,3 +358,4 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 | 2026-10-25 | Ride make-ups (`program_makeups`; the ride logged/synced on the make-up day counts for the missed ride, once) and test days removed from the program (8 sessions + 2 calendar settings soft-deleted; PT Tracker owns them). Migration applied to live before merge. |
 | 2026-10-26 | Barbell gate cleared (PT); program v2.11: Good Morning 3 x 10-12 @ RIR 3 on Wednesday, weeks 10-18; catalog entry. Migration applied to live before merge. |
 | 2026-10-26 | Program v2.12: Block 1 Thursday ride to seated tempo at cadence 85-95 (label "Tempo intervals"), Block 2 4 x 4 cadence 80+, pin squat first-session cue, Friday slider curl off. Migration applied to live before merge. |
+| 2026-10-26 | Program v2.13: muscle-group audit; Dead Bug (every week) and Suitcase Carry (week 14+) restored on Tue/Thu circuits, Pallof Press weeks 10-18 added, catalog entry. Migration applied to live before merge. |
