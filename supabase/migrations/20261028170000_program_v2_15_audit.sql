@@ -3,10 +3,8 @@
 -- this file existed; this file records them and is safe to rerun. Statement 7
 -- (two settings rows) is new with the engine change in this PR.
 --
--- 1. Arm isolation trimmed, blocks 10-36 (deloads borrow these sessions):
---    Tricep Pushdown 4 -> 2 sets; Tricep Extension, Dumbbell Curl, Hammer Curl
---    4 -> 3 sets. Partly reverses v2.10's 8 direct sets each (time budget;
---    triceps also get bench, incline and close-grip).
+-- 1. (Dropped: an arm-volume trim was applied briefly on live and reverted the
+--    same day at the owner's request; v2.10 arm sets stand.)
 -- 2. Dead Hang 2 x max (30 s target, +5 s a week) on every Wednesday lift,
 --    blocks 10-36. Grip/hang was the largest Outlive-standard gap (25 s vs 120 s).
 -- 3. Zone 2: Tuesday 45 min, Saturday 60 min; HR band 125-132, cap 135, anchored
@@ -15,20 +13,6 @@
 -- 5. Optional Sunday 30-min Zone 2 ride in each block 10-36.
 -- 6. Program rules text and version string.
 -- 7. Settings: leg barbell fast step (+10 lb below 135 lb).
-
-with blk as (
-  select b.id from public.program_blocks b
-  join public.training_programs p on p.id = b.program_id and p.is_active and p.deleted_at is null
-  where b.deleted_at is null and b.sessions_from_block_id is null and b.start_week between 10 and 36
-)
-update public.program_exercises e
-set sets_min = case when e.exercise_name = 'Tricep Pushdown' then 2 else 3 end,
-    sets_max = case when e.exercise_name = 'Tricep Pushdown' then 2 else 3 end
-from public.program_sessions s
-where s.id = e.program_session_id and s.deleted_at is null and e.deleted_at is null
-  and s.block_id in (select id from blk)
-  and e.exercise_name in ('Tricep Pushdown', 'Tricep Extension', 'Dumbbell Curl', 'Hammer Curl')
-  and e.sets_max <> case when e.exercise_name = 'Tricep Pushdown' then 2 else 3 end;
 
 with blk as (
   select b.id from public.program_blocks b
