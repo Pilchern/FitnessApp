@@ -65,7 +65,7 @@ Fri Quad + Arms:
 - C1 Heel-Elevated Goblet Squat (to 90°) 3 x 12 / C2 Close-Grip Bench Press 3 x 8-10
 - D1 DB Single-Leg RDL 3 x 10 per leg / D2 Dumbbell Shoulder Press 3 x 10-12 / D3 Tricep Extension 2 x 12-15
 
-Tue/Thu accessory circuit (before the ride), 2 rounds: Copenhagen Side Plank 20 s per side, Perturbation Balance 30 s per leg, Dead Bug 10 per side, Suitcase Carry 30 m per side (from week 14), Pallof Press 10 per side (weeks 10-18), Bent-Knee Calf Raise 15-20, Banded Lateral Walk, Banded Knee Extension. (v2.13, 2026-10-26: core restored after a muscle-group audit.)
+Tue/Thu core session (any time, 8-10 min), 2 rounds: Dead Bug 10 per side (3 rounds; held DB overhead from week 14), Pallof Press 10 per side (weeks 10-18), Side Plank 30-45 s per side, Suitcase Carry 30 m per side (from week 14). (v2.14, 2026-10-28: knee circuit retired; the PT home program covers balance and band work, lift days cover quad volume. Copenhagen returns in the week 39+ injury-prevention session.)
 
 Dropped from the pre-v1 upper lists: Cuban Press, Weighted Floor Crunch, DB Seated Side Bend, Dead Hang, Hammer Curl, Band Anti-Rotation Press.
 
