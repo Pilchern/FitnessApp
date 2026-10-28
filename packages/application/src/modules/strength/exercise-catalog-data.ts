@@ -589,6 +589,13 @@ export const EXERCISE_CATALOG: ExerciseCatalogEntry[] = [
     category: "isolation",
     aliases: ["pallof", "band anti rotation press", "anti rotation press"],
   },
+  {
+    canonicalName: "Side Plank",
+    muscleGroup: "core",
+    movementPattern: "core",
+    category: "isolation",
+    aliases: ["side planks", "side bridge"],
+  },
 ];
 
 function normalizeExerciseName(name: string): string {
