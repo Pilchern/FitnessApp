@@ -359,3 +359,4 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 | 2026-10-26 | Barbell gate cleared (PT); program v2.11: Good Morning 3 x 10-12 @ RIR 3 on Wednesday, weeks 10-18; catalog entry. Migration applied to live before merge. |
 | 2026-10-26 | Program v2.12: Block 1 Thursday ride to seated tempo at cadence 85-95 (label "Tempo intervals"), Block 2 4 x 4 cadence 80+, pin squat first-session cue, Friday slider curl off. Migration applied to live before merge. |
 | 2026-10-26 | Program v2.13: muscle-group audit; Dead Bug (every week) and Suitcase Carry (week 14+) restored on Tue/Thu circuits, Pallof Press weeks 10-18 added, catalog entry. Migration applied to live before merge. |
+| 2026-10-28 | Program v2.15 from the full health/training audit: Dead Hang on Wednesdays, Zone 2 HR band and fixed ride lengths, Sunday optional ride, HR recovery on Thursdays; engine fast step for leg barbell lifts under 135 lb. Data applied to live first; migration records it. |
