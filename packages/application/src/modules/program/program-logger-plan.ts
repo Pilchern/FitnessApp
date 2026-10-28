@@ -223,6 +223,7 @@ function programRow(
     isDeload: input.info.isDeload,
     sleepAverageHours: input.sleepAverageHours ?? null,
     quadDrop: p.part === "legs" ? (input.quadDrop ?? null) : null,
+    part: p.part,
     settings,
   });
   const pullUp = pullUpLoadCue(p.name, history?.sets ?? [], settings);

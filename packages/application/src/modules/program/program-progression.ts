@@ -268,6 +268,8 @@ export type SuggestLoadInput = {
   sleepAverageHours?: number | null;
   /** Left quad crane-test drop past the setting (knee-tests.ts); holds loads. */
   quadDrop?: QuadDrop | null;
+  /** "legs" lets barbell lifts under the fast-step ceiling jump by the larger step. */
+  part?: "legs" | "upper";
   settings?: ProgramSettings;
 };
 
@@ -412,11 +414,24 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
     };
   }
   if (earned && !lock) {
-    const next = capDumbbell(
-      nextLoad(lastLoad, input.loadKind, settings) ?? lastLoad,
-      input.loadKind,
-      settings,
-    );
+    const fastLegStep =
+      input.part === "legs" &&
+      input.loadKind === "barbell" &&
+      settings.legBarbellFastStepLb > 0 &&
+      lastLoad < settings.legBarbellFastStepUntilLb;
+    const next = fastLegStep
+      ? Math.min(
+          lastLoad + settings.legBarbellFastStepLb,
+          Math.max(
+            settings.legBarbellFastStepUntilLb,
+            lastLoad + settings.barbellStepLb,
+          ),
+        )
+      : capDumbbell(
+          nextLoad(lastLoad, input.loadKind, settings) ?? lastLoad,
+          input.loadKind,
+          settings,
+        );
     return {
       load: next,
       kind: "increase",

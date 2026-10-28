@@ -7,6 +7,9 @@ import type { TrainingSetting } from "@fitness-app/domain";
  */
 export type ProgramSettings = {
   barbellStepLb: number;
+  /** Leg barbell lifts below `legBarbellFastStepUntilLb` step up by this instead (0 = off). */
+  legBarbellFastStepLb: number;
+  legBarbellFastStepUntilLb: number;
   dumbbellFineStepLb: number;
   dumbbellFineLimitLb: number;
   dumbbellCoarseStepLb: number;
@@ -131,6 +134,8 @@ export const DEFAULT_PROGRAM_RULES = [
 
 export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   barbellStepLb: 5,
+  legBarbellFastStepLb: 10,
+  legBarbellFastStepUntilLb: 135,
   dumbbellFineStepLb: 2.5,
   dumbbellFineLimitLb: 25,
   dumbbellCoarseStepLb: 5,
