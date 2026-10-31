@@ -744,3 +744,97 @@ describe("mapHealthAutoExport Zone 2 and daylight", () => {
     expect(out.morningDaylight).toEqual([]);
   });
 });
+
+describe("mapNutrition", () => {
+  it("sums hourly dietary points per date and converts kJ to kcal", () => {
+    const mapped = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "dietary_energy",
+            units: "kJ",
+            data: [
+              { date: "2026-10-30 08:00:00 -0500", qty: 4184 },
+              { date: "2026-10-30 12:00:00 -0500", qty: 2092 },
+              { date: "2026-10-31 08:00:00 -0500", qty: 418.4 },
+            ],
+          },
+          {
+            name: "protein",
+            units: "g",
+            data: [
+              { date: "2026-10-30 08:00:00 -0500", qty: 50.5 },
+              { date: "2026-10-30 12:00:00 -0500", qty: 60 },
+            ],
+          },
+          {
+            name: "carbohydrates",
+            units: "g",
+            data: [{ date: "2026-10-30 12:00:00 -0500", qty: 120 }],
+          },
+          {
+            name: "total_fat",
+            units: "g",
+            data: [{ date: "2026-10-30 12:00:00 -0500", qty: 40 }],
+          },
+          {
+            name: "fiber",
+            units: "mg",
+            data: [{ date: "2026-10-30 12:00:00 -0500", qty: 15000 }],
+          },
+        ],
+      },
+    });
+
+    expect(mapped.nutrition).toEqual([
+      {
+        date: "2026-10-30",
+        calories: 1500,
+        protein_g: 110.5,
+        carbs_g: 120,
+        fat_g: 40,
+        fiber_g: 15,
+      },
+      { date: "2026-10-31", calories: 100 },
+    ]);
+    // Dietary metrics feed nothing else.
+    expect(mapped.dailyMetrics).toEqual([]);
+    expect(mapped.sleep).toEqual([]);
+  });
+
+  it("returns no nutrition when the export has no dietary metrics", () => {
+    const mapped = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "step_count",
+            units: "count",
+            data: [{ date: "2026-10-30 00:00:00 -0500", qty: 9000 }],
+          },
+        ],
+      },
+    });
+    expect(mapped.nutrition).toEqual([]);
+    expect(mapped.dailyMetrics).toEqual([{ date: "2026-10-30", steps: 9000 }]);
+  });
+
+  it("keeps kcal as is and drops points in an unknown unit", () => {
+    const mapped = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "dietary_energy",
+            units: "kcal",
+            data: [{ date: "2026-10-30", qty: 2400 }],
+          },
+          {
+            name: "protein",
+            units: "cups",
+            data: [{ date: "2026-10-30", qty: 3 }],
+          },
+        ],
+      },
+    });
+    expect(mapped.nutrition).toEqual([{ date: "2026-10-30", calories: 2400 }]);
+  });
+});
