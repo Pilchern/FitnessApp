@@ -15,6 +15,7 @@ import {
   SupabaseIntegrationConnectionRepository,
   SupabaseIntegrationCredentialRepository,
   SupabaseIntegrationStatusRepository,
+  SupabaseNutritionLogRepository,
   SupabaseOvernightSampleRepository,
   SupabaseRawImportEventRepository,
   SupabaseRecoveryCheckinRepository,
@@ -23,6 +24,7 @@ import {
 import { WithingsBodyMetricsAdapter } from "@fitness-app/integrations";
 import {
   AppleHealthDailyMetricsSyncOrchestrator,
+  AppleHealthNutritionSyncOrchestrator,
   AppleHealthSleepSyncOrchestrator,
   AppleHealthWorkoutSyncOrchestrator,
   BodyMetricSyncOrchestrator,
@@ -110,6 +112,24 @@ export function createAppleHealthDailyMetricsOrchestrator() {
 
   return new AppleHealthDailyMetricsSyncOrchestrator(
     new SupabaseDailyActivityMetricRepository(client),
+    new SupabaseIntegrationConnectionRepository(client),
+    new SupabaseSyncJobRunRepository(client),
+    new SupabaseImportBatchRepository(client),
+    new SupabaseRawImportEventRepository(client),
+  );
+}
+
+export function createAppleHealthNutritionOrchestrator() {
+  if (!hasAppleHealthServerEnv()) {
+    throw new Error(
+      "Apple Health integration is not configured. Add INTEGRATION_ENCRYPTION_KEY to your env.",
+    );
+  }
+
+  const client = createSupabaseAdminClient();
+
+  return new AppleHealthNutritionSyncOrchestrator(
+    new SupabaseNutritionLogRepository(client),
     new SupabaseIntegrationConnectionRepository(client),
     new SupabaseSyncJobRunRepository(client),
     new SupabaseImportBatchRepository(client),

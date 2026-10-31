@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   createAppleHealthDailyMetricsOrchestrator,
+  createAppleHealthNutritionOrchestrator,
   createAppleHealthSleepOrchestrator,
   createAppleHealthWebhookSecretLookup,
   createAppleHealthWorkoutOrchestrator,
@@ -35,9 +36,11 @@ import {
  * Health Auto Export (iOS) REST automation target. Accepts that app's native
  * JSON ({ data: { metrics, workouts } }) and fans it out to the same three
  * orchestrators the sleep, daily-metrics and workouts webhooks use, so one
- * phone-side automation covers all three. Mapping rules (rides only, no
- * weight, overlapping rides deduped, Watch strength workouts merged into
- * the day's lift session) live in ../health-auto-export.ts.
+ * phone-side automation covers all three. Dietary metrics (dietary_energy,
+ * protein, carbohydrates, total_fat, fiber) go to the nutrition sync, which
+ * writes nutrition_logs. Mapping rules (rides only, no weight, overlapping
+ * rides deduped, Watch strength workouts merged into the day's lift session)
+ * live in ../health-auto-export.ts.
  *
  * Auth is identical to the other Apple Health webhooks (verify-request.ts):
  *   Authorization: Bearer <per-user webhook token>  + X-User-Id
@@ -106,7 +109,8 @@ export async function POST(request: NextRequest) {
     mapped.dailyMetrics.length > MAX_WEBHOOK_ITEMS ||
     mapped.sleep.length > MAX_WEBHOOK_ITEMS ||
     mapped.workouts.length > MAX_WEBHOOK_ITEMS ||
-    mapped.strengthWorkouts.length > MAX_WEBHOOK_ITEMS
+    mapped.strengthWorkouts.length > MAX_WEBHOOK_ITEMS ||
+    mapped.nutrition.length > MAX_WEBHOOK_ITEMS
   ) {
     return NextResponse.json(
       { ok: false, error: "too_many_items" },
@@ -152,6 +156,15 @@ export async function POST(request: NextRequest) {
           })
         : null;
 
+    const nutrition =
+      mapped.nutrition.length > 0
+        ? await createAppleHealthNutritionOrchestrator().syncNutrition({
+            userId,
+            triggerType: "webhook",
+            items: mapped.nutrition,
+          })
+        : null;
+
     const habitsCompleted = await completeStepHabits(
       userId,
       mapped.dailyMetrics,
@@ -173,6 +186,7 @@ export async function POST(request: NextRequest) {
       sleep: sleep?.processedItemCount ?? 0,
       overnightNights: overnight,
       workouts: workouts?.processedItemCount ?? 0,
+      nutrition: nutrition?.processedItemCount ?? 0,
       habitsCompleted: habitsCompleted + daylightHabitsCompleted,
       strengthMerged,
     });

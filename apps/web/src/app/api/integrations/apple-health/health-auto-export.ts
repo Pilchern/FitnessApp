@@ -1,5 +1,6 @@
 import type {
   AppleHealthDailyMetricsPayload,
+  AppleHealthNutritionPayload,
   AppleHealthSleepPayload,
   AppleHealthWorkoutPayload,
 } from "@fitness-app/jobs";
@@ -105,6 +106,8 @@ export type MappedHealthAutoExport = {
   strengthWorkouts: WatchStrengthWorkout[];
   /** Night-time vitals points, averaged over sleep once stored. */
   overnightSamples: OvernightSample[];
+  /** Daily nutrition totals (Cronometer via HealthKit), one per date. */
+  nutrition: AppleHealthNutritionPayload[];
 };
 
 /** HealthKit names: Traditional/Functional Strength Training, Core Training. */
@@ -830,6 +833,79 @@ function shareHeartRateAcrossCopies(workouts: HaeWorkout[]): HaeWorkout[] {
   });
 }
 
+/**
+ * Health Auto Export metric names for the dietary totals Cronometer writes
+ * to HealthKit, and the payload field each one fills.
+ */
+const NUTRITION_METRICS: Record<
+  string,
+  keyof Omit<AppleHealthNutritionPayload, "date">
+> = {
+  dietary_energy: "calories",
+  protein: "protein_g",
+  carbohydrates: "carbs_g",
+  total_fat: "fat_g",
+  fiber: "fiber_g",
+};
+
+/** Grams from a mass unit; null for a unit we do not recognise. */
+function dietaryGrams(units: string | undefined, qty: number): number | null {
+  const unit = (units ?? "g").trim().toLowerCase();
+  if (unit === "g" || unit === "gram" || unit === "grams") return qty;
+  if (unit === "mg") return qty / 1000;
+  if (unit === "kg") return qty * 1000;
+  if (unit === "oz") return qty * 28.349523125;
+  return null;
+}
+
+/** kcal from an energy unit; null for a unit we do not recognise. */
+function dietaryKcal(units: string | undefined, qty: number): number | null {
+  const unit = (units ?? "kcal").trim().toLowerCase();
+  if (unit === "kcal" || unit === "cal" || unit === "calories") return qty;
+  if (unit === "kj") return qty / KJ_PER_KCAL;
+  return null;
+}
+
+/**
+ * Daily dietary totals. Points are summed per date, so a daily export and an
+ * hourly one give the same total. Values keep two decimals; the sync
+ * rounds to whole numbers after working out net carbs.
+ */
+export function mapNutrition(
+  metrics: HaeMetric[],
+): AppleHealthNutritionPayload[] {
+  const byDate = new Map<string, AppleHealthNutritionPayload>();
+  for (const metric of metrics) {
+    const field = NUTRITION_METRICS[metric.name ?? ""];
+    if (!field) continue;
+    for (const point of metric.data ?? []) {
+      const date = toIsoDate(point.date);
+      const qty = point.qty;
+      if (!date || !isFiniteNumber(qty)) continue;
+      const value =
+        field === "calories"
+          ? dietaryKcal(metric.units, qty)
+          : dietaryGrams(metric.units, qty);
+      if (value == null) continue;
+      const row = byDate.get(date) ?? { date };
+      row[field] = (row[field] ?? 0) + value;
+      byDate.set(date, row);
+    }
+  }
+  // Two decimals: drops float noise (kJ sums) so a resend hashes the same.
+  return [...byDate.values()]
+    .map(
+      (row) =>
+        Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [
+            key,
+            typeof value === "number" ? Math.round(value * 100) / 100 : value,
+          ]),
+        ) as AppleHealthNutritionPayload,
+    )
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
 export function mapHealthAutoExport(
   body: HealthAutoExportBody,
   options: HealthAutoExportOptions = {},
@@ -851,5 +927,6 @@ export function mapHealthAutoExport(
     workouts,
     strengthWorkouts,
     overnightSamples,
+    nutrition: mapNutrition(body.data?.metrics ?? []),
   };
 }

@@ -1,4 +1,5 @@
 export * from "./orchestration/apple-health-daily-metrics-sync";
+export * from "./orchestration/apple-health-nutrition-sync";
 export * from "./orchestration/apple-health-sleep-sync";
 export * from "./orchestration/apple-health-workout-sync";
 export * from "./orchestration/body-metric-sync";
