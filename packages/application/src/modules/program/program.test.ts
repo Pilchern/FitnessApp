@@ -271,6 +271,36 @@ describe("progression engine", () => {
     ).toMatchObject({ load: 35, kind: "increase" });
   });
 
+  it("jumps leg barbell lifts by the fast step until the ceiling", () => {
+    const legs = { ...base, part: "legs" as const };
+    expect(
+      suggestLoad({ ...legs, lastSets: sets(45, [12, 12, 12]) }),
+    ).toMatchObject({ load: 55, kind: "increase" });
+    expect(
+      suggestLoad({ ...legs, lastSets: sets(130, [12, 12, 12]) }),
+    ).toMatchObject({ load: 135 });
+    expect(
+      suggestLoad({ ...legs, lastSets: sets(135, [12, 12, 12]) }),
+    ).toMatchObject({ load: 140 });
+    expect(
+      suggestLoad({ ...base, part: "upper", lastSets: sets(45, [12, 12, 12]) }),
+    ).toMatchObject({ load: 50 });
+    expect(
+      suggestLoad({
+        ...legs,
+        lastSets: sets(45, [12, 12, 12]),
+        settings: { ...DEFAULT_PROGRAM_SETTINGS, legBarbellFastStepLb: 0 },
+      }),
+    ).toMatchObject({ load: 50 });
+    expect(
+      suggestLoad({
+        ...legs,
+        readiness: "hold",
+        lastSets: sets(45, [12, 12, 12]),
+      }),
+    ).toMatchObject({ load: 45 });
+  });
+
   it("keeps the load when a set missed the top or ran under RIR 2", () => {
     expect(
       suggestLoad({ ...base, lastSets: sets(95, [12, 12, 11]) }),
