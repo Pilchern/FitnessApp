@@ -12,7 +12,10 @@ import {
   completeDaylightHabits,
   completeStepHabits,
 } from "@/lib/server/step-habits";
-import { getCachedUserProfile } from "@/lib/server/services";
+import {
+  createCoreServices,
+  getCachedUserProfile,
+} from "@/lib/server/services";
 import {
   ageOn,
   ZONE2_CREDIT_BY,
@@ -30,7 +33,65 @@ import { verifyAppleHealthRequest } from "../verify-request";
 import {
   mapHealthAutoExport,
   type HealthAutoExportBody,
+  type WalkingReading,
 } from "../health-auto-export";
+
+/**
+ * Walking asymmetry and speed (7-day means) into knee_tests, source
+ * 'apple_health', where the knee gates and weekly review read them. Took
+ * over from the PT Tracker's /api/health. Fails soft: a walking error is
+ * logged and never fails the rest of the sync.
+ */
+async function syncWalking(userId: string, readings: WalkingReading[]) {
+  if (readings.length === 0) return 0;
+  try {
+    const { programService } = await createCoreServices();
+    for (const r of readings) {
+      const notes = `7-day mean, ${r.days} days`;
+      await programService.replaceKneeTests({
+        userId,
+        source: "apple_health",
+        testDate: r.date,
+        replaceTypes: ["walking_asymmetry", "walking_speed"],
+        rows: [
+          ...(r.asymmetryPct != null
+            ? [
+                {
+                  testDate: r.date,
+                  testType: "walking_asymmetry",
+                  side: null,
+                  value: r.asymmetryPct,
+                  unit: "%",
+                  repIndex: 1,
+                  notes,
+                },
+              ]
+            : []),
+          ...(r.speedMps != null
+            ? [
+                {
+                  testDate: r.date,
+                  testType: "walking_speed",
+                  side: null,
+                  value: r.speedMps,
+                  unit: "m/s",
+                  repIndex: 1,
+                  notes,
+                },
+              ]
+            : []),
+        ],
+      });
+    }
+    return readings.length;
+  } catch (error) {
+    console.error(
+      "[apple-health/health-auto-export] Walking sync failed:",
+      error,
+    );
+    return 0;
+  }
+}
 
 /**
  * Health Auto Export (iOS) REST automation target. Accepts that app's native
@@ -110,7 +171,8 @@ export async function POST(request: NextRequest) {
     mapped.sleep.length > MAX_WEBHOOK_ITEMS ||
     mapped.workouts.length > MAX_WEBHOOK_ITEMS ||
     mapped.strengthWorkouts.length > MAX_WEBHOOK_ITEMS ||
-    mapped.nutrition.length > MAX_WEBHOOK_ITEMS
+    mapped.nutrition.length > MAX_WEBHOOK_ITEMS ||
+    mapped.walking.length > MAX_WEBHOOK_ITEMS
   ) {
     return NextResponse.json(
       { ok: false, error: "too_many_items" },
@@ -165,6 +227,8 @@ export async function POST(request: NextRequest) {
           })
         : null;
 
+    const walking = await syncWalking(userId, mapped.walking);
+
     const habitsCompleted = await completeStepHabits(
       userId,
       mapped.dailyMetrics,
@@ -187,6 +251,7 @@ export async function POST(request: NextRequest) {
       overnightNights: overnight,
       workouts: workouts?.processedItemCount ?? 0,
       nutrition: nutrition?.processedItemCount ?? 0,
+      walking,
       habitsCompleted: habitsCompleted + daylightHabitsCompleted,
       strengthMerged,
     });
