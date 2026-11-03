@@ -108,6 +108,8 @@ export type MappedHealthAutoExport = {
   overnightSamples: OvernightSample[];
   /** Daily nutrition totals (Cronometer via HealthKit), one per date. */
   nutrition: AppleHealthNutritionPayload[];
+  /** Trailing 7-day walking asymmetry and speed, for the knee gates. */
+  walking: WalkingReading[];
 };
 
 /** HealthKit names: Traditional/Functional Strength Training, Core Training. */
@@ -906,6 +908,103 @@ export function mapNutrition(
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/** Walking readings for the knee gates: a trailing 7-day mean per date. */
+export type WalkingReading = {
+  date: string;
+  /** Walking asymmetry, percent; sample-weighted when samples are raw. */
+  asymmetryPct: number | null;
+  /** Walking speed, m/s. */
+  speedMps: number | null;
+  /** Days with data in the window. */
+  days: number;
+};
+
+/** Days of data a 7-day window needs before it is written. */
+export const WALKING_MIN_DAYS = 5;
+
+function speedToMps(units: string | undefined, value: number) {
+  const u = (units ?? "").toLowerCase();
+  if (u.includes("km")) return value / 3.6;
+  if (u.includes("m/s") || u === "mps") return value;
+  return value * 0.44704; // mi/hr, the US default
+}
+
+/**
+ * Walking asymmetry and speed as a trailing 7-day mean ending on each date,
+ * like the PT Tracker's weekly reading (asymmetry keeps 0% samples, and with
+ * Summarize Data off every sample counts, so a day with 40 walks weighs
+ * more). Only dates whose window has WALKING_MIN_DAYS days in this payload
+ * are returned, so the "Previous 7 Days" export writes today and yesterday.
+ */
+export function mapWalking(metrics: HaeMetric[]): WalkingReading[] {
+  const days = new Map<
+    string,
+    { asymSum: number; asymN: number; speedSum: number; speedN: number }
+  >();
+  for (const metric of metrics) {
+    const name = (metric.name ?? "").toLowerCase();
+    const field = name.includes("asymmetry")
+      ? "asym"
+      : name === "walking_speed"
+        ? "speed"
+        : null;
+    if (!field) continue;
+    const points = (metric.data ?? []).filter((p) => isFiniteNumber(p.qty));
+    // Some exports give asymmetry as a fraction (0.03), not percent.
+    const fraction =
+      field === "asym" &&
+      points.some((p) => (p.qty as number) > 0) &&
+      points.every((p) => (p.qty as number) <= 1);
+    for (const point of points) {
+      const date = toIsoDate(point.date);
+      if (!date) continue;
+      const row = days.get(date) ?? {
+        asymSum: 0,
+        asymN: 0,
+        speedSum: 0,
+        speedN: 0,
+      };
+      const qty = point.qty as number;
+      if (field === "asym") {
+        const v = fraction ? qty * 100 : qty;
+        if (v < 0 || v > 100) continue;
+        row.asymSum += v;
+        row.asymN += 1;
+      } else {
+        const v = speedToMps(metric.units, qty);
+        if (!(v > 0 && v <= 5)) continue;
+        row.speedSum += v;
+        row.speedN += 1;
+      }
+      days.set(date, row);
+    }
+  }
+  const dates = [...days.keys()].sort();
+  const out: WalkingReading[] = [];
+  for (const date of dates) {
+    const window = Array.from({ length: 7 }, (_, i) => addDaysIso(date, -i))
+      .map((d) => days.get(d))
+      .filter((r): r is NonNullable<typeof r> => r != null);
+    if (window.length < WALKING_MIN_DAYS) continue;
+    const asymN = window.reduce((n, r) => n + r.asymN, 0);
+    const speedN = window.reduce((n, r) => n + r.speedN, 0);
+    const asym = asymN
+      ? window.reduce((sum, r) => sum + r.asymSum, 0) / asymN
+      : null;
+    const speed = speedN
+      ? window.reduce((sum, r) => sum + r.speedSum, 0) / speedN
+      : null;
+    if (asym == null && speed == null) continue;
+    out.push({
+      date,
+      asymmetryPct: asym == null ? null : Math.round(asym * 10) / 10,
+      speedMps: speed == null ? null : Math.round(speed * 100) / 100,
+      days: window.length,
+    });
+  }
+  return out;
+}
+
 export function mapHealthAutoExport(
   body: HealthAutoExportBody,
   options: HealthAutoExportOptions = {},
@@ -928,5 +1027,6 @@ export function mapHealthAutoExport(
     strengthWorkouts,
     overnightSamples,
     nutrition: mapNutrition(body.data?.metrics ?? []),
+    walking: mapWalking(body.data?.metrics ?? []),
   };
 }

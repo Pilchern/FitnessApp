@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dedupeOverlappingRides,
   mapHealthAutoExport,
+  mapWalking,
   toIsoDateTime,
   toLocalClockTime,
 } from "./health-auto-export";
@@ -836,5 +837,47 @@ describe("mapNutrition", () => {
       },
     });
     expect(mapped.nutrition).toEqual([{ date: "2026-10-30", calories: 2400 }]);
+  });
+});
+
+describe("mapWalking", () => {
+  const day = (d: number) => `2026-11-0${d} 08:00:00 -0600`;
+  it("writes a trailing 7-day mean once 5 days have data", () => {
+    const rows = mapWalking([
+      {
+        name: "walking_asymmetry_percentage",
+        units: "%",
+        data: [1, 2, 3, 4, 5, 6].flatMap((d) => [
+          { date: day(d), qty: d },
+          { date: day(d), qty: 0 },
+        ]),
+      },
+      {
+        name: "walking_speed",
+        units: "km/hr",
+        data: [1, 2, 3, 4, 5, 6].map((d) => ({ date: day(d), qty: 3.6 })),
+      },
+    ]);
+    expect(rows.map((r) => r.date)).toEqual(["2026-11-05", "2026-11-06"]);
+    // Day 1-6: sum 21 over 12 samples (0% samples count).
+    expect(rows[1]).toEqual({
+      date: "2026-11-06",
+      asymmetryPct: 1.8,
+      speedMps: 1,
+      days: 6,
+    });
+  });
+
+  it("reads fractions as percent and ignores other metrics", () => {
+    const rows = mapWalking([
+      {
+        name: "walking_asymmetry_percentage",
+        data: [1, 2, 3, 4, 5].map((d) => ({ date: day(d), qty: 0.04 })),
+      },
+      { name: "step_count", data: [{ date: day(5), qty: 9000 }] },
+    ]);
+    expect(rows).toEqual([
+      { date: "2026-11-05", asymmetryPct: 4, speedMps: null, days: 5 },
+    ]);
   });
 });
