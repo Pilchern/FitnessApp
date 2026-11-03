@@ -104,106 +104,134 @@ function scored(result: DailyReadiness) {
 const keys = (r: { components: { key: string }[] }) =>
   r.components.map((c) => c.key);
 
+const component = (r: { components: { key: string }[] }, key: string) =>
+  (
+    r as { components: ({ key: string } & Record<string, unknown>)[] }
+  ).components.find((c) => c.key === key) as
+    | {
+        key: string;
+        score: number;
+        detail: string;
+        label: string;
+        weight: number;
+      }
+    | undefined;
+
+const base = () => [...nights(20)];
+
 describe("computeDailyReadiness", () => {
-  it("scores a normal day 80, good", () => {
-    const r = scored(computeDailyReadiness([...nights(20), tonight()], TODAY));
-    expect(r.score).toBe(80);
+  it("scores a normal day in the 80s with every signal it has", () => {
+    const r = scored(computeDailyReadiness([...base(), tonight()], TODAY));
+    expect(r.score).toBeGreaterThanOrEqual(80);
+    expect(r.score).toBeLessThan(90);
     expect(r.level).toBe("good");
     expect(keys(r)).toEqual([
       "hrvTrend",
+      "hrvLastNight",
       "overnightHeartRate",
+      "vitals",
       "sleep",
       "sleepBalance",
     ]);
+    expect(r.groups.map((g) => g.group)).toEqual(["body", "sleep"]);
     expect(r.caps).toEqual([]);
+    expect(r.limiters).toEqual([]);
     expect(r.calibrating).toBe(false);
+    const total = r.components.reduce((s, c) => s + c.weight, 0);
+    expect(total).toBeCloseTo(1, 5);
+  });
+
+  it("moves day to day instead of sitting on one number", () => {
+    const a = scored(
+      computeDailyReadiness([...base(), tonight({ sleepHrvAvg: 58 })], TODAY),
+    );
+    const b = scored(
+      computeDailyReadiness([...base(), tonight({ sleepHrvAvg: 72 })], TODAY),
+    );
+    expect(a.score).toBeLessThan(b.score);
   });
 
   it("leaves HRV out until 14 baseline nights, and says so", () => {
     const r = scored(computeDailyReadiness([...nights(10), tonight()], TODAY));
     expect(keys(r)).not.toContain("hrvTrend");
+    expect(keys(r)).not.toContain("hrvLastNight");
     expect(r.calibrating).toBe(true);
     expect(r.baselineDays).toBe(10);
-    expect(r.score).toBe(80);
   });
 
-  it("does not move on one low HRV night", () => {
-    const r = scored(
+  it("counts one low HRV night, but less than a low week", () => {
+    const night = scored(
+      computeDailyReadiness([...base(), tonight({ sleepHrvAvg: 30 })], TODAY),
+    );
+    expect(component(night, "hrvLastNight")?.detail).toBe(
+      "30 ms vs 65 ms usual",
+    );
+    expect(component(night, "hrvLastNight")!.score).toBeLessThan(50);
+    expect(night.level).toBe("good");
+    expect(night.limiters[0]).toMatch(/^HRV, last night/);
+
+    const week = scored(
       computeDailyReadiness(
-        [...nights(20), tonight({ sleepHrvAvg: 30 })],
+        [
+          ...nights(26).slice(6),
+          ...nights(6, { sleepHrvAvg: 38 }),
+          tonight({ sleepHrvAvg: 38 }),
+        ],
         TODAY,
       ),
     );
-    expect(r.score).toBe(80);
-    expect(r.components.find((c) => c.key === "hrvTrend")?.detail).toMatch(
-      /last night 30 ms$/,
-    );
+    expect(component(week, "hrvTrend")!.score).toBeLessThan(50);
+    expect(week.score).toBeLessThan(night.score);
   });
 
-  it("drops when the 7-night HRV trend falls below normal", () => {
-    const low = nights(6, { sleepHrvAvg: 38 });
-    const base = nights(26).slice(6);
+  it("gives only a little credit for HRV above normal", () => {
     const r = scored(
       computeDailyReadiness(
-        [...base, ...low, tonight({ sleepHrvAvg: 38 })],
+        [
+          ...nights(26).slice(6),
+          ...nights(6, { sleepHrvAvg: 120 }),
+          tonight({ sleepHrvAvg: 120 }),
+        ],
         TODAY,
       ),
     );
-    const hrv = r.components.find((c) => c.key === "hrvTrend");
-    expect(hrv?.level).toBe("low");
-    expect(r.score).toBeLessThan(67);
+    expect(component(r, "hrvTrend")!.score).toBe(90);
   });
 
-  it("gives no credit for HRV above normal", () => {
-    const high = nights(6, { sleepHrvAvg: 120 });
-    const base = nights(26).slice(6);
-    const r = scored(
+  it("scores overnight heart rate continuously", () => {
+    const normal = scored(computeDailyReadiness([...base(), tonight()], TODAY));
+    const up3 = scored(
       computeDailyReadiness(
-        [...base, ...high, tonight({ sleepHrvAvg: 120 })],
+        [...base(), tonight({ sleepAvgHeartRate: 58 })],
         TODAY,
       ),
     );
-    expect(r.components.find((c) => c.key === "hrvTrend")?.score).toBe(80);
-  });
-
-  it("treats overnight HR within about 3 bpm as normal", () => {
-    const r = scored(
+    const up8 = scored(
       computeDailyReadiness(
-        [...nights(20), tonight({ sleepAvgHeartRate: 58 })],
+        [...base(), tonight({ sleepAvgHeartRate: 63 })],
         TODAY,
       ),
     );
-    expect(r.score).toBe(80);
-    const up = scored(
-      computeDailyReadiness(
-        [...nights(20), tonight({ sleepAvgHeartRate: 63 })],
-        TODAY,
-      ),
-    );
-    expect(up.score).toBeLessThan(80);
-    expect(up.level).toBe("good");
+    expect(up3.score).toBeLessThan(normal.score);
+    expect(up8.score).toBeLessThan(up3.score);
+    expect(component(up8, "overnightHeartRate")!.score).toBeLessThan(50);
   });
 
   it("holds one extreme signal so it cannot zero the day", () => {
     const r = scored(
       computeDailyReadiness(
-        [...nights(20), tonight({ sleepAvgHeartRate: 95 })],
+        [...base(), tonight({ sleepAvgHeartRate: 95 })],
         TODAY,
       ),
     );
-    // HR +40 is a full deficit at 30% weight, then the vitals check alone
-    // does not cap it (one signal).
-    expect(r.score).toBe(62);
+    expect(r.score).toBeGreaterThanOrEqual(50);
     expect(r.caps).toEqual([]);
   });
 
   it("caps at fair when two vitals are up together", () => {
     const r = scored(
       computeDailyReadiness(
-        [
-          ...nights(20),
-          tonight({ sleepWristTempC: 36.8, sleepAvgHeartRate: 61 }),
-        ],
+        [...base(), tonight({ sleepWristTempC: 36.8, sleepAvgHeartRate: 61 })],
         TODAY,
       ),
     );
@@ -214,22 +242,23 @@ describe("computeDailyReadiness", () => {
     );
   });
 
-  it("does not cap on one raised vital alone", () => {
+  it("costs a raised vital in the vitals contributor without capping", () => {
     const r = scored(
       computeDailyReadiness(
-        [...nights(20), tonight({ sleepWristTempC: 36.8 })],
+        [...base(), tonight({ sleepWristTempC: 36.8 })],
         TODAY,
       ),
     );
     expect(r.caps).toEqual([]);
-    expect(r.score).toBe(80);
+    expect(component(r, "vitals")!.score).toBeLessThan(85);
+    expect(component(r, "vitals")!.detail).toMatch(/temp \+0.6 °C/);
   });
 
   it("caps at low as possible illness on a strong rise plus another", () => {
     const r = scored(
       computeDailyReadiness(
         [
-          ...nights(20),
+          ...base(),
           tonight({ sleepWristTempC: 37.3, sleepRespiratoryRate: 16.2 }),
         ],
         TODAY,
@@ -241,12 +270,13 @@ describe("computeDailyReadiness", () => {
     );
   });
 
-  it("weighs a short week more than one short night, with no credit above target", () => {
+  it("weighs a short week more than one short night", () => {
+    const opts = { sleepTargetHours: 7.5 };
     const shortNight = scored(
       computeDailyReadiness(
-        [...nights(20), tonight({ sleepDurationMinutes: 6 * 60 })],
+        [...base(), tonight({ sleepDurationMinutes: 6 * 60 })],
         TODAY,
-        { sleepTargetHours: 7.5 },
+        opts,
       ),
     );
     const shortWeek = scored(
@@ -257,66 +287,196 @@ describe("computeDailyReadiness", () => {
           tonight({ sleepDurationMinutes: 390 }),
         ],
         TODAY,
-        { sleepTargetHours: 7.5 },
+        opts,
       ),
     );
-    const long = scored(
-      computeDailyReadiness(
-        [...nights(20), tonight({ sleepDurationMinutes: 600 })],
-        TODAY,
-        { sleepTargetHours: 7.5 },
-      ),
-    );
-    expect(shortNight.level).toBe("good");
     expect(shortNight.score).toBeLessThan(80);
     expect(shortWeek.score).toBeLessThan(shortNight.score);
-    expect(shortWeek.level).toBe("fair");
-    expect(long.score).toBe(80);
-    expect(shortNight.components.find((c) => c.key === "sleep")?.detail).toBe(
-      "6 h of 7.5 h",
-    );
+    expect(component(shortNight, "sleep")?.detail).toBe("6 h of 7.5 h needed");
   });
 
-  it("blends in how you feel at 35%, and caps on rough or very sore", () => {
-    const good = scored(
+  it("raises last night's sleep need after a hard training day", () => {
+    const r = scored(
+      computeDailyReadiness([...base(), tonight()], TODAY, {
+        trimpByDate: { [shift(TODAY, -1)]: 400 },
+      }),
+    );
+    expect(component(r, "sleep")?.detail).toMatch(/of 8\.\d h needed$/);
+  });
+
+  it("scores sleep quality and timing against your usual", () => {
+    const rows = nights(20, {
+      timeInBedMinutes: 510,
+      deepSleepMinutes: 40,
+      remSleepMinutes: 110,
+      awakeMinutes: 20,
+      bedtimeLocal: "21:45",
+      wakeTimeLocal: "06:00",
+    });
+    const usual = scored(
       computeDailyReadiness(
-        [...nights(20), tonight({ readinessLevel: 10 })],
+        [
+          ...rows,
+          tonight({
+            timeInBedMinutes: 510,
+            deepSleepMinutes: 40,
+            remSleepMinutes: 110,
+            awakeMinutes: 20,
+            bedtimeLocal: "21:45",
+            wakeTimeLocal: "06:00",
+          }),
+        ],
         TODAY,
       ),
     );
-    expect(good.score).toBe(Math.round(0.65 * 80 + 35));
+    const rough = scored(
+      computeDailyReadiness(
+        [
+          ...rows,
+          tonight({
+            timeInBedMinutes: 600,
+            deepSleepMinutes: 20,
+            remSleepMinutes: 60,
+            awakeMinutes: 90,
+            bedtimeLocal: "00:15",
+            wakeTimeLocal: "06:00",
+          }),
+        ],
+        TODAY,
+      ),
+    );
+    expect(component(usual, "sleepQuality")!.score).toBe(80);
+    expect(component(usual, "sleepTiming")?.detail).toBe(
+      "bed 9:45 PM, usual time",
+    );
+    expect(component(rough, "sleepQuality")!.score).toBeLessThan(40);
+    expect(component(rough, "sleepTiming")?.detail).toBe(
+      "bed 12:15 AM, 2 h 30 min later than usual",
+    );
+    expect(rough.score).toBeLessThan(usual.score);
+  });
+
+  it("scores training load from yesterday and the last week", () => {
+    const trimp: Record<string, number> = {};
+    for (let i = 1; i <= 28; i += 1) {
+      if (i % 2 === 0) trimp[shift(TODAY, -i)] = 100;
+    }
+    const rest = scored(
+      computeDailyReadiness([...base(), tonight()], TODAY, {
+        trimpByDate: trimp,
+      }),
+    );
+    expect(component(rest, "strainYesterday")?.detail).toBe("rest day");
+    expect(component(rest, "loadBalance")!.score).toBeGreaterThanOrEqual(80);
+
+    const big = { ...trimp };
+    for (let i = 1; i <= 7; i += 1) big[shift(TODAY, -i)] = 250;
+    const hard = scored(
+      computeDailyReadiness([...base(), tonight()], TODAY, {
+        trimpByDate: big,
+      }),
+    );
+    expect(component(hard, "strainYesterday")!.score).toBeLessThan(60);
+    expect(component(hard, "loadBalance")!.score).toBeLessThan(60);
+    expect(hard.score).toBeLessThan(rest.score);
+    expect(hard.groups.find((g) => g.group === "load")).toBeDefined();
+  });
+
+  it("scores yesterday's fuel against target, and caps after heavy drinking", () => {
+    const opts = {
+      fuelTargets: {
+        proteinGrams: 180,
+        caloriesLiftDay: 2450,
+        caloriesRestDay: 2450,
+      },
+    };
+    const fed = scored(
+      computeDailyReadiness([...base(), tonight()], TODAY, {
+        ...opts,
+        nutrition: [
+          {
+            date: shift(TODAY, -1),
+            calories: 2400,
+            proteinGrams: 185,
+            alcoholCount: 0,
+          },
+        ],
+      }),
+    );
+    const under = scored(
+      computeDailyReadiness([...base(), tonight()], TODAY, {
+        ...opts,
+        nutrition: [
+          {
+            date: shift(TODAY, -1),
+            calories: 1500,
+            proteinGrams: 110,
+            alcoholCount: 3,
+          },
+        ],
+      }),
+    );
+    expect(component(fed, "fuel")?.detail).toBe(
+      "2,400 kcal of 2,450, 185 g protein of 180",
+    );
+    expect(component(under, "fuel")!.score).toBeLessThan(20);
+    expect(under.caps).toContain("3 drinks logged last night");
+    expect(under.score).toBeLessThanOrEqual(59);
+  });
+
+  it("blends in how you feel at 30%, and caps on rough or very sore", () => {
+    const plain = scored(computeDailyReadiness([...base(), tonight()], TODAY));
+    const good = scored(
+      computeDailyReadiness(
+        [...base(), tonight({ readinessLevel: 10 })],
+        TODAY,
+      ),
+    );
+    expect(good.score).toBe(Math.round(0.7 * plain.score + 30));
     expect(good.components.at(-1)).toMatchObject({
       key: "feel",
       detail: "10/10",
+      weight: 0.3,
     });
 
-    const meh = scored(
-      computeDailyReadiness(
-        [...nights(20), tonight({ readinessLevel: 4 })],
-        TODAY,
-      ),
-    );
-    expect(meh.level).toBe("fair");
-
     const rough = scored(
-      computeDailyReadiness(
-        [...nights(20), tonight({ readinessLevel: 2 })],
-        TODAY,
-      ),
+      computeDailyReadiness([...base(), tonight({ readinessLevel: 2 })], TODAY),
     );
     expect(rough.score).toBeLessThanOrEqual(49);
     expect(rough.caps).toContain("You rated how you feel 2/10");
 
     const sore = scored(
-      computeDailyReadiness(
-        [...nights(20), tonight({ sorenessLevel: 8 })],
-        TODAY,
-      ),
+      computeDailyReadiness([...base(), tonight({ sorenessLevel: 8 })], TODAY),
     );
     expect(sore.score).toBeLessThanOrEqual(49);
+    expect(component(sore, "soreness")?.score).toBe(30);
   });
 
-  it("uses this morning's rating when the physiology falls back to yesterday", () => {
+  it("uses stress, energy and the knee check when logged", () => {
+    const r = scored(
+      computeDailyReadiness(
+        [...base(), tonight({ stressLevel: 8, energyLevel: 3 })],
+        TODAY,
+        {
+          kneeChecks: [
+            {
+              date: TODAY,
+              check: { swelling: "1+", graftPain: 2, extensionFull: true },
+            },
+          ],
+        },
+      ),
+    );
+    expect(component(r, "stress")?.score).toBe(30);
+    expect(component(r, "energy")?.score).toBe(30);
+    expect(component(r, "knee")?.detail).toBe("knee off");
+    expect(r.caps).toContain(
+      "Knee check says knee off: leg block replaced today",
+    );
+    expect(r.score).toBeLessThanOrEqual(59);
+  });
+
+  it("uses this morning's answers when the physiology falls back to yesterday", () => {
     const rows = nights(20);
     rows[0] = { ...rows[0]!, readinessLevel: 2 };
     const r = scored(
@@ -347,7 +507,7 @@ describe("computeDailyReadiness", () => {
   it("uses daily resting HR until five overnight nights exist", () => {
     const rows = nights(20, { sleepAvgHeartRate: null });
     const r = scored(computeDailyReadiness([...rows, tonight()], TODAY));
-    const hr = r.components.find((c) => c.key === "overnightHeartRate");
+    const hr = component(r, "overnightHeartRate");
     expect(hr?.label).toBe("Resting HR");
     expect(hr?.detail).toBe("60 bpm vs 60 usual");
   });
@@ -362,9 +522,7 @@ describe("computeDailyReadiness", () => {
       sleepRespiratoryRate: 17,
     });
     const r = scored(computeDailyReadiness([...rows, late], TODAY));
-    expect(
-      r.components.find((c) => c.key === "overnightHeartRate")?.label,
-    ).toBe("Resting HR");
+    expect(component(r, "overnightHeartRate")?.label).toBe("Resting HR");
     expect(r.caps).toEqual([]);
 
     // Averaged over the time asleep, a late night's readings are used.
@@ -377,9 +535,9 @@ describe("computeDailyReadiness", () => {
         TODAY,
       ),
     );
-    expect(
-      aligned.components.find((c) => c.key === "overnightHeartRate")?.detail,
-    ).toBe("56 bpm vs 56 usual");
+    expect(component(aligned, "overnightHeartRate")?.detail).toBe(
+      "56 bpm vs 56 usual",
+    );
   });
 });
 
@@ -388,6 +546,6 @@ describe("buildReadinessHistory", () => {
     const history = buildReadinessHistory(nights(10), TODAY, 7);
     expect(history).toHaveLength(7);
     expect(history[6]).toEqual({ date: TODAY, score: null });
-    expect(history[5]?.score).toBe(80);
+    expect(history[5]?.score).toBeGreaterThan(70);
   });
 });

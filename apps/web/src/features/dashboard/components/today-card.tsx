@@ -92,6 +92,11 @@ export function TodayCard({
           {readiness.status === "insufficient" ? (
             <p className="mt-1 text-sm text-ink/60">{readiness.reason}</p>
           ) : null}
+          {scored && scored.limiters.length > 0 ? (
+            <p className="mt-1 text-sm text-ink/60">
+              Pulling it down: {scored.limiters.join("; ")}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -141,27 +146,47 @@ export function TodayCard({
               ▾
             </span>
           </summary>
-          <ul className="mt-3 space-y-2">
-            {scored.components.map((c) => (
-              <li
-                key={c.key}
-                className="flex items-baseline justify-between gap-3 text-sm"
-              >
-                <span className="text-ink">{c.label}</span>
-                <span className="text-right text-ink/60">
-                  {c.detail}
-                  <span className={`ml-2 font-semibold ${LEVEL_TEXT[c.level]}`}>
-                    {c.score}
+          <div className="mt-3 space-y-4">
+            {scored.groups.map((g) => (
+              <div key={g.group}>
+                <p className="flex items-baseline justify-between gap-3 text-xs font-semibold uppercase tracking-[0.16em] text-ink/50">
+                  <span>
+                    {g.label} · {Math.round(g.weight * 100)}%
                   </span>
-                </span>
-              </li>
+                  <span className={LEVEL_TEXT[g.level]}>{g.score}</span>
+                </p>
+                <ul className="mt-1.5 space-y-1.5">
+                  {scored.components
+                    .filter((c) => c.group === g.group)
+                    .map((c) => (
+                      <li
+                        key={c.key}
+                        className="flex items-baseline justify-between gap-3 text-sm"
+                      >
+                        <span className="shrink-0 text-ink">{c.label}</span>
+                        <span className="min-w-0 text-right text-ink/60">
+                          {c.detail}
+                          <span
+                            className={`ml-2 font-semibold ${LEVEL_TEXT[c.level]}`}
+                          >
+                            {c.score}
+                          </span>
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              </div>
             ))}
-            {scored.caps.map((cap) => (
-              <li key={cap} className="text-sm text-ember">
-                Capped: {cap}
-              </li>
-            ))}
-          </ul>
+            {scored.caps.length > 0 ? (
+              <ul className="space-y-1">
+                {scored.caps.map((cap) => (
+                  <li key={cap} className="text-sm text-ember">
+                    Capped: {cap}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
           {showHistory ? (
             <div className="mt-4">
               <p className="text-xs uppercase tracking-[0.16em] text-ink/50">
@@ -193,13 +218,16 @@ export function TodayCard({
             </div>
           ) : null}
           <p className="mt-4 text-xs leading-5 text-ink/50">
-            Your 7-night HRV trend, overnight heart rate and sleep against your
-            own last 30 days, plus how you feel when you tap it (35%). Inside
-            your normal range scores about 80; only signals outside it move the
-            number. Wrist temperature, breathing rate and heart rate are checked
-            together: two up at once caps the day at fair. Training load is left
-            out on purpose; your heart rate and HRV already show how you are
-            handling it. An estimate, not a medical measure.
+            Every signal against your own last 30 days: HRV (7-night trend and
+            last night), overnight heart rate and vitals; sleep amount, debt,
+            quality and timing; yesterday&apos;s strain and this week&apos;s
+            load; yesterday&apos;s calories, protein and drinks; and soreness,
+            stress, energy and the knee check when you log them. A usual reading
+            scores about 80, so the number moves with the day. How you feel,
+            when you tap it, is 30%. Signals that are missing are left out, not
+            counted against you. Two vitals up at once, feeling rough, soreness
+            8+, a knee-off check or 3+ drinks cap the day. An estimate, not a
+            medical measure.
             {scored.calibrating
               ? ` HRV joins the score after 14 nights of baseline (${scored.baselineDays} so far): one night of Watch HRV is too noisy to act on.`
               : null}

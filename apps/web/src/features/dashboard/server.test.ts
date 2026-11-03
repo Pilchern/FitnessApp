@@ -31,7 +31,10 @@ vi.mock("@/lib/server/services", () => {
       supplementLogService: empty,
       dailyActivityService: empty,
       dexaScanService: { list: async () => [] },
-      programService: { listSettings: async () => [] },
+      programService: {
+        listSettings: async () => [],
+        listKneeChecks: async () => [],
+      },
       weeklyReviewService: { listRecent: async () => [] },
       trainingTemplateService: {
         listActiveStrengthTemplates: async () => [],
