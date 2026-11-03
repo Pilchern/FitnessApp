@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import type { WeeklyReviewData } from "../types";
 import { formatShortDate } from "../helpers";
 import { Scorecard } from "./adherence";
-import { CopySummaryButton, WeeklyCheckinForm } from "./weekly-review-client";
+import { CopySummaryButton } from "./weekly-review-client";
 
 const card =
   "rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6";
@@ -326,13 +326,7 @@ export function WeeklyReviewScreen({ data }: { data: WeeklyReviewData }) {
         <KneeTestsCard data={data} />
 
         <section className={`${card} space-y-4`}>
-          <h2 className="font-display text-lg text-ink">Your entries</h2>
-          <WeeklyCheckinForm
-            key={data.weekStart}
-            weekStart={data.weekStart}
-            checkin={data.checkin}
-            defaultScheduled={a.pt.scheduled ?? 2}
-          />
+          <h2 className="font-display text-lg text-ink">Trends</h2>
           <MarkerTrend
             label="Quad LSI %"
             points={data.trend}

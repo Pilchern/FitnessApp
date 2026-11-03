@@ -74,7 +74,8 @@ export async function GET(request: NextRequest) {
     const { weeklyReviewAutoFinalizeService } =
       await createCoreServices(adminClient);
 
-    let drafted = 0;
+    let completed = 0;
+    let backlogCompleted = 0;
     let skipped = 0;
     let errors = 0;
     let aiDrafted = 0;
@@ -90,11 +91,12 @@ export async function GET(request: NextRequest) {
     for (let i = 0; i < settled.length; i++) {
       const res = settled[i];
       if (res.status === "fulfilled") {
-        if (res.value.status === "drafted") {
-          drafted++;
+        if (res.value.status === "completed") {
+          completed++;
         } else {
           skipped++;
         }
+        backlogCompleted += res.value.backlogCompleted;
 
         if (res.value.aiDrafted) {
           aiDrafted++;
@@ -113,7 +115,8 @@ export async function GET(request: NextRequest) {
 
     const summary = {
       profiles: rows.length,
-      drafted,
+      completed,
+      backlogCompleted,
       skipped,
       errors,
       aiDrafted,
