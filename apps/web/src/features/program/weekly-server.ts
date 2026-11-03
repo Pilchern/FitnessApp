@@ -554,11 +554,7 @@ export async function getWeeklyReviewData(
       asymmetry: kneeTests.filter((t) => t.testType === "walking_asymmetry"),
     }),
     knee,
-    kneeAsOf:
-      latestValue(
-        kneeTests.filter((t) => t.source === "pt_tracker"),
-        "quad_iso_90",
-      )?.date ?? null,
+    kneeAsOf: latestValue(kneeTests, "quad_iso_90")?.date ?? null,
     targets: {
       lsi: [settings.lsiTarget1, settings.lsiTarget2, settings.lsiTarget3],
       asymmetry: settings.walkingAsymmetryTargetPct,

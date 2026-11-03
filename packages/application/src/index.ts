@@ -26,6 +26,7 @@ export * from "./modules/strength/watch-strength";
 export * from "./modules/strength/exercise-catalog-data";
 export * from "./modules/strength/exercise-override";
 export * from "./modules/strength/muscle-group-volume";
+export * from "./modules/strength/set-timing";
 export {
   StrengthSessionSummaryService,
   type StrengthSessionSummaryRepository,
@@ -50,6 +51,7 @@ export * from "./modules/program/program-calendar";
 export * from "./modules/program/knee-readiness";
 export * from "./modules/program/program-progression";
 export * from "./modules/program/knee-tests";
+export * from "./modules/program/knee-test-entry";
 export * from "./modules/program/program-plan";
 export * from "./modules/program/program-service";
 export * from "./modules/program/program-logger-plan";

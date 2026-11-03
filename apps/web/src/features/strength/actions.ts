@@ -74,6 +74,7 @@ function buildStrengthPayload(userId: string, formData: FormData) {
       distanceMeters: set.distanceMeters,
       side: set.side ?? null,
       peakForceNewtons: set.peakForceNewtons,
+      completedAt: set.completedAt ?? null,
       notes: set.notes || null,
     })),
   };

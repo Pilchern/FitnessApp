@@ -154,6 +154,13 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
         <span>Weekly review</span>
         <span aria-hidden="true">→</span>
       </Link>
+      <Link
+        href="/program/knee"
+        className="flex items-center justify-between border-t border-ink/10 pt-3 text-sm text-ink/70 hover:text-pine"
+      >
+        <span>Knee tests</span>
+        <span aria-hidden="true">→</span>
+      </Link>
     </section>
   );
 }

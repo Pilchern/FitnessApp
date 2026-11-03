@@ -61,6 +61,7 @@ const strengthSetRowSchema = z.object({
   // Optional so rows read before the program migration still parse.
   side: z.enum(["left", "right"]).nullable().optional(),
   peak_force_newtons: z.number().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
   notes: z.string().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
@@ -86,6 +87,7 @@ function mapStrengthSetRow(row: StrengthSetRow): StrengthExerciseSet {
     distanceMeters: row.distance_meters,
     side: row.side ?? null,
     peakForceNewtons: row.peak_force_newtons ?? null,
+    completedAt: row.completed_at ?? null,
     notes: row.notes,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -181,6 +183,7 @@ function toStrengthSetInsert(
     ...(input.peakForceNewtons != null
       ? { peak_force_newtons: input.peakForceNewtons }
       : {}),
+    ...(input.completedAt ? { completed_at: input.completedAt } : {}),
     notes: input.notes ?? null,
   };
 }

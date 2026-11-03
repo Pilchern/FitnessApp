@@ -120,6 +120,40 @@ export const saveMakeUpSchema = z
 
 export type SaveMakeUpInput = z.infer<typeof saveMakeUpSchema>;
 
+const kneeTestRowInputSchema = z.object({
+  testDate: isoDateSchema,
+  testType: z.string().regex(/^[a-z0-9_]{1,40}$/),
+  side: z.enum(["L", "R"]).nullable(),
+  value: z.number().finite(),
+  unit: z.string().min(1).max(20),
+  repIndex: z.number().int().min(1).max(20),
+  notes: z.string().max(500).nullable(),
+});
+
+/**
+ * One knee test entry from this app: the rows to write and the test types it
+ * replaces on that date (rows of those types the entry no longer has are
+ * soft-deleted). Only rows of `source` are touched, never the PT Tracker's.
+ */
+export const replaceKneeTestsSchema = z
+  .object({
+    userId: uuidSchema,
+    source: z.string().regex(/^[a-z0-9_]{1,40}$/),
+    testDate: isoDateSchema,
+    replaceTypes: z.array(z.string().regex(/^[a-z0-9_]{1,40}$/)).max(40),
+    rows: z.array(kneeTestRowInputSchema).max(200),
+  })
+  .refine((v) => v.rows.every((r) => r.testDate === v.testDate), {
+    message: "Every row must be on the entry date.",
+    path: ["rows"],
+  })
+  .refine((v) => v.rows.every((r) => v.replaceTypes.includes(r.testType)), {
+    message: "Every row's test type must be in replaceTypes.",
+    path: ["rows"],
+  });
+
+export type ReplaceKneeTestsInput = z.infer<typeof replaceKneeTestsSchema>;
+
 export const cancelMakeUpSchema = z.object({
   userId: uuidSchema,
   programSessionId: uuidSchema,
@@ -162,6 +196,7 @@ export interface ProgramRepository {
     startDate: IsoDate,
     endDate: IsoDate,
   ): Promise<KneeTest[]>;
+  replaceKneeTests(input: ReplaceKneeTestsInput): Promise<void>;
   /** Live make-ups whose scheduled date is in the range. */
   listMakeUps(
     userId: UserId,
@@ -232,6 +267,12 @@ export class ProgramService {
 
   async listKneeTests(userId: UserId, startDate: IsoDate, endDate: IsoDate) {
     return this.repository.listKneeTests(userId, startDate, endDate);
+  }
+
+  async replaceKneeTests(input: unknown) {
+    return this.repository.replaceKneeTests(
+      replaceKneeTestsSchema.parse(input),
+    );
   }
 
   async listMakeUps(userId: UserId, startDate: IsoDate, endDate: IsoDate) {

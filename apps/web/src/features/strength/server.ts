@@ -5,7 +5,9 @@ import {
   buildStrengthProgressionSummaries,
   computeMuscleGroupVolume,
   getZonedDate,
+  programSettingsFromRows,
   resolveExercise,
+  setTiming,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
 import {
@@ -114,15 +116,17 @@ export async function getStrengthDetailData(
   sessionId: string,
 ): Promise<StrengthDetailData> {
   const user = await requireCurrentUser();
-  const { strengthService } = await createCoreServices();
+  const { strengthService, programService } = await createCoreServices();
   const { today } = await zonedToday(user.id);
-  const [session, sessions] = await Promise.all([
+  const [session, sessions, settingRows] = await Promise.all([
     strengthService.getById(user.id, sessionId),
     strengthService.listByDateRange({
       userId: user.id,
       startDate: shiftIsoDate(today, -HISTORY_DAYS),
     }),
+    programService.listSettings(user.id),
   ]);
+  const capMinutes = programSettingsFromRows(settingRows).liftSessionMaxMinutes;
 
   const sessionExerciseKeys = new Set(
     session?.sets.map((set: { exerciseName: string }) =>
@@ -138,5 +142,7 @@ export async function getStrengthDetailData(
   return {
     session,
     exerciseProgressionSummaries,
+    timing: session ? setTiming(session.sets, capMinutes) : null,
+    capMinutes,
   };
 }

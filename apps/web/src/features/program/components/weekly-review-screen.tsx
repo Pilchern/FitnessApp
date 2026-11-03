@@ -135,8 +135,11 @@ function KneeTestsCard({ data }: { data: WeeklyReviewData }) {
       <h2 className="font-display text-lg text-ink">Knee tests</h2>
       <p className="mt-1 text-xs text-ink/60">
         {data.kneeAsOf
-          ? `From the PT Tracker (crane test ${formatShortDate(data.kneeAsOf)}) and logged isometrics. LSI = L / R.`
-          : "No PT Tracker sync yet: sign in under PT Tracker Settings, Cloud sync. Logged isometrics still count."}
+          ? `From the crane test (${formatShortDate(data.kneeAsOf)}) and logged isometrics. LSI = L / R.`
+          : "No crane test yet. Logged isometrics still count."}{" "}
+        <Link href="/program/knee" className="font-semibold text-pine">
+          Knee tests
+        </Link>
       </p>
       {k.quadDrop ? (
         <p
