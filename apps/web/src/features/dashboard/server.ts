@@ -13,6 +13,7 @@ import {
   buildTrendNotes,
   buildWeeklyWeightTrend,
   computeDailyReadiness,
+  type ReadinessOptions,
   dexaAdjustedBodyFat,
   dexaCalibrations,
   nextDexaScan,
@@ -96,6 +97,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     dailyActivityResult,
     dexaScansResult,
     settingsResult,
+    kneeChecksResult,
   ] = await Promise.allSettled([
     cardioService.listByDateRange({
       userId: user.id,
@@ -145,6 +147,8 @@ export async function getDashboardData(): Promise<DashboardData> {
     }),
     dexaScanService.list(user.id),
     programService.listSettings(user.id),
+    // Morning knee checks feed readiness (today and the 7-day history).
+    programService.listKneeChecks(user.id, daysAgo(7), today),
   ]);
 
   // Rendering stays read-only. Once the response is sent, regenerate if the
@@ -189,12 +193,12 @@ export async function getDashboardData(): Promise<DashboardData> {
         };
 
   const bodyMetricSummary = buildBodyMetricSummary(recentBody);
+  const programSettings = programSettingsFromRows(
+    settledOrNull(settingsResult) ?? [],
+  );
   const dexaScans = settledOrNull(dexaScansResult) ?? [];
   const nextDexa = nextDexaScan({
-    plannedDates: parseDexaDates(
-      programSettingsFromRows(settledOrNull(settingsResult) ?? [])
-        .dexaNextDates,
-    ),
+    plannedDates: parseDexaDates(programSettings.dexaNextDates),
     scans: dexaScans,
     today,
   });
@@ -217,8 +221,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     cardioSessions: cardioThisWeek,
   });
   const todayItems = weekPlan.days.find((d) => d.isToday)?.items ?? [];
-  const readinessOptions = { sleepTargetHours: SLEEP_TARGET_HOURS };
-  const readiness = computeDailyReadiness(recovery, today, readinessOptions);
 
   const peerFitness = buildPeerFitness({
     today,
@@ -230,7 +232,7 @@ export async function getDashboardData(): Promise<DashboardData> {
       .map((c) => c.restingHeartRate!),
   });
 
-  const strainSleep = buildStrainSleep({
+  const { card: strainSleep, trimpByDate } = buildStrainSleep({
     today,
     daysAgo,
     birthDate: profile?.birthDate ?? null,
@@ -242,6 +244,31 @@ export async function getDashboardData(): Promise<DashboardData> {
     strength: strengthSessions,
     recovery,
   });
+
+  const readinessOptions: ReadinessOptions = {
+    sleepTargetHours: SLEEP_TARGET_HOURS,
+    trimpByDate: trimpByDate ?? undefined,
+    liftDates: strengthSessions.map((s) => s.sessionDate),
+    nutrition: nutritionLogs.map((n) => ({
+      date: n.logDate,
+      calories: n.calories ?? null,
+      proteinGrams: n.proteinGrams ?? null,
+      alcoholCount: n.alcoholCount,
+    })),
+    fuelTargets: {
+      proteinGrams: profile?.dailyProteinGramsTarget ?? null,
+      caloriesLiftDay: Math.round(
+        (programSettings.caloriesLiftDayMin +
+          programSettings.caloriesLiftDayMax) /
+          2,
+      ),
+      caloriesRestDay: programSettings.caloriesRestDay,
+    },
+    kneeChecks: (settledOrNull(kneeChecksResult) ?? []).map(
+      ({ date, ...check }) => ({ date, check }),
+    ),
+  };
+  const readiness = computeDailyReadiness(recovery, today, readinessOptions);
 
   const trendNotes = buildTrendNotes({
     today,
@@ -321,8 +348,10 @@ function buildStrainSleep(input: {
   cardio: Parameters<typeof buildDailyStrain>[1];
   strength: Parameters<typeof buildDailyStrain>[2];
   recovery: Parameters<typeof buildSleepPlan>[0]["checkins"];
-}): StrainSleep {
-  const dates = Array.from({ length: 7 }, (_, i) => input.daysAgo(6 - i));
+}): { card: StrainSleep; trimpByDate: Record<string, number> | null } {
+  // 36 days: the card shows the last 7; readiness compares yesterday and the
+  // last week with the 4 weeks before.
+  const loadDates = Array.from({ length: 36 }, (_, i) => input.daysAgo(35 - i));
   const rhr = [...input.restingHeartRates].sort((a, b) => a - b);
   const restingHeartRate =
     rhr.length >= 7 ? rhr[Math.floor(rhr.length / 2)]! : null;
@@ -332,14 +361,15 @@ function buildStrainSleep(input: {
     (input.birthDate
       ? maxHeartRateFor(ageOn(input.birthDate, input.today))
       : null);
-  const strain =
+  const load =
     maxHeartRate != null && restingHeartRate != null
-      ? buildDailyStrain(dates, input.cardio, input.strength, {
+      ? buildDailyStrain(loadDates, input.cardio, input.strength, {
           restingHeartRate,
           maxHeartRate,
           sex: input.sex === "female" ? "female" : "male",
         })
       : null;
+  const strain = load ? load.slice(-7) : null;
   const sleep = buildSleepPlan({
     checkins: input.recovery,
     today: input.today,
@@ -349,13 +379,20 @@ function buildStrainSleep(input: {
     earliestBedtime: EARLIEST_BEDTIME,
   });
   return {
-    strain,
-    missing:
-      maxHeartRate == null
-        ? "birth date"
-        : restingHeartRate == null
-          ? "a week of resting heart rate"
-          : null,
-    sleep,
+    card: {
+      strain,
+      missing:
+        maxHeartRate == null
+          ? "birth date"
+          : restingHeartRate == null
+            ? "a week of resting heart rate"
+            : null,
+      sleep,
+    },
+    trimpByDate: load
+      ? Object.fromEntries(
+          load.filter((d) => d.trimp > 0).map((d) => [d.date, d.trimp]),
+        )
+      : null,
   };
 }
