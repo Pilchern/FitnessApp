@@ -881,3 +881,31 @@ describe("mapWalking", () => {
     ]);
   });
 });
+
+describe("resting heart rate", () => {
+  it("averages a day's hourly readings instead of keeping the last", () => {
+    const mapped = mapHealthAutoExport({
+      data: {
+        metrics: [
+          {
+            name: "resting_heart_rate",
+            units: "count/min",
+            data: [
+              { date: "2026-11-02 03:00:00 -0600", qty: 50 },
+              { date: "2026-11-02 09:00:00 -0600", qty: 58 },
+              { date: "2026-11-02 18:00:00 -0600", qty: 73 },
+              { date: "2026-11-03 04:00:00 -0600", qty: 60 },
+            ],
+          },
+        ],
+      },
+    });
+    const rhr = (date: string) =>
+      mapped.dailyMetrics.find((d) => d.date === date)?.resting_heart_rate;
+    expect(rhr("2026-11-02")).toBe(60.3);
+    expect(rhr("2026-11-03")).toBe(60);
+    expect(
+      mapped.sleep.find((s) => s.date === "2026-11-02")?.resting_heart_rate,
+    ).toBe(60.3);
+  });
+});

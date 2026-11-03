@@ -297,6 +297,10 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
 
   // Wrist temperature: date -> readings, averaged once every metric is read.
   const wristTemp = new Map<string, number[]>();
+  // Resting HR: date -> readings. An hourly export sends several a day; the
+  // day's value is their mean (as the Health app shows it), not the last
+  // hour's, which read 73-85 on days that averaged near 58.
+  const restingHr = new Map<string, number[]>();
   const overnightSamples: OvernightSample[] = [];
   const morningDaylight = new Map<string, number>();
 
@@ -353,10 +357,12 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
       if (name === "step_count" && isFiniteNumber(qty)) {
         const row = dailyFor(date);
         row.steps = Math.round((row.steps ?? 0) + qty);
-      } else if (name === "resting_heart_rate" && isFiniteNumber(qty)) {
-        // Also on the recovery check-in, which is what /recovery charts.
-        dailyFor(date).resting_heart_rate = qty;
-        sleepFor(date).resting_heart_rate = qty;
+      } else if (
+        name === "resting_heart_rate" &&
+        isFiniteNumber(qty) &&
+        qty > 0
+      ) {
+        restingHr.set(date, [...(restingHr.get(date) ?? []), qty]);
       } else if (
         (name === "vo2_max" || name === "vo2max") &&
         isFiniteNumber(qty) &&
@@ -403,6 +409,14 @@ function mapDailyAndSleep(metrics: HaeMetric[]) {
         if (wake) row.wake_time_local = wake;
       }
     }
+  }
+
+  for (const [date, values] of restingHr) {
+    const mean = values.reduce((sum, v) => sum + v, 0) / values.length;
+    const bpm = Math.round(mean * 10) / 10;
+    // Also on the recovery check-in, which is what /recovery charts.
+    dailyFor(date).resting_heart_rate = bpm;
+    sleepFor(date).resting_heart_rate = bpm;
   }
 
   for (const [date, values] of wristTemp) {
