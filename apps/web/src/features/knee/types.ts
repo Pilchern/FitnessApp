@@ -1,3 +1,4 @@
+import type { GateBoard } from "@fitness-app/application";
 import type { KneeTest } from "@fitness-app/domain";
 
 export type KneeActionState = {
@@ -25,4 +26,6 @@ export type KneePageData = {
   recent: { date: string; count: number }[];
   /** All live rows in the window, for the latest-values list. */
   tests: KneeTest[];
+  /** Jog, plyo and return-to-sport criteria, green or red. */
+  gates: GateBoard[];
 };

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
+import { CLEARED_BY, CLEARED_BY_LABEL } from "@fitness-app/application";
 import type { ProgramGate } from "@fitness-app/domain";
 import { setGateAction } from "../actions";
 
@@ -17,13 +19,28 @@ function GateRow({ gate, today }: { gate: ProgramGate; today: string }) {
             className={`shrink-0 text-xs ${gate.clearedOn ? "text-pine" : "text-ink/50"}`}
           >
             {gate.clearedOn
-              ? `Cleared ${gate.clearedOn}`
+              ? `Cleared ${gate.clearedOn}${gate.clearedBy ? ` by ${CLEARED_BY_LABEL[gate.clearedBy]}` : ""}`
               : gate.earliestOn
                 ? `Earliest ${gate.earliestOn}`
                 : "Not cleared"}
           </span>
         </div>
-        <div className="flex gap-2">
+        {gate.criteria ? (
+          <p className="text-xs leading-5 text-ink/60">{gate.criteria}</p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <select
+            name="clearedBy"
+            aria-label={`${gate.label} cleared by`}
+            defaultValue={gate.clearedBy ?? "pt"}
+            className="h-11 shrink-0 rounded-xl border border-ink/10 bg-white px-2 text-base text-ink"
+          >
+            {CLEARED_BY.map((by) => (
+              <option key={by} value={by}>
+                {CLEARED_BY_LABEL[by]}
+              </option>
+            ))}
+          </select>
           <input
             type="date"
             name="clearedOn"
@@ -85,8 +102,11 @@ export function GatesManager({
         their fallback until then.
       </p>
       <p className="mt-2 rounded-2xl bg-pine/5 px-4 py-3 text-xs text-ink/75">
-        The PT Tracker evaluates the criteria. Quad LSI is a hard criterion.
-        Walking asymmetry is soft: under 8% and trending down over 3 weeks.
+        Each criterion for jog, plyo and return to sport shows green or red on{" "}
+        <Link href="/program/knee" className="font-semibold text-pine">
+          Knee tests
+        </Link>
+        .
       </p>
       <ul className="mt-2 divide-y divide-ink/10">
         {gates.map((g) => (

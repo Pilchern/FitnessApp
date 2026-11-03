@@ -76,6 +76,9 @@ const gateRowSchema = z.object({
   label: z.string(),
   cleared_on: z.string().nullable(),
   earliest_on: z.string().nullable(),
+  // Optional so rows read before the gate-criteria migration still parse.
+  cleared_by: z.enum(["pt", "ortho", "self_criteria"]).nullable().optional(),
+  criteria: z.string().nullable().optional(),
   notes: z.string().nullable(),
 });
 
@@ -370,6 +373,8 @@ export class SupabaseProgramRepository implements ProgramRepository {
         label: g.label,
         clearedOn: g.cleared_on,
         earliestOn: g.earliest_on,
+        clearedBy: g.cleared_by ?? null,
+        criteria: g.criteria ?? null,
         notes: g.notes,
       }));
 
@@ -436,7 +441,11 @@ export class SupabaseProgramRepository implements ProgramRepository {
   async setGateCleared(input: SetGateClearedInput) {
     const response = await this.client
       .from("program_gates")
-      .update({ cleared_on: input.clearedOn })
+      .update({
+        cleared_on: input.clearedOn,
+        // Who cleared it goes with the date; resetting the date clears both.
+        cleared_by: input.clearedOn ? (input.clearedBy ?? null) : null,
+      })
       .eq("user_id", input.userId)
       .eq("gate_key", input.gateKey)
       .is("deleted_at", null);

@@ -3,6 +3,7 @@ import "server-only";
 import {
   addDays,
   bestBySide,
+  gateBoards,
   getZonedDate,
   KNEE_TEST_SOURCE,
   leftQuadDrop,
@@ -26,15 +27,25 @@ export async function getKneePageData(): Promise<KneePageData> {
     .toISOString()
     .slice(0, 10);
   const { programService } = await createCoreServices();
-  const [settingRows, tests] = await Promise.all([
+  const [settingRows, tests, program, checks] = await Promise.all([
     programService.listSettings(user.id),
     programService.listKneeTests(
       user.id,
       addDays(today, -LOOKBACK_DAYS),
       today,
     ),
+    programService.getActiveProgram(user.id),
+    programService.listKneeChecks(user.id, addDays(today, -30), today),
   ]);
   const settings = programSettingsFromRows(settingRows);
+  const gates = gateBoards({
+    tests,
+    checks,
+    gates: program?.gates ?? [],
+    today,
+    lsiTargets: [settings.lsiTarget1, settings.lsiTarget2, settings.lsiTarget3],
+    walkingAsymmetryTargetPct: settings.walkingAsymmetryTargetPct,
+  });
 
   const quad = bestBySide(tests, "quad_iso_90");
   const last = quad[quad.length - 1] ?? null;
@@ -81,5 +92,6 @@ export async function getKneePageData(): Promise<KneePageData> {
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 8),
     tests,
+    gates,
   };
 }

@@ -16,6 +16,7 @@ export const setGateClearedSchema = z.object({
   userId: uuidSchema,
   gateKey: z.string().regex(/^[a-z0-9_]{1,40}$/),
   clearedOn: isoDateSchema.nullable(),
+  clearedBy: z.enum(["pt", "ortho", "self_criteria"]).nullable().optional(),
 });
 
 export type SetGateClearedInput = z.infer<typeof setGateClearedSchema>;

@@ -45,6 +45,15 @@ function toEntry(values: Values): KneeTestEntry {
     extension: num(values, "ext"),
     kneeGirth: { L: num(values, "kgL"), R: num(values, "kgR") },
     thighGirth: { L: num(values, "tgL"), R: num(values, "tgR") },
+    heelHeight: num(values, "heelH"),
+    sitToStand: { L: num(values, "stsL"), R: num(values, "stsR") },
+    heelToButt: { L: num(values, "htbL"), R: num(values, "htbR") },
+    stepDownLeftClean:
+      values.stepDown === "clean"
+        ? true
+        : values.stepDown === "faults"
+          ? false
+          : null,
     walkingAsymmetry: num(values, "asym"),
     walkingSpeed: num(values, "speed"),
     steps: num(values, "steps"),
@@ -281,6 +290,39 @@ export function KneeTestForm({
                   {g}
                 </option>
               ))}
+            </select>
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className={fieldset}>
+        <legend className={legend}>Every 2 weeks</legend>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="grid gap-1 text-xs text-ink/80">
+            Sit-to-stand L (reps){box("stsL", "Sit-to-stand L", false)}
+          </label>
+          <label className="grid gap-1 text-xs text-ink/80">
+            Sit-to-stand R{box("stsR", "Sit-to-stand R", false)}
+          </label>
+          <label className="grid gap-1 text-xs text-ink/80">
+            Heel-to-butt L (cm){box("htbL", "Heel-to-butt L")}
+          </label>
+          <label className="grid gap-1 text-xs text-ink/80">
+            Heel-to-butt R{box("htbR", "Heel-to-butt R")}
+          </label>
+          <label className="grid gap-1 text-xs text-ink/80">
+            Heel height diff (cm){box("heelH", "Heel height difference")}
+          </label>
+          <label className="grid gap-1 text-xs text-ink/80">
+            Step-down, left
+            <select
+              className={inputClass}
+              value={values.stepDown ?? ""}
+              onChange={set("stepDown")}
+            >
+              <option value="">Not done</option>
+              <option value="clean">Clean</option>
+              <option value="faults">Valgus, pelvic drop or trunk lean</option>
             </select>
           </label>
         </div>

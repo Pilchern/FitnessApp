@@ -27,6 +27,14 @@ export type KneeTestEntry = {
   extension: number | null;
   kneeGirth: { L: number | null; R: number | null };
   thighGirth: { L: number | null; R: number | null };
+  /** Biweekly: heel-height difference (cm, 0 = full extension). */
+  heelHeight: number | null;
+  /** Biweekly: single-leg sit-to-stand reps per leg. */
+  sitToStand: { L: number | null; R: number | null };
+  /** Biweekly: heel-to-butt distance per leg, cm (smaller is better). */
+  heelToButt: { L: number | null; R: number | null };
+  /** Biweekly: step-down on the left was clean (no valgus, pelvic drop, trunk lean). */
+  stepDownLeftClean: boolean | null;
   walkingAsymmetry: number | null;
   walkingSpeed: number | null;
   steps: number | null;
@@ -65,6 +73,12 @@ export function kneeTestSections(angleDeg: number) {
     ],
     rom: ["flexion_active", "flexion_passive", "extension"],
     girth: ["knee_girth", "thigh_girth"],
+    biweekly: [
+      "heel_height",
+      "single_leg_sit_to_stand",
+      "heel_to_butt",
+      "step_down",
+    ],
     walking: ["walking_asymmetry", "walking_speed", "steps_per_day"],
     effusion: ["effusion_stroke"],
     aclRsi: ["acl_rsi"],
@@ -120,6 +134,14 @@ export function kneeTestEntryRows(entry: KneeTestEntry): {
   add("knee_girth", "R", entry.kneeGirth.R, "cm");
   add("thigh_girth", "L", entry.thighGirth.L, "cm");
   add("thigh_girth", "R", entry.thighGirth.R, "cm");
+  add("heel_height", null, entry.heelHeight, "cm");
+  add("single_leg_sit_to_stand", "L", entry.sitToStand.L, "reps");
+  add("single_leg_sit_to_stand", "R", entry.sitToStand.R, "reps");
+  add("heel_to_butt", "L", entry.heelToButt.L, "cm");
+  add("heel_to_butt", "R", entry.heelToButt.R, "cm");
+  if (entry.stepDownLeftClean != null) {
+    add("step_down", "L", entry.stepDownLeftClean ? 1 : 0, "clean");
+  }
   add("walking_asymmetry", null, entry.walkingAsymmetry, "%");
   add("walking_speed", null, entry.walkingSpeed, "m/s");
   add("steps_per_day", null, entry.steps, "steps");
@@ -199,4 +221,88 @@ export function craneSummary(
     lsi: lsiPct(L.best, R.best),
     hq: { L: hqRatio(hamL, L.best), R: hqRatio(hamR, R.best) },
   };
+}
+
+/** Clinic visits are their own source, so clinic ROM never overwrites home ROM. */
+export const CLINIC_SOURCE = "clinic";
+
+export const CLINIC_TEST_TYPES = [
+  "clinic_visit",
+  "flexion_active",
+  "flexion_passive",
+  "extension",
+  "manual_muscle_test",
+  "lefs",
+] as const;
+
+export type ClinicVisit = {
+  visitDate: IsoDate;
+  provider: string | null;
+  flexionActive: number | null;
+  flexionPassive: number | null;
+  extension: number | null;
+  /** As the PT wrote it: "4/5", "4+/5". */
+  mmt: string | null;
+  lefs: number | null;
+  lefsMax: number;
+  notes: string | null;
+};
+
+/** "4+/5" -> 4.5, "4-/5" -> 3.5, "4/5" -> 4; null when unreadable. */
+export function mmtGrade(raw: string | null): number | null {
+  if (!raw) return null;
+  const m = /^\s*([0-5])\s*([+-]?)\s*(?:\/\s*5)?\s*$/.exec(raw);
+  if (!m) return null;
+  const base = Number(m[1]);
+  return m[2] === "+" ? base + 0.5 : m[2] === "-" ? base - 0.5 : base;
+}
+
+/**
+ * One clinic visit as knee_tests rows (source 'clinic'): a clinic_visit
+ * marker (so a visit with notes only still counts as a PT visit), ROM on
+ * the operated knee, MMT and LEFS. A re-save of the date replaces the visit.
+ */
+export function clinicVisitRows(visit: ClinicVisit): {
+  rows: KneeTestRowInput[];
+  replaceTypes: string[];
+} {
+  const d = visit.visitDate;
+  const who = visit.provider ? `provider: ${visit.provider}` : null;
+  const rows: KneeTestRowInput[] = [
+    {
+      testDate: d,
+      testType: "clinic_visit",
+      side: null,
+      value: 1,
+      unit: "visit",
+      repIndex: 1,
+      notes:
+        [who, visit.notes].filter(Boolean).join("; ").slice(0, 500) || null,
+    },
+  ];
+  const add = (
+    testType: string,
+    side: "L" | "R" | null,
+    value: number | null,
+    unit: string,
+    notes: string | null = who,
+  ) => {
+    if (ok(value)) {
+      rows.push({
+        testDate: d,
+        testType,
+        side,
+        value,
+        unit,
+        repIndex: 1,
+        notes,
+      });
+    }
+  };
+  add("flexion_active", "L", visit.flexionActive, "deg");
+  add("flexion_passive", "L", visit.flexionPassive, "deg");
+  add("extension", "L", visit.extension, "deg");
+  add("manual_muscle_test", "L", mmtGrade(visit.mmt), "/5", visit.mmt);
+  add("lefs", null, visit.lefs, "points", `of ${visit.lefsMax}`);
+  return { rows, replaceTypes: [...CLINIC_TEST_TYPES] };
 }

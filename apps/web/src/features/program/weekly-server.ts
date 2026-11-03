@@ -404,6 +404,13 @@ export async function getWeeklyReviewData(
       : null) ??
     checkin?.walkingAsymmetryPct ??
     null;
+  // PT visits: clinic visits logged on /program/knee, one per date; an old
+  // hand-typed check-in wins for the weeks that have one.
+  const clinicVisits = new Set(
+    kneeTests
+      .filter((t) => t.testType === "clinic_visit" && inWeek(t.testDate))
+      .map((t) => t.testDate),
+  ).size;
   const adherence = weekAdherence({
     weekDates,
     liftDates: activity.liftDates,
@@ -415,7 +422,7 @@ export async function getWeeklyReviewData(
           attended: checkin.ptVisitsAttended,
           scheduled: checkin.ptVisitsScheduled,
         }
-      : null,
+      : { attended: clinicVisits, scheduled: null },
     settings,
   });
   const pastWeeks = completedWeekLifts(program, week, activity);
