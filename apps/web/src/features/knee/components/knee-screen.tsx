@@ -1,6 +1,8 @@
 import Link from "next/link";
 import {
   bestBySide,
+  type GateBoard,
+  type GateCriterion,
   latestValue,
   lsiPct,
   type SidePair,
@@ -9,6 +11,7 @@ import type { KneeTest } from "@fitness-app/domain";
 import { PageHeader } from "@/components/shared/page-header";
 import { formatShortDate } from "@/features/program/helpers";
 import { getKneePageData } from "../server";
+import { ClinicVisitForm } from "./clinic-visit-form";
 import { KneeTestForm } from "./knee-test-form";
 
 const panel =
@@ -98,6 +101,55 @@ function LsiTrend({
   );
 }
 
+const DOT: Record<GateCriterion["state"], string> = {
+  pass: "bg-pine",
+  fail: "bg-ember",
+  missing: "bg-ink/20",
+  stale: "bg-ink/20",
+};
+
+const STATUS: Record<GateBoard["status"], [string, string]> = {
+  cleared: ["Cleared", "text-pine"],
+  ready: ["Criteria met: ask PT", "text-pine"],
+  not_yet: ["Not yet", "text-ink/55"],
+};
+
+/** One gate: each criterion green, red, or grey (missing or older than 14 days). */
+function GateCard({ board }: { board: GateBoard }) {
+  const [label, tone] = STATUS[board.status];
+  return (
+    <div className="rounded-2xl border border-ink/10 bg-white p-4">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="font-semibold text-ink">{board.title}</h3>
+        <span className={`text-xs font-semibold ${tone}`}>
+          {label} · {board.met}/{board.total}
+        </span>
+      </div>
+      <ul className="mt-2 space-y-1.5">
+        {board.criteria.map((c) => (
+          <li key={c.key} className="flex items-start gap-2 text-sm">
+            <span
+              aria-hidden="true"
+              className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${DOT[c.state]}`}
+            />
+            <span className="min-w-0 flex-1 text-ink/80">
+              {c.label}
+              <span className="sr-only">: {c.state}</span>
+            </span>
+            <span className="shrink-0 text-right text-xs tabular-nums text-ink/55">
+              {c.state === "missing" && !c.detail
+                ? "no data"
+                : [c.detail, c.state === "stale" ? "old" : null]
+                    .filter(Boolean)
+                    .join(" · ")}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function last(pairs: SidePair[]) {
   return pairs[pairs.length - 1] ?? null;
 }
@@ -176,9 +228,37 @@ export async function KneeScreen() {
       </section>
 
       <section className={panel}>
+        <h2 className="font-display text-lg text-ink">Gates</h2>
+        <p className="mt-1 text-xs text-ink/55">
+          Green passes, red fails, grey is missing or over 14 days old. Clearing
+          stays a PT or ortho call:{" "}
+          <Link href="/settings#gates" className="font-semibold text-pine">
+            record it in Settings
+          </Link>
+          .
+        </p>
+        <div className="mt-3 grid gap-3 lg:grid-cols-3">
+          {data.gates.map((b) => (
+            <GateCard key={b.key} board={b} />
+          ))}
+        </div>
+      </section>
+
+      <section className={panel}>
         <h2 className="font-display text-lg text-ink">New test</h2>
         <div className="mt-3">
           <KneeTestForm today={data.today} spreadLimitN={data.spreadLimitN} />
+        </div>
+      </section>
+
+      <section className={panel}>
+        <h2 className="font-display text-lg text-ink">Clinic visit</h2>
+        <p className="mt-1 text-xs text-ink/55">
+          What PT or the surgeon measured. Counts as a PT visit in the weekly
+          review.
+        </p>
+        <div className="mt-3">
+          <ClinicVisitForm today={data.today} />
         </div>
       </section>
 

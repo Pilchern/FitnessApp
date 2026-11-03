@@ -20,6 +20,7 @@ const kneeCheckSchema = z.object({
 function revalidateProgramViews() {
   revalidatePath("/dashboard");
   revalidatePath("/program");
+  revalidatePath("/program/knee");
   revalidatePath("/strength");
 }
 
@@ -52,6 +53,11 @@ const gateSchema = z.object({
     .optional()
     .transform((v) => (v ? v : null))
     .pipe(isoDate.nullable()),
+  clearedBy: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .pipe(z.enum(["pt", "ortho", "self_criteria"]).nullable()),
 });
 
 /** Settings: mark a gate cleared from a date, or clear it again. */
@@ -66,6 +72,8 @@ export async function setGateAction(
       gateKey: formData.get("gateKey"),
       clearedOn:
         intent === "reset" ? "" : (formData.get("clearedOn") ?? undefined),
+      clearedBy:
+        intent === "reset" ? "" : (formData.get("clearedBy") ?? undefined),
     });
     const { programService } = await createCoreServices();
     await programService.setGateCleared({ userId: user.id, ...parsed });

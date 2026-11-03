@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  clinicVisitRows,
   craneSummary,
   kneeTestEntryRows,
+  mmtGrade,
   type KneeTestEntry,
 } from "./knee-test-entry";
 import { quadLsiTrend } from "./knee-tests";
@@ -21,6 +23,10 @@ function entry(over: Partial<KneeTestEntry> = {}): KneeTestEntry {
     extension: null,
     kneeGirth: { L: null, R: null },
     thighGirth: { L: null, R: null },
+    heelHeight: null,
+    sitToStand: { L: null, R: null },
+    heelToButt: { L: null, R: null },
+    stepDownLeftClean: null,
     walkingAsymmetry: null,
     walkingSpeed: null,
     steps: null,
@@ -105,6 +111,28 @@ describe("kneeTestEntryRows", () => {
     expect(replaceTypes).toContain("hop_triple");
   });
 
+  it("writes the biweekly tests with the tracker's types", () => {
+    const { rows, replaceTypes } = kneeTestEntryRows(
+      entry({
+        heelHeight: 0,
+        sitToStand: { L: 8, R: 10 },
+        heelToButt: { L: 12, R: 10 },
+        stepDownLeftClean: false,
+      }),
+    );
+    expect(rows.map((r) => `${r.testType}:${r.side ?? ""}:${r.value}`)).toEqual(
+      [
+        "heel_height::0",
+        "single_leg_sit_to_stand:L:8",
+        "single_leg_sit_to_stand:R:10",
+        "heel_to_butt:L:12",
+        "heel_to_butt:R:10",
+        "step_down:L:0",
+      ],
+    );
+    expect(replaceTypes).toContain("step_down");
+  });
+
   it("returns nothing for an empty entry", () => {
     expect(kneeTestEntryRows(entry())).toEqual({ rows: [], replaceTypes: [] });
   });
@@ -128,5 +156,36 @@ describe("craneSummary", () => {
     expect(s.lsi).toBeNull();
     expect(s.quad.L.spread).toBeNull();
     expect(s.quad.R.best).toBeNull();
+  });
+});
+
+describe("clinicVisitRows", () => {
+  it("writes a visit marker, ROM, MMT and LEFS", () => {
+    const { rows, replaceTypes } = clinicVisitRows({
+      visitDate: "2026-11-05",
+      provider: "Dr. PT",
+      flexionActive: 130,
+      flexionPassive: null,
+      extension: 0,
+      mmt: "4+/5",
+      lefs: 55,
+      lefsMax: 80,
+      notes: "Cleared pogos",
+    });
+    expect(rows.map((r) => [r.testType, r.value, r.notes])).toEqual([
+      ["clinic_visit", 1, "provider: Dr. PT; Cleared pogos"],
+      ["flexion_active", 130, "provider: Dr. PT"],
+      ["extension", 0, "provider: Dr. PT"],
+      ["manual_muscle_test", 4.5, "4+/5"],
+      ["lefs", 55, "of 80"],
+    ]);
+    expect(replaceTypes).toContain("flexion_passive");
+  });
+
+  it("reads MMT grades", () => {
+    expect(mmtGrade("4/5")).toBe(4);
+    expect(mmtGrade("4-/5")).toBe(3.5);
+    expect(mmtGrade("5")).toBe(5);
+    expect(mmtGrade("good")).toBeNull();
   });
 });

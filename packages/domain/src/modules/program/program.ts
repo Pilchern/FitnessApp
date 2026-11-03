@@ -146,6 +146,10 @@ export type ProgramGate = {
   clearedOn: IsoDate | null;
   /** Earliest expected clearance (display only). */
   earliestOn: IsoDate | null;
+  /** Who cleared it: pt, ortho or self_criteria; null if not recorded. */
+  clearedBy?: "pt" | "ortho" | "self_criteria" | null;
+  /** What has to be true to clear it, in words. */
+  criteria?: string | null;
   notes: string | null;
 };
 
