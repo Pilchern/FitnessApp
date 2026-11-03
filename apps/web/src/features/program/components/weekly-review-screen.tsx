@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import type { WeeklyReviewData } from "../types";
 import { formatShortDate } from "../helpers";
 import { Scorecard } from "./adherence";
-import { CopySummaryButton, WeeklyCheckinForm } from "./weekly-review-client";
+import { CopySummaryButton } from "./weekly-review-client";
 
 const card =
   "rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6";
@@ -135,8 +135,11 @@ function KneeTestsCard({ data }: { data: WeeklyReviewData }) {
       <h2 className="font-display text-lg text-ink">Knee tests</h2>
       <p className="mt-1 text-xs text-ink/60">
         {data.kneeAsOf
-          ? `From the PT Tracker (crane test ${formatShortDate(data.kneeAsOf)}) and logged isometrics. LSI = L / R.`
-          : "No PT Tracker sync yet: sign in under PT Tracker Settings, Cloud sync. Logged isometrics still count."}
+          ? `From the crane test (${formatShortDate(data.kneeAsOf)}) and logged isometrics. LSI = L / R.`
+          : "No crane test yet. Logged isometrics still count."}{" "}
+        <Link href="/program/knee" className="font-semibold text-pine">
+          Knee tests
+        </Link>
       </p>
       {k.quadDrop ? (
         <p
@@ -323,13 +326,7 @@ export function WeeklyReviewScreen({ data }: { data: WeeklyReviewData }) {
         <KneeTestsCard data={data} />
 
         <section className={`${card} space-y-4`}>
-          <h2 className="font-display text-lg text-ink">Your entries</h2>
-          <WeeklyCheckinForm
-            key={data.weekStart}
-            weekStart={data.weekStart}
-            checkin={data.checkin}
-            defaultScheduled={a.pt.scheduled ?? 2}
-          />
+          <h2 className="font-display text-lg text-ink">Trends</h2>
           <MarkerTrend
             label="Quad LSI %"
             points={data.trend}

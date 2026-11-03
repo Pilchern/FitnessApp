@@ -404,7 +404,10 @@ export function StrengthQuickForm({
    */
   function toggleDone(index: number) {
     const wasDone = Boolean(values.sets[index]?.done);
-    updateSet(index, { done: !wasDone });
+    updateSet(index, {
+      done: !wasDone,
+      completedAt: wasDone ? null : new Date().toISOString(),
+    });
     if (wasDone) return;
     const call = restForTick(values.sets, index, restMeta);
     if (!call) {

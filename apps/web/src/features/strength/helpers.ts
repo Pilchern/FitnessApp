@@ -74,6 +74,7 @@ export function toStrengthFormValues(
             ...(set.peakForceNewtons != null
               ? { peakForceNewtons: numberToInput(set.peakForceNewtons) }
               : {}),
+            ...(set.completedAt ? { completedAt: set.completedAt } : {}),
             notes: set.notes ?? "",
           }))
         : [createEmptyStrengthSet()],

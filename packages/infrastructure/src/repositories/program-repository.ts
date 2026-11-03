@@ -13,6 +13,7 @@ import type {
   DatedKneeCheck,
   ProgramRepository,
   SaveKneeCheckInput,
+  ReplaceKneeTestsInput,
   SaveMakeUpInput,
   SaveOutcomeInput,
   SaveWeeklyCheckinInput,
@@ -672,6 +673,43 @@ export class SupabaseProgramRepository implements ProgramRepository {
         source: row.source,
         notes: row.notes,
       }));
+  }
+
+  /**
+   * Soft-deletes this source's rows of the replaced types on the date, then
+   * upserts the entry's rows on the natural key (which revives any it just
+   * deleted). Not atomic: a failed upsert leaves those rows soft-deleted,
+   * which a re-save restores.
+   */
+  async replaceKneeTests(input: ReplaceKneeTestsInput) {
+    if (input.replaceTypes.length > 0) {
+      const gone = await this.client
+        .from("knee_tests")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("user_id", input.userId)
+        .eq("source", input.source)
+        .eq("test_date", input.testDate)
+        .in("test_type", input.replaceTypes)
+        .is("deleted_at", null);
+      throwOnError(gone.error, "Replace knee tests");
+    }
+    if (input.rows.length === 0) return;
+    const response = await this.client.from("knee_tests").upsert(
+      input.rows.map((r) => ({
+        user_id: input.userId,
+        source: input.source,
+        test_date: r.testDate,
+        test_type: r.testType,
+        side: r.side,
+        value: r.value,
+        unit: r.unit,
+        rep_index: r.repIndex,
+        notes: r.notes,
+        deleted_at: null,
+      })),
+      { onConflict: "user_id,source,test_date,test_type,side,rep_index" },
+    );
+    throwOnError(response.error, "Save knee tests");
   }
 
   async listMakeUps(

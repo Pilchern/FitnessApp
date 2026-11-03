@@ -18,6 +18,8 @@ export type StrengthExerciseSet = {
   side?: "left" | "right" | null;
   /** Isometric peak force, newtons. */
   peakForceNewtons?: number | null;
+  /** When the set was ticked off in the logger; null for older or unticked sets. */
+  completedAt?: IsoDateTime | null;
   notes: string | null;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;

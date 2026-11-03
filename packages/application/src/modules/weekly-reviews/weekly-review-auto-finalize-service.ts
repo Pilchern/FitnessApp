@@ -1,4 +1,5 @@
-import type { WeeklyReview } from "@fitness-app/domain";
+import type { WeeklyReview, WeeklyReviewAiDraft } from "@fitness-app/domain";
+import type { TrainingPlan } from "../training/training-plan";
 import { BodyMetricService } from "../body-metrics/body-metric";
 import { CardioSessionService } from "../cardio/cardio-session";
 import { RecoveryCheckinService } from "../recovery/recovery-checkin";
@@ -16,6 +17,7 @@ import type { AiWeeklyReviewService } from "./ai-weekly-review-service";
 import { WeeklyReviewService } from "./weekly-review";
 import {
   buildWeeklyReviewSummary,
+  calculateWeeklyReviewScore,
   getLastCompletedWeekStart,
   getWeekRangeFromStart,
 } from "./weekly-review-helpers";
@@ -37,6 +39,8 @@ export type WeeklyReviewAutoFinalizeDependencies = {
   supplementLogService?: SupplementLogService;
   /** null when ANTHROPIC_API_KEY isn't configured — AI drafting is skipped entirely. */
   aiWeeklyReviewService: AiWeeklyReviewService | null;
+  /** The plan the score is judged against; the generic plan when omitted. */
+  plan?: TrainingPlan;
 };
 
 export type WeeklyReviewAutoFinalizeProfile = {
@@ -44,9 +48,16 @@ export type WeeklyReviewAutoFinalizeProfile = {
   weekStartsOn: 0 | 1 | null;
 };
 
-export type WeeklyReviewAutoFinalizeOutcome =
-  | { status: "drafted"; aiDrafted: boolean }
-  | { status: "skipped"; aiDrafted: boolean };
+export type WeeklyReviewAutoFinalizeOutcome = {
+  /** completed: this run finished last week's review; skipped: it already was. */
+  status: "completed" | "skipped";
+  aiDrafted: boolean;
+  /** Older reviews still in draft that this run also completed. */
+  backlogCompleted: number;
+};
+
+/** How far back the cron looks for drafts left from before auto-complete. */
+const BACKLOG_REVIEWS = 8;
 
 /**
  * Orchestrates the weekly-review-auto-finalize cron's per-user work:
@@ -74,19 +85,80 @@ export class WeeklyReviewAutoFinalizeService {
     profile: WeeklyReviewAutoFinalizeProfile,
   ): Promise<WeeklyReviewAutoFinalizeOutcome> {
     const draftResult = await this.draftReviewForUser(profile);
-    const aiDrafted = await this.maybeGenerateAiDraft(
+    const aiDraft = await this.maybeGenerateAiDraft(
       profile.userId,
       draftResult.review,
     );
-    return { status: draftResult.status, aiDrafted };
+    const completed = await this.completeReview(
+      profile.userId,
+      draftResult.review,
+      aiDraft,
+    );
+
+    // Drafts from weeks before auto-complete (or a failed run) get closed too.
+    let backlogCompleted = 0;
+    const recent = await this.deps.weeklyReviewService.listRecent(
+      profile.userId,
+      BACKLOG_REVIEWS,
+    );
+    for (const review of recent) {
+      if (review.id === draftResult.review.id) continue;
+      if (await this.completeReview(profile.userId, review, null)) {
+        backlogCompleted++;
+      }
+    }
+
+    return {
+      status: completed ? "completed" : "skipped",
+      aiDrafted: aiDraft != null,
+      backlogCompleted,
+    };
+  }
+
+  /**
+   * Finishes a draft review with no input from the owner: the rule-based
+   * score, decision and risk (or the AI draft's text when one was made),
+   * marked completed. Anything already typed into the review is kept.
+   * Returns false when the review was already completed.
+   */
+  private async completeReview(
+    userId: string,
+    review: WeeklyReview,
+    aiDraft: WeeklyReviewAiDraft | null,
+  ): Promise<boolean> {
+    if (review.status === "completed") return false;
+    const scoring = calculateWeeklyReviewScore({
+      summary: review.summary,
+      confidence: review.confidence ?? null,
+      ...(this.deps.plan ? { plan: this.deps.plan } : {}),
+    });
+    await this.deps.weeklyReviewService.update({
+      id: review.id,
+      userId,
+      status: "completed",
+      completedAt: new Date().toISOString(),
+      scoreDetails: scoring.scoreDetails,
+      strategicDecision:
+        review.strategicDecision ||
+        aiDraft?.strategicDecision ||
+        scoring.strategicDecision,
+      riskForecast:
+        review.riskForecast || aiDraft?.riskForecast || scoring.riskForecast,
+      bestWin: review.bestWin || aiDraft?.whatWorked || null,
+      biggestMiss: review.biggestMiss || aiDraft?.whatNeedsAttention || null,
+      nextWeekPriority:
+        review.nextWeekPriority || aiDraft?.nextBestAction || null,
+      ...(aiDraft ? { aiDraftStatus: "accepted" as const } : {}),
+    });
+    return true;
   }
 
   private async maybeGenerateAiDraft(
     userId: string,
     review: WeeklyReview,
-  ): Promise<boolean> {
+  ): Promise<WeeklyReviewAiDraft | null> {
     if (!this.deps.aiWeeklyReviewService) {
-      return false;
+      return null;
     }
 
     return this.generateAiDraftForUser(
@@ -216,9 +288,9 @@ export class WeeklyReviewAutoFinalizeService {
     userId: string,
     review: WeeklyReview,
     aiService: AiWeeklyReviewService,
-  ): Promise<boolean> {
+  ): Promise<WeeklyReviewAiDraft | null> {
     if (review.status !== "draft" || review.aiDraftStatus !== "none") {
-      return false;
+      return null;
     }
 
     try {
@@ -229,18 +301,18 @@ export class WeeklyReviewAutoFinalizeService {
       });
 
       if (!draft) {
-        return false;
+        return null;
       }
 
       await this.deps.weeklyReviewService.saveAiDraft(userId, review.id, draft);
-      return true;
+      return draft;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       console.error(
         `[WeeklyReviewAutoFinalizeService] AI draft generation failed for user ${userId}:`,
         message,
       );
-      return false;
+      return null;
     }
   }
 }

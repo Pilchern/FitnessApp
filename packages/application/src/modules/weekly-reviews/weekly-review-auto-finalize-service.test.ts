@@ -266,22 +266,51 @@ describe("WeeklyReviewAutoFinalizeService plan adherence", () => {
 });
 
 describe("WeeklyReviewAutoFinalizeService", () => {
-  it("drafts a new review when none exists yet, with no AI service configured", async () => {
+  it("creates and completes a new review with no input, no AI service configured", async () => {
     const { deps, weeklyReviewRepo } = buildDeps();
     const service = new WeeklyReviewAutoFinalizeService(deps);
 
     const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
 
-    expect(result.status).toBe("drafted");
-    if (result.status === "drafted") {
-      expect(result.aiDrafted).toBe(false);
-    }
+    expect(result).toEqual({
+      status: "completed",
+      aiDrafted: false,
+      backlogCompleted: 0,
+    });
     expect(weeklyReviewRepo.created).toHaveLength(1);
+    const done = weeklyReviewRepo.updated.at(-1);
+    expect(done?.status).toBe("completed");
+    expect(done?.completedAt).toBeTruthy();
+    expect(done?.scoreDetails?.totalScore).toBeGreaterThan(0);
+    expect(done?.strategicDecision).toBeTruthy();
+    expect(done?.riskForecast).toBeTruthy();
   });
 
-  it("skips drafting when a review already exists for the week", async () => {
+  it("completes an existing draft for the week and keeps what was typed", async () => {
     const weeklyReviewRepo = new FakeWeeklyReviewRepository();
-    weeklyReviewRepo.existing = makeReview();
+    weeklyReviewRepo.existing = makeReview({
+      id: "44444444-4444-4444-8444-444444444444",
+      bestWin: "Hit every lift",
+    });
+    const { deps } = buildDeps({ weeklyReviewRepo });
+    const service = new WeeklyReviewAutoFinalizeService(deps);
+
+    const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
+
+    expect(result.status).toBe("completed");
+    expect(weeklyReviewRepo.created).toHaveLength(0);
+    expect(weeklyReviewRepo.updated.at(-1)).toMatchObject({
+      status: "completed",
+      bestWin: "Hit every lift",
+    });
+  });
+
+  it("skips a week already completed", async () => {
+    const weeklyReviewRepo = new FakeWeeklyReviewRepository();
+    weeklyReviewRepo.existing = makeReview({
+      status: "completed",
+      completedAt: "2026-07-13T09:00:00.000Z",
+    });
     const { deps } = buildDeps({ weeklyReviewRepo });
     const service = new WeeklyReviewAutoFinalizeService(deps);
 
@@ -289,6 +318,22 @@ describe("WeeklyReviewAutoFinalizeService", () => {
 
     expect(result.status).toBe("skipped");
     expect(weeklyReviewRepo.created).toHaveLength(0);
+    expect(weeklyReviewRepo.updated).toHaveLength(0);
+  });
+
+  it("completes older drafts left in the backlog", async () => {
+    const weeklyReviewRepo = new FakeWeeklyReviewRepository();
+    const stale = makeReview({ id: "33333333-3333-4333-8333-333333333333" });
+    weeklyReviewRepo.listRecent = async () => [stale];
+    const { deps } = buildDeps({ weeklyReviewRepo });
+    const service = new WeeklyReviewAutoFinalizeService(deps);
+
+    const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
+
+    expect(result.backlogCompleted).toBe(1);
+    expect(
+      weeklyReviewRepo.updated.filter((r) => r.status === "completed"),
+    ).toHaveLength(2);
   });
 
   it("generates and saves an AI draft when the ai service returns a draft for a fresh 'none' status review", async () => {
@@ -312,14 +357,15 @@ describe("WeeklyReviewAutoFinalizeService", () => {
 
     const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
 
-    expect(result.status).toBe("drafted");
-    if (result.status === "drafted") {
-      expect(result.aiDrafted).toBe(true);
-    }
+    expect(result.status).toBe("completed");
+    expect(result.aiDrafted).toBe(true);
     expect(aiWeeklyReviewService.generateDraft).toHaveBeenCalledTimes(1);
-    expect(weeklyReviewRepo.updated.at(-1)?.aiDraftStatus).toBe(
-      "pending_review",
-    );
+    expect(weeklyReviewRepo.updated.at(-1)).toMatchObject({
+      status: "completed",
+      aiDraftStatus: "accepted",
+      strategicDecision: "Add one more ride.",
+      bestWin: "Consistent lifts.",
+    });
   });
 
   it("fails soft (aiDrafted: false) when the AI service throws", async () => {
@@ -333,17 +379,19 @@ describe("WeeklyReviewAutoFinalizeService", () => {
 
     const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
 
-    expect(result.status).toBe("drafted");
-    if (result.status === "drafted") {
-      expect(result.aiDrafted).toBe(false);
-    }
+    expect(result.status).toBe("completed");
+    expect(result.aiDrafted).toBe(false);
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
   });
 
   it("does not attempt an AI draft for a skipped (already-existing) review whose aiDraftStatus isn't 'none'", async () => {
     const weeklyReviewRepo = new FakeWeeklyReviewRepository();
-    weeklyReviewRepo.existing = makeReview({ aiDraftStatus: "accepted" });
+    weeklyReviewRepo.existing = makeReview({
+      aiDraftStatus: "accepted",
+      status: "completed",
+      completedAt: "2026-07-13T09:00:00.000Z",
+    });
     const aiWeeklyReviewService: AiWeeklyReviewService = {
       generateDraft: vi.fn().mockResolvedValue(null),
     } as unknown as AiWeeklyReviewService;
@@ -354,9 +402,7 @@ describe("WeeklyReviewAutoFinalizeService", () => {
     const result = await service.finalizeForUser({ userId, weekStartsOn: 1 });
 
     expect(result.status).toBe("skipped");
-    if (result.status === "skipped") {
-      expect(result.aiDrafted).toBe(false);
-    }
+    expect(result.aiDrafted).toBe(false);
     expect(aiWeeklyReviewService.generateDraft).not.toHaveBeenCalled();
   });
 });

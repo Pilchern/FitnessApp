@@ -1,5 +1,6 @@
 import type {
   MuscleGroupVolumeSummary,
+  SetTiming,
   StrengthProgressionSummary,
 } from "@fitness-app/application";
 import type {
@@ -33,6 +34,10 @@ export type StrengthPageData = {
 export type StrengthDetailData = {
   session: StrengthSession | null;
   exerciseProgressionSummaries: StrengthProgressionSummary[];
+  /** From per-set tick times; null when fewer than two sets carry one. */
+  timing: SetTiming | null;
+  /** lift_session_max_minutes. */
+  capMinutes: number;
 };
 
 export type StrengthActionState = {
@@ -54,6 +59,8 @@ export type StrengthSetFormValue = {
   side?: "left" | "right" | "";
   /** Isometric sets: peak newtons. Present (even "") marks a force set. */
   peakForceNewtons?: string;
+  /** ISO time the set was ticked off; cleared when unticked. */
+  completedAt?: string | null;
   notes: string;
   /** Local logging state; unticked sets are dropped on save once any is ticked. */
   done?: boolean;

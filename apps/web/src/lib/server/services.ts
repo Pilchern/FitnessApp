@@ -163,6 +163,7 @@ export const createCoreServices = cache(async function createCoreServices(
     supplementService,
     supplementLogService,
     aiWeeklyReviewService,
+    plan: NICK_TRAINING_PLAN,
   });
 
   return {

@@ -44,6 +44,7 @@ const strengthExerciseSetSchema = z.object({
   distanceMeters: z.number().min(0).nullable().optional(),
   side: z.enum(["left", "right"]).nullable().optional(),
   peakForceNewtons: z.number().min(0).max(5000).nullable().optional(),
+  completedAt: z.string().datetime({ offset: true }).nullable().optional(),
   notes: optionalTrimmedStringSchema,
 });
 

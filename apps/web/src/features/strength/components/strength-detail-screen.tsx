@@ -5,6 +5,13 @@ import { StrengthProgressionSummarySection } from "./strength-progression-summar
 import { getStrengthDetailData } from "../server";
 import { formatDuration, formatStrengthDate } from "../helpers";
 
+/** 450 -> "7:30". */
+function clock(seconds: number | null) {
+  if (seconds == null) return "--";
+  const m = Math.floor(seconds / 60);
+  return `${m}:${`${seconds % 60}`.padStart(2, "0")}`;
+}
+
 type StrengthDetailScreenProps = {
   sessionId: string;
 };
@@ -119,6 +126,31 @@ export async function StrengthDetailScreen({
               .filter(Boolean)
               .join(" · ")}
           </p>
+        ) : null}
+
+        {data.timing ? (
+          <div className="mt-4 rounded-[1.25rem] border border-ink/10 bg-sand/40 p-4 text-sm text-ink/80">
+            <p>
+              <span
+                className={`font-semibold ${data.timing.overCap ? "text-ember" : "text-ink"}`}
+              >
+                {data.timing.spanMinutes} min
+              </span>{" "}
+              first to last set (cap {data.capMinutes} min
+              {data.timing.overCap ? ", over" : ""}) · {data.timing.timedSets}{" "}
+              timed sets
+            </p>
+            <p className="mt-1">
+              Set to set: median {clock(data.timing.medianGapSeconds)}, longest{" "}
+              {clock(data.timing.longestGapSeconds)}
+              {data.timing.longGaps > 0
+                ? ` · ${data.timing.longGaps} gap${data.timing.longGaps === 1 ? "" : "s"} over 5 min`
+                : ""}
+            </p>
+            <p className="mt-1 text-xs text-ink/55">
+              From tick times; a gap is the rest plus the next set.
+            </p>
+          </div>
         ) : null}
 
         {session.notes ? (

@@ -18,6 +18,8 @@ const parsedStrengthSetSchema = z.object({
     z.number().min(0).max(5000),
     "Peak force",
   ),
+  /** When the set was ticked; absent on sets never ticked. */
+  completedAt: z.string().datetime({ offset: true }).nullable().optional(),
   notes: optionalString,
 });
 
