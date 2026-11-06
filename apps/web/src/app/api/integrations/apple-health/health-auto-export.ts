@@ -108,8 +108,8 @@ export type MappedHealthAutoExport = {
   overnightSamples: OvernightSample[];
   /** Daily nutrition totals (Cronometer via HealthKit), one per date. */
   nutrition: AppleHealthNutritionPayload[];
-  /** Trailing 7-day walking asymmetry and speed, for the knee gates. */
-  walking: WalkingReading[];
+  /** Walking asymmetry and speed per day, for the knee gates. */
+  walking: WalkingDay[];
 };
 
 /** HealthKit names: Traditional/Functional Strength Training, Core Training. */
@@ -922,13 +922,17 @@ export function mapNutrition(
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-/** Walking readings for the knee gates: a trailing 7-day mean per date. */
-export type WalkingReading = {
+/** One day's walking asymmetry and speed (means of the day's samples). */
+export type WalkingDay = {
   date: string;
-  /** Walking asymmetry, percent; sample-weighted when samples are raw. */
+  /** Walking asymmetry, percent. */
   asymmetryPct: number | null;
   /** Walking speed, m/s. */
   speedMps: number | null;
+};
+
+/** Walking readings for the knee gates: a trailing 7-day mean per date. */
+export type WalkingReading = WalkingDay & {
   /** Days with data in the window. */
   days: number;
 };
@@ -944,13 +948,12 @@ function speedToMps(units: string | undefined, value: number) {
 }
 
 /**
- * Walking asymmetry and speed as a trailing 7-day mean ending on each date,
- * like the PT Tracker's weekly reading (asymmetry keeps 0% samples, and with
- * Summarize Data off every sample counts, so a day with 40 walks weighs
- * more). Only dates whose window has WALKING_MIN_DAYS days in this payload
- * are returned, so the "Previous 7 Days" export writes today and yesterday.
+ * Walking asymmetry and speed per day in this payload: the mean of the day's
+ * samples (asymmetry keeps 0% samples). Health Auto Export can send a week
+ * as one request per day, so the 7-day window is built from stored days
+ * (walkingWindows), never from one payload.
  */
-export function mapWalking(metrics: HaeMetric[]): WalkingReading[] {
+export function mapWalkingDays(metrics: HaeMetric[]): WalkingDay[] {
   const days = new Map<
     string,
     { asymSum: number; asymN: number; speedSum: number; speedN: number }
@@ -993,21 +996,79 @@ export function mapWalking(metrics: HaeMetric[]): WalkingReading[] {
       days.set(date, row);
     }
   }
-  const dates = [...days.keys()].sort();
+  return [...days.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, r]) => ({
+      date,
+      asymmetryPct: r.asymN
+        ? Math.round((r.asymSum / r.asymN) * 100) / 100
+        : null,
+      speedMps: r.speedN
+        ? Math.round((r.speedSum / r.speedN) * 1000) / 1000
+        : null,
+    }))
+    .filter((d) => d.asymmetryPct != null || d.speedMps != null);
+}
+
+/**
+ * Stored *_daily walking rows back into days. Per date, apple_health rows
+ * win over imported ones (the PT Tracker import holds days before 11/2).
+ */
+export function walkingDaysFromTests(
+  tests: {
+    testDate: string;
+    testType: string;
+    value: number;
+    source: string;
+  }[],
+): WalkingDay[] {
+  const byDate = new Map<string, Map<string, WalkingDay>>();
+  for (const t of tests) {
+    const field =
+      t.testType === "walking_asymmetry_daily"
+        ? "asymmetryPct"
+        : t.testType === "walking_speed_daily"
+          ? "speedMps"
+          : null;
+    if (!field) continue;
+    const days = byDate.get(t.testDate) ?? new Map<string, WalkingDay>();
+    const day = days.get(t.source) ?? {
+      date: t.testDate,
+      asymmetryPct: null,
+      speedMps: null,
+    };
+    day[field] = t.value;
+    days.set(t.source, day);
+    byDate.set(t.testDate, days);
+  }
+  return [...byDate.values()]
+    .map((days) => days.get("apple_health") ?? [...days.values()][0]!)
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/**
+ * Trailing 7-day mean of the stored days for each date in `dates`, written
+ * only when the window has WALKING_MIN_DAYS days. Each day weighs the same.
+ */
+export function walkingWindows(
+  stored: WalkingDay[],
+  dates: string[],
+): WalkingReading[] {
+  const byDate = new Map(stored.map((d) => [d.date, d]));
+  const mean = (xs: number[]) =>
+    xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
   const out: WalkingReading[] = [];
-  for (const date of dates) {
+  for (const date of [...new Set(dates)].sort()) {
     const window = Array.from({ length: 7 }, (_, i) => addDaysIso(date, -i))
-      .map((d) => days.get(d))
-      .filter((r): r is NonNullable<typeof r> => r != null);
+      .map((d) => byDate.get(d))
+      .filter((r): r is WalkingDay => r != null);
     if (window.length < WALKING_MIN_DAYS) continue;
-    const asymN = window.reduce((n, r) => n + r.asymN, 0);
-    const speedN = window.reduce((n, r) => n + r.speedN, 0);
-    const asym = asymN
-      ? window.reduce((sum, r) => sum + r.asymSum, 0) / asymN
-      : null;
-    const speed = speedN
-      ? window.reduce((sum, r) => sum + r.speedSum, 0) / speedN
-      : null;
+    const asym = mean(
+      window.flatMap((r) => (r.asymmetryPct == null ? [] : [r.asymmetryPct])),
+    );
+    const speed = mean(
+      window.flatMap((r) => (r.speedMps == null ? [] : [r.speedMps])),
+    );
     if (asym == null && speed == null) continue;
     out.push({
       date,
@@ -1041,6 +1102,6 @@ export function mapHealthAutoExport(
     strengthWorkouts,
     overnightSamples,
     nutrition: mapNutrition(body.data?.metrics ?? []),
-    walking: mapWalking(body.data?.metrics ?? []),
+    walking: mapWalkingDays(body.data?.metrics ?? []),
   };
 }

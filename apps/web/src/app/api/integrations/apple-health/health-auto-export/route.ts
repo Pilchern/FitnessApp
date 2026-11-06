@@ -33,54 +33,107 @@ import { verifyAppleHealthRequest } from "../verify-request";
 import {
   mapHealthAutoExport,
   type HealthAutoExportBody,
-  type WalkingReading,
+  type WalkingDay,
+  walkingDaysFromTests,
+  walkingWindows,
 } from "../health-auto-export";
 
+const DAILY_TYPES = ["walking_asymmetry_daily", "walking_speed_daily"] as const;
+
+function shiftIso(isoDate: string, days: number) {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function walkingRows(
+  date: string,
+  asymType: string,
+  speedType: string,
+  asym: number | null,
+  speed: number | null,
+  notes: string | null,
+) {
+  return [
+    ...(asym != null
+      ? [
+          {
+            testDate: date,
+            testType: asymType,
+            side: null,
+            value: asym,
+            unit: "%",
+            repIndex: 1,
+            notes,
+          },
+        ]
+      : []),
+    ...(speed != null
+      ? [
+          {
+            testDate: date,
+            testType: speedType,
+            side: null,
+            value: speed,
+            unit: "m/s",
+            repIndex: 1,
+            notes,
+          },
+        ]
+      : []),
+  ];
+}
+
 /**
- * Walking asymmetry and speed (7-day means) into knee_tests, source
- * 'apple_health', where the knee gates and weekly review read them. Took
- * over from the PT Tracker's /api/health. Fails soft: a walking error is
- * logged and never fails the rest of the sync.
+ * Walking asymmetry and speed into knee_tests, source 'apple_health', where
+ * the knee gates and weekly review read them. Each day in the payload is
+ * stored as a *_daily row; the 7-day mean for those dates is then built from
+ * the stored days (any source, apple_health first), because Health Auto
+ * Export sends 1-2 days per run and splits a manual export into one request
+ * per day. Fails soft: a walking error is logged and never fails the rest of
+ * the sync.
  */
-async function syncWalking(userId: string, readings: WalkingReading[]) {
-  if (readings.length === 0) return 0;
+async function syncWalking(userId: string, days: WalkingDay[]) {
+  if (days.length === 0) return 0;
   try {
     const { programService } = await createCoreServices();
+    for (const d of days) {
+      await programService.replaceKneeTests({
+        userId,
+        source: "apple_health",
+        testDate: d.date,
+        replaceTypes: [...DAILY_TYPES],
+        rows: walkingRows(
+          d.date,
+          "walking_asymmetry_daily",
+          "walking_speed_daily",
+          d.asymmetryPct,
+          d.speedMps,
+          null,
+        ),
+      });
+    }
+    const dates = days.map((d) => d.date).sort();
+    const tests = await programService.listKneeTests(
+      userId,
+      shiftIso(dates[0]!, -6),
+      dates[dates.length - 1]!,
+    );
+    const readings = walkingWindows(walkingDaysFromTests(tests), dates);
     for (const r of readings) {
-      const notes = `7-day mean, ${r.days} days`;
       await programService.replaceKneeTests({
         userId,
         source: "apple_health",
         testDate: r.date,
         replaceTypes: ["walking_asymmetry", "walking_speed"],
-        rows: [
-          ...(r.asymmetryPct != null
-            ? [
-                {
-                  testDate: r.date,
-                  testType: "walking_asymmetry",
-                  side: null,
-                  value: r.asymmetryPct,
-                  unit: "%",
-                  repIndex: 1,
-                  notes,
-                },
-              ]
-            : []),
-          ...(r.speedMps != null
-            ? [
-                {
-                  testDate: r.date,
-                  testType: "walking_speed",
-                  side: null,
-                  value: r.speedMps,
-                  unit: "m/s",
-                  repIndex: 1,
-                  notes,
-                },
-              ]
-            : []),
-        ],
+        rows: walkingRows(
+          r.date,
+          "walking_asymmetry",
+          "walking_speed",
+          r.asymmetryPct,
+          r.speedMps,
+          `7-day mean, ${r.days} days`,
+        ),
       });
     }
     return readings.length;
