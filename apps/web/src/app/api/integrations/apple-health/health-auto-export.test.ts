@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   dedupeOverlappingRides,
   mapHealthAutoExport,
-  mapWalking,
+  mapWalkingDays,
+  walkingDaysFromTests,
+  walkingWindows,
   toIsoDateTime,
   toLocalClockTime,
 } from "./health-auto-export";
@@ -840,44 +842,95 @@ describe("mapNutrition", () => {
   });
 });
 
-describe("mapWalking", () => {
+describe("walking", () => {
   const day = (d: number) => `2026-11-0${d} 08:00:00 -0600`;
-  it("writes a trailing 7-day mean once 5 days have data", () => {
-    const rows = mapWalking([
+
+  it("maps each day to the mean of its samples, 0% kept", () => {
+    const days = mapWalkingDays([
       {
         name: "walking_asymmetry_percentage",
         units: "%",
-        data: [1, 2, 3, 4, 5, 6].flatMap((d) => [
-          { date: day(d), qty: d },
-          { date: day(d), qty: 0 },
-        ]),
+        data: [
+          { date: day(5), qty: 4 },
+          { date: day(5), qty: 0 },
+          { date: day(6), qty: 3 },
+        ],
       },
       {
         name: "walking_speed",
         units: "km/hr",
-        data: [1, 2, 3, 4, 5, 6].map((d) => ({ date: day(d), qty: 3.6 })),
+        data: [{ date: day(6), qty: 3.6 }],
       },
+      { name: "step_count", data: [{ date: day(6), qty: 9000 }] },
     ]);
-    expect(rows.map((r) => r.date)).toEqual(["2026-11-05", "2026-11-06"]);
-    // Day 1-6: sum 21 over 12 samples (0% samples count).
-    expect(rows[1]).toEqual({
-      date: "2026-11-06",
-      asymmetryPct: 1.8,
-      speedMps: 1,
-      days: 6,
-    });
+    expect(days).toEqual([
+      { date: "2026-11-05", asymmetryPct: 2, speedMps: null },
+      { date: "2026-11-06", asymmetryPct: 3, speedMps: 1 },
+    ]);
   });
 
-  it("reads fractions as percent and ignores other metrics", () => {
-    const rows = mapWalking([
+  it("reads fractions as percent", () => {
+    const days = mapWalkingDays([
       {
         name: "walking_asymmetry_percentage",
-        data: [1, 2, 3, 4, 5].map((d) => ({ date: day(d), qty: 0.04 })),
+        data: [{ date: day(5), qty: 0.04 }],
       },
-      { name: "step_count", data: [{ date: day(5), qty: 9000 }] },
     ]);
-    expect(rows).toEqual([
-      { date: "2026-11-05", asymmetryPct: 4, speedMps: null, days: 5 },
+    expect(days).toEqual([
+      { date: "2026-11-05", asymmetryPct: 4, speedMps: null },
+    ]);
+  });
+
+  it("builds the 7-day mean from stored days, one-day payloads included", () => {
+    const stored = [1, 2, 3, 4, 5, 6].map((d) => ({
+      date: `2026-11-0${d}`,
+      asymmetryPct: d,
+      speedMps: 1,
+    }));
+    // A one-day payload for 11/6 still gets a reading from the stored week.
+    expect(walkingWindows(stored, ["2026-11-06"])).toEqual([
+      { date: "2026-11-06", asymmetryPct: 3.5, speedMps: 1, days: 6 },
+    ]);
+    // 11/4 has only 4 days in its window: not written.
+    expect(walkingWindows(stored, ["2026-11-04"])).toEqual([]);
+  });
+
+  it("prefers apple_health over imported days on the same date", () => {
+    const days = walkingDaysFromTests([
+      {
+        testDate: "2026-11-01",
+        testType: "walking_asymmetry_daily",
+        value: 9,
+        source: "pt_tracker_import",
+      },
+      {
+        testDate: "2026-11-01",
+        testType: "walking_asymmetry_daily",
+        value: 2,
+        source: "apple_health",
+      },
+      {
+        testDate: "2026-11-01",
+        testType: "walking_speed_daily",
+        value: 1.1,
+        source: "apple_health",
+      },
+      {
+        testDate: "2026-10-31",
+        testType: "walking_speed_daily",
+        value: 0.9,
+        source: "pt_tracker_import",
+      },
+      {
+        testDate: "2026-10-31",
+        testType: "walking_asymmetry",
+        value: 5,
+        source: "apple_health",
+      },
+    ]);
+    expect(days).toEqual([
+      { date: "2026-10-31", asymmetryPct: null, speedMps: 0.9 },
+      { date: "2026-11-01", asymmetryPct: 2, speedMps: 1.1 },
     ]);
   });
 });
