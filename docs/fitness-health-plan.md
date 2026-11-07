@@ -61,7 +61,7 @@ Wed Single-leg + Pull:
 Fri Quad + Arms:
 - Landing prep from week 10, behind the `plyo_double` gate (v2.2, 2026-10-20: PT 10/16 "still unable: jumping") and a normal knee check: Squat to Calf Raise 2 x 10, Snap-Down to Stick 3 x 5, Double-Leg Pogo (low) 2 x 10
 - A1 Spanish Squat 3 x 45 s / A2 Chin-Up 3 x 3-5
-- Isometric Knee Extension (90°) 5 x 5 s per leg, peak force
+- Banded Knee Extension (90→45°) 3 x 20-25 per leg, +1 left set (replaced the isometric 2026-11-07; quad strength is measured by the Sunday crane test, fresh)
 - C1 Heel-Elevated Goblet Squat (to 90°) 3 x 12 / C2 Close-Grip Bench Press 3 x 8-10
 - D1 DB Single-Leg RDL 3 x 10 per leg / D2 Dumbbell Shoulder Press 3 x 10-12 / D3 Tricep Extension 2 x 12-15
 
