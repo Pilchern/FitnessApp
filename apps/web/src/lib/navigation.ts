@@ -10,6 +10,11 @@ export const moduleNavigationItems = [
     description: "Post-op week, today's session and progress.",
   },
   {
+    href: "/program/knee",
+    title: "Knee",
+    description: "Crane tests, gates, clinic visits and walking.",
+  },
+  {
     href: "/cardio",
     title: "Cardio",
     description: "Rides and Zone 2 sessions.",

@@ -61,8 +61,14 @@ export function ProtectedShell({
     .map((href) => items.find((item) => item.href === href))
     .filter((item): item is NavigationItem => Boolean(item));
   const secondary = items.filter((item) => !primaryHrefs.includes(item.href));
-  const isActive = (href: string) =>
+  // Most specific match wins, so /program/knee lights Knee, not Program.
+  const matches = (href: string) =>
     pathname === href || pathname.startsWith(`${href}/`);
+  const activeHref = items
+    .map((item) => item.href)
+    .filter(matches)
+    .sort((a, b) => b.length - a.length)[0];
+  const isActive = (href: string) => href === activeHref;
   const moreActive = secondary.some((item) => isActive(item.href));
 
   return (
