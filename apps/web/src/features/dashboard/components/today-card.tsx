@@ -221,13 +221,12 @@ export function TodayCard({
             Every signal against your own last 30 days: HRV (7-night trend and
             last night), overnight heart rate and vitals; sleep amount, debt,
             quality and timing; yesterday&apos;s strain and this week&apos;s
-            load; yesterday&apos;s calories, protein and drinks; and soreness,
-            stress, energy and the knee check when you log them. A usual reading
-            scores about 80, so the number moves with the day. How you feel,
-            when you tap it, is 30%. Signals that are missing are left out, not
-            counted against you. Two vitals up at once, feeling rough, soreness
-            8+, a knee-off check or 3+ drinks cap the day. An estimate, not a
-            medical measure.
+            load; last night&apos;s drinks; and soreness, stress, energy and the
+            knee check when you log them. A usual reading scores about 80, so
+            the number moves with the day. How you feel, when you tap it, is
+            30%. Signals that are missing are left out, not counted against you.
+            Two vitals up at once, feeling rough, soreness 8+, a knee-off check
+            or 3+ drinks cap the day. An estimate, not a medical measure.
             {scored.calibrating
               ? ` HRV joins the score after 14 nights of baseline (${scored.baselineDays} so far): one night of Watch HRV is too noisy to act on.`
               : null}

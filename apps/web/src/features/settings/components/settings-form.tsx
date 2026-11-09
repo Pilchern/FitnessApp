@@ -1,13 +1,10 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState } from "react";
 import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
 import { COMMON_TIMEZONES, toSettingsFormValues } from "../helpers";
 import type { SettingsActionState, SettingsFormValues } from "../types";
-import type { NutritionTargets } from "@fitness-app/application";
 import type { UserProfile } from "@fitness-app/domain";
-
-type RecomputeState = { error?: string; targets?: NutritionTargets };
 
 type SettingsFormProps = {
   profile: UserProfile;
@@ -15,7 +12,6 @@ type SettingsFormProps = {
     state: SettingsActionState,
     formData: FormData,
   ) => Promise<SettingsActionState>;
-  recomputeNutritionTargetsAction: () => Promise<RecomputeState>;
 };
 
 const initialState: SettingsActionState = {};
@@ -113,35 +109,11 @@ function RadioPill({
   );
 }
 
-export function SettingsForm({
-  profile,
-  action,
-  recomputeNutritionTargetsAction,
-}: SettingsFormProps) {
+export function SettingsForm({ profile, action }: SettingsFormProps) {
   const [state, formAction] = useActionState(action, initialState);
   const [values, setValues] = useState<SettingsFormValues>(() =>
     toSettingsFormValues(profile),
   );
-  const [recomputeState, setRecomputeState] = useState<RecomputeState>({});
-  const [isRecomputing, startRecompute] = useTransition();
-
-  function handleRecompute() {
-    startRecompute(async () => {
-      const result = await recomputeNutritionTargetsAction();
-      setRecomputeState(result);
-      if (result.targets) {
-        setValues((current) => ({
-          ...current,
-          dailyCaloriesTarget: String(result.targets!.dailyCaloriesTarget),
-          dailyProteinGramsTarget: String(
-            result.targets!.dailyProteinGramsTarget,
-          ),
-          dailyFiberGramsTarget: String(result.targets!.dailyFiberGramsTarget),
-        }));
-      }
-    });
-  }
-
   function set<K extends keyof SettingsFormValues>(
     key: K,
     value: SettingsFormValues[K],
@@ -185,10 +157,8 @@ export function SettingsForm({
         </div>
 
         <p className="mt-6 text-xs text-ink/60">
-          These three are optional and used only to make the calorie and protein
-          estimate under Nutrition Goals closer to your body. Leave any of them
-          blank and that part of the estimate falls back to a population
-          average, which the estimate will tell you it did.
+          Optional. Height feeds the DEXA lean-mass index; birth date and sex
+          feed the fitness-vs-peers and strain cards.
         </p>
 
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
@@ -382,118 +352,23 @@ export function SettingsForm({
         </p>
       </section>
 
-      {/* ── Nutrition Goals ── */}
-      <section className="rounded-[1.75rem] border border-ink/10 bg-white/80 p-6 shadow-panel">
-        <SectionHeader
-          eyebrow="Nutrition Goals"
-          title="Daily targets"
-          description="Set optional daily targets. Leave blank to hide progress bars on the Nutrition page."
-        />
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Daily protein (g)
-            <input
-              className={fieldClassName()}
-              name="dailyProteinGramsTarget"
-              type="number"
-              min={1}
-              step={1}
-              placeholder="e.g. 180"
-              value={values.dailyProteinGramsTarget}
-              onChange={(event) =>
-                set("dailyProteinGramsTarget", event.target.value)
-              }
-            />
-            {state.fieldErrors?.dailyProteinGramsTarget ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.dailyProteinGramsTarget}
-              </p>
-            ) : null}
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Daily calories
-            <input
-              className={fieldClassName()}
-              name="dailyCaloriesTarget"
-              type="number"
-              min={1}
-              step={1}
-              placeholder="e.g. 2200"
-              value={values.dailyCaloriesTarget}
-              onChange={(event) =>
-                set("dailyCaloriesTarget", event.target.value)
-              }
-            />
-            {state.fieldErrors?.dailyCaloriesTarget ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.dailyCaloriesTarget}
-              </p>
-            ) : null}
-          </label>
-
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Daily fiber (g)
-            <input
-              className={fieldClassName()}
-              name="dailyFiberGramsTarget"
-              type="number"
-              min={1}
-              step={1}
-              placeholder="e.g. 30"
-              value={values.dailyFiberGramsTarget}
-              onChange={(event) =>
-                set("dailyFiberGramsTarget", event.target.value)
-              }
-            />
-            {state.fieldErrors?.dailyFiberGramsTarget ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.dailyFiberGramsTarget}
-              </p>
-            ) : null}
-          </label>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
-          <button
-            type="button"
-            onClick={handleRecompute}
-            disabled={isRecomputing}
-            className="inline-flex h-10 items-center justify-center rounded-full border border-pine px-5 text-sm font-semibold text-pine transition hover:bg-pine hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isRecomputing ? "Computing…" : "Recompute my estimate"}
-          </button>
-          {recomputeState.targets ? (
-            <p className="text-sm text-pine">
-              Estimate filled in. Save below to keep it.
-            </p>
-          ) : null}
-          {recomputeState.error ? (
-            <p className="text-sm text-ember">{recomputeState.error}</p>
-          ) : null}
-        </div>
-        {recomputeState.targets ? (
-          <div
-            className={`mt-3 rounded-2xl border px-4 py-3 text-xs ${
-              recomputeState.targets.safetyFloorApplied
-                ? "border-ember/20 bg-ember/10 text-ember"
-                : "border-ink/10 bg-mist/50 text-ink/60"
-            }`}
-          >
-            <ul className="list-disc space-y-1 pl-4">
-              {recomputeState.targets.notes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
-            <p className="mt-2 text-ink/50">
-              This is a general fitness estimate, not medical advice. Talk to a
-              doctor or registered dietitian before making significant changes
-              to your diet.
-            </p>
-          </div>
-        ) : null}
-      </section>
+      {/* Nutrition targets have no UI since the Nutrition page was removed.
+          Post the stored values so saving this form does not clear them. */}
+      <input
+        type="hidden"
+        name="dailyProteinGramsTarget"
+        value={values.dailyProteinGramsTarget}
+      />
+      <input
+        type="hidden"
+        name="dailyCaloriesTarget"
+        value={values.dailyCaloriesTarget}
+      />
+      <input
+        type="hidden"
+        name="dailyFiberGramsTarget"
+        value={values.dailyFiberGramsTarget}
+      />
 
       {/* ── Save ── */}
       <div className="flex justify-end">

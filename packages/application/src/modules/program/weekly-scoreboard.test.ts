@@ -50,11 +50,6 @@ describe("weeklyScoreboard", () => {
         scale("2026-11-05", 179.4),
         tape("2026-11-07", { waistIn: 34.8, thighLIn: 21.9, thighRIn: 23.1 }),
       ],
-      nutrition: [
-        { logDate: "2026-11-02", calories: 2400, proteinGrams: 195 },
-        { logDate: "2026-11-03", calories: 2500, proteinGrams: 205 },
-        { logDate: "2026-11-04", calories: null, proteinGrams: 150 },
-      ],
       kneeTests: [
         knee("2026-11-08", "quad_iso_90", "L", 300, 1),
         knee("2026-11-08", "quad_iso_90", "L", 320, 2),
@@ -72,8 +67,6 @@ describe("weeklyScoreboard", () => {
       week: 10,
       weightAvgLb: 178.2,
       weightChangeLb: null,
-      kcalAvg: null,
-      nutritionDays: 0,
       quadLsi: null,
       thighLIn: null,
       stepsAvg: null,
@@ -84,9 +77,6 @@ describe("weeklyScoreboard", () => {
       week: 11,
       weightAvgLb: 179.2,
       weightChangeLb: 1,
-      kcalAvg: 2450,
-      proteinAvg: 183,
-      nutritionDays: 2,
       quadPeakLeft: 320,
       quadPeakRight: 400,
       quadPeakUnit: "N",
@@ -103,7 +93,6 @@ describe("weeklyScoreboard", () => {
     const [row] = weeklyScoreboard({
       weeks: [W10],
       body: [{ ...tape("2026-10-27", {}), weightLb: 150 }],
-      nutrition: [],
       kneeTests: [],
       activity: [],
       checkins: [],

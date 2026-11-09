@@ -368,3 +368,4 @@ See `AGENTS.md` for full agent system prompts. Agents defined:
 | 2026-11-06 | HAE walking fix: per-day walking rows stored, 7-day mean built from stored days, so 1-2 day and per-day batched exports reach the jog/RTS walking criterion. No migration. |
 | 2026-11-07 | Friday isometric knee extension replaced by banded knee extension (90→45°) in every Friday lift; crane test moves to Sundays. Data migration applied to live. |
 | 2026-11-03 | Resting HR: HAE hourly points were overwriting the day's value (last hour won, 73-85 vs ~58); now the day's mean. No migration. |
+| 2026-11-09 | Nutrition page and calorie tracking removed (owner tracks protein mentally): /nutrition, Settings nutrition goals, dashboard protein line, readiness calories/protein, weekly review fuel rows and scoreboard kcal/protein, calorie calibration insight. Data and HAE ingest kept. No migration. |

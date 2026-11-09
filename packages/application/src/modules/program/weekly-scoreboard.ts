@@ -13,10 +13,6 @@ export type ScoreboardRow = ScoreboardWeek & {
   /** Mean of the week's weigh-ins (Withings), lb. */
   weightAvgLb: number | null;
   weightChangeLb: number | null;
-  kcalAvg: number | null;
-  proteinAvg: number | null;
-  /** Days with calories logged. */
-  nutritionDays: number;
   /** Crane-scale quad peak at 90°, best trial per leg on the week's last test. */
   quadPeakLeft: number | null;
   quadPeakRight: number | null;
@@ -71,11 +67,6 @@ export function weeklyScoreboard(input: {
   /** Oldest first. The change column compares with the week before. */
   weeks: ScoreboardWeek[];
   body: BodyRow[];
-  nutrition: {
-    logDate: IsoDate;
-    calories?: number | null;
-    proteinGrams?: number | null;
-  }[];
   kneeTests: KneeTest[];
   activity: { metricDate: IsoDate; steps: number | null }[];
   /** Hand-typed weekly check-ins (walking asymmetry fallback). */
@@ -101,14 +92,6 @@ export function weeklyScoreboard(input: {
       weightAvg != null && previousAvg != null ? weightAvg - previousAvg : null;
     previousAvg = weightAvg;
 
-    const food = input.nutrition.filter((l) => within(l.logDate, w));
-    const kcal = food
-      .map((l) => l.calories)
-      .filter((v): v is number => v != null);
-    const protein = food
-      .map((l) => l.proteinGrams)
-      .filter((v): v is number => v != null);
-
     const test = quad.filter((p) => within(p.date, w)).at(-1) ?? null;
     const steps = input.activity
       .filter((a) => within(a.metricDate, w) && a.steps != null)
@@ -128,9 +111,6 @@ export function weeklyScoreboard(input: {
       ...w,
       weightAvgLb: round(weightAvg, 1),
       weightChangeLb: round(change, 1),
-      kcalAvg: round(mean(kcal), 0),
-      proteinAvg: round(mean(protein), 0),
-      nutritionDays: kcal.length,
       quadPeakLeft: test?.left ?? null,
       quadPeakRight: test?.right ?? null,
       quadPeakUnit: test ? quadUnit : null,

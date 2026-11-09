@@ -2,7 +2,6 @@ import "server-only";
 
 import {
   addDays,
-  buildDayPlan,
   buildWeeklyWeightTrend,
   countLifts,
   dayStreak,
@@ -12,7 +11,6 @@ import {
   latestValue,
   legExerciseIndex,
   liftWeekOverWeek,
-  nutritionWeek,
   pickWeeklyFocus,
   postOpWeek,
   programWeekInfo,
@@ -33,10 +31,7 @@ import {
 } from "@fitness-app/application";
 import type { TrainingProgram } from "@fitness-app/domain";
 import { requireCurrentUser } from "@/lib/server/auth";
-import {
-  createCoreServices,
-  getCachedUserProfile,
-} from "@/lib/server/services";
+import { createCoreServices } from "@/lib/server/services";
 import { applyRideMakeUps, splitLoggedLifts } from "./helpers";
 import { loadProgramContext } from "./server";
 import type { AdherenceSnapshot, WeeklyReviewData } from "./types";
@@ -212,8 +207,6 @@ export async function getAdherenceSnapshot(): Promise<AdherenceSnapshot | null> 
 
 function focusMetrics(input: {
   adherence: WeekAdherence;
-  proteinAvg: number | null;
-  proteinTarget: number | null;
   sleepAvg: number | null;
   quadSets: number;
   asymmetry: number | null;
@@ -250,13 +243,6 @@ function focusMetrics(input: {
       actual: a.rides.done,
       target: a.rides.target,
       advice: "Ride Tue/Thu/Sat; a short Zone 2 beats a skipped one.",
-    },
-    {
-      key: "protein",
-      label: "Protein",
-      actual: input.proteinAvg,
-      target: input.proteinTarget,
-      advice: "Front-load it: 50 g by 9 AM makes the day's target easy.",
     },
     {
       key: "sleep",
@@ -340,48 +326,34 @@ export async function getWeeklyReviewData(
   const info = programWeekInfo(program, range.start);
   const firstStart = weekDateRange(program.weekAnchorDate, first).start;
 
-  const {
-    programService,
-    nutritionService,
-    recoveryService,
-    bodyMetricService,
-  } = await createCoreServices();
-  const [
-    activity,
-    checkins,
-    nutrition,
-    recovery,
-    body,
-    checks,
-    profile,
-    kneeTests,
-  ] = await Promise.all([
-    loadActivity(
-      user.id,
-      program,
-      [firstStart, addDays(range.start, -7)].sort()[0]!,
-      range.end,
-    ),
-    programService.listWeeklyCheckins(user.id, firstStart, range.start),
-    nutritionService.listByDateRange({
-      userId: user.id,
-      startDate: range.start,
-      endDate: range.end,
-    }),
-    recoveryService.listByDateRange({
-      userId: user.id,
-      startDate: range.start,
-      endDate: range.end,
-    }),
-    bodyMetricService.listByDateRange({
-      userId: user.id,
-      startDate: addDays(range.end, -7 * (settings.weightRiseWeeks + 1)),
-      endDate: range.end,
-    }),
-    programService.listKneeChecks(user.id, range.start, range.end),
-    getCachedUserProfile(user.id),
-    programService.listKneeTests(user.id, addDays(firstStart, -14), range.end),
-  ]);
+  const { programService, recoveryService, bodyMetricService } =
+    await createCoreServices();
+  const [activity, checkins, recovery, body, checks, kneeTests] =
+    await Promise.all([
+      loadActivity(
+        user.id,
+        program,
+        [firstStart, addDays(range.start, -7)].sort()[0]!,
+        range.end,
+      ),
+      programService.listWeeklyCheckins(user.id, firstStart, range.start),
+      recoveryService.listByDateRange({
+        userId: user.id,
+        startDate: range.start,
+        endDate: range.end,
+      }),
+      bodyMetricService.listByDateRange({
+        userId: user.id,
+        startDate: addDays(range.end, -7 * (settings.weightRiseWeeks + 1)),
+        endDate: range.end,
+      }),
+      programService.listKneeChecks(user.id, range.start, range.end),
+      programService.listKneeTests(
+        user.id,
+        addDays(firstStart, -14),
+        range.end,
+      ),
+    ]);
 
   const checkin = checkins.find((c) => c.weekStart === range.start) ?? null;
   // PT Tracker numbers first (synced knee_tests), the hand-typed check-in as
@@ -427,23 +399,6 @@ export async function getWeeklyReviewData(
   });
   const pastWeeks = completedWeekLifts(program, week, activity);
   const thisWeekLifts = adherence.lifts.done;
-  const isLiftDay = (date: string) =>
-    buildDayPlan(program, date, null, settings).sessions.some(
-      (s) => s.session.sessionType === "lift" && s.visible,
-    );
-  const fuel = nutritionWeek({
-    logs: nutrition.map((l) => ({
-      logDate: l.logDate,
-      proteinGrams: l.proteinGrams ?? null,
-      calories: l.calories ?? null,
-      creatineTaken: l.creatineTaken ?? null,
-      protein50By9am: l.protein50By9am ?? null,
-    })),
-    weekDates,
-    isLiftDay,
-    proteinTarget: profile?.dailyProteinGramsTarget ?? null,
-    settings,
-  });
   const sleep = sleepWeek(recovery, weekDates, settings.sleepFlagBelowH);
   const weight = buildWeeklyWeightTrend(body, range.end, {
     riseLbPerWeek: settings.weightRiseLbPerWeek,
@@ -503,8 +458,6 @@ export async function getWeeklyReviewData(
   const focus = pickWeeklyFocus(
     focusMetrics({
       adherence,
-      proteinAvg: fuel.proteinAvg,
-      proteinTarget: fuel.proteinTarget,
       sleepAvg: sleep.avgHours,
       quadSets,
       asymmetry: weekAsymmetry,
@@ -536,7 +489,6 @@ export async function getWeeklyReviewData(
       min: settings.quadSetsMin,
       max: settings.quadSetsMax,
     },
-    nutrition: fuel,
     weight: {
       sevenDayAvgLb: weight.sevenDayAvgLb,
       weekOverWeekLb: weight.weekOverWeekLb,
@@ -566,7 +518,6 @@ export async function getWeeklyReviewData(
       lsi: [settings.lsiTarget1, settings.lsiTarget2, settings.lsiTarget3],
       asymmetry: settings.walkingAsymmetryTargetPct,
       sleepH: settings.sleepFlagBelowH,
-      proteinFlagG: settings.proteinFlagBelowG,
     },
     surplusBanner: weight.surplusThrottle,
     summaryText: weeklySummaryText(summaryInput),
@@ -597,20 +548,10 @@ export async function getWeeklyScoreboard(): Promise<ScoreboardRow[] | null> {
   if (weeks.length === 0) return [];
   const start = weeks[0]!.start;
   const end = weeks.at(-1)!.end;
-  const {
-    bodyMetricService,
-    nutritionService,
-    dailyActivityService,
-    programService,
-  } = await createCoreServices();
-  const [body, nutrition, activity, kneeTests, checkins] = await Promise.all([
+  const { bodyMetricService, dailyActivityService, programService } =
+    await createCoreServices();
+  const [body, activity, kneeTests, checkins] = await Promise.all([
     bodyMetricService.listByDateRange({
-      userId: user.id,
-      startDate: start,
-      endDate: end,
-      limit: 2000,
-    }),
-    nutritionService.listByDateRange({
       userId: user.id,
       startDate: start,
       endDate: end,
@@ -628,7 +569,6 @@ export async function getWeeklyScoreboard(): Promise<ScoreboardRow[] | null> {
   return weeklyScoreboard({
     weeks,
     body,
-    nutrition,
     kneeTests,
     activity,
     checkins,

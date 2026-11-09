@@ -6,7 +6,6 @@ import {
   executionBanner,
   liftWeekOverWeek,
   metricScore,
-  nutritionWeek,
   pickWeeklyFocus,
   readinessCounts,
   sleepWeek,
@@ -112,75 +111,6 @@ describe("execution banner", () => {
   it("waits until there are enough completed weeks", () => {
     expect(executionBanner([1], 3, 2)).toBe(false);
     expect(executionBanner([], 3, 2)).toBe(false);
-  });
-});
-
-describe("nutrition week", () => {
-  const isLiftDay = (d: string) => ["2026-10-19", "2026-10-21"].includes(d);
-  const log = (
-    logDate: string,
-    proteinGrams: number | null,
-    calories: number | null,
-    extra: Partial<{ creatineTaken: boolean; protein50By9am: boolean }> = {},
-  ) => ({
-    logDate,
-    proteinGrams,
-    calories,
-    creatineTaken: extra.creatineTaken ?? null,
-    protein50By9am: extra.protein50By9am ?? null,
-  });
-
-  it("averages protein and calories with per-day calorie targets", () => {
-    const w = nutritionWeek({
-      logs: [
-        log("2026-10-19", 170, 2500, {
-          creatineTaken: true,
-          protein50By9am: true,
-        }),
-        log("2026-10-20", 150, 2100, { creatineTaken: true }),
-        log("2026-10-21", 160, null),
-        log("2026-10-12", 50, 1000),
-      ],
-      weekDates: WEEK,
-      isLiftDay,
-      proteinTarget: 180,
-    });
-    expect(w).toEqual({
-      daysLogged: 3,
-      proteinAvg: 160,
-      proteinTarget: 180,
-      proteinFlag: false,
-      caloriesAvg: 2300,
-      // lift day 2450 (midpoint of 2400-2500), rest day 2450 (flat plan)
-      caloriesTargetAvg: 2450,
-      creatineDays: 2,
-      protein50Days: 1,
-    });
-  });
-
-  it("flags a week whose protein averages under 160 g", () => {
-    const w = nutritionWeek({
-      logs: [log("2026-10-19", 150, null), log("2026-10-20", 168, null)],
-      weekDates: WEEK,
-      isLiftDay,
-      proteinTarget: 180,
-    });
-    expect(w.proteinAvg).toBe(159);
-    expect(w.proteinFlag).toBe(true);
-  });
-
-  it("has no averages without numbers", () => {
-    const w = nutritionWeek({
-      logs: [],
-      weekDates: WEEK,
-      isLiftDay,
-      proteinTarget: null,
-    });
-    expect(w).toMatchObject({
-      proteinAvg: null,
-      proteinFlag: false,
-      caloriesAvg: null,
-    });
   });
 });
 
@@ -396,16 +326,6 @@ describe("summary text", () => {
         },
       ],
       quadSets: { done: 10, min: 12, max: 16 },
-      nutrition: {
-        daysLogged: 6,
-        proteinAvg: 158,
-        proteinTarget: 180,
-        proteinFlag: true,
-        caloriesAvg: null,
-        caloriesTargetAvg: null,
-        creatineDays: 6,
-        protein50Days: 3,
-      },
       weight: { sevenDayAvgLb: 178.2, weekOverWeekLb: 0.4 },
       sleep: { nights: 7, avgHours: 7.3, avgQuality: null, flag: false },
       quadLsiPct: 68,
@@ -428,7 +348,7 @@ describe("summary text", () => {
     expect(text).toContain(
       "Cuff Knee Extension: L 7.5 / R 10 lb (last week L – / R –)",
     );
-    expect(text).toContain("Protein avg 158 g (target 180 g) LOW");
+    expect(text).not.toContain("Protein");
     expect(text).toContain("Weight 7-day avg 178.2 lb (+0.4 lb vs last week)");
     expect(text).toContain("Quad LSI 68%, walking asymmetry 14%");
     expect(text).toContain("Next week's focus: Peloton rides. Book all three.");

@@ -19,7 +19,7 @@ function pair(left: number | null, right: number | null, dp = 1) {
   return `${f(left)} / ${f(right)}`;
 }
 
-/** One row per week: weight, fuel, quad force and LSI, tape, steps, gait. */
+/** One row per week: weight, quad force and LSI, tape, steps, gait. */
 export function WeeklyScoreboard({ rows }: { rows: ScoreboardRow[] }) {
   return (
     <section className="rounded-[1.75rem] border border-ink/10 bg-white p-5 shadow-panel sm:p-6">
@@ -28,7 +28,7 @@ export function WeeklyScoreboard({ rows }: { rows: ScoreboardRow[] }) {
         One row per post-op week, newest first.
       </p>
       <div className="mt-3 overflow-x-auto">
-        <table className="w-full min-w-[56rem] text-left text-sm tabular-nums">
+        <table className="w-full min-w-[48rem] text-left text-sm tabular-nums">
           <thead className="text-xs text-ink/55">
             <tr>
               <th className="sticky left-0 bg-white py-2 pr-3 font-medium">
@@ -36,8 +36,6 @@ export function WeeklyScoreboard({ rows }: { rows: ScoreboardRow[] }) {
               </th>
               <th className="py-2 pr-3 font-medium">Weight 7d avg</th>
               <th className="py-2 pr-3 font-medium">Δ wk</th>
-              <th className="py-2 pr-3 font-medium">kcal</th>
-              <th className="py-2 pr-3 font-medium">Protein</th>
               <th className="py-2 pr-3 font-medium">Quad peak L / R</th>
               <th className="py-2 pr-3 font-medium">Quad LSI</th>
               <th className="py-2 pr-3 font-medium">Thigh L / R</th>
@@ -57,16 +55,6 @@ export function WeeklyScoreboard({ rows }: { rows: ScoreboardRow[] }) {
                 </td>
                 <td className="py-2 pr-3">{num(r.weightAvgLb, 1, " lb")}</td>
                 <td className="py-2 pr-3">{signed(r.weightChangeLb)}</td>
-                <td className="py-2 pr-3">
-                  {num(r.kcalAvg)}
-                  {r.nutritionDays > 0 ? (
-                    <span className="text-xs text-ink/45">
-                      {" "}
-                      ({r.nutritionDays}d)
-                    </span>
-                  ) : null}
-                </td>
-                <td className="py-2 pr-3">{num(r.proteinAvg, 0, " g")}</td>
                 <td className="py-2 pr-3">
                   {pair(r.quadPeakLeft, r.quadPeakRight, 0)}
                   {r.quadPeakUnit && r.quadPeakLeft != null ? (
@@ -88,8 +76,7 @@ export function WeeklyScoreboard({ rows }: { rows: ScoreboardRow[] }) {
       </div>
       <MethodNote label="Where the numbers come from">
         Weight: mean of the week&apos;s Withings weigh-ins; Δ is vs the week
-        before. kcal and protein: mean of logged days (days with kcal in
-        brackets). Quad peak: best crane-scale trial per leg at 90° on the
+        before. Quad peak: best crane-scale trial per leg at 90° on the
         week&apos;s last PT Tracker test; LSI = L / R. Thigh and waist: last
         tape reading that week. Steps: Apple Health daily mean. Walking
         asymmetry: PT Tracker, else the weekly check-in (Apple Health does not

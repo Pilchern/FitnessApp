@@ -10,8 +10,6 @@ type BodySnapshotCardProps = {
   latestBodyDate: string | null;
   weeklyWeight: WeeklyWeightTrend;
   vo2Max: { value: number; date: string } | null;
-  /** Protein-hit days over the last 7; null when nothing is logged, so the line hides. */
-  proteinHit: { days: number; of: number } | null;
 };
 
 function daysBetween(from: string, to: string) {
@@ -56,7 +54,6 @@ export function BodySnapshotCard({
   latestBodyDate,
   weeklyWeight,
   vo2Max,
-  proteinHit,
 }: BodySnapshotCardProps) {
   if (latestWeightLb == null && vo2Max == null) return null;
 
@@ -115,13 +112,6 @@ export function BodySnapshotCard({
           />
         ) : null}
       </div>
-
-      {proteinHit ? (
-        <p className="mt-4 text-sm text-ink/70">
-          Protein target hit on {proteinHit.days} of {proteinHit.of} logged days
-          this week.
-        </p>
-      ) : null}
     </section>
   );
 }

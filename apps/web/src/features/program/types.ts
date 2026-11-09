@@ -1,7 +1,6 @@
 import type {
   FocusMetric,
   LiftWeekProgress,
-  NutritionWeek,
   ReadinessCounts,
   SleepWeek,
   WeekAdherence,
@@ -209,7 +208,6 @@ export type WeeklyReviewData = {
   readiness: ReadinessCounts;
   lifts: LiftWeekProgress[];
   quadSets: { done: number; min: number; max: number };
-  nutrition: NutritionWeek;
   weight: { sevenDayAvgLb: number | null; weekOverWeekLb: number | null };
   sleep: SleepWeek;
   quadLsiPct: number | null;
@@ -229,7 +227,6 @@ export type WeeklyReviewData = {
     lsi: number[];
     asymmetry: number;
     sleepH: number;
-    proteinFlagG: number;
   };
   surplusBanner: boolean;
   summaryText: string;
