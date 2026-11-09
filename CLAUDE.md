@@ -25,7 +25,7 @@ Single-user fitness tracker. Next.js 15 App Router + Supabase, pnpm monorepo. Ow
 ## Data and privacy
 - This database holds real health data. Do not paste rows into issues, PRs, docs or commit messages.
 - Credentials live in `apps/web/.env.local` and Vercel. Never print, commit or log them.
-- The owner's ACL rehab tracking is a separate app (PT Tracker). Do not merge it into this one.
+- ACL rehab tracking lives here (`/program/knee`, the PT HEP session, the morning knee check). The old PT Tracker (`Pilchern/PT-Tracker`) was absorbed 2026-11-03 and is frozen: it redirects here and only its `/api/health` stays up. Do not build new features in it.
 
 ## Working style the owner expects
 Answer first, short, direct. Smallest clean change that reuses existing patterns. Say what the tradeoff is. No new docs or files unless asked, other than keeping the docs above current.
