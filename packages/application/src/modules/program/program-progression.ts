@@ -28,7 +28,12 @@ type LoadSteps = Pick<
   | "dumbbellCoarseStepLb"
   | "dumbbellFineLimitLb"
 > &
-  Partial<Pick<ProgramSettings, "dumbbellMaxLb">>;
+  Partial<Pick<ProgramSettings, "dumbbellMaxLb" | "legDeveloperStepLb">>;
+
+/** The leg developer's plate step; the cuff step when the setting is absent. */
+function plateStep(steps: LoadSteps) {
+  return steps.legDeveloperStepLb ?? steps.cuffStepLb;
+}
 
 export function nextDumbbell(
   load: number,
@@ -39,7 +44,7 @@ export function nextDumbbell(
     : load + steps.dumbbellCoarseStepLb;
 }
 
-/** The next load up (settings: +5 barbell, +2.5 cuff, next DB); null for bodyweight and band. */
+/** The next load up (settings: +5 barbell, +2.5 cuff and leg developer, next DB); null for bodyweight and band. */
 export function nextLoad(
   load: number,
   kind: LoadKind,
@@ -50,6 +55,8 @@ export function nextLoad(
       return load + steps.barbellStepLb;
     case "cuff":
       return load + steps.cuffStepLb;
+    case "plate":
+      return load + plateStep(steps);
     case "dumbbell":
       return nextDumbbell(load, steps);
     default:
@@ -96,6 +103,8 @@ export function roundDownToLoadStep(
       return floorTo(steps.barbellStepLb);
     case "cuff":
       return floorTo(steps.cuffStepLb);
+    case "plate":
+      return floorTo(plateStep(steps));
     case "dumbbell":
       return load < steps.dumbbellFineLimitLb
         ? floorTo(steps.dumbbellFineStepLb)
@@ -258,6 +267,12 @@ export type SuggestLoadInput = {
   scheme: PrescriptionScheme;
   /** All sets from the last session that had this exercise. */
   lastSets: ProgressionSet[];
+  /**
+   * Every set of this exercise from the last 2 weeks of the block before
+   * this one (deloads skipped). A new block starts from their best working
+   * load; without them, from the last session's.
+   */
+  priorBlockSets?: ProgressionSet[];
   /** Top of the rep range in force when those sets were logged. */
   lastRepsMax: number | null;
   /** Rep tops of the program's blocks, for counting steps between blocks. */
@@ -378,7 +393,15 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
       input.scheme.repsMax as number,
       input.repLadder ?? [],
     );
-    const raw = newBlockStartLoad(working, steps, input.loadKind, settings);
+    const fromPriorBlock = progressionSets(input.priorBlockSets ?? []).some(
+      (s) => (s.weight ?? 0) > 0,
+    );
+    const raw = newBlockStartLoad(
+      fromPriorBlock ? (input.priorBlockSets as ProgressionSet[]) : working,
+      steps,
+      input.loadKind,
+      settings,
+    );
     const start =
       raw != null ? capDumbbell(raw, input.loadKind, settings) : null;
     if (start != null) {
@@ -389,7 +412,7 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
         load: start,
         kind: "new_block",
         held: false,
-        reason: `Suggested start for ${range} reps: last block's top load x ${settings.newBlockLoadMultiplier}${Math.abs(steps) > 1 ? `^${Math.abs(steps)}` : ""}${steps < 0 ? " (divided: more reps)" : ""}${raw != null && start < raw ? `, capped at the ${start} lb dumbbell max` : ""}. Edit if it feels off.`,
+        reason: `Suggested start for ${range} reps: ${fromPriorBlock ? "best working load in the last 2 weeks of the last block" : "last block's top load"} x ${settings.newBlockLoadMultiplier}${Math.abs(steps) > 1 ? `^${Math.abs(steps)}` : ""}${steps < 0 ? " (divided: more reps)" : ""}${raw != null && start < raw ? `, capped at the ${start} lb dumbbell max` : ""}. Edit if it feels off.`,
       };
     }
   }

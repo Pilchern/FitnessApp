@@ -111,6 +111,14 @@ export function AdherenceBanners({
           it on Body →
         </Link>
       ) : null}
+      {snapshot.aclRsiDue ? (
+        <Link
+          href="/program/knee"
+          className="block rounded-2xl border border-ink/10 bg-sand/60 px-4 py-2 text-xs text-ink/75"
+        >
+          Monthly ACL-RSI is due. Score it on Knee tests →
+        </Link>
+      ) : null}
     </>
   );
 }

@@ -307,3 +307,12 @@ export function kneeTestSummary(input: {
     quadDrop: leftQuadDrop(tests, upTo, input.quadDropHoldN),
   };
 }
+
+/** ACL-RSI is scored monthly. */
+export const ACL_RSI_EVERY_DAYS = 30;
+
+/** True when no ACL-RSI score is on file from the last 30 days. */
+export function aclRsiDue(tests: KneeTest[], today: IsoDate) {
+  const last = latestValue(tests, "acl_rsi", today);
+  return !last || last.date <= addDays(today, -ACL_RSI_EVERY_DAYS);
+}

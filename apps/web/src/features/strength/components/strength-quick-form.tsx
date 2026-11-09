@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useFormStatus } from "react-dom";
 import type { StrengthSession } from "@fitness-app/domain";
 import {
@@ -25,6 +31,7 @@ import {
   readyToAddLoad,
   showsTimedWeight,
   renumberSets,
+  rirMissing,
   selectSetsToSave,
   setLabel,
   startingDuration,
@@ -216,6 +223,8 @@ export function StrengthQuickForm({
   const [restMeta, setRestMeta] = useState<RestMeta>({});
   /** What comes next: "Right leg", "Next: A2 Pull-Up", "Then A1 Squat". */
   const [nextCue, setNextCue] = useState<string | null>(null);
+  /** "Enter RIR for ..." after a tick or save without it. */
+  const [rirError, setRirError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   /** The "rest over" beep and buzz has fired for the current rest. */
   const restCued = useRef(false);
@@ -337,8 +346,24 @@ export function StrengthQuickForm({
     resetWorkout();
   }
 
-  function markSubmitted() {
+  /** The first set that still needs RIR, by exercise name; null when none. */
+  function firstMissingRir(sets: StrengthSetFormValue[]) {
+    const set = sets.find((s) =>
+      rirMissing(s, restMeta[exerciseKey(s.exerciseName)]),
+    );
+    return set ? set.exerciseName.trim() || "this set" : null;
+  }
+
+  function markSubmitted(event: FormEvent<HTMLFormElement>) {
     if (mode !== "create") return;
+    const missing = firstMissingRir(
+      selectSetsToSave(values.sets).filter((s) => s.exerciseName.trim()),
+    );
+    if (missing) {
+      event.preventDefault();
+      setRirError(`Enter RIR for ${missing} before saving.`);
+      return;
+    }
     const draft = readDraft();
     if (draft) writeDraft({ ...draft, submittedAt: Date.now() });
   }
@@ -404,6 +429,11 @@ export function StrengthQuickForm({
    */
   function toggleDone(index: number) {
     const wasDone = Boolean(values.sets[index]?.done);
+    const target = values.sets[index];
+    if (!wasDone && target && firstMissingRir([target])) {
+      setRirError(`Enter RIR for ${target.exerciseName.trim()} first.`);
+      return;
+    }
     updateSet(index, {
       done: !wasDone,
       completedAt: wasDone ? null : new Date().toISOString(),
@@ -491,6 +521,7 @@ export function StrengthQuickForm({
   }
 
   function setRirForGroup(indexes: number[], rir: string) {
+    if (rir.trim() !== "") setRirError(null);
     setValues((current) => ({
       ...current,
       sets: current.sets.map((set, i) =>
@@ -516,7 +547,8 @@ export function StrengthQuickForm({
               setNumber: set.setNumber,
               reps: set.reps != null ? `${set.reps}` : "",
               weight: set.weight != null ? `${set.weight}` : "",
-              rir: set.rir != null ? `${set.rir}` : "",
+              // RIR is never prefilled; enter it for today's sets.
+              rir: "",
               isWarmup: set.isWarmup,
               durationSeconds:
                 set.durationSeconds != null ? `${set.durationSeconds}` : "",
@@ -618,14 +650,16 @@ export function StrengthQuickForm({
 
       {/* Field errors have no inline home in the logger, so show them here
           too; otherwise a rejected save looks like nothing happened. */}
-      {formError || state.error || state.fieldErrors ? (
+      {formError || state.error || state.fieldErrors || rirError ? (
         <div
           role="alert"
           className="rounded-2xl border border-ember/20 bg-ember/10 px-4 py-3 text-sm text-ember"
         >
           {formError ??
             state.error ??
-            Object.values(state.fieldErrors ?? {}).join(" ")}
+            (state.fieldErrors
+              ? Object.values(state.fieldErrors).join(" ")
+              : rirError)}
         </div>
       ) : null}
 
@@ -869,8 +903,17 @@ export function StrengthQuickForm({
                   <label className="flex items-center gap-2 text-xs font-medium text-ink/70">
                     RIR
                     <input
-                      className="h-10 w-14 rounded-xl border border-ink/10 bg-white text-center text-base text-ink"
+                      className={`h-10 w-14 rounded-xl border bg-white text-center text-base text-ink ${
+                        rirError && rirMissing(first, restMeta[group.key])
+                          ? "border-ember"
+                          : "border-ink/10"
+                      }`}
                       inputMode="decimal"
+                      placeholder="–"
+                      aria-invalid={
+                        rirError != null &&
+                        rirMissing(first, restMeta[group.key])
+                      }
                       aria-label={`Reps in reserve for ${group.name}`}
                       value={first.rir}
                       onChange={(event) =>

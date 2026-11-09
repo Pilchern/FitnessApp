@@ -111,7 +111,14 @@ const sessionRowSchema = z.object({
   notes: z.string().nullable(),
 });
 
-const loadKind = z.enum(["barbell", "dumbbell", "cuff", "bodyweight", "band"]);
+const loadKind = z.enum([
+  "barbell",
+  "dumbbell",
+  "cuff",
+  "bodyweight",
+  "band",
+  "plate",
+]);
 
 const exerciseRowSchema = z.object({
   id: z.string().uuid(),

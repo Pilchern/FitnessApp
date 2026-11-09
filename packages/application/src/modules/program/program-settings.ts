@@ -16,6 +16,8 @@ export type ProgramSettings = {
   /** Heaviest dumbbell owned: suggested DB loads stop here. */
   dumbbellMaxLb: number;
   cuffStepLb: number;
+  /** Leg developer (seated extension, prone curl) plate step. */
+  legDeveloperStepLb: number;
   progressionMinRir: number;
   sleepMinHoursForIncrease: number;
   sleepAverageNights: number;
@@ -141,6 +143,7 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   dumbbellCoarseStepLb: 5,
   dumbbellMaxLb: 52.5,
   cuffStepLb: 2.5,
+  legDeveloperStepLb: 2.5,
   progressionMinRir: 2,
   sleepMinHoursForIncrease: 6.5,
   sleepAverageNights: 3,

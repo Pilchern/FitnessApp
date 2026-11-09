@@ -392,6 +392,30 @@ export function groupSetsByExercise(
 }
 
 /** Sets to persist: ticked ones if any were ticked, otherwise everything. */
+/**
+ * True when a set still needs its RIR before it can be ticked or saved: a
+ * working, rep-based set (not a warm-up, timed, isometric or distance set)
+ * with the field blank. A program row whose RIR target is null (plyos,
+ * Nordics) is exempt.
+ */
+export function rirMissing(
+  set: Pick<
+    StrengthSetFormValue,
+    | "exerciseName"
+    | "rir"
+    | "isWarmup"
+    | "durationSeconds"
+    | "distanceMeters"
+    | "peakForceNewtons"
+  >,
+  meta?: { rirTarget?: number | null } | null,
+) {
+  if (set.isWarmup || isForceSet(set) || isTimedSet(set)) return false;
+  if (set.distanceMeters.trim() !== "") return false;
+  if (meta?.rirTarget === null) return false;
+  return set.rir.trim() === "";
+}
+
 export function selectSetsToSave<T extends { done?: boolean }>(sets: T[]) {
   return sets.some((set) => set.done) ? sets.filter((set) => set.done) : sets;
 }
@@ -594,7 +618,8 @@ export function planExerciseSets(
       setNumber: rows.length + 1,
       reps: !timed && ex.targetReps != null ? String(ex.targetReps) : "",
       weight,
-      rir: !timed && ex.targetRir != null ? String(ex.targetRir) : "",
+      // Never prefilled: RIR is what the set felt like, entered after it.
+      rir: "",
       isWarmup: false,
       durationSeconds: seconds,
       distanceMeters:

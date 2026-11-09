@@ -192,6 +192,8 @@ export type AdherenceSnapshot = {
   surplusBanner: boolean;
   waistDue: boolean;
   lastWaistOn: string | null;
+  /** No ACL-RSI score in the last 30 days. */
+  aclRsiDue: boolean;
 };
 
 export type WeeklyReviewData = {

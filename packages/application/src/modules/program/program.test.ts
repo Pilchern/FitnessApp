@@ -47,7 +47,11 @@ import {
   testProgram,
   withGate,
 } from "./program-fixtures.test-helpers";
-import { buildLiftLoggerPlan, lastSetsByExercise } from "./program-logger-plan";
+import {
+  buildLiftLoggerPlan,
+  lastSetsByExercise,
+  priorBlockSetsByExercise,
+} from "./program-logger-plan";
 
 const ANCHOR = "2026-08-17";
 
@@ -407,6 +411,51 @@ describe("progression engine", () => {
         lastRepsMax: 12,
       }),
     ).toMatchObject({ load: 110, kind: "new_block" });
+  });
+
+  it("starts a new block from the prior block's best working load, not the last (deload) session", () => {
+    const newScheme = {
+      setsMin: 4,
+      setsMax: 4,
+      repsMin: 6,
+      repsMax: 8,
+      rirTarget: 2,
+    };
+    const suggestion = suggestLoad({
+      ...base,
+      scheme: newScheme,
+      // Deload week: lighter.
+      lastSets: sets(85, [10, 10]),
+      lastRepsMax: 12,
+      priorBlockSets: [
+        ...sets(95, [12, 12, 12]),
+        ...sets(100, [10, 10, 9]),
+        { weight: 135, reps: 3, rir: 5, isWarmup: true },
+      ],
+    });
+    expect(suggestion).toMatchObject({ load: 110, kind: "new_block" });
+    expect(suggestion.reason).toContain("last 2 weeks of the last block");
+    // No prior-block sets: the last session's top load, as before.
+    expect(
+      suggestLoad({
+        ...base,
+        scheme: newScheme,
+        lastSets: sets(85, [10, 10]),
+        lastRepsMax: 12,
+        priorBlockSets: [],
+      }),
+    ).toMatchObject({ load: 90, kind: "new_block" });
+  });
+
+  it("steps leg-developer plate loads by the setting", () => {
+    expect(nextLoad(20, "plate")).toBe(22.5);
+    expect(
+      nextLoad(20, "plate", {
+        ...DEFAULT_PROGRAM_SETTINGS,
+        legDeveloperStepLb: 5,
+      }),
+    ).toBe(25);
+    expect(roundDownToLoadStep(23.9, "plate")).toBe(22.5);
   });
 
   it("counts rep-range steps on the program's ladder", () => {
@@ -1230,5 +1279,47 @@ describe("Phase A: milestones with a return-to-sport block", () => {
     expect(programMilestones(p).find((m) => m.week === 39)?.date).toBe(
       "2027-05-17",
     );
+  });
+});
+
+describe("prior block sets for a new block's start", () => {
+  const lift = (sessionDate: string, weight: number) =>
+    ({
+      sessionDate,
+      sets: [
+        {
+          exerciseName: "Barbell Pin Squat (to 90°)",
+          weight,
+          reps: 10,
+          rir: 2,
+          isWarmup: false,
+        },
+      ],
+    }) as unknown as StrengthSession;
+
+  it("takes the last 2 weeks of the prior block, skipping the deload", () => {
+    const sessions = [
+      lift("2026-10-26", 120), // week 10: too early
+      lift("2026-11-04", 135), // week 11
+      lift("2026-11-13", 130), // week 12
+      lift("2026-11-18", 95), // week 13 deload
+    ];
+    // Week 14 (Block 2) starts 2026-11-23.
+    const prior = priorBlockSetsByExercise(
+      testProgram(),
+      "2026-11-23",
+      sessions,
+    );
+    const pin = prior["barbell pin squat (to 90°)"];
+    expect(pin?.sets.map((s) => s.weight)).toEqual([135, 130]);
+    expect(pin?.sessionDate).toBe("2026-11-13");
+  });
+
+  it("is empty in the first block", () => {
+    expect(
+      priorBlockSetsByExercise(testProgram(), "2026-10-20", [
+        lift("2026-10-19", 100),
+      ]),
+    ).toEqual({});
   });
 });
