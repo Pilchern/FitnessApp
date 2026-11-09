@@ -4,6 +4,8 @@ import { useActionState, useState } from "react";
 import {
   craneSummary,
   EFFUSION_GRADES,
+  lsiPct,
+  quadLsiDenominator,
   type KneeTestEntry,
 } from "@fitness-app/application";
 import { AuthSubmitButton } from "@/components/shared/auth-submit-button";
@@ -84,9 +86,12 @@ const HOPS = [
 export function KneeTestForm({
   today,
   spreadLimitN,
+  rightBests,
 }: {
   today: string;
   spreadLimitN: number;
+  /** Right-leg crane best per earlier test date, oldest first (90° only). */
+  rightBests: { date: string; right: number }[];
 }) {
   const [state, action] = useActionState<KneeActionState, FormData>(
     saveKneeTestAction,
@@ -111,6 +116,23 @@ export function KneeTestForm({
   const entry = toEntry(values);
   const crane = craneSummary(entry.quad, entry.ham, spreadLimitN);
   const angle = entry.angleDeg;
+  // At 90° the LSI uses the same denominator rule as the saved tests.
+  const todayRight = crane.quad.R.best;
+  const quadBasis =
+    angle === 90
+      ? quadLsiDenominator(
+          [
+            ...rightBests
+              .filter((r) => r.date < entry.testDate)
+              .map((r) => r.right),
+            ...(todayRight != null ? [todayRight] : []),
+          ],
+          todayRight,
+        )
+      : null;
+  const quadLsi = quadBasis
+    ? lsiPct(crane.quad.L.best, quadBasis.denominator)
+    : crane.lsi;
 
   /** One leg's row of pulls: "R" then three boxes. */
   const pullRow = (
@@ -229,7 +251,13 @@ export function KneeTestForm({
         {crane.quad.L.best != null || crane.quad.R.best != null ? (
           <div className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-ink">
             <p className="font-semibold">
-              Quad LSI {angle}°: {crane.lsi != null ? `${crane.lsi}%` : "–"}
+              Quad LSI {angle}°: {quadLsi != null ? `${quadLsi}%` : "–"}
+              {quadLsi != null && quadBasis?.basis === "right_best" ? (
+                <span className="font-normal text-ink/60">
+                  {" "}
+                  vs R best {quadBasis.denominator} N
+                </span>
+              ) : null}
             </p>
             <ul className="mt-1 space-y-0.5 text-xs text-ink/75">
               {sideLine("L")}

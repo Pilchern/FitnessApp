@@ -5,6 +5,7 @@ import {
   type GateCriterion,
   latestValue,
   lsiPct,
+  RIGHT_SETTLED_SPREAD_N,
   type SidePair,
 } from "@fitness-app/application";
 import type { KneeTest } from "@fitness-app/domain";
@@ -210,6 +211,21 @@ export async function KneeScreen() {
             </span>{" "}
             L {l.left ?? "–"} / R {l.right ?? "–"} N · {formatShortDate(l.date)}{" "}
             ({l.source.replace(/_/g, " ")})
+            {l.lsi != null ? (
+              <span className="block text-xs text-ink/60">
+                {l.basis === "right_best"
+                  ? `Divided by right best to date, ${l.denominator} N: the right's last 3 tests spread ${RIGHT_SETTLED_SPREAD_N} N or more.`
+                  : `Divided by same-day right, ${l.denominator} N.`}
+              </span>
+            ) : null}
+          </p>
+        ) : null}
+        {l?.legSessionDayBefore ? (
+          <p
+            role="alert"
+            className="mt-2 rounded-xl bg-ember/10 px-3 py-2 text-sm font-semibold text-ember"
+          >
+            Leg session yesterday: strength numbers may read low.
           </p>
         ) : null}
         {data.quadDrop ? (
@@ -223,7 +239,9 @@ export async function KneeScreen() {
         ) : null}
         <LsiTrend points={data.trend} targets={data.lsiTargets} />
         <p className="mt-1 text-xs text-ink/50">
-          Best of 3 per side, both apps. Lines: {data.lsiTargets.join(" / ")}%.
+          Best of 3 per side, both apps. R is the right&apos;s best to date
+          until its last 3 tests spread under {RIGHT_SETTLED_SPREAD_N} N, then
+          that day&apos;s. Lines: {data.lsiTargets.join(" / ")}%.
         </p>
       </section>
 
@@ -247,7 +265,11 @@ export async function KneeScreen() {
       <section className={panel}>
         <h2 className="font-display text-lg text-ink">New test</h2>
         <div className="mt-3">
-          <KneeTestForm today={data.today} spreadLimitN={data.spreadLimitN} />
+          <KneeTestForm
+            today={data.today}
+            spreadLimitN={data.spreadLimitN}
+            rightBests={data.rightBests}
+          />
         </div>
       </section>
 

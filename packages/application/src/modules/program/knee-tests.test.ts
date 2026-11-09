@@ -7,7 +7,10 @@ import {
   latestHq,
   latestQuadLsi,
   leftQuadDrop,
+  legSessionDayBefore,
   lsiPct,
+  quadLsiByDate,
+  quadLsiDenominator,
   quadLsiTrend,
 } from "./knee-tests";
 import {
@@ -105,6 +108,8 @@ describe("LSI and H:Q maths (same rules as the PT Tracker)", () => {
       right: 480,
       lsi: 66.7,
       source: "pt_tracker",
+      denominator: 480,
+      basis: "right_best",
     });
     expect(latestQuadLsi(tests, sessions, 60)).toMatchObject({
       lsi: 62.5,
@@ -147,9 +152,90 @@ describe("LSI and H:Q maths (same rules as the PT Tracker)", () => {
       ...crane("2026-10-25", [400], []),
     ];
     expect(quadLsiTrend(tests)).toEqual([
-      { date: "2026-10-11", lsi: 60.9 },
-      { date: "2026-10-18", lsi: 66.7 },
+      { date: "2026-10-11", lsi: 60.9, denominator: 460, basis: "right_best" },
+      { date: "2026-10-18", lsi: 66.7, denominator: 480, basis: "right_best" },
+      // No right pull that day: the right's best to date still divides.
+      { date: "2026-10-25", lsi: 83.3, denominator: 480, basis: "right_best" },
     ]);
+  });
+});
+
+describe("quad LSI denominator: right best until the right settles", () => {
+  it("uses the right's best to date while the last 3 right days spread 65 N or more", () => {
+    const tests = [
+      ...crane("2026-10-04", [200], [600]),
+      ...crane("2026-10-11", [300], [560]),
+      ...crane("2026-10-18", [450], [460]),
+    ];
+    // Right spread 600 - 460 = 140 N: not settled, so 450 / 600.
+    expect(quadLsiByDate(tests).at(-1)).toMatchObject({
+      lsi: 75,
+      denominator: 600,
+      basis: "right_best",
+    });
+  });
+
+  it("switches to the same-day right once the last 3 spread under 65 N", () => {
+    const tests = [
+      ...crane("2026-10-04", [200], [600]),
+      ...crane("2026-10-11", [300], [500]),
+      ...crane("2026-10-18", [400], [520]),
+      ...crane("2026-10-25", [450], [540]),
+    ];
+    // Last 3 right days 500 / 520 / 540: spread 40 N, settled.
+    expect(quadLsiByDate(tests).at(-1)).toMatchObject({
+      lsi: 83.3,
+      denominator: 540,
+      basis: "same_day",
+    });
+  });
+
+  it("needs 3 right test days and a right pull that day to settle", () => {
+    expect(quadLsiDenominator([500, 510], 510)).toEqual({
+      denominator: 510,
+      basis: "right_best",
+    });
+    expect(quadLsiDenominator([500, 510, 520], null)).toEqual({
+      denominator: 520,
+      basis: "right_best",
+    });
+    expect(quadLsiDenominator([], null)).toEqual({
+      denominator: null,
+      basis: "right_best",
+    });
+  });
+});
+
+describe("leg session the day before a crane test", () => {
+  const legs = new Set(["petersen step-up"]);
+  const session = (sessionDate: string, exerciseName: string) =>
+    ({ sessionDate, sets: [{ exerciseName }] }) as unknown as Pick<
+      StrengthSession,
+      "sessionDate" | "sets"
+    >;
+
+  it("flags a leg exercise logged the calendar day before", () => {
+    expect(
+      legSessionDayBefore(
+        [session("2026-11-07", "Petersen Step-Up")],
+        legs,
+        "2026-11-08",
+      ),
+    ).toBe(true);
+    expect(legSessionDayBefore([], legs, "2026-11-08")).toBe(false);
+  });
+
+  it("ignores upper-body only days and other dates", () => {
+    expect(
+      legSessionDayBefore(
+        [
+          session("2026-11-07", "Chin-Up"),
+          session("2026-11-06", "Petersen Step-Up"),
+        ],
+        legs,
+        "2026-11-08",
+      ),
+    ).toBe(false);
   });
 });
 
