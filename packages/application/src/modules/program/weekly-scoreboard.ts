@@ -1,5 +1,5 @@
 import type { IsoDate, KneeTest } from "@fitness-app/domain";
-import { bestBySide, lsiPct } from "./knee-tests";
+import { quadLsiByDate, type LsiBasis } from "./knee-tests";
 
 /**
  * The Sunday scoreboard: one row per program week. Every cell is null when
@@ -18,6 +18,8 @@ export type ScoreboardRow = ScoreboardWeek & {
   quadPeakRight: number | null;
   quadPeakUnit: string | null;
   quadLsi: number | null;
+  /** What the LSI divided by: same-day right or the right's best to date. */
+  quadLsiBasis: LsiBasis | null;
   /** Last tape reading in the week, in. */
   thighLIn: number | null;
   thighRIn: number | null;
@@ -72,7 +74,7 @@ export function weeklyScoreboard(input: {
   /** Hand-typed weekly check-ins (walking asymmetry fallback). */
   checkins: { weekStart: IsoDate; walkingAsymmetryPct: number | null }[];
 }): ScoreboardRow[] {
-  const quad = bestBySide(input.kneeTests, "quad_iso_90");
+  const quad = quadLsiByDate(input.kneeTests);
   const quadUnit =
     input.kneeTests.find((t) => t.testType === "quad_iso_90")?.unit ?? null;
   const within = (d: IsoDate, w: ScoreboardWeek) => d >= w.start && d <= w.end;
@@ -114,7 +116,8 @@ export function weeklyScoreboard(input: {
       quadPeakLeft: test?.left ?? null,
       quadPeakRight: test?.right ?? null,
       quadPeakUnit: test ? quadUnit : null,
-      quadLsi: test ? lsiPct(test.left, test.right) : null,
+      quadLsi: test?.lsi ?? null,
+      quadLsiBasis: test && test.lsi != null ? test.basis : null,
       thighLIn: lastIn(
         input.body,
         (m) => m.measuredOn,

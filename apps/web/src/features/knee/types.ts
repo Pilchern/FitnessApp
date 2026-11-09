@@ -1,4 +1,4 @@
-import type { GateBoard } from "@fitness-app/application";
+import type { GateBoard, LsiBasis } from "@fitness-app/application";
 import type { KneeTest } from "@fitness-app/domain";
 
 export type KneeActionState = {
@@ -13,14 +13,26 @@ export type KneePageData = {
   spreadLimitN: number;
   lsiTargets: number[];
   /** Quad LSI at 90° per crane test date (both apps), oldest first. */
-  trend: { date: string; lsi: number }[];
+  trend: {
+    date: string;
+    lsi: number;
+    denominator: number | null;
+    basis: LsiBasis;
+  }[];
   latest: {
     date: string;
     left: number | null;
     right: number | null;
     lsi: number | null;
+    /** The right value the LSI divided by. */
+    denominator: number | null;
+    basis: LsiBasis;
+    /** A leg exercise was logged the calendar day before the test. */
+    legSessionDayBefore: boolean;
     source: string;
   } | null;
+  /** Right-leg best per crane test date, oldest first (form preview). */
+  rightBests: { date: string; right: number }[];
   quadDrop: { dropN: number; previousLeft: number; left: number } | null;
   /** This app's recent entries: date and value count, newest first. */
   recent: { date: string; count: number }[];

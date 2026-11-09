@@ -1,6 +1,6 @@
 import type { IsoDate, KneeTest, StrengthSession } from "@fitness-app/domain";
-import { daysBetween } from "./program-calendar";
-import { exerciseProgress } from "./program-progression";
+import { addDays, daysBetween } from "./program-calendar";
+import { exerciseProgress, programExerciseKey } from "./program-progression";
 
 /**
  * Knee test maths over the rows the PT Tracker syncs into knee_tests, plus
@@ -24,11 +24,34 @@ export type SidePair = {
   right: number | null;
 };
 
+/**
+ * What the quad LSI divides by. right_best = the right leg's best crane
+ * reading to date, used while the right side is still unsettled;
+ * same_day = that day's right best.
+ */
+export type LsiBasis = "same_day" | "right_best";
+
 export type LsiReading = SidePair & {
   lsi: number | null;
   /** pt_tracker = the weekly crane test; logged = sets logged in this app. */
   source: "pt_tracker" | "logged";
+  /** The right value the LSI used; null when it had none. */
+  denominator?: number | null;
+  basis?: LsiBasis;
 };
+
+export type QuadLsiPoint = SidePair & {
+  lsi: number | null;
+  denominator: number | null;
+  basis: LsiBasis;
+};
+
+/**
+ * The right leg settles once its last 3 test-day bests sit within this
+ * spread (newtons); until then a low right day would inflate the LSI.
+ */
+export const RIGHT_SETTLED_SPREAD_N = 65;
+export const RIGHT_SETTLED_TEST_DAYS = 3;
 
 export type QuadDrop = {
   date: IsoDate;
@@ -88,7 +111,13 @@ export function loggedIsoPairs(
 }
 
 function withLsi(pair: SidePair, source: LsiReading["source"]): LsiReading {
-  return { ...pair, lsi: lsiPct(pair.left, pair.right), source };
+  return {
+    ...pair,
+    lsi: lsiPct(pair.left, pair.right),
+    source,
+    denominator: pair.right,
+    basis: "same_day",
+  };
 }
 
 /**
@@ -103,9 +132,14 @@ export function latestQuadLsi(
 ): LsiReading | null {
   const both = (p: SidePair) =>
     p.left != null && p.right != null && (!upTo || p.date <= upTo);
-  const tracker = bestBySide(tests, `quad_iso_${angle}`)
-    .filter(both)
-    .map((p) => withLsi(p, "pt_tracker"));
+  const tracker =
+    angle === 90
+      ? quadLsiByDate(tests)
+          .filter((p) => p.lsi != null && (!upTo || p.date <= upTo))
+          .map((p): LsiReading => ({ ...p, source: "pt_tracker" }))
+      : bestBySide(tests, `quad_iso_${angle}`)
+          .filter(both)
+          .map((p) => withLsi(p, "pt_tracker"));
   const logged = loggedIsoPairs(sessions, LOGGED_ISO_EXERCISES[angle])
     .filter(both)
     .map((p) => withLsi(p, "logged"));
@@ -154,11 +188,69 @@ export function latestValue(
   return last ? { date: last.testDate, value: last.value } : null;
 }
 
+/**
+ * The quad LSI denominator for one test day. `rightHistory` is the right
+ * leg's best per test day, oldest first, up to and including this day.
+ * Same-day right once the last 3 days spread under 65 N, else the best
+ * right reading to date.
+ */
+export function quadLsiDenominator(
+  rightHistory: number[],
+  sameDayRight: number | null,
+): { denominator: number | null; basis: LsiBasis } {
+  const recent = rightHistory.slice(-RIGHT_SETTLED_TEST_DAYS);
+  const settled =
+    sameDayRight != null &&
+    recent.length >= RIGHT_SETTLED_TEST_DAYS &&
+    Math.max(...recent) - Math.min(...recent) < RIGHT_SETTLED_SPREAD_N;
+  if (settled) return { denominator: sameDayRight, basis: "same_day" };
+  return {
+    denominator: rightHistory.length > 0 ? Math.max(...rightHistory) : null,
+    basis: "right_best",
+  };
+}
+
+/**
+ * True when a strength session the calendar day before `testDate` logged a
+ * leg exercise: a crane test the morning after reads low. `legNames` holds
+ * programExerciseKey() names (legExerciseIndex keys).
+ */
+export function legSessionDayBefore(
+  sessions: Pick<StrengthSession, "sessionDate" | "sets">[],
+  legNames: { has(key: string): boolean },
+  testDate: IsoDate,
+): boolean {
+  const dayBefore = addDays(testDate, -1);
+  return sessions.some(
+    (s) =>
+      s.sessionDate === dayBefore &&
+      s.sets.some((set) => legNames.has(programExerciseKey(set.exerciseName))),
+  );
+}
+
+/** Crane quad LSI per test date with the denominator rule, oldest first. */
+export function quadLsiByDate(
+  tests: KneeTest[],
+  testType: string = "quad_iso_90",
+): QuadLsiPoint[] {
+  const rights: number[] = [];
+  return bestBySide(tests, testType).map((p) => {
+    if (p.right != null) rights.push(p.right);
+    const { denominator, basis } = quadLsiDenominator(rights, p.right);
+    return { ...p, lsi: lsiPct(p.left, denominator), denominator, basis };
+  });
+}
+
 /** Crane-test quad LSI at 90° per test date, oldest first. */
 export function quadLsiTrend(tests: KneeTest[]) {
-  return bestBySide(tests, "quad_iso_90")
-    .map((p) => ({ date: p.date, lsi: lsiPct(p.left, p.right) }))
-    .filter((p): p is { date: IsoDate; lsi: number } => p.lsi != null);
+  return quadLsiByDate(tests)
+    .filter((p): p is QuadLsiPoint & { lsi: number } => p.lsi != null)
+    .map((p) => ({
+      date: p.date,
+      lsi: p.lsi,
+      denominator: p.denominator,
+      basis: p.basis,
+    }));
 }
 
 /**

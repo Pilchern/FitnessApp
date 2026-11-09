@@ -121,7 +121,9 @@ function MarkerTrend({
 function lsiValue(r: WeeklyReviewData["knee"]["quad90"]) {
   if (!r) return "–";
   const src = r.source === "pt_tracker" ? "crane" : "logged";
-  return `${fmt(r.lsi, "%")} (L ${r.left} / R ${r.right} N, ${formatShortDate(r.date)}, ${src})`;
+  const right =
+    r.basis === "right_best" ? `R best ${r.denominator}` : `R ${r.right}`;
+  return `${fmt(r.lsi, "%")} (L ${r.left} / ${right} N, ${formatShortDate(r.date)}, ${src})`;
 }
 
 /** The gate numbers from the PT Tracker sync, against the LSI target lines. */

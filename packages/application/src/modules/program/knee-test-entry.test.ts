@@ -75,7 +75,9 @@ describe("kneeTestEntryRows", () => {
       }),
     );
     const tests = rows.map((r) => ({ ...r, source: "fitness_app" }));
-    expect(quadLsiTrend(tests)).toEqual([{ date: "2026-11-08", lsi: 75 }]);
+    expect(quadLsiTrend(tests)).toMatchObject([
+      { date: "2026-11-08", lsi: 75 },
+    ]);
   });
 
   it("uses the angle in the type and only replaces sections with values", () => {

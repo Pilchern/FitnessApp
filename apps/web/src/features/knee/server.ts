@@ -2,13 +2,14 @@ import "server-only";
 
 import {
   addDays,
-  bestBySide,
   gateBoards,
   getZonedDate,
   KNEE_TEST_SOURCE,
   leftQuadDrop,
-  lsiPct,
+  legExerciseIndex,
+  legSessionDayBefore,
   programSettingsFromRows,
+  quadLsiByDate,
   quadLsiTrend,
 } from "@fitness-app/application";
 import { requireCurrentUser } from "@/lib/server/auth";
@@ -26,7 +27,7 @@ export async function getKneePageData(): Promise<KneePageData> {
   const today = getZonedDate(profile?.timezone || "UTC")
     .toISOString()
     .slice(0, 10);
-  const { programService } = await createCoreServices();
+  const { programService, strengthService } = await createCoreServices();
   const [settingRows, tests, program, checks] = await Promise.all([
     programService.listSettings(user.id),
     programService.listKneeTests(
@@ -47,8 +48,20 @@ export async function getKneePageData(): Promise<KneePageData> {
     walkingAsymmetryTargetPct: settings.walkingAsymmetryTargetPct,
   });
 
-  const quad = bestBySide(tests, "quad_iso_90");
+  const quad = quadLsiByDate(tests);
   const last = quad[quad.length - 1] ?? null;
+  const legNames = legExerciseIndex(
+    (program?.sessions ?? [])
+      .flatMap((s) => s.exercises)
+      .filter((e) => e.blockPart === "legs"),
+  );
+  const sessionsBefore = last
+    ? await strengthService.listByDateRange({
+        userId: user.id,
+        startDate: addDays(last.date, -1),
+        endDate: addDays(last.date, -1),
+      })
+    : [];
   const lastSources = last
     ? [
         ...new Set(
@@ -80,13 +93,23 @@ export async function getKneePageData(): Promise<KneePageData> {
           date: last.date,
           left: last.left,
           right: last.right,
-          lsi: lsiPct(last.left, last.right),
+          lsi: last.lsi,
+          denominator: last.denominator,
+          basis: last.basis,
+          legSessionDayBefore: legSessionDayBefore(
+            sessionsBefore,
+            legNames,
+            last.date,
+          ),
           source: lastSources.join(" + "),
         }
       : null,
     quadDrop: drop
       ? { dropN: drop.dropN, previousLeft: drop.previousLeft, left: drop.left }
       : null,
+    rightBests: quad
+      .filter((p): p is typeof p & { right: number } => p.right != null)
+      .map((p) => ({ date: p.date, right: p.right })),
     recent: [...mine.entries()]
       .map(([date, count]) => ({ date, count }))
       .sort((a, b) => b.date.localeCompare(a.date))

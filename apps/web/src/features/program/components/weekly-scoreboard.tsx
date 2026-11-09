@@ -64,7 +64,12 @@ export function WeeklyScoreboard({ rows }: { rows: ScoreboardRow[] }) {
                     </span>
                   ) : null}
                 </td>
-                <td className="py-2 pr-3">{num(r.quadLsi, 1, "%")}</td>
+                <td className="py-2 pr-3">
+                  {num(r.quadLsi, 1, "%")}
+                  {r.quadLsiBasis === "right_best" ? (
+                    <span className="text-xs text-ink/45"> vs R best</span>
+                  ) : null}
+                </td>
                 <td className="py-2 pr-3">{pair(r.thighLIn, r.thighRIn)}</td>
                 <td className="py-2 pr-3">{num(r.waistIn, 1, " in")}</td>
                 <td className="py-2 pr-3">{num(r.stepsAvg)}</td>
@@ -77,10 +82,11 @@ export function WeeklyScoreboard({ rows }: { rows: ScoreboardRow[] }) {
       <MethodNote label="Where the numbers come from">
         Weight: mean of the week&apos;s Withings weigh-ins; Δ is vs the week
         before. Quad peak: best crane-scale trial per leg at 90° on the
-        week&apos;s last PT Tracker test; LSI = L / R. Thigh and waist: last
-        tape reading that week. Steps: Apple Health daily mean. Walking
-        asymmetry: PT Tracker, else the weekly check-in (Apple Health does not
-        sync it here).
+        week&apos;s last PT Tracker test; LSI = L / R, where R is the
+        right&apos;s best to date until its last 3 tests spread under 65 N, then
+        that day&apos;s R. Thigh and waist: last tape reading that week. Steps:
+        Apple Health daily mean. Walking asymmetry: PT Tracker, else the weekly
+        check-in (Apple Health does not sync it here).
       </MethodNote>
     </section>
   );
