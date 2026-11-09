@@ -139,7 +139,6 @@ export default async function DashboardPage() {
             latestBodyDate={data.latestBodyDate}
             weeklyWeight={data.weeklyWeight}
             vo2Max={data.activity.vo2Max}
-            proteinHit={data.proteinHit}
           />
           {data.nextDexa ? <DexaCountdown next={data.nextDexa} /> : null}
           <PeerFitnessCard peerFitness={data.peerFitness} />

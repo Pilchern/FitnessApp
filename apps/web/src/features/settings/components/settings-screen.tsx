@@ -2,7 +2,6 @@ import {
   createSupplementAction,
   deactivateSupplementAction,
   reactivateSupplementAction,
-  recomputeNutritionTargetsAction,
   updateSettingsAction,
 } from "../actions";
 import { getSettingsPageData } from "../server";
@@ -57,11 +56,7 @@ export async function SettingsScreen({ saved, error }: SettingsScreenProps) {
       ) : null}
 
       {/* Form */}
-      <SettingsForm
-        profile={data.profile}
-        action={updateSettingsAction}
-        recomputeNutritionTargetsAction={recomputeNutritionTargetsAction}
-      />
+      <SettingsForm profile={data.profile} action={updateSettingsAction} />
 
       <GatesManager gates={program.gates} today={today} />
 

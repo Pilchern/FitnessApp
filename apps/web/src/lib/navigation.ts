@@ -35,11 +35,6 @@ export const moduleNavigationItems = [
     description: "Scans, targets and the Withings offset.",
   },
   {
-    href: "/nutrition",
-    title: "Nutrition",
-    description: "Daily nutrition habits.",
-  },
-  {
     href: "/weekly-review",
     title: "Weekly review",
     description: "Score last week and set next week.",

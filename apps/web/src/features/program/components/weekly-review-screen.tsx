@@ -195,7 +195,6 @@ function KneeTestsCard({ data }: { data: WeeklyReviewData }) {
 
 export function WeeklyReviewScreen({ data }: { data: WeeklyReviewData }) {
   const a = data.adherence;
-  const n = data.nutrition;
   return (
     <div className="space-y-4 lg:space-y-6">
       <PageHeader
@@ -291,26 +290,13 @@ export function WeeklyReviewScreen({ data }: { data: WeeklyReviewData }) {
         </section>
 
         <section className={card}>
-          <h2 className="font-display text-lg text-ink">Fuel, body, sleep</h2>
+          <h2 className="font-display text-lg text-ink">Body, sleep</h2>
           {data.surplusBanner ? (
             <p className="mt-2 rounded-xl bg-ember/10 px-3 py-2 text-sm font-semibold text-ember">
               Trim the surplus. Never cut protein.
             </p>
           ) : null}
           <ul className="mt-2 divide-y divide-ink/10">
-            <Row
-              label={`Protein avg (${n.daysLogged} days logged)`}
-              value={`${fmt(n.proteinAvg, " g")} / ${fmt(n.proteinTarget, " g")}`}
-              flag={n.proteinFlag}
-            />
-            <Row
-              label="Calories avg"
-              value={`${fmt(n.caloriesAvg)} / ${fmt(n.caloriesTargetAvg)}`}
-            />
-            <Row
-              label="Creatine · 50 g by 9 AM"
-              value={`${n.creatineDays}/7 · ${n.protein50Days}/7`}
-            />
             <Row
               label="Weight, 7-day avg"
               value={`${fmt(data.weight.sevenDayAvgLb, " lb")} (${data.weight.weekOverWeekLb != null && data.weight.weekOverWeekLb > 0 ? "+" : ""}${fmt(data.weight.weekOverWeekLb)} lb)`}

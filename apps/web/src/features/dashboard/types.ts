@@ -19,12 +19,6 @@ export type HabitsToday = {
   logDate: string;
 };
 
-export type TodayNutrition = {
-  proteinHitDays: number;
-  fiberTakenDays: number;
-  totalDays: number;
-};
-
 export type DashboardData = {
   today: string;
   readiness: DailyReadiness;
@@ -46,7 +40,6 @@ export type DashboardData = {
   latestBodyDate: string | null;
   weeklyWeight: WeeklyWeightTrend;
   /** Protein-hit days over the last 7; null when nothing is logged. */
-  proteinHit: { days: number; of: number } | null;
   latestReview: WeeklyReview | null;
   topInsights: PersistedInsight[];
   trendNotes: TrendNote[];

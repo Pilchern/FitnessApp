@@ -103,7 +103,7 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 3. 7,000 steps (auto-ticked from synced Apple Health steps; the bridge is live via Health Auto Export since 2026-10-12). Ladder to 8,000 by 10/26 [stated 2026-10-12]; edit the habit name to move the threshold.
 4. Mobility 15 min (static stretching; no knee-loaded stretches while rehabbing). Guided routine in the app (`/routines/mobility`, about 14 min: neck, doorway chest, lat, cross-body shoulder, seated thoracic rotation and extension, wrists, strap hamstrings and wall calves both sides, then left-hip-flexor and right figure-4 only). Content lives in `apps/web/src/lib/routines.ts`; each habit's Guide link and the end-of-routine "Mark done" tick the habit.
 
-Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery check-in; M-F first thing in the morning, 55F, 5 min, then sunlight), wake and bed time (recovery check-in), protein hit, fiber and alcohol (nutrition log), supplements (kind = supplement).
+Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery check-in; M-F first thing in the morning, 55F, 5 min, then sunlight), wake and bed time (recovery check-in), alcohol (recovery check-in), supplements (kind = supplement).
 
 ## 7. Recovery and sleep
 
@@ -116,6 +116,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 ## 8. Nutrition
 
+- 2026-11-09: food logging removed from the app (owner request). Protein is tracked mentally; the weekly weigh-in trend is the only fuel signal the app reads. [stated]
 - Recovery mode, not a cut: small surplus above maintenance, protein holds at about 180 g/day, eat to satiety with protein priority. Actual TDEE is lower right now than pre-injury. Anchor-based meals, no calorie logging app. [stated/doc]
 - Weekday anchors: morning shake (whey + collagen + milk), 10:30 AM Greek yogurt + berries + flax + granola, psyllium husk before lunch, 2 PM lean protein + controlled carbs, post-lift whey only if dinner is more than 30-45 min out, dinner protein-centered with 2 Brazil nuts. Total about 160-185 g protein. Protein powder: Huel Black vanilla. [doc/stated]
 - Appetite note: not hungry until about noon during rehab; likely still short on protein and calories. Watch the weekly weigh-in trend (Withings) rather than logging.

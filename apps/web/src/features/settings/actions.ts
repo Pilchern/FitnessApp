@@ -5,7 +5,6 @@ import { requireCurrentUser } from "@/lib/server/auth";
 import { parseActionError } from "@/lib/server/parse-action-error";
 import { createCoreServices } from "@/lib/server/services";
 import { settingsFormSchema, supplementFormSchema } from "./form-schema";
-import type { NutritionTargets } from "@fitness-app/application";
 import type { SettingsActionState, SupplementActionState } from "./types";
 
 function buildProfilePayload(userId: string, formData: FormData) {
@@ -47,27 +46,6 @@ export async function updateSettingsAction(
     redirect("/settings?saved=true");
   } catch (error) {
     return parseActionError(error);
-  }
-}
-
-export async function recomputeNutritionTargetsAction(): Promise<{
-  error?: string;
-  targets?: NutritionTargets;
-}> {
-  try {
-    const user = await requireCurrentUser();
-    const { nutritionTargetService } = await createCoreServices();
-    // Compute only. The form fills these in; nothing is saved until the
-    // owner submits the settings form.
-    const targets = await nutritionTargetService.computeNutritionTargets(
-      user.id,
-    );
-    return { targets };
-  } catch (error) {
-    if (error instanceof Error) {
-      return { error: error.message };
-    }
-    return { error: "Something went wrong. Please try again." };
   }
 }
 

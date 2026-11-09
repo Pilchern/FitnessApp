@@ -27,7 +27,6 @@ vi.mock("@/lib/server/services", () => {
       cardioService: empty,
       recoveryService: empty,
       strengthService: empty,
-      nutritionService: empty,
       supplementLogService: empty,
       dailyActivityService: empty,
       dexaScanService: { list: async () => [] },

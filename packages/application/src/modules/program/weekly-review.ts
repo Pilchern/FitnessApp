@@ -117,79 +117,10 @@ export function executionBanner(
   );
 }
 
-export type NutritionDay = {
-  logDate: IsoDate;
-  proteinGrams: number | null;
-  calories: number | null;
-  creatineTaken: boolean | null;
-  protein50By9am: boolean | null;
-};
-
-export type NutritionWeek = {
-  daysLogged: number;
-  proteinAvg: number | null;
-  proteinTarget: number | null;
-  /** Protein average under the flag line (160 g). */
-  proteinFlag: boolean;
-  caloriesAvg: number | null;
-  /** Mean of each logged day's target: lift days use the range midpoint. */
-  caloriesTargetAvg: number | null;
-  creatineDays: number;
-  protein50Days: number;
-};
-
 function mean(values: number[]) {
   return values.length > 0
     ? values.reduce((a, b) => a + b, 0) / values.length
     : null;
-}
-
-/** Weekly averages from the fast daily entries; days without a number are skipped. */
-export function nutritionWeek(input: {
-  logs: NutritionDay[];
-  weekDates: IsoDate[];
-  isLiftDay: (date: IsoDate) => boolean;
-  proteinTarget: number | null;
-  settings?: Pick<
-    ProgramSettings,
-    | "caloriesLiftDayMin"
-    | "caloriesLiftDayMax"
-    | "caloriesRestDay"
-    | "proteinFlagBelowG"
-  >;
-}): NutritionWeek {
-  const s = input.settings ?? DEFAULT_PROGRAM_SETTINGS;
-  const week = new Set(input.weekDates);
-  const logs = input.logs.filter((l) => week.has(l.logDate));
-  const protein = logs
-    .map((l) => l.proteinGrams)
-    .filter((v): v is number => v != null);
-  const calorieDays = logs.filter((l) => l.calories != null);
-  const proteinAvg = mean(protein);
-  return {
-    daysLogged: logs.length,
-    proteinAvg: proteinAvg != null ? Math.round(proteinAvg) : null,
-    proteinTarget: input.proteinTarget,
-    proteinFlag: proteinAvg != null && proteinAvg < s.proteinFlagBelowG,
-    caloriesAvg:
-      calorieDays.length > 0
-        ? Math.round(mean(calorieDays.map((l) => l.calories as number)) ?? 0)
-        : null,
-    caloriesTargetAvg:
-      calorieDays.length > 0
-        ? Math.round(
-            mean(
-              calorieDays.map((l) =>
-                input.isLiftDay(l.logDate)
-                  ? (s.caloriesLiftDayMin + s.caloriesLiftDayMax) / 2
-                  : s.caloriesRestDay,
-              ),
-            ) ?? 0,
-          )
-        : null,
-    creatineDays: logs.filter((l) => l.creatineTaken === true).length,
-    protein50Days: logs.filter((l) => l.protein50By9am === true).length,
-  };
 }
 
 export type SleepWeek = {
@@ -342,7 +273,6 @@ export type WeeklySummaryInput = {
   readiness: ReadinessCounts;
   lifts: LiftWeekProgress[];
   quadSets: { done: number; min: number; max: number };
-  nutrition: NutritionWeek;
   weight: { sevenDayAvgLb: number | null; weekOverWeekLb: number | null };
   sleep: SleepWeek;
   quadLsiPct: number | null;
@@ -384,8 +314,7 @@ export function weeklySummaryText(r: WeeklySummaryInput): string {
     `- Hard quad sets ${r.quadSets.done} (target ${r.quadSets.min}–${r.quadSets.max})`,
     ...r.lifts.map((l) => `- ${liftLine(l)}`),
     "",
-    "Fuel, body, sleep",
-    `- Protein avg ${fmt(r.nutrition.proteinAvg, " g")} (target ${fmt(r.nutrition.proteinTarget, " g")})${r.nutrition.proteinFlag ? " LOW" : ""}, calories avg ${fmt(r.nutrition.caloriesAvg)} (target ${fmt(r.nutrition.caloriesTargetAvg)}), creatine ${r.nutrition.creatineDays}/7, 50 g by 9 AM ${r.nutrition.protein50Days}/7`,
+    "Body, sleep",
     `- Weight 7-day avg ${fmt(r.weight.sevenDayAvgLb, " lb")} (${signed(r.weight.weekOverWeekLb)} lb vs last week)`,
     `- Sleep avg ${fmt(r.sleep.avgHours, " h")} over ${r.sleep.nights} nights${r.sleep.flag ? " LOW" : ""}`,
     "",

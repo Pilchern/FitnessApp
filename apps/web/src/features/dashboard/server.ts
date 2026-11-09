@@ -44,7 +44,7 @@ import {
   readinessCall,
   summarizeDailyActivity,
 } from "./helpers";
-import type { DashboardData, StrainSleep, TodayNutrition } from "./types";
+import type { DashboardData, StrainSleep } from "./types";
 
 function settledOrNull<T>(result: PromiseSettledResult<T>): T | null {
   return result.status === "fulfilled" ? result.value : null;
@@ -58,7 +58,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     recoveryService,
     strengthService,
     weeklyReviewService,
-    nutritionService,
     trainingTemplateService,
     supplementService,
     supplementLogService,
@@ -87,7 +86,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     recentBodyResult,
     recentReviewsResult,
     insightDataResult,
-    nutritionResult,
     strengthSessionsResult,
     cardioLast8WeeksResult,
     strengthTemplatesResult,
@@ -116,11 +114,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     }),
     weeklyReviewService.listRecent(user.id, 1),
     getActiveInsights(),
-    nutritionService.listByDateRange({
-      userId: user.id,
-      startDate: daysAgo(6),
-      endDate: today,
-    }),
     strengthService.listByDateRange({
       userId: user.id,
       startDate: daysAgo(90),
@@ -165,7 +158,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const recentBody = settledOrNull(recentBodyResult) ?? [];
   const latestReview = (settledOrNull(recentReviewsResult) ?? [])[0] ?? null;
   const insightData = settledOrNull(insightDataResult);
-  const nutritionLogs = settledOrNull(nutritionResult) ?? [];
   const strengthSessions = settledOrNull(strengthSessionsResult) ?? [];
   const cardioLast8Weeks = settledOrNull(cardioLast8WeeksResult) ?? [];
   const habitItems = (settledOrNull(habitDefsResult) ?? []).filter(
@@ -180,17 +172,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     ...(settledOrNull(strengthTemplatesResult) ?? []),
     ...(settledOrNull(cardioTemplatesResult) ?? []),
   ];
-
-  const todayNutrition: TodayNutrition | null =
-    nutritionLogs.length === 0
-      ? null
-      : {
-          proteinHitDays: nutritionLogs.filter((l) => l.proteinHit === true)
-            .length,
-          fiberTakenDays: nutritionLogs.filter((l) => l.fiberTaken === true)
-            .length,
-          totalDays: nutritionLogs.length,
-        };
 
   const bodyMetricSummary = buildBodyMetricSummary(recentBody);
   const programSettings = programSettingsFromRows(
@@ -249,21 +230,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     sleepTargetHours: SLEEP_TARGET_HOURS,
     trimpByDate: trimpByDate ?? undefined,
     liftDates: strengthSessions.map((s) => s.sessionDate),
-    nutrition: nutritionLogs.map((n) => ({
-      date: n.logDate,
-      calories: n.calories ?? null,
-      proteinGrams: n.proteinGrams ?? null,
-      alcoholCount: n.alcoholCount,
-    })),
-    fuelTargets: {
-      proteinGrams: profile?.dailyProteinGramsTarget ?? null,
-      caloriesLiftDay: Math.round(
-        (programSettings.caloriesLiftDayMin +
-          programSettings.caloriesLiftDayMax) /
-          2,
-      ),
-      caloriesRestDay: programSettings.caloriesRestDay,
-    },
     kneeChecks: (settledOrNull(kneeChecksResult) ?? []).map(
       ({ date, ...check }) => ({ date, check }),
     ),
@@ -310,9 +276,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     nextDexa,
     latestBodyDate,
     weeklyWeight: buildWeeklyWeightTrend(recentBody, today),
-    proteinHit: todayNutrition
-      ? { days: todayNutrition.proteinHitDays, of: todayNutrition.totalDays }
-      : null,
     latestReview,
     topInsights: (insightData?.topInsights ?? []).slice(0, 2),
     trendNotes,
