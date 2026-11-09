@@ -8,10 +8,12 @@ import {
   groupSetsByExercise,
   isTimedSet,
   parseStrengthDraft,
+  planExerciseSets,
   programLinkOnEdit,
   readyToAddLoad,
   renumberSets,
   repRangeTop,
+  rirMissing,
   selectSetsToSave,
   shiftIsoDate,
   showsTimedWeight,
@@ -442,5 +444,52 @@ describe("rep targets", () => {
     expect(templateRepTop(15, "last 2-3 reps hard")).toBe(15);
     expect(templateRepTop(10, null)).toBe(10);
     expect(templateRepTop(null, "8-12")).toBeNull();
+  });
+});
+
+describe("RIR is entered, never prefilled", () => {
+  const blank = {
+    exerciseName: "Barbell Bench Press",
+    rir: "",
+    isWarmup: false,
+    durationSeconds: "",
+    distanceMeters: "",
+  };
+
+  it("leaves RIR blank on program rows even with a target", () => {
+    const rows = planExerciseSets(
+      {
+        exerciseName: "Barbell Bench Press",
+        exerciseOrder: 0,
+        targetSets: 3,
+        targetReps: 10,
+        targetWeight: 135,
+        targetRir: 2,
+        notes: null,
+        program: true,
+        measure: "reps",
+        sideMode: "bilateral",
+      },
+      undefined,
+    );
+    expect(rows.map((r) => r.rir)).toEqual(["", "", ""]);
+  });
+
+  it("needs RIR on a working rep set before it is ticked or saved", () => {
+    expect(rirMissing(blank)).toBe(true);
+    expect(rirMissing({ ...blank, rir: "2" })).toBe(false);
+    expect(rirMissing({ ...blank, rir: "0" })).toBe(false);
+  });
+
+  it("skips warm-ups, timed, isometric and no-RIR program rows", () => {
+    expect(rirMissing({ ...blank, isWarmup: true })).toBe(false);
+    expect(rirMissing({ ...blank, durationSeconds: "30" })).toBe(false);
+    expect(rirMissing({ ...blank, peakForceNewtons: "" })).toBe(false);
+    expect(rirMissing({ ...blank, distanceMeters: "20" })).toBe(false);
+    // Plyos and Nordics: the program sets no RIR target.
+    expect(rirMissing(blank, { rirTarget: null })).toBe(false);
+    expect(rirMissing(blank, { rirTarget: 2 })).toBe(true);
+    // An older draft without the field still asks for RIR.
+    expect(rirMissing(blank, {})).toBe(true);
   });
 });

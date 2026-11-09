@@ -13,6 +13,7 @@ import {
   kneeOffStreak,
   lastSetsByExercise,
   leftQuadDrop,
+  priorBlockSetsByExercise,
   legExerciseIndex,
   programMilestones,
   programWeekDates,
@@ -29,6 +30,7 @@ import {
   weeklyHardLegSets,
   type DatedKneeCheck,
   type DayPlan,
+  type PlannedExercise,
   type ProgramSettings,
   type QuadDrop,
   type UpperTemplateExercise,
@@ -151,7 +153,7 @@ function sessionViews(
       madeUpOn: madeUpOn(ctx, s.session, plan.date),
       rideMakeUpPending: rideMakeUpPending(ctx, s.session, plan.date),
       makeUp: null,
-      exercises: s.exercises.map((p) => ({
+      exercises: s.exercises.filter(visibleRow).map((p) => ({
         name: p.name,
         part: p.part,
         status: p.status,
@@ -162,6 +164,19 @@ function sessionViews(
       })),
     };
   });
+}
+
+/**
+ * A row switched off in Settings (shoulder emphasis) is left out rather than
+ * shown greyed; PT-gated rows still show what they wait on.
+ */
+function visibleRow(p: PlannedExercise) {
+  return !(
+    p.status === "locked" &&
+    [p.exercise.gateKey, p.exercise.extraGateKey].some(
+      (key) => key != null && isSettingGate(key),
+    )
+  );
 }
 
 function rideMakeUpFor(
@@ -413,7 +428,10 @@ function buildToday(ctx: ProgramContext): {
           })
         : null,
       warmUp: settings.warmUp || null,
-      gaitDrill: settings.gaitDrill || null,
+      gaitDrill:
+        settings.sessionGaitDrillMinutes > 0
+          ? settings.gaitDrill || null
+          : null,
       // The lift linked to today's lift session first, else today's unlinked one.
       makeUps: todayMakeUps(week),
       loggedLiftId:
@@ -576,6 +594,11 @@ export async function getStrengthProgramPlan(
           info: sourcePlan.info,
           readiness: view.kneeStatus,
           history: lastSetsByExercise(sessions),
+          priorBlock: priorBlockSetsByExercise(
+            ctx.program,
+            sourcePlan.date,
+            sessions,
+          ),
           upper: upperFor(ctx.templates, lift.session.upperTemplateId),
           sleepAverageHours: ctx.sleepAverage,
           quadDrop: ctx.quadDrop,

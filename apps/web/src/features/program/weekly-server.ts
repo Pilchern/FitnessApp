@@ -1,6 +1,8 @@
 import "server-only";
 
 import {
+  ACL_RSI_EVERY_DAYS,
+  aclRsiDue,
   addDays,
   buildWeeklyWeightTrend,
   countLifts,
@@ -148,7 +150,7 @@ export async function getAdherenceSnapshot(): Promise<AdherenceSnapshot | null> 
     firstProgramWeek(program),
   ).start;
   const { bodyMetricService, programService } = await createCoreServices();
-  const [activity, body, checkins] = await Promise.all([
+  const [activity, body, checkins, rsiTests] = await Promise.all([
     loadActivity(
       user.id,
       program,
@@ -161,6 +163,11 @@ export async function getAdherenceSnapshot(): Promise<AdherenceSnapshot | null> 
       endDate: today,
     }),
     programService.listWeeklyCheckins(user.id, info.weekStart, info.weekStart),
+    programService.listKneeTests(
+      user.id,
+      addDays(today, -ACL_RSI_EVERY_DAYS),
+      today,
+    ),
   ]);
   const weekDates = Array.from({ length: 7 }, (_, i) =>
     addDays(info.weekStart, i),
@@ -202,6 +209,7 @@ export async function getAdherenceSnapshot(): Promise<AdherenceSnapshot | null> 
       !lastWaist ||
       lastWaist.measuredOn <= addDays(today, -settings.waistEveryDays),
     lastWaistOn: lastWaist?.measuredOn ?? null,
+    aclRsiDue: aclRsiDue(rsiTests, today),
   };
 }
 
@@ -228,7 +236,7 @@ function focusMetrics(input: {
       actual: a.romDays.done,
       target: a.romDays.target,
       advice:
-        "Five minutes, every day: prone hang and heel slides first thing.",
+        "Seven minutes, every day: prone hang, heel slides and a 2-min prone heel-to-butt stretch.",
     },
     {
       key: "pt",

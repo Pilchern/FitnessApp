@@ -33,7 +33,13 @@ export type ProgramExerciseCategory =
   | "mobility";
 /** week: by post-op week. gate: by week once a gate clears. manual: from a set date. */
 export type BlockActivation = "week" | "gate" | "manual";
-export type LoadKind = "barbell" | "dumbbell" | "cuff" | "bodyweight" | "band";
+export type LoadKind =
+  | "barbell"
+  | "dumbbell"
+  | "cuff"
+  | "bodyweight"
+  | "band"
+  | "plate";
 export type ReadinessRequirement = "any" | "normal";
 export type BlockPart = "legs" | "upper";
 export type ProgramMuscle =

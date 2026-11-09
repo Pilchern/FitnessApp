@@ -12,7 +12,7 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 - Next surgeon visit: week of 2026-10-26. [doc]
 - Goals: preserve muscle, fat loss once cleared, improve VO2max, long-term longevity framework from Attia's Outlive. Soft recomp, not a cut, until full training returns. [stated]
 - Work: Director of Marketplaces. Office Mon/Tue/Thu, WFH Wed/Fri. Leaves for the office by about 8:30 AM. PT is Wed and Fri 7:40 AM. [stated]
-- Equipment (all he has): barbell, plates, adjustable dumbbells, bands, bench, squat/power rack, Peloton bike. No leg press, leg extension, hamstring curl, cable or pulldown machine, treadmill, elliptical. [stated]
+- Equipment (all he has): barbell, plates, adjustable dumbbells, bands, squat/power rack, Peloton bike, treadmill, adjustable bench with a leg developer (Gold's Gym Platinum, replaced the Bowflex bench 2026-11-09: seated leg extension and prone leg curl, plate-loaded, 2.5 lb steps). No leg press, cable or pulldown machine, elliptical. [stated]
 
 ## 2. Boundaries between systems
 

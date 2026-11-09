@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { KneeTest, StrengthSession } from "@fitness-app/domain";
 import {
+  aclRsiDue,
   bestBySide,
   hqRatio,
   kneeTestSummary,
@@ -385,5 +386,17 @@ describe("dumbbell max (52.5 lb)", () => {
     expect(
       suggestLoad({ ...base, loadKind: "barbell", lastSets: sets(135) }).load,
     ).toBe(140);
+  });
+});
+
+describe("monthly ACL-RSI reminder", () => {
+  it("is due with no score, or none in the last 30 days", () => {
+    expect(aclRsiDue([], "2026-11-09")).toBe(true);
+    expect(
+      aclRsiDue([t("2026-10-10", "acl_rsi", null, 60)], "2026-11-09"),
+    ).toBe(true);
+    expect(
+      aclRsiDue([t("2026-10-11", "acl_rsi", null, 60)], "2026-11-09"),
+    ).toBe(false);
   });
 });

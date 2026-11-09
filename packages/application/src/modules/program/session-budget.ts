@@ -37,6 +37,8 @@ export type BudgetItem = {
   /** Superset letter; null = straight sets. */
   supersetGroup: string | null;
   supersetOrder: number | null;
+  /** The row's RIR target; null = RIR not logged (plyos, Nordics). */
+  rirTarget?: number | null;
 };
 
 /** "A1", "A2"; null outside a superset. */

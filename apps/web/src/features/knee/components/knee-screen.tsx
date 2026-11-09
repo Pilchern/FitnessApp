@@ -1,8 +1,11 @@
 import Link from "next/link";
 import {
+  ACL_RSI_EVERY_DAYS,
+  aclRsiDue,
   bestBySide,
   type GateBoard,
   type GateCriterion,
+  latestHq,
   latestValue,
   lsiPct,
   RIGHT_SETTLED_SPREAD_N,
@@ -155,6 +158,14 @@ function last(pairs: SidePair[]) {
   return pairs[pairs.length - 1] ?? null;
 }
 
+/** H:Q per leg on the newest crane test with hamstring pulls. */
+function hqRow(tests: KneeTest[]) {
+  const hq = latestHq(tests);
+  if (!hq) return null;
+  const f = (v: number | null) => (v != null ? v.toFixed(2) : "–");
+  return `L ${f(hq.left)} / R ${f(hq.right)} (${formatShortDate(hq.date)})`;
+}
+
 /** Newest value of each other reading, with its date. */
 function latestRows(tests: KneeTest[]) {
   const value = (type: string, unit: string) => {
@@ -177,6 +188,7 @@ function latestRows(tests: KneeTest[]) {
     ["Knee girth", pair("knee_girth", " cm")],
     ["Thigh girth", pair("thigh_girth", " cm")],
     ["Walking asymmetry", value("walking_asymmetry", "%")],
+    ["H:Q 90°", hqRow(tests)],
     ["ACL-RSI", value("acl_rsi", "%")],
     ["Single hop", pair("hop_single", " cm", true)],
   ].filter((r): r is [string, string] => r[1] != null);
@@ -214,8 +226,8 @@ export async function KneeScreen() {
             {l.lsi != null ? (
               <span className="block text-xs text-ink/60">
                 {l.basis === "right_best"
-                  ? `Divided by right best to date, ${l.denominator} N: the right's last 3 tests spread ${RIGHT_SETTLED_SPREAD_N} N or more.`
-                  : `Divided by same-day right, ${l.denominator} N.`}
+                  ? `Denominator: best-ever R, ${l.denominator} N (the right's last 3 test days spread ${RIGHT_SETTLED_SPREAD_N} N or more).`
+                  : `Denominator: same-day R best of 3, ${l.denominator} N.`}
               </span>
             ) : null}
           </p>
@@ -264,6 +276,15 @@ export async function KneeScreen() {
 
       <section className={panel}>
         <h2 className="font-display text-lg text-ink">New test</h2>
+        {aclRsiDue(data.tests, data.today) ? (
+          <p
+            role="alert"
+            className="mt-2 rounded-xl bg-sand/70 px-3 py-2 text-sm text-ink"
+          >
+            ACL-RSI is due (monthly, every {ACL_RSI_EVERY_DAYS} days): score it
+            0-100 in this form.
+          </p>
+        ) : null}
         <div className="mt-3">
           <KneeTestForm
             today={data.today}

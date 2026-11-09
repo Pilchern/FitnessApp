@@ -7,7 +7,11 @@ import type {
   TrainingProgram,
 } from "@fitness-app/domain";
 import { KNEE_STATUS_COPY } from "./knee-readiness";
-import type { ProgramWeekInfo } from "./program-calendar";
+import {
+  programWeekInfo,
+  weekDateRange,
+  type ProgramWeekInfo,
+} from "./program-calendar";
 import {
   isPlannedToday,
   KNEE_OFF_BLOCK,
@@ -99,6 +103,65 @@ export function lastSetsByExercise(
   return result;
 }
 
+/** Weeks at the end of the prior block that set a new block's starting load. */
+export const PRIOR_BLOCK_WEEKS = 2;
+
+/**
+ * Every set per exercise from the last 2 weeks of the block before the one
+ * running on `date`: the latest earlier block that runs its own sessions
+ * (deloads repeat a block's sessions and are skipped). Empty when there is
+ * no earlier block.
+ */
+export function priorBlockSetsByExercise(
+  program: Pick<
+    TrainingProgram,
+    "weekAnchorDate" | "blocks" | "weeks" | "gates"
+  >,
+  date: string,
+  sessions: Pick<StrengthSession, "sessionDate" | "sets">[],
+): Record<string, ExerciseHistory> {
+  const current = programWeekInfo(program, date).block;
+  if (!current) return {};
+  const prior = program.blocks
+    .filter(
+      (b) =>
+        b.activation !== "manual" &&
+        !b.sessionsFromBlockId &&
+        b.endWeek < current.startWeek,
+    )
+    .sort((a, b) => b.endWeek - a.endWeek)[0];
+  if (!prior) return {};
+  const firstWeek = Math.max(
+    prior.startWeek,
+    prior.endWeek - PRIOR_BLOCK_WEEKS + 1,
+  );
+  const start = weekDateRange(program.weekAnchorDate, firstWeek).start;
+  const end = weekDateRange(program.weekAnchorDate, prior.endWeek).end;
+  const result: Record<string, ExerciseHistory> = {};
+  for (const session of [...sessions].sort((a, b) =>
+    a.sessionDate.localeCompare(b.sessionDate),
+  )) {
+    if (session.sessionDate < start || session.sessionDate > end) continue;
+    for (const set of session.sets) {
+      const key = programExerciseKey(set.exerciseName);
+      const entry = (result[key] ??= {
+        sessionDate: session.sessionDate,
+        sets: [],
+      });
+      entry.sessionDate = session.sessionDate;
+      entry.sets.push({
+        weight: set.weight,
+        reps: set.reps,
+        rir: set.rir,
+        isWarmup: set.isWarmup,
+        side: set.side ?? null,
+        durationSeconds: set.durationSeconds ?? null,
+      });
+    }
+  }
+  return result;
+}
+
 function suggestionCue(s: LoadSuggestion) {
   if (s.load == null) return s.reason;
   const tag =
@@ -126,6 +189,8 @@ export type BuildLiftPlanInput = {
   info: ProgramWeekInfo;
   readiness: KneeReadinessStatus | null;
   history: Record<string, ExerciseHistory>;
+  /** Sets from the last 2 weeks of the prior block (priorBlockSetsByExercise). */
+  priorBlock?: Record<string, ExerciseHistory>;
   /** A linked upper-body template, run after the program rows unchanged. */
   upper: { notes: string | null; exercises: UpperTemplateExercise[] } | null;
   sleepAverageHours?: number | null;
@@ -215,6 +280,7 @@ function programRow(
     loadKind: p.loadKind,
     scheme: p.scheme,
     lastSets: history?.sets ?? [],
+    priorBlockSets: input.priorBlock?.[programExerciseKey(p.name)]?.sets,
     lastRepsMax: history
       ? prescribedRepsMaxOn(input.program, p.name, history.sessionDate)
       : null,
@@ -301,7 +367,7 @@ export function buildLiftLoggerPlan(input: BuildLiftPlanInput): LoggerPlan {
     settings.warmUp
       ? `Warm-up (${settings.sessionWarmUpMinutes} min): ${settings.warmUp}.`
       : null,
-    settings.gaitDrill
+    settings.gaitDrill && settings.sessionGaitDrillMinutes > 0
       ? `Gait drill (${settings.sessionGaitDrillMinutes} min): ${settings.gaitDrill}`
       : null,
     planned.session.notes,
@@ -339,6 +405,7 @@ export function restMetaFromPlan(exercises: LoggerPlanExercise[]): RestMeta {
           secondsTarget: ex.targetSeconds ?? null,
           supersetGroup: ex.supersetGroup ?? null,
           supersetOrder: ex.supersetOrder ?? null,
+          rirTarget: ex.targetRir,
         },
       ]),
   );

@@ -255,7 +255,7 @@ export function KneeTestForm({
               {quadLsi != null && quadBasis?.basis === "right_best" ? (
                 <span className="font-normal text-ink/60">
                   {" "}
-                  vs R best {quadBasis.denominator} N
+                  vs best-ever R {quadBasis.denominator} N
                 </span>
               ) : null}
             </p>
