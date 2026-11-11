@@ -57,6 +57,11 @@ export type LoggerPlanExercise = {
   supersetGroup?: string | null;
   supersetOrder?: number | null;
   category?: ProgramExerciseCategory | null;
+  /**
+   * Program rows: the exercise's own name and its substitute's, so a set
+   * logged under either counts for this row.
+   */
+  aliases?: string[];
 };
 
 export type LoggerPlan = {
@@ -232,6 +237,9 @@ function programRow(
     supersetGroup: p.exercise.supersetGroup ?? null,
     supersetOrder: p.exercise.supersetOrder ?? null,
     category: p.exercise.category ?? null,
+    aliases: [p.exercise.name, p.exercise.substituteName].filter(
+      (n): n is string => n != null,
+    ),
   };
   const history = input.history[programExerciseKey(p.name)];
   if (p.exercise.measure === "distance") {

@@ -28,6 +28,8 @@ type StrengthPageClientProps = {
   strengthTemplates: TrainingTemplate[];
   todaysScheduledTemplate: TrainingTemplate | null;
   programPlan?: StrengthProgramPlan | null;
+  /** Edit mode on a program-linked lift: its plan, for appending what is left. */
+  editPlan?: LoggerPlan | null;
   lastByExercise: Record<string, LastExercisePerformance>;
   latestCreatedAt: string | null;
 };
@@ -41,6 +43,7 @@ export function StrengthPageClient({
   strengthTemplates,
   todaysScheduledTemplate,
   programPlan = null,
+  editPlan = null,
   lastByExercise,
   latestCreatedAt,
 }: StrengthPageClientProps) {
@@ -109,6 +112,7 @@ export function StrengthPageClient({
         knownExercises={knownExercises}
         lastSession={lastSession}
         planRequest={mode === "create" ? planRequest : null}
+        remainingPlan={mode === "edit" ? editPlan : null}
         lastByExercise={lastByExercise}
         latestCreatedAt={latestCreatedAt}
       />

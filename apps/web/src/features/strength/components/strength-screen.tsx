@@ -43,6 +43,7 @@ export async function StrengthScreen({
         strengthTemplates={data.strengthTemplates}
         todaysScheduledTemplate={data.todaysScheduledTemplate}
         programPlan={data.programPlan}
+        editPlan={data.editPlan}
         lastByExercise={data.lastByExercise}
         latestCreatedAt={data.latestCreatedAt}
       />

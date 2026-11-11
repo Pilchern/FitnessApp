@@ -13,6 +13,7 @@ import type { StrengthSession } from "@fitness-app/domain";
 import {
   restForTick,
   restMetaFromPlan,
+  type LoggerPlan,
   type LoggerPlanExercise,
   type RestMeta,
 } from "@fitness-app/application";
@@ -30,6 +31,7 @@ import {
   planExerciseSets,
   readyToAddLoad,
   showsTimedWeight,
+  remainingFromPlan,
   renumberSets,
   rirMissing,
   selectSetsToSave,
@@ -76,6 +78,11 @@ type StrengthQuickFormProps = {
   knownExercises: string[];
   lastSession: StrengthSession | null;
   planRequest?: PlanRequest | null;
+  /**
+   * Edit mode on a program-linked lift: its plan as of the lift's date.
+   * Only ever appends what is left ("Add remaining from plan").
+   */
+  remainingPlan?: LoggerPlan | null;
   lastByExercise?: Record<string, LastExercisePerformance>;
   latestCreatedAt?: string | null;
 };
@@ -85,6 +92,28 @@ const REST_OPTIONS = [60, 90, 120, 180];
 
 function fieldClassName() {
   return "h-12 rounded-2xl border border-ink/10 bg-white px-4 text-base text-ink outline-none transition focus:border-pine focus:ring-2 focus:ring-pine/20";
+}
+
+/**
+ * Per-exercise extras a plan brings to the logger: its notes, and the rep top
+ * that drives "Add weight" on template rows (program rows carry their own
+ * load suggestion). Shared by loading a plan and appending what is left.
+ */
+function planExtras(exercises: LoggerPlanExercise[]) {
+  return {
+    notes: Object.fromEntries(
+      exercises
+        .filter((ex) => ex.notes)
+        .map((ex) => [exerciseKey(ex.exerciseName), ex.notes as string]),
+    ),
+    repTops: Object.fromEntries(
+      exercises.flatMap((ex) => {
+        if (ex.program) return [];
+        const top = templateRepTop(ex.targetReps, ex.notes);
+        return top != null ? [[exerciseKey(ex.exerciseName), top]] : [];
+      }),
+    ) as Record<string, number>,
+  };
 }
 
 function formatClock(totalSeconds: number) {
@@ -200,6 +229,7 @@ export function StrengthQuickForm({
   knownExercises,
   lastSession,
   planRequest = null,
+  remainingPlan = null,
   lastByExercise = {},
   latestCreatedAt = null,
 }: StrengthQuickFormProps) {
@@ -263,23 +293,9 @@ export function StrengthQuickForm({
     setPlanNotes(plan.notes ?? null);
     setRestMeta(restMetaFromPlan(plan.exercises));
     setNextCue(null);
-    setExerciseNotes(
-      Object.fromEntries(
-        plan.exercises
-          .filter((ex) => ex.notes)
-          .map((ex) => [exerciseKey(ex.exerciseName), ex.notes as string]),
-      ),
-    );
-    setRepTops(
-      Object.fromEntries(
-        plan.exercises.flatMap((ex) => {
-          // Program leg work carries its own load suggestion.
-          if (ex.program) return [];
-          const top = templateRepTop(ex.targetReps, ex.notes);
-          return top != null ? [[exerciseKey(ex.exerciseName), top]] : [];
-        }),
-      ),
-    );
+    const extras = planExtras(plan.exercises);
+    setExerciseNotes(extras.notes);
+    setRepTops(extras.repTops);
     setValues((current) => ({
       ...current,
       sessionName: planRequest.name,
@@ -520,6 +536,32 @@ export function StrengthQuickForm({
     setNewExercise("");
   }
 
+  /**
+   * Edit mode: append the plan's unlogged sets after the existing ones,
+   * unticked, with the same targets, notes and rest rules a plan load gives.
+   * Nothing logged is touched; unticked sets are dropped on save.
+   */
+  function appendRemaining() {
+    if (remaining.length === 0) return;
+    const exercises = remaining.map((r) => ({
+      ...r.exercise,
+      targetSets: r.sets,
+    }));
+    const extras = planExtras(exercises);
+    setRestMeta((current) => ({ ...current, ...restMetaFromPlan(exercises) }));
+    setExerciseNotes((current) => ({ ...current, ...extras.notes }));
+    setRepTops((current) => ({ ...current, ...extras.repTops }));
+    setValues((current) => ({
+      ...current,
+      sets: [
+        ...current.sets,
+        ...exercises.flatMap((ex) =>
+          planExerciseSets(ex, lastByExercise[exerciseKey(ex.exerciseName)]),
+        ),
+      ],
+    }));
+  }
+
   function setRirForGroup(indexes: number[], rir: string) {
     if (rir.trim() !== "") setRirError(null);
     setValues((current) => ({
@@ -564,6 +606,14 @@ export function StrengthQuickForm({
   }
 
   const groups = groupSetsByExercise(values.sets);
+  const remaining =
+    mode === "edit" && remainingPlan
+      ? remainingFromPlan(remainingPlan.exercises, values.sets)
+      : [];
+  const remainingSetCount = remaining.reduce((sum, r) => sum + r.sets, 0);
+  // The rest bar and next-set cue: always while logging; in edit mode once
+  // plan rows were appended (they bring the rest rules).
+  const showRest = mode === "create" || Object.keys(restMeta).length > 0;
   const hasNamedSets = values.sets.some((set) => set.exerciseName.trim());
   const doneCount = values.sets.filter((set) => set.done).length;
   const savedSets = selectSetsToSave(values.sets);
@@ -927,6 +977,18 @@ export function StrengthQuickForm({
           );
         })}
 
+        {remaining.length > 0 ? (
+          <button
+            type="button"
+            onClick={appendRemaining}
+            className="h-12 w-full rounded-2xl border border-pine/30 bg-pine/5 px-4 text-sm font-semibold text-pine active:bg-pine/10"
+          >
+            Add remaining from plan ({remaining.length} exercise
+            {remaining.length === 1 ? "" : "s"}, {remainingSetCount} set
+            {remainingSetCount === 1 ? "" : "s"})
+          </button>
+        ) : null}
+
         <div className="flex gap-2">
           <input
             className={`${fieldClassName()} min-w-0 flex-1`}
@@ -1070,7 +1132,7 @@ export function StrengthQuickForm({
         {/* Nothing to save on an empty workout, so no bar. */}
         {showSaveBar ? (
           <div className="fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 space-y-2 border-t border-ink/10 bg-white/95 px-3 pb-3 pt-2 backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0">
-            {restEndsAt == null && nextCue && mode === "create" ? (
+            {restEndsAt == null && nextCue && showRest ? (
               <div className="flex h-12 items-center justify-between gap-2 rounded-2xl bg-pine px-3 text-white">
                 <span className="min-w-0 truncate text-base font-semibold">
                   No rest · {nextCue}
@@ -1085,7 +1147,7 @@ export function StrengthQuickForm({
                 </button>
               </div>
             ) : null}
-            {restEndsAt != null && mode === "create" ? (
+            {restEndsAt != null && showRest ? (
               <div className="flex min-h-12 items-center justify-between gap-2 rounded-2xl bg-ink px-3 py-1 text-white">
                 <span className="min-w-0">
                   <span className="block text-lg font-semibold tabular-nums">

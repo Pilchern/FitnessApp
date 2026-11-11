@@ -11,6 +11,7 @@ import {
   planExerciseSets,
   programLinkOnEdit,
   readyToAddLoad,
+  remainingFromPlan,
   renumberSets,
   repRangeTop,
   rirMissing,
@@ -491,5 +492,120 @@ describe("RIR is entered, never prefilled", () => {
     expect(rirMissing(blank, { rirTarget: 2 })).toBe(true);
     // An older draft without the field still asks for RIR.
     expect(rirMissing(blank, {})).toBe(true);
+  });
+});
+
+describe("remaining sets from a program plan (edit mode)", () => {
+  const row = (
+    exerciseName: string,
+    targetSets: number,
+    extra: { sideMode?: "per_leg"; aliases?: string[] } = {},
+  ) => ({
+    exerciseName,
+    exerciseOrder: 0,
+    targetSets,
+    targetReps: 10,
+    targetWeight: null,
+    targetRir: 2,
+    notes: null,
+    program: true,
+    measure: "reps" as const,
+    sideMode: extra.sideMode ?? ("bilateral" as const),
+    aliases: extra.aliases ?? [exerciseName],
+  });
+  const logged = (
+    exerciseName: string,
+    n: number,
+    side?: "left" | "right",
+    isWarmup = false,
+  ) =>
+    Array.from({ length: n }, () => ({
+      exerciseName,
+      isWarmup,
+      ...(side ? { side } : {}),
+    }));
+  // Monday Block 1, week 12.
+  const monday = [
+    row("Barbell Pin Squat (to 90°)", 4),
+    row("Lateral Raise", 3),
+    row("Barbell Bench Press", 3),
+    row("Seated Leg Extension (90→45°)", 3, { sideMode: "per_leg" }),
+    row("Tricep Pushdown", 4),
+    row("Barbell Hip Thrust", 3),
+    row("Single-Leg Calf Raise", 3, { sideMode: "per_leg" }),
+    row("Incline Dumbbell Press", 3),
+  ];
+  const summary = (r: ReturnType<typeof remainingFromPlan>) =>
+    r.map((x) => [x.exercise.exerciseName, x.sets]);
+
+  it("owes every planned set when nothing is logged", () => {
+    const r = remainingFromPlan(monday, []);
+    expect(r).toHaveLength(8);
+    expect(r.reduce((s, x) => s + x.sets, 0)).toBe(26);
+  });
+
+  it("matches the 11/9 lift: squat, raise and bench done", () => {
+    const r = remainingFromPlan(monday, [
+      ...logged("Barbell Pin Squat (to 90°)", 4),
+      ...logged("lateral raise ", 3),
+      ...logged("Barbell Bench Press", 3),
+    ]);
+    expect(summary(r)).toEqual([
+      ["Seated Leg Extension (90→45°)", 3],
+      ["Tricep Pushdown", 4],
+      ["Barbell Hip Thrust", 3],
+      ["Single-Leg Calf Raise", 3],
+      ["Incline Dumbbell Press", 3],
+    ]);
+    expect(r.reduce((s, x) => s + x.sets, 0)).toBe(16);
+  });
+
+  it("counts an exercise short on sets, ignoring warm-ups", () => {
+    const r = remainingFromPlan(
+      [row("Barbell Bench Press", 3)],
+      [
+        ...logged("Barbell Bench Press", 2, undefined, true),
+        ...logged("Barbell Bench Press", 1),
+      ],
+    );
+    expect(summary(r)).toEqual([["Barbell Bench Press", 2]]);
+  });
+
+  it("counts per-leg work by left-leg sets (one pair is one set)", () => {
+    const r = remainingFromPlan(
+      [row("Single-Leg Calf Raise", 3, { sideMode: "per_leg" })],
+      [
+        ...logged("Single-Leg Calf Raise", 1, "left"),
+        ...logged("Single-Leg Calf Raise", 1, "right"),
+      ],
+    );
+    expect(summary(r)).toEqual([["Single-Leg Calf Raise", 2]]);
+  });
+
+  it("is empty when every planned set is logged", () => {
+    expect(
+      remainingFromPlan(
+        [row("Barbell Bench Press", 3), row("Tricep Pushdown", 4)],
+        [...logged("Barbell Bench Press", 3), ...logged("Tricep Pushdown", 5)],
+      ),
+    ).toEqual([]);
+  });
+
+  it("counts a logged substitute for its planned exercise", () => {
+    const front = row("Barbell Pin Front Squat (to 90°)", 3, {
+      aliases: ["Front Squat", "Barbell Pin Front Squat (to 90°)"],
+    });
+    expect(remainingFromPlan([front], logged("Front Squat", 3))).toEqual([]);
+    expect(
+      summary(remainingFromPlan([front], logged("front squat", 1))),
+    ).toEqual([["Barbell Pin Front Squat (to 90°)", 2]]);
+  });
+
+  it("ignores exercises outside the plan", () => {
+    const r = remainingFromPlan(
+      [row("Barbell Bench Press", 3)],
+      [...logged("Barbell Bench Press", 3), ...logged("Farmer Carry", 4)],
+    );
+    expect(r).toEqual([]);
   });
 });

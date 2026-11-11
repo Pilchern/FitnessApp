@@ -1,4 +1,5 @@
 import type {
+  LoggerPlan,
   MuscleGroupVolumeSummary,
   SetTiming,
   StrengthProgressionSummary,
@@ -26,6 +27,8 @@ export type StrengthPageData = {
   todaysScheduledTemplate: TrainingTemplate | null;
   /** Today's program lift (legs + upper), when the program has one. */
   programPlan: StrengthProgramPlan | null;
+  /** Edit mode on a program-linked lift: its plan as of the lift's date. */
+  editPlan: LoggerPlan | null;
   lastByExercise: Record<string, LastExercisePerformance>;
   /** Newest `createdAt` across sessions; tells the logger its draft was saved. */
   latestCreatedAt: string | null;
