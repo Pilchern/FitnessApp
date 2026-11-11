@@ -909,6 +909,19 @@ describe("lift plan for the logger", () => {
     });
   }
 
+  it("tags program rows with their own and substitute names", () => {
+    const p = plan("2026-10-26", "normal");
+    // Gate closed: the row runs as the substitute but answers to both.
+    expect(p.exercises[0]?.exerciseName).toBe("Goblet Box Squat");
+    expect(p.exercises[0]?.aliases).toEqual([
+      "Barbell Pin Squat",
+      "Goblet Box Squat",
+    ]);
+    expect(p.exercises[1]?.aliases).toEqual(["Cuff Knee Extension"]);
+    // Upper template rows carry none.
+    expect(p.exercises[2]?.aliases).toBeUndefined();
+  });
+
   it("puts legs first with engine loads, then the upper template", () => {
     const p = plan("2026-10-26", "normal");
     expect(p.name).toBe("b1-mon · Wk 10");

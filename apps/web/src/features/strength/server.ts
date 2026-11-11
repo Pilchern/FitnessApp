@@ -14,7 +14,10 @@ import {
   createCoreServices,
   getCachedUserProfile,
 } from "@/lib/server/services";
-import { getStrengthProgramPlan } from "@/features/program/server";
+import {
+  getLinkedLiftPlan,
+  getStrengthProgramPlan,
+} from "@/features/program/server";
 import { buildLastByExercise, exerciseKey, shiftIsoDate } from "./helpers";
 import type { StrengthDetailData, StrengthPageData } from "./types";
 
@@ -58,11 +61,20 @@ export async function getStrengthPageData(
 
   // Additive: if the program cannot load, the logger still works as before.
   let programPlan = null;
+  let editPlan = null;
   if (!editSessionId) {
     try {
       programPlan = await getStrengthProgramPlan(sessions, makeUp);
     } catch (error) {
       console.error("Program plan failed to load", error);
+    }
+  } else if (editingSession?.programSessionId) {
+    // Edit never loads a plan over the session; this only feeds "Add
+    // remaining from plan", which appends.
+    try {
+      editPlan = await getLinkedLiftPlan(editingSession, sessions);
+    } catch (error) {
+      console.error("Linked lift plan failed to load", error);
     }
   }
 
@@ -103,6 +115,7 @@ export async function getStrengthPageData(
     unclassifiedExerciseNames,
     todaysScheduledTemplate,
     programPlan,
+    editPlan,
     lastByExercise: buildLastByExercise(sessions),
     latestCreatedAt: sessions.reduce<string | null>(
       (latest, s) =>

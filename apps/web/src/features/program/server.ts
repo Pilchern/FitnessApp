@@ -5,6 +5,7 @@ import {
   buildDayPlan,
   buildLiftLoggerPlan,
   countableSession,
+  dayOfWeekOf,
   exerciseProgress,
   isScheduledSession,
   plannedZone2Minutes,
@@ -30,6 +31,7 @@ import {
   weeklyHardLegSets,
   type DatedKneeCheck,
   type DayPlan,
+  type LoggerPlan,
   type PlannedExercise,
   type ProgramSettings,
   type QuadDrop,
@@ -627,6 +629,52 @@ export async function getStrengthProgramPlan(
           }
         : loggerPlan,
   };
+}
+
+/**
+ * The logger plan for a saved program lift, as of the lift's own date (for
+ * "Add remaining from plan" in edit mode). The linked program session is
+ * planned on the day it was scheduled: the lift's date, or for a make-up the
+ * last matching weekday on or before it, the date the make-up logger used.
+ * Gates, deload and substitutes apply as of that date (from the gate rows as
+ * stored now); readiness is the knee check of the lift's date. Load targets
+ * come from history before this lift. Null when the program or the linked
+ * lift session is gone.
+ */
+export async function getLinkedLiftPlan(
+  lift: Pick<StrengthSession, "id" | "sessionDate" | "programSessionId">,
+  sessions: StrengthSession[],
+): Promise<LoggerPlan | null> {
+  if (!lift.programSessionId) return null;
+  const ctx = await loadProgramContext();
+  if (!ctx) return null;
+  const programSession = ctx.program.sessions.find(
+    (s) => s.id === lift.programSessionId && s.sessionType === "lift",
+  );
+  if (!programSession) return null;
+  const planDate = addDays(
+    lift.sessionDate,
+    -((dayOfWeekOf(lift.sessionDate) - programSession.dayOfWeek + 7) % 7),
+  );
+  const readiness = ctx.statusOn(lift.sessionDate);
+  const day = buildDayPlan(ctx.program, planDate, readiness, ctx.settings);
+  const planned = day.sessions.find((s) => s.session.id === programSession.id);
+  if (!planned) return null;
+  const before = sessions.filter(
+    (s) => s.id !== lift.id && s.sessionDate <= lift.sessionDate,
+  );
+  return buildLiftLoggerPlan({
+    program: ctx.program,
+    planned,
+    info: day.info,
+    readiness,
+    history: lastSetsByExercise(before),
+    priorBlock: priorBlockSetsByExercise(ctx.program, planDate, before),
+    upper: upperFor(ctx.templates, programSession.upperTemplateId),
+    sleepAverageHours: ctx.sleepAverage,
+    quadDrop: ctx.quadDrop,
+    settings: ctx.settings,
+  });
 }
 
 export async function getProgramPageData(): Promise<ProgramPageData> {

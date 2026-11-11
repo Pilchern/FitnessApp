@@ -416,6 +416,40 @@ export function rirMissing(
   return set.rir.trim() === "";
 }
 
+export type RemainingPlanExercise = {
+  exercise: LoggerPlanExercise;
+  /** Planned sets not yet logged (per-leg: L/R pairs). */
+  sets: number;
+};
+
+/**
+ * What a saved program lift still owes its plan: per planned exercise, its
+ * planned sets minus the working sets already in the form (warm-ups never
+ * count), matched by exerciseKey on its own name or its substitute's
+ * (`aliases`). Per-leg work counts its left-leg sets, so one L/R pair is one
+ * set. Exercises short on sets count, not only ones never started;
+ * exercises outside the plan are ignored.
+ */
+export function remainingFromPlan(
+  plan: LoggerPlanExercise[],
+  logged: Pick<StrengthSetFormValue, "exerciseName" | "isWarmup" | "side">[],
+): RemainingPlanExercise[] {
+  return plan.flatMap((exercise) => {
+    const keys = new Set(
+      [exercise.exerciseName, ...(exercise.aliases ?? [])].map(exerciseKey),
+    );
+    const working = logged.filter(
+      (set) => !set.isWarmup && keys.has(exerciseKey(set.exerciseName)),
+    );
+    const done =
+      exercise.sideMode === "per_leg"
+        ? working.filter((set) => set.side === "left").length
+        : working.length;
+    const sets = Math.max(0, exercise.targetSets - done);
+    return sets > 0 ? [{ exercise, sets }] : [];
+  });
+}
+
 export function selectSetsToSave<T extends { done?: boolean }>(sets: T[]) {
   return sets.some((set) => set.done) ? sets.filter((set) => set.done) : sets;
 }
