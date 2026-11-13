@@ -5,6 +5,7 @@ const legs = { L: [], R: [] };
 const base = {
   testDate: "2026-11-08",
   angleDeg: 90,
+  legExtension: { loadLb: 40, L: 11, R: 13 },
   strapNote: null,
   quadWarmup: legs,
   quad: { L: [300, 310, null], R: [400, null, 410] },

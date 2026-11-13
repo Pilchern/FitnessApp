@@ -387,12 +387,20 @@ export function ProgramTodayCard({
       ) : null}
 
       {isSunday ? (
-        <Link
-          href="/program/review"
-          className="inline-flex h-11 w-full items-center justify-center rounded-full bg-pine px-5 text-sm font-semibold text-white"
-        >
-          Sunday review
-        </Link>
+        <div className="grid gap-2">
+          <Link
+            href="/program/knee"
+            className="inline-flex h-11 w-full items-center justify-center rounded-full border border-pine/30 px-5 text-sm font-semibold text-pine"
+          >
+            Sunday test: single-leg leg extension
+          </Link>
+          <Link
+            href="/program/review"
+            className="inline-flex h-11 w-full items-center justify-center rounded-full bg-pine px-5 text-sm font-semibold text-white"
+          >
+            Sunday review
+          </Link>
+        </div>
       ) : null}
 
       {liftPending || ridePending ? (

@@ -38,6 +38,11 @@ function toEntry(values: Values): KneeTestEntry {
   return {
     testDate: values.testDate ?? "",
     angleDeg: num(values, "angleDeg") ?? 90,
+    legExtension: {
+      loadLb: num(values, "leLoad"),
+      L: num(values, "leL"),
+      R: num(values, "leR"),
+    },
     strapNote: values.strapNote?.trim() || null,
     quadWarmup: legs(values, "wq", 2),
     quad: legs(values, "q", 3),
@@ -79,7 +84,8 @@ const HOPS = [
 ] as const;
 
 /**
- * The knee test: the crane isometric protocol first (2 warm-up pulls per
+ * The knee test: the weekly single-leg leg extension first, then the monthly
+ * crane isometric protocol (2 warm-up pulls per
  * side, then 3 max pulls alternating R / L), then the other readings. The
  * summary updates as pulls are typed. L = operated knee.
  */
@@ -114,6 +120,8 @@ export function KneeTestForm({
   );
 
   const entry = toEntry(values);
+  const legExt = entry.legExtension;
+  const legExtSymmetry = lsiPct(legExt.L, legExt.R);
   const crane = craneSummary(entry.quad, entry.ham, spreadLimitN);
   const angle = entry.angleDeg;
   // At 90° the LSI uses the same denominator rule as the saved tests.
@@ -198,7 +206,37 @@ export function KneeTestForm({
       </label>
 
       <fieldset className={fieldset}>
-        <legend className={legend}>Crane isometric (quad)</legend>
+        <legend className={legend}>
+          Single-leg leg extension (weekly, Sunday)
+        </legend>
+        <p className="text-xs text-ink/60">
+          Same load each leg, reps to RIR 1, left first.
+        </p>
+        <div className="mt-2 grid grid-cols-3 gap-3">
+          <label className="grid gap-1 text-xs text-ink/80">
+            Load (lb){box("leLoad", "Leg extension load")}
+          </label>
+          <label className="grid gap-1 text-xs text-ink/80">
+            Reps L (op){box("leL", "Leg extension reps L", false)}
+          </label>
+          <label className="grid gap-1 text-xs text-ink/80">
+            Reps R{box("leR", "Leg extension reps R", false)}
+          </label>
+        </div>
+        {legExtSymmetry != null ? (
+          <p className="mt-3 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-ink">
+            Symmetry {legExtSymmetry}%
+            <span className="font-normal text-ink/60">
+              {" "}
+              L {legExt.L} / R {legExt.R} reps
+              {legExt.loadLb != null ? ` at ${legExt.loadLb} lb` : ""}
+            </span>
+          </p>
+        ) : null}
+      </fieldset>
+
+      <fieldset className={fieldset}>
+        <legend className={legend}>Crane isometric (quad, monthly)</legend>
         <div className="grid grid-cols-2 gap-3">
           <label className="grid gap-1 text-xs text-ink/80">
             Knee angle (°)

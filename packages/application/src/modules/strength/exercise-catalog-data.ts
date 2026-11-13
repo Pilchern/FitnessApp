@@ -525,6 +525,17 @@ export const EXERCISE_CATALOG: ExerciseCatalogEntry[] = [
     aliases: ["close grip bench press", "close grip bench", "cgbp"],
   },
   {
+    canonicalName: "Overhead Cable Triceps Extension",
+    muscleGroup: "triceps",
+    movementPattern: "push",
+    category: "isolation",
+    aliases: [
+      "overhead cable tricep extension",
+      "cable overhead triceps extension",
+      "overhead triceps extension (cable)",
+    ],
+  },
+  {
     canonicalName: "Tricep Pushdown",
     muscleGroup: "triceps",
     movementPattern: "push",

@@ -6,7 +6,7 @@ import {
   mmtGrade,
   type KneeTestEntry,
 } from "./knee-test-entry";
-import { quadLsiTrend } from "./knee-tests";
+import { craneTestDue, legExtensionSymmetry, quadLsiTrend } from "./knee-tests";
 
 const none = { L: [], R: [] };
 
@@ -14,6 +14,7 @@ function entry(over: Partial<KneeTestEntry> = {}): KneeTestEntry {
   return {
     testDate: "2026-11-08",
     angleDeg: 90,
+    legExtension: { loadLb: null, L: null, R: null },
     strapNote: null,
     quadWarmup: none,
     quad: none,
@@ -189,5 +190,86 @@ describe("clinicVisitRows", () => {
     expect(mmtGrade("4-/5")).toBe(3.5);
     expect(mmtGrade("5")).toBe(5);
     expect(mmtGrade("good")).toBeNull();
+  });
+});
+
+describe("single-leg leg extension test (v2.19)", () => {
+  it("stores reps and the shared load per leg, and replaces only that section", () => {
+    const { rows, replaceTypes } = kneeTestEntryRows(
+      entry({ legExtension: { loadLb: 40, L: 11, R: 13 } }),
+    );
+    expect(rows.map((r) => [r.testType, r.side, r.value, r.unit])).toEqual([
+      ["sl_leg_ext_reps", "L", 11, "reps"],
+      ["sl_leg_ext_load", "L", 40, "lb"],
+      ["sl_leg_ext_reps", "R", 13, "reps"],
+      ["sl_leg_ext_load", "R", 40, "lb"],
+    ]);
+    expect(replaceTypes).toEqual(["sl_leg_ext_reps", "sl_leg_ext_load"]);
+  });
+
+  it("reads symmetry as L reps / R reps at the same load", () => {
+    const { rows } = kneeTestEntryRows(
+      entry({ legExtension: { loadLb: 40, L: 11, R: 13 } }),
+    );
+    const tests = rows.map((r) => ({
+      testDate: r.testDate,
+      testType: r.testType,
+      side: r.side,
+      value: r.value,
+      unit: r.unit,
+      repIndex: r.repIndex,
+      source: "fitness_app",
+      notes: r.notes,
+    }));
+    expect(legExtensionSymmetry(tests)).toEqual([
+      {
+        date: "2026-11-08",
+        loadL: 40,
+        loadR: 40,
+        repsL: 11,
+        repsR: 13,
+        symmetry: 84.6,
+      },
+    ]);
+  });
+
+  it("gives no symmetry when the loads differ", () => {
+    const t = (testType: string, side: "L" | "R", value: number) => ({
+      testDate: "2026-11-15",
+      testType,
+      side,
+      value,
+      unit: "x",
+      repIndex: 1,
+      source: "fitness_app",
+      notes: null,
+    });
+    const [r] = legExtensionSymmetry([
+      t("sl_leg_ext_reps", "L", 10),
+      t("sl_leg_ext_reps", "R", 12),
+      t("sl_leg_ext_load", "L", 35),
+      t("sl_leg_ext_load", "R", 40),
+    ]);
+    expect(r?.symmetry).toBeNull();
+  });
+});
+
+describe("craneTestDue", () => {
+  const crane = (testDate: string) => ({
+    testDate,
+    testType: "quad_iso_90",
+    side: "L" as const,
+    value: 300,
+    unit: "N",
+    repIndex: 1,
+    source: "pt_tracker",
+    notes: null,
+  });
+  it("is due with no crane test or one 28+ days old", () => {
+    expect(craneTestDue([], "2026-11-15")).toBe(true);
+    expect(craneTestDue([crane("2026-10-18")], "2026-11-15")).toBe(true);
+  });
+  it("is not due inside 28 days", () => {
+    expect(craneTestDue([crane("2026-10-19")], "2026-11-15")).toBe(false);
   });
 });

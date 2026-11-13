@@ -1,5 +1,5 @@
 import type { IsoDate } from "@fitness-app/domain";
-import { hqRatio, lsiPct } from "./knee-tests";
+import { hqRatio, LEG_EXT_TEST_TYPES, lsiPct } from "./knee-tests";
 
 /**
  * The knee test screen: one dated entry turned into knee_tests rows
@@ -14,6 +14,11 @@ type PerLeg = { L: Trials; R: Trials };
 
 export type KneeTestEntry = {
   testDate: IsoDate;
+  /**
+   * Weekly (Sunday): single-leg leg extension, same load each leg, reps to
+   * RIR 1, left first. Load is entered once and stored per leg.
+   */
+  legExtension: { loadLb: number | null; L: number | null; R: number | null };
   /** Crane test knee angle; 90 unless changed. Sets the test type (quad_iso_90). */
   angleDeg: number;
   strapNote: string | null;
@@ -66,6 +71,7 @@ export const EFFUSION_GRADES = ["0", "trace", "1+", "2+", "3+"] as const;
 /** Test types per section; a save replaces a section only when it has a value. */
 export function kneeTestSections(angleDeg: number) {
   return {
+    legExtension: [LEG_EXT_TEST_TYPES.reps, LEG_EXT_TEST_TYPES.load],
     crane: [
       `quad_iso_${angleDeg}`,
       `quad_iso_${angleDeg}_warmup`,
@@ -124,6 +130,13 @@ export function kneeTestEntryRows(entry: KneeTestEntry): {
     }
   };
 
+  for (const side of ["L", "R"] as const) {
+    const reps = entry.legExtension[side];
+    if (ok(reps) && reps > 0) {
+      add(LEG_EXT_TEST_TYPES.reps, side, reps, "reps");
+      add(LEG_EXT_TEST_TYPES.load, side, entry.legExtension.loadLb, "lb");
+    }
+  }
   trials(`quad_iso_${angle}_warmup`, entry.quadWarmup, "N", craneNote);
   trials(`quad_iso_${angle}`, entry.quad, "N", craneNote);
   trials(`ham_iso_${angle}`, entry.ham, "N", craneNote);

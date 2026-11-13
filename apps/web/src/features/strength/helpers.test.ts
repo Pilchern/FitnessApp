@@ -487,8 +487,13 @@ describe("RIR is entered, never prefilled", () => {
     expect(rirMissing({ ...blank, durationSeconds: "30" })).toBe(false);
     expect(rirMissing({ ...blank, peakForceNewtons: "" })).toBe(false);
     expect(rirMissing({ ...blank, distanceMeters: "20" })).toBe(false);
-    // Plyos and Nordics: the program sets no RIR target.
-    expect(rirMissing(blank, { rirTarget: null })).toBe(false);
+    // Plyos: the program sets no RIR target.
+    expect(rirMissing(blank, { rirTarget: null, category: "plyo" })).toBe(
+      false,
+    );
+    // Any other set with no RIR target (e.g. a Power B lift) still asks.
+    expect(rirMissing(blank, { rirTarget: null, category: "main" })).toBe(true);
+    expect(rirMissing(blank, { rirTarget: null })).toBe(true);
     expect(rirMissing(blank, { rirTarget: 2 })).toBe(true);
     // An older draft without the field still asks for RIR.
     expect(rirMissing(blank, {})).toBe(true);

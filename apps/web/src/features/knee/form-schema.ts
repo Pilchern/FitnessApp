@@ -11,6 +11,11 @@ const pair = (min: number, max: number) =>
 export const kneeTestEntrySchema = z.object({
   testDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the test date"),
   angleDeg: z.number().int().min(30).max(120),
+  legExtension: z.object({
+    loadLb: n(0, 500),
+    L: n(0, 100),
+    R: n(0, 100),
+  }),
   strapNote: z.string().trim().max(200).nullable(),
   quadWarmup: perLeg(2, 3000),
   quad: perLeg(3, 3000),
