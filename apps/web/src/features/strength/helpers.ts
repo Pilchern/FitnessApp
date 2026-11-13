@@ -395,8 +395,8 @@ export function groupSetsByExercise(
 /**
  * True when a set still needs its RIR before it can be ticked or saved: a
  * working, rep-based set (not a warm-up, timed, isometric or distance set)
- * with the field blank. A program row whose RIR target is null (plyos,
- * Nordics) is exempt.
+ * with the field blank. Only plyos are exempt (no RIR target); every other
+ * working set needs a typed RIR, even in a block without an RIR target (v2.19).
  */
 export function rirMissing(
   set: Pick<
@@ -408,11 +408,11 @@ export function rirMissing(
     | "distanceMeters"
     | "peakForceNewtons"
   >,
-  meta?: { rirTarget?: number | null } | null,
+  meta?: { rirTarget?: number | null; category?: string | null } | null,
 ) {
   if (set.isWarmup || isForceSet(set) || isTimedSet(set)) return false;
   if (set.distanceMeters.trim() !== "") return false;
-  if (meta?.rirTarget === null) return false;
+  if (meta?.rirTarget === null && meta.category === "plyo") return false;
   return set.rir.trim() === "";
 }
 

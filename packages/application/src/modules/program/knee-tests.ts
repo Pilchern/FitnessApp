@@ -15,8 +15,11 @@ export const LOGGED_ISO_EXERCISES = {
   60: "Isometric Knee Extension (60°)",
 } as const;
 
-/** Latest test older than this no longer drives the quad-drop hold. */
-export const KNEE_TEST_STALE_DAYS = 14;
+/**
+ * Latest test older than this no longer drives the quad-drop hold. The crane
+ * test is monthly from v2.19 (2026-11-13), so a month plus a week of slack.
+ */
+export const KNEE_TEST_STALE_DAYS = 35;
 
 export type SidePair = {
   date: IsoDate;
@@ -306,6 +309,82 @@ export function kneeTestSummary(input: {
     walkingAsymmetry: latestValue(tests, "walking_asymmetry", upTo),
     quadDrop: leftQuadDrop(tests, upTo, input.quadDropHoldN),
   };
+}
+
+/** The crane isometric test is monthly from v2.19 (was weekly). */
+export const CRANE_EVERY_DAYS = 28;
+
+/** True when no 90° crane quad test (either app) is on file from the last 28 days. */
+export function craneTestDue(tests: KneeTest[], today: IsoDate) {
+  const last = tests
+    .filter((t) => t.testType === "quad_iso_90" && t.testDate <= today)
+    .reduce<IsoDate | null>(
+      (latest, t) =>
+        latest == null || t.testDate > latest ? t.testDate : latest,
+      null,
+    );
+  return last == null || last <= addDays(today, -CRANE_EVERY_DAYS);
+}
+
+/** The weekly Sunday single-leg leg extension test (v2.19). */
+export const LEG_EXT_TEST_TYPES = {
+  reps: "sl_leg_ext_reps",
+  load: "sl_leg_ext_load",
+} as const;
+
+export type LegExtensionReading = {
+  date: IsoDate;
+  loadL: number | null;
+  loadR: number | null;
+  repsL: number | null;
+  repsR: number | null;
+  /** L reps / R reps x 100 at the same load; null when the loads differ or a side is missing. */
+  symmetry: number | null;
+};
+
+/**
+ * Single-leg leg extension per test date, oldest first: same load each leg,
+ * reps to RIR 1, left first. Symmetry = L reps / R reps x 100 (one decimal).
+ *
+ * TODO(v2.19): this sits alongside the crane LSI and does not feed the jog,
+ * plyo or RTS gate criteria yet. Redefine those after the 11/16-11/22
+ * cross-calibration of this test against the crane.
+ */
+export function legExtensionSymmetry(tests: KneeTest[]): LegExtensionReading[] {
+  const byDate = new Map<IsoDate, LegExtensionReading>();
+  const entry = (date: IsoDate) => {
+    let r = byDate.get(date);
+    if (!r) {
+      r = {
+        date,
+        loadL: null,
+        loadR: null,
+        repsL: null,
+        repsR: null,
+        symmetry: null,
+      };
+      byDate.set(date, r);
+    }
+    return r;
+  };
+  for (const t of tests) {
+    if (t.side !== "L" && t.side !== "R") continue;
+    if (t.testType === LEG_EXT_TEST_TYPES.reps) {
+      entry(t.testDate)[t.side === "L" ? "repsL" : "repsR"] = t.value;
+    } else if (t.testType === LEG_EXT_TEST_TYPES.load) {
+      entry(t.testDate)[t.side === "L" ? "loadL" : "loadR"] = t.value;
+    }
+  }
+  return [...byDate.values()]
+    .filter((r) => r.repsL != null || r.repsR != null)
+    .map((r) => ({
+      ...r,
+      symmetry:
+        r.loadL != null && r.loadL === r.loadR
+          ? lsiPct(r.repsL, r.repsR)
+          : null,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 /** ACL-RSI is scored monthly. */

@@ -2,11 +2,13 @@ import "server-only";
 
 import {
   addDays,
+  craneTestDue,
   gateBoards,
   getZonedDate,
   KNEE_TEST_SOURCE,
   leftQuadDrop,
   legExerciseIndex,
+  legExtensionSymmetry,
   legSessionDayBefore,
   programSettingsFromRows,
   quadLsiByDate,
@@ -107,6 +109,8 @@ export async function getKneePageData(): Promise<KneePageData> {
     quadDrop: drop
       ? { dropN: drop.dropN, previousLeft: drop.previousLeft, left: drop.left }
       : null,
+    legExtension: legExtensionSymmetry(tests),
+    craneDue: craneTestDue(tests, today),
     rightBests: quad
       .filter((p): p is typeof p & { right: number } => p.right != null)
       .map((p) => ({ date: p.date, right: p.right })),

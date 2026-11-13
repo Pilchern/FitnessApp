@@ -192,7 +192,16 @@ export const CLEARED_BY_LABEL: Record<ClearedBy, string> = {
 const pct = (v: number) => `${v}%`;
 const SWELLING_OK = new Set(["none", "trace"]);
 
-/** The three gate boards, each criterion judged against today's data. */
+/**
+ * The three gate boards, each criterion judged against today's data.
+ *
+ * TODO(v2.19): the quad criteria still read the crane LSI only. The weekly
+ * single-leg leg extension symmetry (legExtensionSymmetry) is shown beside it
+ * but not used here; redefine the jog, plyo and RTS quad criteria after the
+ * 11/16-11/22 cross-calibration. RTS: 90% for golf and running, 100% before
+ * cutting sports. The crane is monthly now, so GATE_STALE_DAYS (14) greys the
+ * crane LSI for part of each month; settle that in the same change.
+ */
 export function gateBoards(input: GateInputs): GateBoard[] {
   const { tests, checks, gates, today } = input;
   const [lsi1, lsi2, lsi3] = input.lsiTargets;

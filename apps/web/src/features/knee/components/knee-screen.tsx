@@ -3,8 +3,10 @@ import {
   ACL_RSI_EVERY_DAYS,
   aclRsiDue,
   bestBySide,
+  CRANE_EVERY_DAYS,
   type GateBoard,
   type GateCriterion,
+  type LegExtensionReading,
   latestHq,
   latestValue,
   lsiPct,
@@ -154,6 +156,54 @@ function GateCard({ board }: { board: GateBoard }) {
   );
 }
 
+/** Weekly single-leg leg extension: newest first, last 6 tests. */
+function LegExtensionPanel({ readings }: { readings: LegExtensionReading[] }) {
+  const recent = [...readings].reverse().slice(0, 6);
+  const newest = recent[0] ?? null;
+  return (
+    <section className={panel}>
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-pine">
+        Leg extension symmetry (weekly)
+      </p>
+      {newest ? (
+        <>
+          <p className="mt-2 text-sm text-ink">
+            <span className="font-display text-2xl">
+              {newest.symmetry != null ? `${newest.symmetry}%` : "–"}
+            </span>{" "}
+            L {newest.repsL ?? "–"} / R {newest.repsR ?? "–"} reps
+            {newest.loadL != null ? ` at ${newest.loadL} lb` : ""} ·{" "}
+            {formatShortDate(newest.date)}
+          </p>
+          {recent.length > 1 ? (
+            <ul className="mt-2 divide-y divide-ink/10 text-sm">
+              {recent.slice(1).map((r) => (
+                <li key={r.date} className="flex justify-between gap-3 py-1">
+                  <span className="text-ink/70">{formatShortDate(r.date)}</span>
+                  <span className="tabular-nums text-ink">
+                    {r.symmetry != null ? `${r.symmetry}%` : "–"} · L{" "}
+                    {r.repsL ?? "–"} / R {r.repsR ?? "–"}
+                    {r.loadL != null ? ` @ ${r.loadL} lb` : ""}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      ) : (
+        <p className="mt-2 text-sm text-ink/55">
+          No leg extension tests yet. Every Sunday: same load each leg, reps to
+          RIR 1, left first.
+        </p>
+      )}
+      <p className="mt-1 text-xs text-ink/50">
+        Symmetry = L reps / R reps at the same load. Shown beside the crane LSI;
+        the gates still use the crane until the 11/16-11/22 cross-calibration.
+      </p>
+    </section>
+  );
+}
+
 function last(pairs: SidePair[]) {
   return pairs[pairs.length - 1] ?? null;
 }
@@ -204,7 +254,8 @@ export async function KneeScreen() {
         title="Knee tests"
         subtitle={
           <>
-            Crane test, ROM, girth and hop tests. L = operated knee.{" "}
+            Weekly leg extension, monthly crane test, ROM, girth and hop tests.
+            L = operated knee.{" "}
             <Link href="/program/review" className="font-semibold text-pine">
               Weekly review
             </Link>
@@ -257,6 +308,8 @@ export async function KneeScreen() {
         </p>
       </section>
 
+      <LegExtensionPanel readings={data.legExtension} />
+
       <section className={panel}>
         <h2 className="font-display text-lg text-ink">Gates</h2>
         <p className="mt-1 text-xs text-ink/55">
@@ -276,6 +329,14 @@ export async function KneeScreen() {
 
       <section className={panel}>
         <h2 className="font-display text-lg text-ink">New test</h2>
+        {data.craneDue ? (
+          <p
+            role="alert"
+            className="mt-2 rounded-xl bg-sand/70 px-3 py-2 text-sm text-ink"
+          >
+            Crane test is due (monthly, every {CRANE_EVERY_DAYS} days).
+          </p>
+        ) : null}
         {aclRsiDue(data.tests, data.today) ? (
           <p
             role="alert"

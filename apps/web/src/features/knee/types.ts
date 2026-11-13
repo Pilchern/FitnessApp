@@ -1,4 +1,8 @@
-import type { GateBoard, LsiBasis } from "@fitness-app/application";
+import type {
+  GateBoard,
+  LegExtensionReading,
+  LsiBasis,
+} from "@fitness-app/application";
 import type { KneeTest } from "@fitness-app/domain";
 
 export type KneeActionState = {
@@ -31,6 +35,10 @@ export type KneePageData = {
     legSessionDayBefore: boolean;
     source: string;
   } | null;
+  /** Weekly single-leg leg extension per test date, oldest first. */
+  legExtension: LegExtensionReading[];
+  /** No 90° crane test in the last 28 days (monthly from v2.19). */
+  craneDue: boolean;
   /** Right-leg best per crane test date, oldest first (form preview). */
   rightBests: { date: string; right: number }[];
   quadDrop: { dropN: number; previousLeft: number; left: number } | null;

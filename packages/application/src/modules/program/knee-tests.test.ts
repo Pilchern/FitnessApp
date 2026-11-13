@@ -269,9 +269,9 @@ describe("left quad drop > 65 N week over week holds loads", () => {
     expect(leftQuadDrop(rise, "2026-10-19", 65)).toBeNull();
   });
 
-  it("stops holding once the newest test is over 14 days old, or with one test", () => {
-    expect(leftQuadDrop(tests, "2026-11-01", 65)).not.toBeNull();
-    expect(leftQuadDrop(tests, "2026-11-02", 65)).toBeNull();
+  it("stops holding once the newest test is over 35 days old (monthly crane), or with one test", () => {
+    expect(leftQuadDrop(tests, "2026-11-22", 65)).not.toBeNull();
+    expect(leftQuadDrop(tests, "2026-11-23", 65)).toBeNull();
     expect(
       leftQuadDrop(crane("2026-10-18", [270], [480]), "2026-10-19", 65),
     ).toBeNull();
