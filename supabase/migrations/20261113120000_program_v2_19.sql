@@ -173,7 +173,7 @@ insert into v219_lift values
 -- Compound rep ranges per block (each block's current range; Block 1's for week 13).
 create temp table v219_reps (blk text, name text, rmin int, rmax int);
 insert into v219_reps
-select b.blk, c.name, (b.r[c.i])[1], (b.r[c.i])[2]
+select b.blk, c.name, b.r[c.i][1], b.r[c.i][2]
 from (values
   ('Deload + Test',         array[[10,12],[8,10],[10,12],[10,12],[10,12],[2,4],[10,12],[10,12],[10,12],[10,12],[3,5],[8,10],[10,10]]),
   ('Block 2 Strength',      array[[6,8],[5,7],[6,8],[8,10],[6,8],[4,6],[6,8],[8,10],[10,12],[6,8],[4,6],[6,8],[8,8]]),
