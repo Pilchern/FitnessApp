@@ -29,6 +29,21 @@ describe("resolveExercise", () => {
     expect(entry?.movementPattern).toBe("legs");
   });
 
+  it("classifies the no-cable program swaps (v2.20)", () => {
+    expect(resolveExercise("Dumbbell Skull Crusher")?.muscleGroup).toBe(
+      "triceps",
+    );
+    expect(resolveExercise("Chest-Supported Rear Delt Fly")?.muscleGroup).toBe(
+      "shoulders",
+    );
+    expect(resolveExercise("Dumbbell Plank Pull-Through")?.muscleGroup).toBe(
+      "core",
+    );
+    expect(resolveExercise("Standing Dumbbell Woodchop")?.muscleGroup).toBe(
+      "core",
+    );
+  });
+
   it("returns null for an exercise not in the catalog", () => {
     expect(resolveExercise("Some Made Up Machine Exercise")).toBeNull();
   });
