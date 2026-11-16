@@ -188,6 +188,18 @@ export const EXERCISE_CATALOG: ExerciseCatalogEntry[] = [
     aliases: ["face pulls", "band face pull"],
   },
   {
+    canonicalName: "Chest-Supported Rear Delt Fly",
+    muscleGroup: "shoulders",
+    movementPattern: "pull",
+    category: "isolation",
+    aliases: [
+      "rear delt fly",
+      "reverse fly",
+      "dumbbell reverse fly",
+      "db rear delt fly",
+    ],
+  },
+  {
     canonicalName: "Barbell Deadlift",
     muscleGroup: "back",
     movementPattern: "pull",
@@ -542,6 +554,17 @@ export const EXERCISE_CATALOG: ExerciseCatalogEntry[] = [
     category: "isolation",
     aliases: ["triceps pushdown", "cable pushdown", "pushdown"],
   },
+  {
+    canonicalName: "Dumbbell Skull Crusher",
+    muscleGroup: "triceps",
+    movementPattern: "push",
+    category: "isolation",
+    aliases: [
+      "db skull crusher",
+      "lying dumbbell triceps extension",
+      "lying db tricep extension",
+    ],
+  },
 
   // Core
   {
@@ -599,6 +622,20 @@ export const EXERCISE_CATALOG: ExerciseCatalogEntry[] = [
     movementPattern: "core",
     category: "isolation",
     aliases: ["pallof", "band anti rotation press", "anti rotation press"],
+  },
+  {
+    canonicalName: "Dumbbell Plank Pull-Through",
+    muscleGroup: "core",
+    movementPattern: "core",
+    category: "isolation",
+    aliases: ["plank pull-through", "plank drag", "db plank pull-through"],
+  },
+  {
+    canonicalName: "Standing Dumbbell Woodchop",
+    muscleGroup: "core",
+    movementPattern: "core",
+    category: "isolation",
+    aliases: ["dumbbell woodchop", "db woodchop", "woodchop", "wood chop"],
   },
 ];
 
