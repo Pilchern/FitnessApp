@@ -15,9 +15,19 @@ const TEXT_KEYS = new Set([
   "program_rules",
   "gait_drill",
   "dexa_next_dates",
+  "cardio_plan_start",
+  "vo2_interval_minutes_by_week",
+  "long_ride_minutes_by_week",
+  "calendar_long_ride_time",
+  "cardio_rules",
 ]);
 /** Long text: edited in a text area. */
-const LONG_TEXT_KEYS = new Set(["warm_up", "program_rules", "gait_drill"]);
+const LONG_TEXT_KEYS = new Set([
+  "warm_up",
+  "program_rules",
+  "gait_drill",
+  "cardio_rules",
+]);
 
 function SettingRow({ setting }: { setting: TrainingSetting }) {
   const [state, action, pending] = useActionState(

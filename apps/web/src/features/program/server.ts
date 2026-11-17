@@ -771,6 +771,10 @@ export async function getProgramPageData(): Promise<ProgramPageData> {
         .split("\n")
         .map((r) => r.trim())
         .filter(Boolean),
+      cardioRules: settings.cardioRules
+        .split("\n")
+        .map((r) => r.trim())
+        .filter(Boolean),
     },
     today: todayView,
     week: todayView.week,

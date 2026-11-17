@@ -7,6 +7,7 @@ import { CardioQuickForm } from "./cardio-quick-form";
 import { CardioSessionList } from "./cardio-session-list";
 import { CardioSummaryCards } from "./cardio-summary-cards";
 import { PageHeader } from "@/components/shared/page-header";
+import { TrendChart } from "@/components/shared/trend-chart";
 
 type CardioScreenProps = {
   editSessionId?: string;
@@ -44,7 +45,26 @@ export async function CardioScreen({
       <CardioSummaryCards
         weeklyTotals={data.weeklyTotals}
         zone2TargetMinutes={data.zone2TargetMinutes}
+        zone2Band={data.zone2Band}
       />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <TrendChart
+          title="Zone 2 output"
+          description={`Average watts on Zone 2 rides (HR ${data.zone2Band}). Rising at the same heart rate is the progress.`}
+          points={data.zone2OutputTrend}
+          formatValue={(w) => `${w} W`}
+          emptyMessage="Add avg output to a Zone 2 ride to start the trend."
+        />
+        <TrendChart
+          title="Interval output"
+          description="Mean watts across the work intervals of each VO2 ride."
+          points={data.intervalOutputTrend}
+          formatValue={(w) => `${w} W`}
+          emptyMessage="Log interval outputs on a VO2 ride to start the trend."
+          strokeClassName="stroke-ember"
+        />
+      </div>
 
       {error ? (
         <div

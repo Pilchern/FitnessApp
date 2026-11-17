@@ -14,6 +14,8 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 - Work: Director of Marketplaces. Office Mon/Tue/Thu, WFH Wed/Fri. Leaves for the office by about 8:30 AM. PT is Wed and Fri 7:40 AM. [stated]
 - Equipment (all he has): barbell, plates, adjustable dumbbells, bands, squat/power rack, Peloton bike, treadmill, adjustable bench with a leg developer (Gold's Gym Platinum, replaced the Bowflex bench 2026-11-09: seated leg extension and prone leg curl, plate-loaded, 2.5 lb steps). No leg press, cable or pulldown machine, elliptical. [stated] No cable exercises in the program; dumbbell or barbell first, bands only where needed (he has a few), mainly the PT HEP drills (2026-11-16, program v2.20). [stated]
 
+- Cardio plan from 2026-11-16 [stated]: Tue VO2 intervals (10 min warm-up, 4 x work with equal easy recovery, 5 min cool-down, seated, cadence-driven, HR 165+ by the end of each interval); Thu Zone 2 45 min; Sat 7:00 AM long Zone 2; Sunday off (walk only). Week of 11/16: Tue Zone 2 45, Thu 4 x 3, Sat 60. Progression by week: 4 x 3 / 60, 4 x 3 / 65, 4 x 4 / 70, 75, 80, 90, then hold. Zone 2 = HR 130-145, hard cap 145 (Settings › Cardio). Sprint finisher (Thu, from week 5, 4-6 x 20-30 s all-out) only once sprint_finisher_cleared is set. Fallbacks: missed Saturday -> Sunday morning; 2 rides -> keep Tue and Sat; knee flare-up -> Tue intervals become Zone 2 for the same minutes. Owner cleared for hard efforts 2026-11-17.
+
 ## 2. Boundaries between systems
 
 - FitnessApp (this repo, Supabase "Fitness App"): lifts, cardio, recovery, habits, nutrition checks, weekly review, body metrics. Upper-body training and cardio live here.

@@ -64,7 +64,12 @@ export function isScheduledSession(s: WeekCountableSession) {
  * range. Interval rides declare none here.
  */
 export function plannedZone2Minutes(s: WeekCountableSession): number | null {
-  if (!isScheduledSession(s) || s.ride?.kind !== "zone2") return null;
+  if (
+    !isScheduledSession(s) ||
+    (s.ride?.kind !== "zone2" && s.ride?.kind !== "zone2_long")
+  ) {
+    return null;
+  }
   return s.ride.minutesMax ?? null;
 }
 

@@ -109,6 +109,11 @@ const cardioSessionFields = {
   maxHeartRate: z.number().int().min(0).max(250).nullable().optional(),
   avgOutput: z.number().nonnegative().nullable().optional(),
   totalOutputKj: z.number().min(0).max(5000).nullable().optional(),
+  intervalOutputs: z
+    .array(z.number().int().min(0).max(2000))
+    .max(8)
+    .nullable()
+    .optional(),
   runMinutes: z.number().min(0).max(600).nullable().optional(),
   walkMinutes: z.number().min(0).max(600).nullable().optional(),
   best5MinWatts: z.number().int().min(0).max(2000).nullable().optional(),
@@ -195,6 +200,11 @@ export const updateCardioSessionSchema = withCardioSessionRules(
       maxHeartRate: z.number().int().min(0).max(250).nullable().optional(),
       avgOutput: z.number().nonnegative().nullable().optional(),
       totalOutputKj: z.number().min(0).max(5000).nullable().optional(),
+      intervalOutputs: z
+        .array(z.number().int().min(0).max(2000))
+        .max(8)
+        .nullable()
+        .optional(),
       runMinutes: z.number().min(0).max(600).nullable().optional(),
       walkMinutes: z.number().min(0).max(600).nullable().optional(),
       best5MinWatts: z.number().int().min(0).max(2000).nullable().optional(),
@@ -225,6 +235,7 @@ export const updateCardioSessionSchema = withCardioSessionRules(
           "maxHeartRate",
           "avgOutput",
           "totalOutputKj",
+          "intervalOutputs",
           "runMinutes",
           "walkMinutes",
           "best5MinWatts",

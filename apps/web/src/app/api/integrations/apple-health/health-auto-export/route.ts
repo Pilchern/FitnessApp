@@ -21,6 +21,7 @@ import {
   ZONE2_CREDIT_BY,
   maxHeartRateFor,
   MEASURED_MAX_HEART_RATE,
+  programSettingsFromRows,
   zone2HeartRateRange,
   zone2PowerRange,
 } from "@fitness-app/application";
@@ -214,8 +215,22 @@ export async function POST(request: NextRequest) {
   const maxHeartRate =
     MEASURED_MAX_HEART_RATE ??
     (birthDate ? maxHeartRateFor(ageOn(birthDate, today)) : null);
+  // The Zone 2 band is the Settings one (zone2_hr_low/high); the max HR
+  // estimate only fills in when Settings cannot be read.
+  const settingsBand = await createCoreServices()
+    .then(({ programService }) => programService.listSettings(userId))
+    .then((rows): [number, number] => {
+      const s = programSettingsFromRows(rows);
+      return [s.zone2HrLow, s.zone2HrHigh];
+    })
+    .catch((error) => {
+      console.error("Zone 2 band: settings read failed", error);
+      return null;
+    });
   const mapped = mapHealthAutoExport(body, {
-    zone2Bpm: maxHeartRate != null ? zone2HeartRateRange(maxHeartRate) : null,
+    zone2Bpm:
+      settingsBand ??
+      (maxHeartRate != null ? zone2HeartRateRange(maxHeartRate) : null),
     zone2Watts: zone2PowerRange(),
     zone2CreditBy: ZONE2_CREDIT_BY,
   });

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCardioWeeklyTotals,
+  intervalOutputTrend,
+  zone2OutputTrend,
   createCardioSessionSchema,
   updateCardioSessionSchema,
 } from "../../index";
@@ -157,8 +159,36 @@ describe("cardio summaries", () => {
       completedSessions: 2,
       totalMinutes: 82,
       zone2Minutes: 45,
+      minutesInHrBand: 45,
       vo2Sessions: 1,
       averageHeartRate: 144,
     });
+  });
+
+  it("counts band minutes on every ride and builds the output trends", () => {
+    const [zone2, vo2] = sessions;
+    const rides = [
+      {
+        ...vo2,
+        sessionDate: "2026-03-27",
+        intervalOutputs: [180, 190, 185, 185],
+      },
+      {
+        ...zone2,
+        sessionDate: "2026-03-26",
+        avgOutput: 121.4,
+        zone2Minutes: null,
+      },
+      { ...zone2, sessionDate: "2026-03-28", avgOutput: null },
+    ];
+    expect(buildCardioWeeklyTotals(rides).minutesInHrBand).toBe(
+      (zone2.durationMinutes ?? 0) + 45,
+    );
+    expect(zone2OutputTrend(rides)).toEqual([
+      { date: "2026-03-26", value: 121 },
+    ]);
+    expect(intervalOutputTrend(rides)).toEqual([
+      { date: "2026-03-27", value: 185 },
+    ]);
   });
 });

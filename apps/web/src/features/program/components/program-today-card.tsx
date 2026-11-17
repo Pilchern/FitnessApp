@@ -31,7 +31,7 @@ function walkJogLine(advice: WalkJogAdvice) {
   return `${minutes} min running: ${advice.structure}. ${advice.reason}`;
 }
 
-function rideLine(session: ProgramSessionView) {
+export function rideLine(session: Pick<ProgramSessionView, "ride">) {
   const ride = session.ride;
   if (!ride) return null;
   const minutes =
@@ -181,6 +181,12 @@ export function ProgramSessionList({
                 ) : null}
                 {s.ride?.structure ? (
                   <p className="text-xs text-ink/60">{s.ride.structure}</p>
+                ) : null}
+                {s.ride?.target ? (
+                  <p className="text-xs text-ink/70">{s.ride.target}</p>
+                ) : null}
+                {s.ride?.finisher ? (
+                  <p className="text-xs text-ink/70">{s.ride.finisher}</p>
                 ) : null}
                 {s.ride?.note ? (
                   <p className="text-xs font-medium text-ember">
