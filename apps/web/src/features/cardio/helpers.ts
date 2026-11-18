@@ -78,6 +78,7 @@ export function toCardioFormValues(
       avgHeartRate: "",
       maxHeartRate: "",
       avgOutput: "",
+      intervalOutputs: ["", "", "", ""],
       totalOutputKj: "",
       runMinutes: "",
       walkMinutes: "",
@@ -101,6 +102,9 @@ export function toCardioFormValues(
     avgHeartRate: numberToInput(session.avgHeartRate),
     maxHeartRate: numberToInput(session.maxHeartRate),
     avgOutput: numberToInput(session.avgOutput),
+    intervalOutputs: [0, 1, 2, 3].map((i) =>
+      numberToInput(session.intervalOutputs?.[i] ?? null),
+    ) as CardioFormValues["intervalOutputs"],
     totalOutputKj: numberToInput(session.totalOutputKj ?? null),
     runMinutes: numberToInput(session.runMinutes ?? null),
     walkMinutes: numberToInput(session.walkMinutes ?? null),

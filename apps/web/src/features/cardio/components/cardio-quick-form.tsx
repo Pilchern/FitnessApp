@@ -220,6 +220,86 @@ export function CardioQuickForm({
         </label>
       </div>
 
+      {values.sessionKind === "zone2" ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Avg output (W)
+            <input
+              className={fieldClassName()}
+              name="avgOutput"
+              inputMode="decimal"
+              placeholder="Peloton avg"
+              value={values.avgOutput}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  avgOutput: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.avgOutput ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.avgOutput}
+              </p>
+            ) : null}
+          </label>
+        </div>
+      ) : null}
+
+      {values.sessionKind === "vo2" ? (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+          {values.intervalOutputs.map((output, index) => (
+            <label
+              key={index}
+              className="grid gap-2 text-sm font-medium text-ink"
+            >
+              Interval {index + 1} (W)
+              <input
+                className={fieldClassName()}
+                name={`intervalOutput${index + 1}`}
+                inputMode="numeric"
+                placeholder="avg"
+                value={output}
+                onChange={(event) =>
+                  setValues((current) => {
+                    const next = [
+                      ...current.intervalOutputs,
+                    ] as CardioFormValues["intervalOutputs"];
+                    next[index] = event.target.value;
+                    return { ...current, intervalOutputs: next };
+                  })
+                }
+              />
+              {state.fieldErrors?.[`intervalOutput${index + 1}`] ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors[`intervalOutput${index + 1}`]}
+                </p>
+              ) : null}
+            </label>
+          ))}
+          <label className="grid gap-2 text-sm font-medium text-ink">
+            Peak HR
+            <input
+              className={fieldClassName()}
+              name="maxHeartRate"
+              inputMode="numeric"
+              value={values.maxHeartRate}
+              onChange={(event) =>
+                setValues((current) => ({
+                  ...current,
+                  maxHeartRate: event.target.value,
+                }))
+              }
+            />
+            {state.fieldErrors?.maxHeartRate ? (
+              <p className="text-xs text-ember">
+                {state.fieldErrors.maxHeartRate}
+              </p>
+            ) : null}
+          </label>
+        </div>
+      ) : null}
+
       <div className="space-y-3">
         <div className="text-sm font-semibold text-ink">Plan status</div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -266,47 +346,51 @@ export function CardioQuickForm({
 
       {showAdvanced ? (
         <div className="grid gap-4 rounded-[1.5rem] border border-ink/10 bg-sand/50 p-4 md:grid-cols-2 xl:grid-cols-3">
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Max HR
-            <input
-              className={fieldClassName()}
-              name="maxHeartRate"
-              inputMode="numeric"
-              value={values.maxHeartRate}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  maxHeartRate: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.maxHeartRate ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.maxHeartRate}
-              </p>
-            ) : null}
-          </label>
+          {values.sessionKind === "vo2" ? null : (
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Max HR
+              <input
+                className={fieldClassName()}
+                name="maxHeartRate"
+                inputMode="numeric"
+                value={values.maxHeartRate}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    maxHeartRate: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.maxHeartRate ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.maxHeartRate}
+                </p>
+              ) : null}
+            </label>
+          )}
 
-          <label className="grid gap-2 text-sm font-medium text-ink">
-            Avg output
-            <input
-              className={fieldClassName()}
-              name="avgOutput"
-              inputMode="decimal"
-              value={values.avgOutput}
-              onChange={(event) =>
-                setValues((current) => ({
-                  ...current,
-                  avgOutput: event.target.value,
-                }))
-              }
-            />
-            {state.fieldErrors?.avgOutput ? (
-              <p className="text-xs text-ember">
-                {state.fieldErrors.avgOutput}
-              </p>
-            ) : null}
-          </label>
+          {values.sessionKind === "zone2" ? null : (
+            <label className="grid gap-2 text-sm font-medium text-ink">
+              Avg output
+              <input
+                className={fieldClassName()}
+                name="avgOutput"
+                inputMode="decimal"
+                value={values.avgOutput}
+                onChange={(event) =>
+                  setValues((current) => ({
+                    ...current,
+                    avgOutput: event.target.value,
+                  }))
+                }
+              />
+              {state.fieldErrors?.avgOutput ? (
+                <p className="text-xs text-ember">
+                  {state.fieldErrors.avgOutput}
+                </p>
+              ) : null}
+            </label>
+          )}
 
           <label className="grid gap-2 text-sm font-medium text-ink">
             Output (kJ)

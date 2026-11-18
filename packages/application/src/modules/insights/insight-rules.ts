@@ -520,7 +520,7 @@ function evaluateZone2BelowTarget(input: InsightEngineInput) {
     severity,
     "Zone 2 time fell short",
     `${zone2Minutes} min logged vs. ${zone2Target} min weekly target.`,
-    `Ride the planned sessions at 125-144 bpm toward ${zone2Target} minutes. Don't catch up: add no more than about 10% ride time next week.`,
+    `Ride the planned sessions in your Zone 2 heart rate band toward ${zone2Target} minutes. Don't catch up: add no more than about 10% ride time next week.`,
     {
       weekStart,
       zone2Minutes,

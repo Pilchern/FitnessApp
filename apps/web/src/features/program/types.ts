@@ -156,6 +156,8 @@ export type ProgramPageData = {
     testDayUrl: string | null;
     /** The program's global rules, one per line. */
     rules: string[];
+    /** Cardio fallback rules (Settings › Cardio), shown on the week. */
+    cardioRules: string[];
   } | null;
   today: ProgramToday | null;
   week: ProgramWeekDay[];

@@ -54,6 +54,7 @@ export * from "./modules/program/knee-tests";
 export * from "./modules/program/knee-test-entry";
 export * from "./modules/program/gate-criteria";
 export * from "./modules/program/program-plan";
+export * from "./modules/program/cardio-plan";
 export * from "./modules/program/program-service";
 export * from "./modules/program/program-logger-plan";
 export * from "./modules/program/program-settings";

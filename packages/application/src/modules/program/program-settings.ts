@@ -109,6 +109,25 @@ export type ProgramSettings = {
   vatMaxLb: number;
   /** Planned DEXA scans, "YYYY-MM-DD, YYYY-MM-DD". */
   dexaNextDates: string;
+  // Cardio plan (2026-11-16). The one place the Zone 2 band lives.
+  /** Zone 2 heart rate band, bpm; the high end is the hard cap. */
+  zone2HrLow: number;
+  zone2HrHigh: number;
+  /** VO2 intervals: reach this heart rate by the end of each interval. */
+  vo2TargetHr: number;
+  /** Monday of cardio week 1 ("YYYY-MM-DD"); blank = progression off. */
+  cardioPlanStart: string;
+  /** Work interval minutes by cardio week, "3,3,4"; the last value holds. */
+  vo2IntervalMinutesByWeek: string;
+  /** Saturday long Zone 2 minutes by cardio week; the last value holds. */
+  longRideMinutesByWeek: string;
+  /** 1 = Thursday sprint finisher on, from `sprintFinisherFromWeek`. */
+  sprintFinisherCleared: number;
+  sprintFinisherFromWeek: number;
+  /** "HH:MM" local time of the Saturday long ride. */
+  calendarLongRideTime: string;
+  /** Cardio fallback rules, one per line, shown on the program week. */
+  cardioRules: string;
 };
 
 export const DEFAULT_GAIT_DRILL =
@@ -218,6 +237,16 @@ export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   waistTargetIn: 34.5,
   vatMaxLb: 0.25,
   dexaNextDates: "2027-01-16, 2027-04-16",
+  zone2HrLow: 130,
+  zone2HrHigh: 145,
+  vo2TargetHr: 165,
+  cardioPlanStart: "",
+  vo2IntervalMinutesByWeek: "3,3,4,4,4,4",
+  longRideMinutesByWeek: "60,65,70,75,80,90",
+  sprintFinisherCleared: 0,
+  sprintFinisherFromWeek: 5,
+  calendarLongRideTime: "07:00",
+  cardioRules: "",
 };
 
 /**
@@ -254,7 +283,13 @@ const TEXT_KEYS = new Set<keyof ProgramSettings>([
   "programRules",
   "gaitDrill",
   "dexaNextDates",
+  "cardioPlanStart",
+  "vo2IntervalMinutesByWeek",
+  "longRideMinutesByWeek",
+  "calendarLongRideTime",
+  "cardioRules",
 ]);
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** "barbellStepLb" -> "barbell_step_lb", the row key. */
@@ -281,6 +316,8 @@ export function programSettingsFromRows(
       const fallback = DEFAULT_PROGRAM_SETTINGS[field];
       if (field.startsWith("calendar")) {
         result[field] = TIME_PATTERN.test(text) ? text : fallback;
+      } else if (field === "cardioPlanStart") {
+        result[field] = DATE_PATTERN.test(text) ? text : fallback;
       } else {
         result[field] = text === "" ? fallback : text;
       }

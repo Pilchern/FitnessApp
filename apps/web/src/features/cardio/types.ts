@@ -1,4 +1,7 @@
-import type { CardioWeeklyTotals } from "@fitness-app/application";
+import type {
+  CardioWeeklyTotals,
+  SparseTrendPoint,
+} from "@fitness-app/application";
 import type {
   CardioSession,
   CardioSessionCompletion,
@@ -19,6 +22,11 @@ export type CardioPageData = {
   weeklyTotals: CardioWeeklyTotals;
   /** Sum of targetZone2Minutes over scheduled cardio templates; null if unset. */
   zone2TargetMinutes: number | null;
+  /** Settings Zone 2 band, "130-145". */
+  zone2Band: string;
+  /** Progress metrics: Zone 2 avg output and mean VO2 interval output. */
+  zone2OutputTrend: SparseTrendPoint[];
+  intervalOutputTrend: SparseTrendPoint[];
   editingSession: CardioSession | null;
   formError?: string;
 };
@@ -38,6 +46,8 @@ export type CardioFormValues = {
   avgHeartRate: string;
   maxHeartRate: string;
   avgOutput: string;
+  /** VO2 rides: average watts per work interval (4 inputs). */
+  intervalOutputs: [string, string, string, string];
   totalOutputKj: string;
   runMinutes: string;
   walkMinutes: string;

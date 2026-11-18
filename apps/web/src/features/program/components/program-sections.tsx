@@ -1,5 +1,6 @@
 import Link from "next/link";
-import type { ProgramPageData } from "../types";
+import { RIDE_KIND_LABEL } from "@fitness-app/application";
+import type { ProgramPageData, ProgramSessionView } from "../types";
 import { MakeUpControl } from "./make-up-control";
 import {
   dayShort,
@@ -65,7 +66,14 @@ const KNEE_TAG = {
   knee_off: "Knee day off",
 } as const;
 
-export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
+export function ProgramWeekView({
+  week,
+  cardioRules = [],
+}: {
+  week: ProgramPageData["week"];
+  /** Cardio fallback rules from Settings, shown under the week. */
+  cardioRules?: string[];
+}) {
   const tracked = week.flatMap((d) =>
     d.sessions.filter((s) => s.visible && s.completion !== "none"),
   );
@@ -116,6 +124,12 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
                     <span className="min-w-0 truncate">
                       {s.name}
                       {!s.visible ? " (locked)" : ""}
+                      {s.visible && s.ride ? (
+                        <span className="text-xs text-ink/50">
+                          {" "}
+                          · {rideDetail(s.ride)}
+                        </span>
+                      ) : null}
                     </span>
                     {s.visible && c ? (
                       <span className={`shrink-0 text-xs ${c.tone}`}>
@@ -147,6 +161,16 @@ export function ProgramWeekView({ week }: { week: ProgramPageData["week"] }) {
           </li>
         ))}
       </ul>
+      {cardioRules.length > 0 ? (
+        <div className="mt-2 border-t border-ink/10 pt-3">
+          <p className="text-xs text-ink/55">If the cardio week changes</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-ink/70">
+            {cardioRules.map((rule) => (
+              <li key={rule}>{rule}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <Link
         href="/program/review"
         className="mt-2 flex items-center justify-between border-t border-ink/10 pt-3 text-sm text-ink/70 hover:text-pine"
@@ -369,4 +393,22 @@ export function ProgramRules({
       </div>
     </Fold>
   );
+}
+
+/** "4 x 3 min, 36 min" for VO2 rides, else the ride's minutes. */
+function rideDetail(ride: NonNullable<ProgramSessionView["ride"]>) {
+  const minutes =
+    ride.minutesMax != null
+      ? ride.minutesMin != null && ride.minutesMin !== ride.minutesMax
+        ? `${ride.minutesMin}–${ride.minutesMax} min`
+        : `${ride.minutesMax} min`
+      : null;
+  const intervals = ride.structure?.match(/\d+ x \d+ min/)?.[0] ?? null;
+  return [
+    ride.kind === "vo2_intervals" ? intervals : RIDE_KIND_LABEL[ride.kind],
+    minutes,
+    ride.finisher ? "+ sprints" : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 }

@@ -20,7 +20,9 @@ export type RideKind =
   | "zone2"
   | "climb_intervals"
   | "threshold_intervals"
-  | "vo2_intervals";
+  | "vo2_intervals"
+  /** Saturday long Zone 2; its minutes follow the cardio progression. */
+  | "zone2_long";
 export type ExerciseMeasure = "reps" | "time" | "force" | "distance";
 export type SideMode = "bilateral" | "per_leg" | "per_side";
 /** Library category: plyo halves on a deload; the rest lose one set. */

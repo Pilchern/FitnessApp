@@ -25,6 +25,15 @@ import {
   DEFAULT_PROGRAM_SETTINGS,
   type ProgramSettings,
 } from "./program-settings";
+import {
+  cardioWeekPlan,
+  SPRINT_FINISHER,
+  SPRINT_FINISHER_DAY,
+  vo2Structure,
+  vo2Target,
+  zone2Target,
+  type CardioPlanSettings,
+} from "./cardio-plan";
 
 /** Replaces the leg block on a knee day off (length from settings). */
 export const KNEE_OFF_BLOCK = {
@@ -197,7 +206,13 @@ export const RIDE_KIND_LABEL: Record<RideKind, string> = {
   climb_intervals: "Tempo intervals",
   threshold_intervals: "4 x 4 min intervals",
   vo2_intervals: "VO2 max intervals",
+  zone2_long: "Long Zone 2",
 };
+
+/** Zone 2 rides: the Settings heart rate band applies. */
+export function isZone2Ride(kind: RideKind) {
+  return kind === "zone2" || kind === "zone2_long";
+}
 
 export type PlannedRide = {
   kind: RideKind;
@@ -205,6 +220,10 @@ export type PlannedRide = {
   minutesMax: number | null;
   structure: string | null;
   note: string | null;
+  /** Heart rate target from Settings (Zone 2 band or the VO2 target). */
+  target?: string | null;
+  /** Thursday sprint finisher, once sprint_finisher_cleared is on. */
+  finisher?: string | null;
 };
 
 /** What a gated ride runs as until its gate is cleared. */
@@ -260,7 +279,11 @@ function walkJogAllowed(
  * - hold: "normal only" exercises and walk-jog are off; loads repeat.
  * - a ride whose gate is closed (intervals before clearance) is not hidden:
  *   it runs as seated Zone 2 for the same minutes. Other gated sessions hide.
- * - walk-jog (jog gate cleared) cuts the same day's ride to 15-20 min.
+ * - walk-jog (jog gate cleared) cuts the same day's ride to 15-20 min, as
+ *   Zone 2 (no intervals after a run).
+ * - from the cardio plan start (Settings), VO2 rides take the week's
+ *   interval length and the long Zone 2 ride the week's minutes; the
+ *   Thursday Zone 2 ride gets the sprint finisher once it is switched on.
  * Exercises outside their week window (from/until week) are left out.
  */
 export function buildDayPlan(
@@ -270,7 +293,8 @@ export function buildDayPlan(
   settings: Pick<
     ProgramSettings,
     "rideAfterWalkJogMin" | "rideAfterWalkJogMax"
-  > = DEFAULT_PROGRAM_SETTINGS,
+  > &
+    CardioPlanSettings = DEFAULT_PROGRAM_SETTINGS,
 ): DayPlan {
   const info = programWeekInfo(program, date);
   const block = info.block;
@@ -293,6 +317,8 @@ export function buildDayPlan(
   const todays = sessionsForBlock(program, block)
     .filter((s) => s.dayOfWeek === info.dayOfWeek)
     .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const cardio = cardioWeekPlan(settings, date);
 
   const walkJogToday = todays.some(
     (s) =>
@@ -332,6 +358,21 @@ export function buildDayPlan(
         structure: session.structure,
         note: null,
       };
+      if (cardio?.intervalMinutes != null && ride.kind === "vo2_intervals") {
+        ride = {
+          ...ride,
+          minutesMin: cardio.vo2RideMinutes,
+          minutesMax: cardio.vo2RideMinutes,
+          structure: vo2Structure(cardio.intervalMinutes),
+        };
+      }
+      if (cardio?.longRideMinutes != null && ride.kind === "zone2_long") {
+        ride = {
+          ...ride,
+          minutesMin: cardio.longRideMinutes,
+          minutesMax: cardio.longRideMinutes,
+        };
+      }
       if (!gateOpen) {
         name = GATED_RIDE_NAME;
         ride = {
@@ -341,17 +382,19 @@ export function buildDayPlan(
           note: `Seated Zone 2 until "${gateLabel(program.gates, session.gateKey ?? "")}" is cleared (Settings).`,
         };
       }
-      if (readiness === "knee_off" && ride.kind !== "zone2") {
+      if (readiness === "knee_off" && !isZone2Ride(ride.kind)) {
         ride = {
           ...ride,
           kind: "zone2",
           structure: null,
-          note: "Knee day off: Zone 2 instead of intervals.",
+          note: "Knee day off: Zone 2 instead of intervals, same minutes.",
         };
       }
       if (walkJogToday) {
         ride = {
           ...ride,
+          kind: isZone2Ride(ride.kind) ? ride.kind : "zone2",
+          structure: isZone2Ride(ride.kind) ? ride.structure : null,
           minutesMin: settings.rideAfterWalkJogMin,
           minutesMax: settings.rideAfterWalkJogMax,
           note: [ride.note, "Shortened: walk-jog first."]
@@ -359,6 +402,26 @@ export function buildDayPlan(
             .join(" "),
         };
       }
+    }
+
+    if (ride) {
+      ride = {
+        ...ride,
+        target: isZone2Ride(ride.kind)
+          ? zone2Target(settings)
+          : ride.kind === "vo2_intervals"
+            ? vo2Target(settings)
+            : null,
+        finisher:
+          cardio?.sprintFinisher &&
+          session.dayOfWeek === SPRINT_FINISHER_DAY &&
+          ride.kind === "zone2" &&
+          readiness !== "knee_off" &&
+          readiness !== "hold" &&
+          !walkJogToday
+            ? SPRINT_FINISHER
+            : null,
+      };
     }
 
     const visible = gateOpen || isRide;

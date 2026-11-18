@@ -286,7 +286,7 @@ export function readinessCall(
 
   // Resting HR up this week: a good score still holds the ride (plan section 5).
   if (level === "good" && kind === "cardio" && options.holdProgression) {
-    return "Resting HR is up this week: ride at last ride's settings, 125-144 bpm. No progression.";
+    return "Resting HR is up this week: ride at last ride's settings, in your Zone 2 band. No progression.";
   }
 
   const calls: Record<
@@ -302,7 +302,8 @@ export function readinessCall(
     },
     fair: {
       strength: "Lift as planned, at the weights you used last time.",
-      cardio: "Ride at last ride's settings, 125-144 bpm. No progression.",
+      cardio:
+        "Ride at last ride's settings, in your Zone 2 band. No progression.",
       rest: "Rest day: an easy 45-60 min walk.",
     },
     low: {

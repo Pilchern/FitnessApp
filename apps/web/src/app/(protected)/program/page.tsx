@@ -36,7 +36,10 @@ export default async function ProgramPage() {
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
         <div className="space-y-4 lg:space-y-6">
           <ProgramTodayCard today={data.today} detailed snapshot={snapshot} />
-          <ProgramWeekView week={data.week} />
+          <ProgramWeekView
+            week={data.week}
+            cardioRules={data.program.cardioRules}
+          />
         </div>
         <div className="space-y-4 lg:space-y-6">
           <ProgramProgress

@@ -18,6 +18,10 @@ function buildCardioPayload(userId: string, formData: FormData) {
     avgHeartRate: formData.get("avgHeartRate"),
     maxHeartRate: formData.get("maxHeartRate"),
     avgOutput: formData.get("avgOutput"),
+    intervalOutput1: formData.get("intervalOutput1"),
+    intervalOutput2: formData.get("intervalOutput2"),
+    intervalOutput3: formData.get("intervalOutput3"),
+    intervalOutput4: formData.get("intervalOutput4"),
     totalOutputKj: formData.get("totalOutputKj"),
     runMinutes: formData.get("runMinutes"),
     walkMinutes: formData.get("walkMinutes"),
@@ -32,6 +36,13 @@ function buildCardioPayload(userId: string, formData: FormData) {
 
   const zone2Minutes =
     parsed.sessionKind === "zone2" ? (parsed.durationMinutes ?? null) : null;
+  // Interval watts in order; blanks drop out. Only VO2 rides keep them.
+  const intervalOutputs = [
+    parsed.intervalOutput1,
+    parsed.intervalOutput2,
+    parsed.intervalOutput3,
+    parsed.intervalOutput4,
+  ].filter((w): w is number => w != null);
 
   return {
     id: parsed.id || undefined,
@@ -45,6 +56,10 @@ function buildCardioPayload(userId: string, formData: FormData) {
     avgHeartRate: parsed.avgHeartRate,
     maxHeartRate: parsed.maxHeartRate,
     avgOutput: parsed.avgOutput,
+    intervalOutputs:
+      parsed.sessionKind === "vo2" && intervalOutputs.length > 0
+        ? intervalOutputs
+        : null,
     totalOutputKj: parsed.totalOutputKj,
     runMinutes: parsed.runMinutes,
     walkMinutes: parsed.walkMinutes,

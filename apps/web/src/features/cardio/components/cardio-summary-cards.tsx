@@ -3,16 +3,20 @@ import type { CardioWeeklyTotals } from "@fitness-app/application";
 type CardioSummaryCardsProps = {
   weeklyTotals: CardioWeeklyTotals;
   zone2TargetMinutes: number | null;
+  /** Settings Zone 2 band, "130-145". */
+  zone2Band: string;
 };
 
 /** This week in one card: Zone 2 against the target, then the totals. */
 export function CardioSummaryCards({
   weeklyTotals,
   zone2TargetMinutes,
+  zone2Band,
 }: CardioSummaryCardsProps) {
   const stats = [
     `${weeklyTotals.completedSessions} ${weeklyTotals.completedSessions === 1 ? "ride" : "rides"}`,
     `${weeklyTotals.totalMinutes} min total`,
+    `${weeklyTotals.minutesInHrBand} min at HR ${zone2Band}`,
     weeklyTotals.averageHeartRate != null
       ? `avg HR ${weeklyTotals.averageHeartRate}`
       : null,

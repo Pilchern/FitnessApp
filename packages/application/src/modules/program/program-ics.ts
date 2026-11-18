@@ -75,7 +75,12 @@ export function programCalendarEvents(
         s.sessionType === "lift"
           ? [settings.calendarLiftTime, settings.calendarLiftMinutes]
           : s.sessionType === "peloton"
-            ? [settings.calendarPelotonTime, settings.calendarPelotonMinutes]
+            ? [
+                planned.ride?.kind === "zone2_long"
+                  ? settings.calendarLongRideTime
+                  : settings.calendarPelotonTime,
+                planned.ride?.minutesMax ?? settings.calendarPelotonMinutes,
+              ]
             : s.sessionType === "test"
               ? [settings.calendarTestTime, settings.calendarTestMinutes]
               : s.sessionType === "run" || s.sessionType === "walk"
@@ -95,6 +100,8 @@ export function programCalendarEvents(
               ? `${planned.ride.minutesMin}–${planned.ride.minutesMax} min`
               : null,
             planned.ride.structure,
+            planned.ride.target,
+            planned.ride.finisher,
           ]
             .filter(Boolean)
             .join(", ")
