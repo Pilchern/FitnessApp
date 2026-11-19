@@ -152,6 +152,9 @@ function GateCard({ board }: { board: GateBoard }) {
           </li>
         ))}
       </ul>
+      {board.gate?.notes ? (
+        <p className="mt-2 text-xs leading-5 text-ink/55">{board.gate.notes}</p>
+      ) : null}
     </div>
   );
 }
@@ -241,6 +244,12 @@ function latestRows(tests: KneeTest[]) {
     ["H:Q 90°", hqRow(tests)],
     ["ACL-RSI", value("acl_rsi", "%")],
     ["Single hop", pair("hop_single", " cm", true)],
+    // Clinic readings. MMT is a manual grade: shown, never an LSI input.
+    ["MMT (manual)", pair("manual_muscle_test", "/5")],
+    ["LEFS", value("lefs", "/80")],
+    ["LEFS impaired", value("lefs_impaired_pct", "%")],
+    ["Pain at rest", value("pain_rest", "/10")],
+    ["Pain with activity", value("pain_activity", "/10")],
   ].filter((r): r is [string, string] => r[1] != null);
 }
 

@@ -28,6 +28,9 @@ function GateRow({ gate, today }: { gate: ProgramGate; today: string }) {
         {gate.criteria ? (
           <p className="text-xs leading-5 text-ink/60">{gate.criteria}</p>
         ) : null}
+        {gate.notes ? (
+          <p className="text-xs leading-5 text-ink/50">{gate.notes}</p>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <select
             name="clearedBy"
