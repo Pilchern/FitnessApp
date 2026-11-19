@@ -5,6 +5,7 @@ import type {
   ProgramGate,
   ProgramSession,
   ProgramWeek,
+  RideKind,
   TrainingProgram,
 } from "@fitness-app/domain";
 import type {
@@ -82,6 +83,21 @@ const gateRowSchema = z.object({
   notes: z.string().nullable(),
 });
 
+const RIDE_KINDS = [
+  "zone2",
+  "climb_intervals",
+  "threshold_intervals",
+  "vo2_intervals",
+  "zone2_long",
+] as const satisfies readonly RideKind[];
+
+// Typecheck fails if RideKind gains a value this list is missing; a missing
+// value otherwise only shows up as a ZodError on every program read.
+type AssertNever<T extends never> = T;
+export type RideKindsCoverDomain = AssertNever<
+  Exclude<RideKind, (typeof RIDE_KINDS)[number]>
+>;
+
 const sessionRowSchema = z.object({
   id: z.string().uuid(),
   block_id: z.string().uuid(),
@@ -100,9 +116,7 @@ const sessionRowSchema = z.object({
   ]),
   name: z.string(),
   upper_template_id: z.string().uuid().nullable(),
-  ride_kind: z
-    .enum(["zone2", "climb_intervals", "threshold_intervals", "vo2_intervals"])
-    .nullable(),
+  ride_kind: z.enum(RIDE_KINDS).nullable(),
   minutes_min: num,
   minutes_max: num,
   structure: z.string().nullable(),
