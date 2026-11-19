@@ -16,6 +16,8 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 
 - Cardio plan from 2026-11-16 [stated]: Tue VO2 intervals (10 min warm-up, 4 x work with equal easy recovery, 5 min cool-down, seated, cadence-driven, HR 165+ by the end of each interval); Thu Zone 2 45 min; Sat 7:00 AM long Zone 2; Sunday off (walk only). Week of 11/16: Tue Zone 2 45, Thu 4 x 3, Sat 60. Progression by week: 4 x 3 / 60, 4 x 3 / 65, 4 x 4 / 70, 75, 80, 90, then hold. Zone 2 = HR 130-145, hard cap 145 (Settings › Cardio). Sprint finisher (Thu, from week 5, 4-6 x 20-30 s all-out) only once sprint_finisher_cleared is set. Fallbacks: missed Saturday -> Sunday morning; 2 rides -> keep Tue and Sat; knee flare-up -> Tue intervals become Zone 2 for the same minutes. Owner cleared for hard efforts 2026-11-17.
 
+- PT progress note, Thu 2026-11-19 (OrthoIllinois, chart visit 32) [doc]: L flexion AROM 130, extension 0, MMT 5/5 flexion and extension both sides, LEFS 23% impaired (about 62/80, inferred), pain 0 rest / 1 activity. Fast stair descent still hard. Long-term goals 1-5 met; golf progressing. Plan of care 2-3x/week for 4-6 weeks from 11/19. Ortho (Dr. Kazaglis) 11/10, verbal [stated]: light jogging and light jumping/landing OK; no full or partial golf swing before 2026-12-22.
+
 ## 2. Boundaries between systems
 
 - FitnessApp (this repo, Supabase "Fitness App"): lifts, cardio, recovery, habits, nutrition checks, weekly review, body metrics. Upper-body training and cardio live here.
