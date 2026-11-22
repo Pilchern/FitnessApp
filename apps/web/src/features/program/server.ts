@@ -15,6 +15,7 @@ import {
   lastSetsByExercise,
   leftQuadDrop,
   priorBlockSetsByExercise,
+  rideGoals,
   legExerciseIndex,
   programMilestones,
   programWeekDates,
@@ -35,6 +36,7 @@ import {
   type PlannedExercise,
   type ProgramSettings,
   type QuadDrop,
+  type RideHistoryEntry,
   type UpperTemplateExercise,
 } from "@fitness-app/application";
 import {
@@ -113,6 +115,7 @@ function sessionViews(
     | "rideDates"
     | "rawRideDates"
     | "makeUps"
+    | "rides"
   >,
 ): ProgramSessionView[] {
   const { templates, outcomes, settings } = ctx;
@@ -129,7 +132,13 @@ function sessionViews(
       visible: s.visible,
       hiddenReason: s.hiddenReason,
       legBlockReplaced: s.legBlockReplaced,
-      ride: s.ride,
+      ride:
+        s.ride && s.visible
+          ? {
+              ...s.ride,
+              goals: rideGoals(s.ride, ctx.rides, settings, plan.date),
+            }
+          : s.ride,
       scheduled: isScheduledSession(countable),
       zone2Minutes: plannedZone2Minutes(countable),
       structure: s.ride ? null : s.session.structure,
@@ -255,6 +264,8 @@ export type ProgramContext = {
   quadDrop: QuadDrop | null;
   templates: TrainingTemplate[];
   runs: { date: string; runMinutes: number }[];
+  /** Cardio rows from the run lookback, for ride goals (rideGoals). */
+  rides: RideHistoryEntry[];
   /**
    * Days with a logged lift (any sets) not linked to a program session, and
    * with a completed ride.
@@ -377,6 +388,7 @@ export async function loadProgramContext(
     makeUps,
     rideDates: applyRideMakeUps(rawRideDates, makeUps),
     liftIdByDate,
+    rides,
     runs: rides
       .filter((r) => r.runMinutes != null && r.runMinutes > 0)
       .map((r) => ({

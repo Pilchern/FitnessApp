@@ -26,6 +26,8 @@ import {
   plannedSetCount,
   roundDownToLoadStep,
   sleepAverageHours,
+  loadFromEstimatedMax,
+  midRangeReps,
   suggestLoad,
   weeklyHardLegSets,
   type SuggestLoadInput,
@@ -1334,5 +1336,73 @@ describe("prior block sets for a new block's start", () => {
         lift("2026-10-19", 100),
       ]),
     ).toEqual({});
+  });
+});
+
+describe("effort-aware load suggestions", () => {
+  const block = (repsMin: number, repsMax: number) => ({
+    setsMin: 3,
+    setsMax: 4,
+    repsMin,
+    repsMax,
+    rirTarget: 2,
+  });
+  const sets = (weight: number, reps: number, rir: number | null, n = 3) =>
+    Array.from({ length: n }, () => ({ weight, reps, rir }));
+  const into = (
+    lastSets: ReturnType<typeof sets>,
+    lastRepsMax: number,
+    scheme: ReturnType<typeof block>,
+    loadKind: SuggestLoadInput["loadKind"] = "barbell",
+  ) =>
+    suggestLoad({
+      loadKind,
+      scheme,
+      lastSets,
+      lastRepsMax,
+      readiness: "normal",
+      isDeload: false,
+    });
+
+  it("works the estimated max back to mid-range reps at the target RIR", () => {
+    expect(midRangeReps(block(6, 8))).toBe(7);
+    expect(midRangeReps(block(10, 15))).toBe(13);
+    expect(loadFromEstimatedMax(sets(85, 12, 5), 7, 2, "barbell")).toBe(95);
+    expect(loadFromEstimatedMax(sets(85, 12, null), 7, 2, "barbell")).toBe(
+      loadFromEstimatedMax(sets(85, 12, 2), 7, 2, "barbell"),
+    );
+    expect(loadFromEstimatedMax(sets(85, 12, 0), 7, 2, "barbell")).toBe(90);
+    expect(loadFromEstimatedMax([], 7, 2, "barbell")).toBeNull();
+  });
+
+  it("starts a new block from the higher of x1.1 and the effort estimate", () => {
+    const light = into(sets(85, 12, 5), 12, block(6, 8));
+    expect(light).toMatchObject({ load: 95, kind: "new_block" });
+    expect(light.reason).toContain("estimated max");
+    const hard = into(sets(100, 10, 0), 12, block(6, 8));
+    expect(hard).toMatchObject({ load: 110, kind: "new_block" });
+    expect(hard.reason).toContain("x 1.1");
+  });
+
+  it("caps an effort-based new-block start at 1.25x the top load", () => {
+    const capped = into(sets(200, 15, 10), 15, block(3, 3));
+    expect(capped).toMatchObject({ load: 250, kind: "new_block" });
+    expect(capped.reason).toContain("capped at 1.25x");
+  });
+
+  it("jumps past the next step when every set was too light", () => {
+    const tooLight = into(sets(100, 8, 5), 8, block(6, 8));
+    expect(tooLight).toMatchObject({ load: 110, kind: "increase" });
+    expect(tooLight.reason).toBe(
+      "Every set had 4+ in reserve (target 2): too light, up to 110. Log the real RIR.",
+    );
+    expect(into(sets(100, 8, 3), 8, block(6, 8))).toMatchObject({
+      load: 105,
+      kind: "increase",
+    });
+    expect(into(sets(20, 15, 6), 15, block(10, 15), "plate")).toMatchObject({
+      load: 22.5,
+      kind: "increase",
+    });
   });
 });

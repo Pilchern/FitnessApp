@@ -19,6 +19,10 @@ import {
 export const DEFAULT_LOGGED_RIR = 2;
 /** Epley stops being useful past about 15 reps to failure. */
 const MAX_REPS_TO_FAILURE_FOR_ESTIMATE = 15;
+/** Every set this many reps past the target RIR means the load was too light. */
+export const TOO_LIGHT_RIR_MARGIN = 2;
+/** An effort-based jump never goes past this multiple of the last load. */
+export const MAX_EFFORT_JUMP = 1.25;
 
 type LoadSteps = Pick<
   ProgramSettings,
@@ -254,6 +258,47 @@ export function newBlockStartLoad(
   return roundDownToLoadStep(raw, kind, settings);
 }
 
+/**
+ * Load the sets' best estimated max allows for `reps` at `rir` (Epley run
+ * backwards), rounded down to a load the equipment makes. A blank RIR counts
+ * as DEFAULT_LOGGED_RIR. Null when no set has a load and reps.
+ */
+export function loadFromEstimatedMax(
+  sets: ProgressionSet[],
+  reps: number,
+  rir: number,
+  kind: LoadKind,
+  settings: LoadSteps = DEFAULT_PROGRAM_SETTINGS,
+): number | null {
+  const estimates = progressionSets(sets)
+    .filter((s) => (s.weight ?? 0) > 0 && (s.reps ?? 0) > 0)
+    .map((s) =>
+      estimatedMax(
+        s.weight as number,
+        s.reps as number,
+        s.rir ?? DEFAULT_LOGGED_RIR,
+      ),
+    );
+  if (estimates.length === 0) return null;
+  const best = Math.max(...estimates);
+  return roundDownToLoadStep(best / (1 + (reps + rir) / 30), kind, settings);
+}
+
+/** Middle of the rep range, rounded up (6-8 gives 7). */
+export function midRangeReps(
+  scheme: Pick<PrescriptionScheme, "repsMin" | "repsMax">,
+): number | null {
+  const lo = scheme.repsMin ?? scheme.repsMax;
+  const hi = scheme.repsMax ?? scheme.repsMin;
+  if (lo == null || hi == null) return null;
+  return Math.ceil((lo + hi) / 2);
+}
+
+/** Top working load of a set list; 0 when none has a load. */
+function topLoad(sets: ProgressionSet[]) {
+  return Math.max(0, ...progressionSets(sets).map((s) => s.weight ?? 0));
+}
+
 export type LoadSuggestion = {
   load: number | null;
   kind: "increase" | "same" | "new_block" | "start";
@@ -396,23 +441,67 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
     const fromPriorBlock = progressionSets(input.priorBlockSets ?? []).some(
       (s) => (s.weight ?? 0) > 0,
     );
-    const raw = newBlockStartLoad(
-      fromPriorBlock ? (input.priorBlockSets as ProgressionSet[]) : working,
+    const source = fromPriorBlock
+      ? (input.priorBlockSets as ProgressionSet[])
+      : working;
+    const fromMultiplier = newBlockStartLoad(
+      source,
       steps,
       input.loadKind,
       settings,
     );
+    const midReps = midRangeReps(input.scheme);
+    const fromEffort =
+      steps > 0 && midReps != null
+        ? loadFromEstimatedMax(
+            source,
+            midReps,
+            minRir,
+            input.loadKind,
+            settings,
+          )
+        : null;
+    const effortWins =
+      fromEffort != null &&
+      (fromMultiplier == null || fromEffort > fromMultiplier);
+    let raw = effortWins ? fromEffort : fromMultiplier;
+    let jumpCapped = false;
+    if (raw != null && steps > 0) {
+      const cap = roundDownToLoadStep(
+        topLoad(source) * MAX_EFFORT_JUMP,
+        input.loadKind,
+        settings,
+      );
+      if (raw > cap) {
+        raw = cap;
+        jumpCapped = true;
+      }
+    }
     const start =
       raw != null ? capDumbbell(raw, input.loadKind, settings) : null;
     if (start != null) {
       const range = [input.scheme.repsMin, input.scheme.repsMax]
         .filter((v, i, all) => v != null && (i === 0 || v !== all[0]))
         .join("–");
+      const sourceLabel = fromPriorBlock
+        ? "best working load in the last 2 weeks of the last block"
+        : "last block's top load";
+      const basis = effortWins
+        ? `estimated max from the ${fromPriorBlock ? "last block's sets" : "last sets"} (reps + RIR), worked back to ${midReps} reps at RIR ${minRir}`
+        : `${sourceLabel} x ${settings.newBlockLoadMultiplier}${Math.abs(steps) > 1 ? `^${Math.abs(steps)}` : ""}${steps < 0 ? " (divided: more reps)" : ""}`;
+      const caps = [
+        jumpCapped ? `capped at ${MAX_EFFORT_JUMP}x the top load` : null,
+        raw != null && start < raw
+          ? `capped at the ${start} lb dumbbell max`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(", ");
       return {
         load: start,
         kind: "new_block",
         held: false,
-        reason: `Suggested start for ${range} reps: ${fromPriorBlock ? "best working load in the last 2 weeks of the last block" : "last block's top load"} x ${settings.newBlockLoadMultiplier}${Math.abs(steps) > 1 ? `^${Math.abs(steps)}` : ""}${steps < 0 ? " (divided: more reps)" : ""}${raw != null && start < raw ? `, capped at the ${start} lb dumbbell max` : ""}. Edit if it feels off.`,
+        reason: `Suggested start for ${range} reps: ${basis}${caps ? `, ${caps}` : ""}. Edit if it feels off.`,
       };
     }
   }
@@ -455,6 +544,36 @@ export function suggestLoad(input: SuggestLoadInput): LoadSuggestion {
           input.loadKind,
           settings,
         );
+    const tooLightRir = minRir + TOO_LIGHT_RIR_MARGIN;
+    const tooLight = working.every(
+      (s) => s.rir != null && s.rir >= tooLightRir,
+    );
+    const midReps = midRangeReps(input.scheme);
+    if (tooLight && midReps != null) {
+      const fromEffort = loadFromEstimatedMax(
+        working,
+        midReps,
+        minRir,
+        input.loadKind,
+        settings,
+      );
+      const cap = roundDownToLoadStep(
+        lastLoad * MAX_EFFORT_JUMP,
+        input.loadKind,
+        settings,
+      );
+      const up = capDumbbell(
+        Math.min(Math.max(next, fromEffort ?? next), Math.max(cap, next)),
+        input.loadKind,
+        settings,
+      );
+      return {
+        load: up,
+        kind: "increase",
+        held: false,
+        reason: `Every set had ${tooLightRir}+ in reserve (target ${minRir}): too light, up to ${up}. Log the real RIR.`,
+      };
+    }
     return {
       load: next,
       kind: "increase",

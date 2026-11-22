@@ -9,7 +9,11 @@ import { STATUS_LABEL, dayShort } from "../helpers";
 import { KneeCheckPanel } from "./knee-check-panel";
 import { MakeUpControl } from "./make-up-control";
 import { SkipControl } from "./session-outcome-controls";
-import { RIDE_KIND_LABEL, type WalkJogAdvice } from "@fitness-app/application";
+import {
+  RIDE_KIND_LABEL,
+  rideGoalLines,
+  type WalkJogAdvice,
+} from "@fitness-app/application";
 
 /** "Oct 26" from YYYY-MM-DD, without timezone drift. */
 function formatMonthDay(isoDate: string) {
@@ -182,7 +186,13 @@ export function ProgramSessionList({
                 {s.ride?.structure ? (
                   <p className="text-xs text-ink/60">{s.ride.structure}</p>
                 ) : null}
-                {s.ride?.target ? (
+                {s.ride?.goals ? (
+                  <ul className="space-y-0.5 text-xs text-ink/70">
+                    {rideGoalLines(s.ride.goals, s.ride.kind).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                ) : s.ride?.target ? (
                   <p className="text-xs text-ink/70">{s.ride.target}</p>
                 ) : null}
                 {s.ride?.finisher ? (

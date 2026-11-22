@@ -33,6 +33,7 @@ import {
   vo2Target,
   zone2Target,
   type CardioPlanSettings,
+  type RideGoals,
 } from "./cardio-plan";
 
 /** Replaces the leg block on a knee day off (length from settings). */
@@ -224,6 +225,8 @@ export type PlannedRide = {
   target?: string | null;
   /** Thursday sprint finisher, once sprint_finisher_cleared is on. */
   finisher?: string | null;
+  /** Power, cadence, resistance and HR goals from ride history (rideGoals). */
+  goals?: RideGoals | null;
 };
 
 /** What a gated ride runs as until its gate is cleared. */

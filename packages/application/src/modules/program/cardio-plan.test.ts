@@ -3,7 +3,10 @@ import {
   cardioWeek,
   cardioWeekPlan,
   parseMinutesList,
+  rideGoalLines,
+  rideGoals,
   vo2Structure,
+  type RideHistoryEntry,
 } from "./cardio-plan";
 import { DEFAULT_PROGRAM_SETTINGS } from "./program-settings";
 import { buildDayPlan } from "./program-plan";
@@ -218,5 +221,100 @@ describe("planned VO2 intervals for synced rides", () => {
         { userId: "u", startDate: "2026-11-16", endDate: "2026-11-25" },
       ),
     ).resolves.toEqual({});
+  });
+});
+
+describe("ride goals", () => {
+  const ride = (over: Partial<RideHistoryEntry>): RideHistoryEntry => ({
+    sessionDate: "2026-11-17",
+    sessionKind: "zone2",
+    plannedVsCompleted: "completed",
+    durationMinutes: 45,
+    avgHeartRate: 130,
+    avgOutput: 72,
+    resistanceMin: null,
+    resistanceMax: null,
+    intervalOutputs: null,
+    ...over,
+  });
+  const zone2 = { kind: "zone2" as const, minutesMax: 45 };
+
+  it("nudges Zone 2 power off where heart rate sat in the band", () => {
+    const low = rideGoals(zone2, [ride({})], settings, "2026-11-24");
+    expect(low).toMatchObject({ watts: 77, kj: 208, cadence: "85–90 rpm" });
+    expect(
+      rideGoals(zone2, [ride({ avgHeartRate: 140 })], settings, "2026-11-24")
+        ?.watts,
+    ).toBe(72);
+    expect(
+      rideGoals(zone2, [ride({ avgHeartRate: 148 })], settings, "2026-11-24")
+        ?.watts,
+    ).toBe(67);
+  });
+
+  it("holds the long ride's power the week its minutes go up", () => {
+    const goals = rideGoals(
+      { kind: "zone2_long", minutesMax: 65 },
+      [ride({})],
+      settings,
+      "2026-11-28",
+    );
+    expect(goals).toMatchObject({ watts: 72, kj: 281 });
+    expect(goals?.basis).toContain("longer");
+  });
+
+  it("uses only completed Zone 2 rides of 20+ min before the date", () => {
+    const history = [
+      ride({}),
+      ride({ sessionDate: "2026-11-20", durationMinutes: 15, avgOutput: 90 }),
+      ride({ sessionDate: "2026-11-21", plannedVsCompleted: "planned" }),
+      ride({ sessionDate: "2026-11-24", avgOutput: 120 }),
+    ];
+    expect(rideGoals(zone2, history, settings, "2026-11-24")?.watts).toBe(77);
+    expect(rideGoals(zone2, [], settings, "2026-11-24")).toBeNull();
+  });
+
+  it("sets VO2 power from the last ride's intervals", () => {
+    const vo2 = { kind: "vo2_intervals" as const, minutesMax: 36 };
+    const last = (outputs: number[]) => [
+      ride({ sessionKind: "vo2", intervalOutputs: outputs }),
+    ];
+    const up = rideGoals(
+      vo2,
+      last([161, 162, 172, 168]),
+      settings,
+      "2026-11-24",
+    );
+    expect(up).toMatchObject({
+      watts: 171,
+      kj: null,
+      cadence: "95–105 rpm, seated",
+      heartRate: "165+ bpm by the end of each interval",
+    });
+    expect(
+      rideGoals(vo2, last([161, 162, 172, 168]), settings, "2026-12-01")?.watts,
+    ).toBe(166);
+    expect(
+      rideGoals(vo2, last([180, 170, 165, 162]), settings, "2026-11-24")?.watts,
+    ).toBe(169);
+  });
+
+  it("reads resistance from the last ride, else asks for it", () => {
+    const logged = rideGoals(
+      zone2,
+      [ride({ resistanceMin: 32, resistanceMax: 35 })],
+      settings,
+      "2026-11-24",
+    );
+    expect(logged?.resistance).toBe("32–35 (last ride)");
+    const lines = rideGoalLines(
+      rideGoals(zone2, [ride({})], settings, "2026-11-24")!,
+      "zone2",
+    );
+    expect(lines[0]).toBe("Output: 77 W avg, about 208 kJ");
+    expect(lines[2]).toBe(
+      "Resistance: set it to whatever holds 77 W at that cadence; note the number",
+    );
+    expect(lines).toHaveLength(5);
   });
 });
