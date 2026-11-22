@@ -527,13 +527,35 @@ function minutesInBand(points: TimedPoint[], [low, high]: [number, number]) {
   );
 }
 
+/** Mean heart rate per clock minute (epoch minutes) of a workout series. */
+function heartRateByMinute(
+  heartRate: HaeWorkout["heartRateData"],
+): Map<number, number> {
+  const samples = new Map<number, number[]>();
+  for (const p of heartRate ?? []) {
+    const minute = Math.floor(Date.parse(toIsoDateTime(p.date) ?? "") / 60000);
+    const bpm = p.Avg ?? p.qty;
+    if (!Number.isFinite(minute) || !isFiniteNumber(bpm)) continue;
+    samples.set(minute, [...(samples.get(minute) ?? []), bpm]);
+  }
+  const means = new Map<number, number>();
+  for (const [minute, values] of samples) {
+    means.set(minute, values.reduce((sum, v) => sum + v, 0) / values.length);
+  }
+  return means;
+}
+
 /**
  * Average watts and minutes inside the Zone 2 power band from the workout's
  * power samples. Zero-watt samples count, as they do in Peloton's average.
+ * With a heart rate cap, a minute in the power band whose heart rate is above
+ * the cap is not Zone 2 (fatigue, heat, a bad day); minutes without a heart
+ * rate reading still count by power.
  */
 export function powerSummary(
   data: HaeWorkout["cyclingPower"],
   band: [number, number] | null,
+  heartRateCap?: { heartRate: HaeWorkout["heartRateData"]; maxBpm: number },
 ): {
   avgWatts: number;
   zone2Minutes: number | null;
@@ -551,9 +573,19 @@ export function powerSummary(
   const avgWatts =
     points.reduce((sum, p) => sum + p.value * p.span, 0) / minutes;
   if (avgWatts <= 0 || avgWatts > 2000) return null;
+  const bpmByMinute = heartRateCap
+    ? heartRateByMinute(heartRateCap.heartRate)
+    : null;
+  const underCap = bpmByMinute
+    ? points.filter(
+        (p) =>
+          (bpmByMinute.get(Math.floor(p.at / 60000)) ?? 0) <=
+          heartRateCap!.maxBpm,
+      )
+    : points;
   return {
     avgWatts: Math.round(avgWatts),
-    zone2Minutes: band ? Math.round(minutesInBand(points, band)) : null,
+    zone2Minutes: band ? Math.round(minutesInBand(underCap, band)) : null,
     best5MinWatts: plausibleWatts(bestRollingAverage(points, 5)),
     best20MinWatts: plausibleWatts(bestRollingAverage(points, 20)),
   };
@@ -732,13 +764,19 @@ function mapWorkout(
     : undefined;
   const distance = quantity(workout.distance);
   const distanceUnits = workout.distance?.units as keyof typeof METERS;
-  const power = powerSummary(workout.cyclingPower, options.zone2Watts ?? null);
   const heartRate = preferredHeartRate(workout.heartRateData);
+  const power = powerSummary(
+    workout.cyclingPower,
+    options.zone2Watts ?? null,
+    options.zone2Bpm ? { heartRate, maxBpm: options.zone2Bpm[1] } : undefined,
+  );
   const heartRateZone2 = options.zone2Bpm
     ? zone2MinutesFromHeartRate(heartRate, options.zone2Bpm)
     : null;
   // Heart rate mode has no power fallback: the power band is stale then, and
-  // a value from it would overwrite the stored heart rate value.
+  // a value from it would overwrite the stored heart rate value. Power mode
+  // caps by the heart rate band's high end and falls back to heart rate on
+  // rides with no power.
   const zone2 =
     options.zone2CreditBy === "heart_rate"
       ? heartRateZone2

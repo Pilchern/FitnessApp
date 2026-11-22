@@ -24,7 +24,7 @@ import {
   MEASURED_MAX_HEART_RATE,
   programSettingsFromRows,
   zone2HeartRateRange,
-  zone2PowerRange,
+  zone2CreditWatts,
 } from "@fitness-app/application";
 import { syncWatchStrength } from "@/lib/server/watch-strength";
 import {
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
     zone2Bpm:
       settingsBand ??
       (maxHeartRate != null ? zone2HeartRateRange(maxHeartRate) : null),
-    zone2Watts: zone2PowerRange(),
+    zone2Watts: zone2CreditWatts(),
     zone2CreditBy: ZONE2_CREDIT_BY,
   });
   if (
