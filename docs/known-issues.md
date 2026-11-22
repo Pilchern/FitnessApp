@@ -51,8 +51,6 @@
 
 - Watch strength merge assumes each Health Auto Export push carries whole days (its default export range). A push carrying only one of two same-day strength workouts would set that day's duration from that one workout until the next full push.
 
-- Weekly review auto-finalize had never written a review because live lacked the review columns (fixed 2026-10-12, session 8). Confirm a review appears after the next Monday 08:00 UTC run.
-
 - The Playwright suite predates the login removal; `tests/e2e/strength.spec.ts` (2026-10-09) is read-only and safe against the live database, the others create rows.
 
 - Playwright E2E covers auth, navigation, body, cardio, integrations connect flow, and weekly-review (6 specs); the remaining modules (strength, recovery, insights, settings) have no browser coverage yet.

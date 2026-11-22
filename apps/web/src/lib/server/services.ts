@@ -3,7 +3,6 @@ import { cache } from "react";
 
 import {
   AiInsightService,
-  AiWeeklyReviewService,
   BodyMetricService,
   buildInsights,
   CardioSessionService,
@@ -22,7 +21,6 @@ import {
   TrainingTemplateService,
   UserProfileService,
   WatchStrengthSyncService,
-  WeeklyReviewAutoFinalizeService,
   WeeklyReviewService,
 } from "@fitness-app/application";
 import type { AppSupabaseClient } from "@fitness-app/infrastructure";
@@ -46,7 +44,7 @@ import {
 } from "@fitness-app/infrastructure";
 import { getServerEnv } from "./env";
 import { createSupabaseRequestClient } from "./supabase";
-import { nickAiPlanContext, NICK_TRAINING_PLAN } from "../training-plan";
+import { NICK_TRAINING_PLAN } from "../training-plan";
 
 /**
  * THE composition root for the app (per AGENTS.md's Architecture Agent
@@ -80,15 +78,6 @@ export const createCoreServices = cache(async function createCoreServices(
         apiKey: env.ANTHROPIC_API_KEY,
         model: env.INSIGHT_AI_MODEL ?? "claude-haiku-4-5-20251001",
         enabled: env.INSIGHT_AI_ENABLED,
-      })
-    : null;
-
-  const aiWeeklyReviewService = env.ANTHROPIC_API_KEY
-    ? new AiWeeklyReviewService({
-        apiKey: env.ANTHROPIC_API_KEY,
-        model: env.INSIGHT_AI_MODEL ?? "claude-haiku-4-5-20251001",
-        enabled: env.WEEKLY_REVIEW_AI_ENABLED,
-        planContext: nickAiPlanContext(),
       })
     : null;
 
@@ -152,20 +141,6 @@ export const createCoreServices = cache(async function createCoreServices(
     new SupabaseProgramRepository(resolvedClient),
   );
 
-  const weeklyReviewAutoFinalizeService = new WeeklyReviewAutoFinalizeService({
-    weeklyReviewService,
-    bodyMetricService,
-    cardioService,
-    recoveryService,
-    strengthSummaryService,
-    trainingTemplateService,
-    programService,
-    supplementService,
-    supplementLogService,
-    aiWeeklyReviewService,
-    plan: NICK_TRAINING_PLAN,
-  });
-
   return {
     profileService,
     bodyMetricService,
@@ -186,8 +161,6 @@ export const createCoreServices = cache(async function createCoreServices(
     programService,
     insightRepository,
     insightOrchestrator,
-    aiWeeklyReviewService,
-    weeklyReviewAutoFinalizeService,
   };
 });
 

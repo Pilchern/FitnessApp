@@ -20,7 +20,7 @@ Purpose: single source of truth for Claude Code working on this repo. Facts are 
 
 ## 2. Boundaries between systems
 
-- FitnessApp (this repo, Supabase "Fitness App"): lifts, cardio, recovery, habits, nutrition checks, weekly review, body metrics. Upper-body training and cardio live here.
+- FitnessApp (this repo, Supabase "Fitness App"): lifts, cardio, recovery, habits, knee tests (the `/program/review` weekly test summary), body metrics. The scored weekly review (`/weekly-review`, Monday auto-draft) was retired 2026-11-22 [stated: owner does the testing, not the reviews]; nutrition is not tracked. Upper-body training and cardio live here.
 - PT Tracker (repo Pilchern/PT-Tracker, Vercel nick-pt-tracker): absorbed into FitnessApp 2026-11-03 and frozen; it redirects to `/program/knee`. Knee tests, gates, clinic visits, PT HEP and walking data live here. Older lines below that say "do not merge" or point at the PT Tracker are history.
 - Changed 2026-10-19 [stated]: loaded leg training now lives in FitnessApp as a data-driven post-op program (blocks by post-op week, legs first on Mon/Wed/Fri then the upper template, 3-tap knee check, gates, progression). The PT Tracker keeps strength tests, gait data and return-to-sport gates; the Sunday test day links out to it. Still do not merge the apps. Open: whether the PT Tracker's Mon/Tue/Thu loaded knee blocks should stop now that legs run here (avoid doubling volume).
 - AI-Lab (local files, ~/AI-Lab): life OS notes. Edits to its context/ files need Nick's approval. No JumpFly client data in personal repos.
@@ -81,7 +81,8 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 
 ## 5. Cardio
 
-- Zone 2 target: 125-144 bpm (65-75% of max HR 192), conversational pace. The power band 97-130 W (56-75% of FTP 173 W, tested 2026-05-21) is pre-injury and too high until a retest after surgeon clearance. [doc/stated]
+- Zone 2 target (since 2026-11-17): 130-145 bpm, hard cap 145, set in Settings › Cardio (`zone2_hr_low/high`), conversational pace. Earlier: 125-144 (65-75% of max HR 192). The power band 97-130 W (56-75% of FTP 173 W, tested 2026-05-21) is pre-injury and too high until a retest after surgeon clearance. [doc/stated]
+- Heart rate check (2026-11-22) [fact/inferred]: heart rate comes from the Apple Watch. Max HR 192 is from 2023 (189-192 on six rides that year); the 2026-05-21 FTP test reached 187, so the true max now is about 188-190 [inferred]. Resting HR median 67 (Sep), 69.5 (Oct), 71 (Nov), up with detraining. 130-145 is 68-76% of max and 49-61% of heart rate reserve, sitting on the 180-age rule (148, minus 5 on return from injury = 143). Karvonen 60-70% would put Zone 2 at 144-156, inflated by the higher resting HR; keep 130-145 [inferred]. Recalibrate from VT1 at the 2027-02 lab test. Watch zones set by hand to match: Z1 under 130, Z2 130-145, Z3 146-157, Z4 158-169, Z5 170+ (iPhone Watch app › Workout › Heart Rate Zones › Manual). The VO2 target 165 sits in Z4; 4 x 4 work at 90-95% of max is 173-182, which 3 min intervals rarely reach on wrist HR.
 - How rides are measured (2026-10-17) [doc]:
   - Bike is the original Peloton Bike (model PLTN-RB1VQ-2). Its watts are estimated from resistance, consistent ride to ride but possibly 10-30% off true power (forum and review reports). Zones as % of an FTP tested on this bike and trends are valid; absolute W/kg and formula VO2max estimates are not.
   - Zone 2 minutes are credited by heart rate, 125-144 bpm: 65-75% of max HR 192, the highest HR across the Strava history, reached on several activities (`MEASURED_MAX_HEART_RATE`). Set Peloton's max HR to 192 so its zones match. Heart rate is used until FTP is retested after surgeon clearance, because the 173 W FTP is pre-injury and its 97-130 W band sits above current Zone 2. Watts are still recorded on every ride. After the retest, update `CURRENT_FTP_WATTS` and set `ZONE2_CREDIT_BY` to "power". Do not lower FTP by guesswork.
@@ -106,6 +107,7 @@ Pre-injury baselines (resume targets after clearance, re-enter light over 2-3 we
 2. Morning sunlight 10-20 min after waking.
 3. 7,000 steps (auto-ticked from synced Apple Health steps; the bridge is live via Health Auto Export since 2026-10-12). Ladder to 8,000 by 10/26 [stated 2026-10-12]; edit the habit name to move the threshold.
 4. Mobility 15 min (static stretching; no knee-loaded stretches while rehabbing). Guided routine in the app (`/routines/mobility`, about 14 min: neck, doorway chest, lat, cross-body shoulder, seated thoracic rotation and extension, wrists, strap hamstrings and wall calves both sides, then left-hip-flexor and right figure-4 only). Content lives in `apps/web/src/lib/routines.ts`; each habit's Guide link and the end-of-routine "Mark done" tick the habit.
+5. Protein 180 g (added 2026-11-22): tick when the day's protein target was hit; the only nutrition signal besides the weekly weight trend.
 
 Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery check-in; M-F first thing in the morning, 55F, 5 min, then sunlight), wake and bed time (recovery check-in), alcohol (recovery check-in), supplements (kind = supplement).
 
@@ -120,6 +122,7 @@ Already tracked elsewhere in the app, do not duplicate: cold plunge (recovery ch
 
 ## 8. Nutrition
 
+- 2026-11-22: nutrition not tracked at all [stated]; the Cronometer relay stopped after 2026-11-08. Protein is a daily yes/no habit, "Protein 180 g" (section 6).
 - 2026-11-09: food logging removed from the app (owner request). Protein is tracked mentally; the weekly weigh-in trend is the only fuel signal the app reads. [stated]
 - Recovery mode, not a cut: small surplus above maintenance, protein holds at about 180 g/day, eat to satiety with protein priority. Actual TDEE is lower right now than pre-injury. Anchor-based meals, no calorie logging app. [stated/doc]
 - Weekday anchors: morning shake (whey + collagen + milk), 10:30 AM Greek yogurt + berries + flax + granola, psyllium husk before lunch, 2 PM lean protein + controlled carbs, post-lift whey only if dinner is more than 30-45 min out, dinner protein-centered with 2 Brazil nuts. Total about 160-185 g protein. Protein powder: Huel Black vanilla. [doc/stated]

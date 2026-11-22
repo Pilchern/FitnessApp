@@ -37,9 +37,8 @@ describe("Vercel cron schedule", () => {
     expect(existsSync(repoRootVercelJson)).toBe(false);
   });
 
-  it("schedules both Monday crons", () => {
+  it("schedules the Monday insights cron", () => {
     expect(readCrons()).toEqual([
-      { path: "/api/cron/weekly-review-auto-finalize", schedule: "0 8 * * 1" },
       { path: "/api/cron/insights-generate", schedule: "0 9 * * 1" },
     ]);
   });

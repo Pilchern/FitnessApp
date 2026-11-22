@@ -40,11 +40,6 @@ export const moduleNavigationItems = [
     description: "Scans, targets and the Withings offset.",
   },
   {
-    href: "/weekly-review",
-    title: "Weekly review",
-    description: "Score last week and set next week.",
-  },
-  {
     href: "/insights",
     title: "Insights",
     description: "Trends and coaching tips.",

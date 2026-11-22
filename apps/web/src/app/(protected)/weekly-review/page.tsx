@@ -1,14 +1,6 @@
-import { WeeklyReviewScreen } from "@/features/weekly-review/components/weekly-review-screen";
+import { redirect } from "next/navigation";
 
-type WeeklyReviewPageProps = {
-  searchParams?: Promise<{
-    weekStart?: string;
-  }>;
-};
-
-export default async function WeeklyReviewPage({
-  searchParams,
-}: WeeklyReviewPageProps) {
-  const params = (await searchParams) ?? {};
-  return <WeeklyReviewScreen weekStart={params.weekStart} />;
+/** The scored weekly review was retired 2026-11-22; the program review holds the tests. */
+export default function WeeklyReviewPage() {
+  redirect("/program/review");
 }
