@@ -461,6 +461,12 @@ export type HealthAutoExportOptions = {
    * fallback) or "heart_rate" (no fallback).
    */
   zone2CreditBy?: "power" | "heart_rate";
+  /**
+   * Work interval minutes of the VO2 ride the program plans, by local date.
+   * A ride on one of these dates whose power shows the intervals is saved
+   * as VO2 with each interval's average watts.
+   */
+  vo2IntervalMinutesByDate?: Record<string, number>;
 };
 
 /**
@@ -594,6 +600,75 @@ function bestRollingAverage(points: TimedPoint[], minutes: number) {
   return best;
 }
 
+/** The plan's VO2 ride: four work intervals. */
+export const VO2_INTERVALS = 4;
+/** Work intervals must average this much above the rest of the ride. */
+const INTERVAL_CONTRAST = 1.2;
+
+/**
+ * Average watts of each VO2 work interval, in ride order: the `count`
+ * strongest non-overlapping windows of `minutes`, time-weighted. Null when
+ * the ride has no usable power, is too short, or its best windows are not
+ * clearly harder than the rest of the ride (a steady ride on a VO2 day).
+ */
+export function intervalOutputsFromPower(
+  data: HaeWorkout["cyclingPower"],
+  minutes: number,
+  count = VO2_INTERVALS,
+): number[] | null {
+  const points = timedPoints(
+    (data ?? [])
+      .filter((p) => !p.units || /^w(atts?)?$/i.test(p.units))
+      .map((p) => ({ date: p.date, value: p.qty })),
+  );
+  if (!points || minutes <= 0) return null;
+
+  type Window = { start: number; end: number; avg: number };
+  const windows: Window[] = [];
+  for (let i = 0; i < points.length; i += 1) {
+    let span = 0;
+    let sum = 0;
+    let j = i;
+    for (; j < points.length && span < minutes; j += 1) {
+      span += points[j]!.span;
+      sum += points[j]!.value * points[j]!.span;
+    }
+    if (span < minutes * 0.95) break;
+    windows.push({
+      start: points[i]!.at,
+      end: points[j - 1]!.at + points[j - 1]!.span * 60000,
+      avg: sum / span,
+    });
+  }
+
+  const picked: Window[] = [];
+  for (const w of [...windows].sort((a, b) => b.avg - a.avg)) {
+    if (picked.length === count) break;
+    if (picked.every((p) => w.end <= p.start || w.start >= p.end)) {
+      picked.push(w);
+    }
+  }
+  if (picked.length < count) return null;
+
+  const inPicked = (at: number) =>
+    picked.some((p) => at >= p.start && at < p.end);
+  let restSpan = 0;
+  let restSum = 0;
+  for (const p of points) {
+    if (inPicked(p.at)) continue;
+    restSpan += p.span;
+    restSum += p.value * p.span;
+  }
+  const workAvg = picked.reduce((sum, p) => sum + p.avg, 0) / count;
+  const restAvg = restSpan > 0 ? restSum / restSpan : 0;
+  if (restSpan < minutes || workAvg < restAvg * INTERVAL_CONTRAST) return null;
+
+  const outputs = picked
+    .sort((a, b) => a.start - b.start)
+    .map((p) => plausibleWatts(p.avg));
+  return outputs.every((w): w is number => w != null && w > 0) ? outputs : null;
+}
+
 const WARM_UP_MINUTES = 10;
 const MIN_ZONE2_HR_MINUTES = 10;
 
@@ -678,12 +753,23 @@ function mapWorkout(
       : null;
   const heartRateSources = sourcesOf(workout.heartRateData);
   const powerSources = sourcesOf(workout.cyclingPower);
+  const vo2Minutes =
+    options.vo2IntervalMinutesByDate?.[toIsoDate(workout.start) ?? ""];
+  const intervalOutputs = vo2Minutes
+    ? intervalOutputsFromPower(workout.cyclingPower, vo2Minutes)
+    : null;
 
   return {
     // Export v1 has no id; start time is unique per workout.
     workout_id: workout.id?.trim() || `hae:${name}:${start}`,
     workout_type: name,
-    session_kind: "zone2",
+    session_kind: intervalOutputs ? "vo2" : "zone2",
+    ...(intervalOutputs
+      ? {
+          interval_outputs: intervalOutputs,
+          interval_structure: `${VO2_INTERVALS} x ${vo2Minutes} min work / ${vo2Minutes} min recovery`,
+        }
+      : {}),
     start,
     end,
     duration_minutes: durationMinutes,
@@ -748,6 +834,13 @@ export function dedupeOverlappingRides(
     // Power-measured Zone 2 comes with the winner when it has power.
     zone2_minutes: winner.zone2_minutes ?? other.zone2_minutes,
     zone2_heart_rate: winner.zone2_heart_rate ?? other.zone2_heart_rate,
+    ...(winner.interval_outputs == null && other.interval_outputs != null
+      ? {
+          session_kind: other.session_kind,
+          interval_outputs: other.interval_outputs,
+          interval_structure: other.interval_structure,
+        }
+      : {}),
   });
 
   for (const workout of [...workouts].sort((a, b) =>

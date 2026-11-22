@@ -319,6 +319,54 @@ describe("CardioSessionService.upsertImported cross-provider handling", () => {
     });
   });
 
+  it("upgrades a Zone 2 ride to VO2 when a re-push finds the intervals", async () => {
+    const id = "55555555-5555-4555-8555-555555555555";
+    const repository = createCardioRepository([]);
+    repository.findByExternalId.mockResolvedValue(
+      storedCardio({ id, avgOutput: 86 }),
+    );
+    repository.update.mockResolvedValue(storedCardio({ id }));
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      sessionKind: "vo2",
+      avgOutput: 86,
+      intervalOutputs: [120, 126, 131, 128],
+      intervalStructure: "4 x 3 min work / 3 min recovery",
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id,
+      userId,
+      sessionKind: "vo2",
+      intervalOutputs: [120, 126, 131, 128],
+      intervalStructure: "4 x 3 min work / 3 min recovery",
+    });
+  });
+
+  it("never replaces interval outputs already on the ride", async () => {
+    const repository = createCardioRepository([]);
+    repository.findByExternalId.mockResolvedValue(
+      storedCardio({
+        id: "66666666-6666-4666-8666-666666666666",
+        sessionKind: "vo2",
+        avgOutput: 86,
+        intervalOutputs: [118, 124, 130, 127],
+      }),
+    );
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      sessionKind: "vo2",
+      avgOutput: 86,
+      intervalOutputs: [120, 126, 131, 128],
+    });
+
+    expect(repository.update).not.toHaveBeenCalled();
+  });
+
   it("keeps power-measured Zone 2 when a re-push has only heart rate", async () => {
     const repository = createCardioRepository([]);
     repository.findByExternalId.mockResolvedValue(

@@ -12,6 +12,7 @@ import {
 } from "./program-plan";
 import type { DatedKneeCheck, ProgramService } from "./program-service";
 import { kneeReadinessStatus } from "./knee-readiness";
+import { cardioWeekPlan } from "./cardio-plan";
 import {
   applySettingGates,
   programSettingsFromRows,
@@ -155,4 +156,55 @@ export async function loadProgramWeekTargets(
   return programWeekTargets(
     plans.flatMap((p) => p.sessions.map(countableSession)),
   );
+}
+
+/**
+ * Work interval minutes of the VO2 ride the program plans on `plan`'s date,
+ * after gates and the knee check (a knee day off makes it Zone 2), or null
+ * when that day has no VO2 ride.
+ */
+export function plannedVo2IntervalMinutes(
+  plan: DayPlan,
+  settings: ProgramSettings,
+): number | null {
+  const vo2 = plan.sessions.some(
+    (s) => s.visible && s.ride?.kind === "vo2_intervals",
+  );
+  return vo2
+    ? (cardioWeekPlan(settings, plan.date)?.intervalMinutes ?? null)
+    : null;
+}
+
+/**
+ * Planned VO2 work interval minutes by date, start to end inclusive, for the
+ * ride importers: a synced ride on one of these dates is checked for
+ * intervals. Empty without an active program.
+ */
+export async function loadPlannedVo2Intervals(
+  programService: Pick<
+    ProgramService,
+    "getActiveProgram" | "listSettings" | "listKneeChecks"
+  >,
+  query: { userId: string; startDate: IsoDate; endDate: IsoDate },
+): Promise<Record<IsoDate, number>> {
+  const loaded = await programService.getActiveProgram(query.userId);
+  if (!loaded) return {};
+  const [settingRows, checks] = await Promise.all([
+    programService.listSettings(query.userId),
+    programService.listKneeChecks(query.userId, query.startDate, query.endDate),
+  ]);
+  const { program, settings, statusOn } = resolveProgram(
+    loaded,
+    settingRows,
+    checks,
+  );
+  const byDate: Record<IsoDate, number> = {};
+  for (const date of datesBetween(query.startDate, query.endDate)) {
+    const minutes = plannedVo2IntervalMinutes(
+      buildDayPlan(program, date, statusOn(date), settings),
+      settings,
+    );
+    if (minutes != null) byDate[date] = minutes;
+  }
+  return byDate;
 }

@@ -34,7 +34,9 @@ function shiftIsoDate(isoDate: string, days: number): string {
 
 /**
  * Measured fields a re-pushed import may refresh: power, the power-derived
- * markers, and Zone 2 minutes.
+ * markers, and Zone 2 minutes. A ride stored as Zone 2 without interval
+ * outputs takes the VO2 kind and outputs a re-push found; outputs already
+ * on the row (typed in, or from an earlier push) are never replaced.
  * Zone 2 measured by power is never replaced by a heart rate value, so a
  * Watch copy without power can't undo what the Peloton copy recorded.
  */
@@ -44,6 +46,9 @@ type MeasuredRideFields = {
   best5MinWatts?: number | null;
   best20MinWatts?: number | null;
   zone2HeartRate?: number | null;
+  sessionKind?: "vo2";
+  intervalOutputs?: number[];
+  intervalStructure?: string | null;
 };
 
 const POWER_DERIVED_FIELDS = [
@@ -60,6 +65,9 @@ function measuredRidePatch(
     best5MinWatts?: number | null;
     best20MinWatts?: number | null;
     zone2HeartRate?: number | null;
+    sessionKind?: string;
+    intervalOutputs?: number[] | null;
+    intervalStructure?: string | null;
   },
 ): MeasuredRideFields | null {
   const patch: MeasuredRideFields = {};
@@ -82,6 +90,17 @@ function measuredRidePatch(
     (incomingHasPower || existing.avgOutput == null)
   ) {
     patch.zone2Minutes = incoming.zone2Minutes;
+  }
+  if (
+    incoming.sessionKind === "vo2" &&
+    incoming.intervalOutputs?.length &&
+    existing.sessionKind === "zone2" &&
+    !existing.intervalOutputs?.length
+  ) {
+    patch.sessionKind = "vo2";
+    patch.intervalOutputs = incoming.intervalOutputs;
+    patch.intervalStructure =
+      existing.intervalStructure ?? incoming.intervalStructure ?? null;
   }
   return Object.keys(patch).length > 0 ? patch : null;
 }

@@ -37,6 +37,10 @@ export type AppleHealthWorkoutPayload = {
   best_20min_watts?: number;
   /** Median heart rate in the Zone 2 power band after the warm-up. */
   zone2_heart_rate?: number;
+  /** VO2 rides: average watts of each work interval, in order. */
+  interval_outputs?: number[];
+  /** VO2 rides: "4 x 3 min work / 3 min recovery". */
+  interval_structure?: string;
   /** Apple Health sources of the heart rate and power samples (diagnostic). */
   heart_rate_sources?: string[];
   power_sources?: string[];
@@ -215,6 +219,14 @@ export class AppleHealthWorkoutSyncOrchestrator {
               best5MinWatts: roundedOrNull(payload.best_5min_watts),
               best20MinWatts: roundedOrNull(payload.best_20min_watts),
               zone2HeartRate: roundedOrNull(payload.zone2_heart_rate),
+              ...(payload.interval_outputs?.length
+                ? {
+                    intervalOutputs: payload.interval_outputs.map((w) =>
+                      Math.round(w),
+                    ),
+                    intervalStructure: payload.interval_structure ?? null,
+                  }
+                : {}),
               sportType: payload.workout_type,
               notes: payload.source_name
                 ? `Synced via Apple Health (${payload.source_name})`

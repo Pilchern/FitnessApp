@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dedupeOverlappingRides,
+  intervalOutputsFromPower,
   mapHealthAutoExport,
   mapWalkingDays,
   walkingDaysFromTests,
@@ -960,5 +961,100 @@ describe("resting heart rate", () => {
     expect(
       mapped.sleep.find((s) => s.date === "2026-11-02")?.resting_heart_rate,
     ).toBe(60.3);
+  });
+});
+
+describe("VO2 rides from the power series", () => {
+  // 36 one-minute readings, the plan's 4 x 3 ride: 10 min warm-up at 80 W,
+  // four 3 min intervals with 3 min easy at 70 W between, 5 min cool-down.
+  const work = [120, 126, 131, 128];
+  const watts = (i: number) => {
+    if (i < 10) return 80;
+    const k = Math.floor((i - 10) / 6);
+    if (k < 4 && (i - 10) % 6 < 3) return work[k]!;
+    return i >= 31 ? 60 : 70;
+  };
+  const at = (i: number) =>
+    `2026-11-19 17:${String(i).padStart(2, "0")}:00 -0600`;
+  const vo2Ride = {
+    id: "vo2-1",
+    name: "Indoor Cycling",
+    start: at(0),
+    end: at(36),
+    duration: 36 * 60,
+    cyclingPower: Array.from({ length: 36 }, (_, i) => ({
+      date: at(i),
+      qty: watts(i),
+      units: "W",
+    })),
+  };
+  const steady = {
+    ...vo2Ride,
+    cyclingPower: vo2Ride.cyclingPower.map((p, i) => ({
+      ...p,
+      qty: 85 + (i % 3),
+    })),
+  };
+
+  it("finds each work interval's average watts, in order", () => {
+    expect(intervalOutputsFromPower(vo2Ride.cyclingPower, 3)).toEqual(work);
+  });
+
+  it("finds nothing in a steady ride, a short ride or without power", () => {
+    expect(intervalOutputsFromPower(steady.cyclingPower, 3)).toBeNull();
+    expect(
+      intervalOutputsFromPower(vo2Ride.cyclingPower.slice(0, 14), 3),
+    ).toBeNull();
+    expect(intervalOutputsFromPower(undefined, 3)).toBeNull();
+  });
+
+  it("saves a planned VO2 day's ride as VO2 with interval outputs", () => {
+    const out = mapHealthAutoExport(
+      { data: { workouts: [vo2Ride] } },
+      { vo2IntervalMinutesByDate: { "2026-11-19": 3 } },
+    );
+    expect(out.workouts[0]).toMatchObject({
+      session_kind: "vo2",
+      interval_outputs: work,
+      interval_structure: "4 x 3 min work / 3 min recovery",
+      avg_power_watts: expect.any(Number),
+    });
+  });
+
+  it("keeps Zone 2 off the VO2 days and for a steady ride on one", () => {
+    const other = mapHealthAutoExport(
+      { data: { workouts: [vo2Ride] } },
+      { vo2IntervalMinutesByDate: { "2026-11-24": 3 } },
+    ).workouts[0];
+    expect(other?.session_kind).toBe("zone2");
+    expect(other).not.toHaveProperty("interval_outputs");
+    const easy = mapHealthAutoExport(
+      { data: { workouts: [steady] } },
+      { vo2IntervalMinutesByDate: { "2026-11-19": 3 } },
+    ).workouts[0];
+    expect(easy?.session_kind).toBe("zone2");
+  });
+
+  it("keeps the intervals when the Watch copy wins the overlap", () => {
+    const [mapped] = mapHealthAutoExport(
+      { data: { workouts: [vo2Ride] } },
+      { vo2IntervalMinutesByDate: { "2026-11-19": 3 } },
+    ).workouts;
+    const watch = {
+      ...mapped!,
+      workout_id: "watch",
+      session_kind: "zone2" as const,
+      interval_outputs: undefined,
+      interval_structure: undefined,
+      // Longer, so it outscores the copy with the intervals.
+      end: undefined,
+      duration_minutes: 60,
+    };
+    const [kept] = dedupeOverlappingRides([mapped!, watch]);
+    expect(kept).toMatchObject({
+      workout_id: "watch",
+      session_kind: "vo2",
+      interval_outputs: work,
+    });
   });
 });
