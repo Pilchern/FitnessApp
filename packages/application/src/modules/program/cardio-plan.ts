@@ -1,4 +1,9 @@
-import type { CardioSession, IsoDate, RideKind } from "@fitness-app/domain";
+import type {
+  CardioSession,
+  IsoDate,
+  KneeReadinessStatus,
+  RideKind,
+} from "@fitness-app/domain";
 import { addDays, daysBetween } from "./program-calendar";
 import type { ProgramSettings } from "./program-settings";
 
@@ -114,6 +119,22 @@ export const RIDE_WATT_STEP = 5;
 export const RIDE_GOAL_MIN_MINUTES = 20;
 /** VO2: hold the power when the last interval fades below this share of the first. */
 export const VO2_FADE_FLOOR = 0.95;
+/** Plan rule: hold when morning resting HR is this far over its baseline. */
+export const RESTING_HR_HOLD_BPM = 3;
+/** Resting HR baseline: median of the mornings in this many days before. */
+export const RESTING_HR_BASELINE_DAYS = 28;
+const RESTING_HR_MIN_BASELINE = 7;
+/** Plan rule: hold when Zone 2 HR rises this much at the same watts in a week. */
+export const ZONE2_HR_CREEP_BPM = 3;
+
+/**
+ * What can hold a ride's power increase (fitness-health-plan section 5):
+ * the morning knee check and resting heart rate by check-in date.
+ */
+export type RideHoldInput = {
+  kneeReadiness?: KneeReadinessStatus | null;
+  restingHr?: { checkinDate: IsoDate; restingHeartRate: number | null }[];
+};
 
 export type RideHistoryEntry = Pick<
   CardioSession,
@@ -155,6 +176,77 @@ function resistanceHint(last: RideHistoryEntry, watts: number) {
   return `set it to whatever holds ${watts} W at that cadence; note the number`;
 }
 
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2
+    ? (sorted[mid] as number)
+    : ((sorted[mid - 1] as number) + (sorted[mid] as number)) / 2;
+}
+
+/**
+ * Why a ride's power should not go up on `date`, or null. Knee check not
+ * normal; latest resting HR (that morning or the one before) 3+ bpm over
+ * the 28-day median; or Zone 2 HR up 3+ bpm at the same or lower watts
+ * across the last 7 days.
+ */
+export function rideHoldReason(
+  history: RideHistoryEntry[],
+  date: IsoDate,
+  hold: RideHoldInput = {},
+): string | null {
+  if (hold.kneeReadiness != null && hold.kneeReadiness !== "normal") {
+    return "knee check not normal";
+  }
+  const mornings = (hold.restingHr ?? [])
+    .filter(
+      (r) =>
+        r.restingHeartRate != null &&
+        r.restingHeartRate > 0 &&
+        r.checkinDate <= date,
+    )
+    .sort((a, b) => b.checkinDate.localeCompare(a.checkinDate));
+  const latest = mornings[0];
+  if (latest && latest.checkinDate >= addDays(date, -1)) {
+    const from = addDays(latest.checkinDate, -RESTING_HR_BASELINE_DAYS);
+    const baseline = mornings
+      .filter(
+        (r) => r.checkinDate < latest.checkinDate && r.checkinDate >= from,
+      )
+      .map((r) => r.restingHeartRate as number);
+    if (baseline.length >= RESTING_HR_MIN_BASELINE) {
+      const base = median(baseline);
+      const rhr = latest.restingHeartRate as number;
+      if (rhr - base >= RESTING_HR_HOLD_BPM) {
+        return `resting HR ${rhr} is ${Math.round(rhr - base)} over its ${RESTING_HR_BASELINE_DAYS}-day median (${base})`;
+      }
+    }
+  }
+  const week = completedBefore(history, date)
+    .filter(
+      (r) =>
+        r.sessionKind === "zone2" &&
+        r.sessionDate >= addDays(date, -7) &&
+        (r.durationMinutes ?? 0) >= RIDE_GOAL_MIN_MINUTES &&
+        (r.avgOutput ?? 0) > 0 &&
+        r.avgHeartRate != null,
+    )
+    .reverse();
+  const first = week[0];
+  const last = week[week.length - 1];
+  if (
+    first &&
+    last &&
+    first !== last &&
+    (last.avgOutput as number) <= (first.avgOutput as number) &&
+    (last.avgHeartRate as number) - (first.avgHeartRate as number) >=
+      ZONE2_HR_CREEP_BPM
+  ) {
+    return `Zone 2 HR crept from ${first.avgHeartRate} to ${last.avgHeartRate} bpm at the same watts this week`;
+  }
+  return null;
+}
+
 /** Latest first. */
 function completedBefore(history: RideHistoryEntry[], date: IsoDate) {
   return history
@@ -181,15 +273,19 @@ function roseSinceLastWeek(
  * watts, -5 W when HR ran over the band, +5 W when it sat below the band
  * midpoint, held the week the long ride gets longer. VO2: mean of the last
  * ride's interval watts, +5 W unless the intervals got longer this week or
- * the last one faded under 95% of the first. Null without usable history.
+ * the last one faded under 95% of the first. Any increase is held by
+ * `rideHoldReason` (knee check, resting HR, Zone 2 HR creep). Null without
+ * usable history.
  */
 export function rideGoals(
   ride: { kind: RideKind; minutesMax: number | null },
   history: RideHistoryEntry[],
   settings: CardioPlanSettings,
   date: IsoDate,
+  hold: RideHoldInput = {},
 ): RideGoals | null {
   const rides = completedBefore(history, date);
+  const holdReason = () => rideHoldReason(history, date, hold);
   if (ride.kind === "zone2" || ride.kind === "zone2_long") {
     const last = rides.find(
       (r) =>
@@ -212,8 +308,11 @@ export function rideGoals(
     ) {
       why = "the long ride got longer this week: hold the power";
     } else if (hr != null && hr < mid) {
-      delta = RIDE_WATT_STEP;
-      why = `HR ${hr} sat below the band midpoint (${mid}): up ${RIDE_WATT_STEP} W`;
+      const held = holdReason();
+      delta = held ? 0 : RIDE_WATT_STEP;
+      why = held
+        ? `HR ${hr} sat below the band midpoint (${mid}), but ${held}: hold`
+        : `HR ${hr} sat below the band midpoint (${mid}): up ${RIDE_WATT_STEP} W`;
     } else {
       why = hr == null ? "no HR logged: hold" : `HR ${hr} in the band: hold`;
     }
@@ -244,8 +343,11 @@ export function rideGoals(
     if (roseSinceLastWeek(settings, date, (p) => p.intervalMinutes)) {
       why = "intervals got longer this week: hold the power";
     } else if (first > 0 && final / first >= VO2_FADE_FLOOR) {
-      delta = RIDE_WATT_STEP;
-      why = `held to the last interval: up ${RIDE_WATT_STEP} W`;
+      const held = holdReason();
+      delta = held ? 0 : RIDE_WATT_STEP;
+      why = held
+        ? `held to the last interval, but ${held}: hold`
+        : `held to the last interval: up ${RIDE_WATT_STEP} W`;
     } else {
       why = `last interval faded to ${final} from ${first}: hold`;
     }

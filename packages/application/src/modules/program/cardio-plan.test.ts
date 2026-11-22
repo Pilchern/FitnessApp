@@ -5,6 +5,7 @@ import {
   parseMinutesList,
   rideGoalLines,
   rideGoals,
+  rideHoldReason,
   vo2Structure,
   type RideHistoryEntry,
 } from "./cardio-plan";
@@ -316,5 +317,93 @@ describe("ride goals", () => {
       "Resistance: set it to whatever holds 77 W at that cadence; note the number",
     );
     expect(lines).toHaveLength(5);
+  });
+
+  describe("holds from the plan", () => {
+    const mornings = (latest: number, baseline = 68) => [
+      ...Array.from({ length: 10 }, (_, i) => ({
+        checkinDate: `2026-11-${String(12 + i).padStart(2, "0")}`,
+        restingHeartRate: baseline,
+      })),
+      { checkinDate: "2026-11-24", restingHeartRate: latest },
+    ];
+
+    it("holds Zone 2 power when resting HR is 3+ over its median", () => {
+      const held = rideGoals(zone2, [ride({})], settings, "2026-11-24", {
+        restingHr: mornings(71),
+      });
+      expect(held?.watts).toBe(72);
+      expect(held?.basis).toContain("resting HR 71 is 3 over");
+      expect(
+        rideGoals(zone2, [ride({})], settings, "2026-11-24", {
+          restingHr: mornings(70),
+        })?.watts,
+      ).toBe(77);
+    });
+
+    it("ignores a stale or thin resting HR record", () => {
+      expect(
+        rideHoldReason([], "2026-11-27", { restingHr: mornings(80) }),
+      ).toBeNull();
+      expect(
+        rideHoldReason([], "2026-11-24", {
+          restingHr: mornings(80).slice(5),
+        }),
+      ).toBeNull();
+    });
+
+    it("holds when the knee check is not normal", () => {
+      expect(
+        rideGoals(zone2, [ride({})], settings, "2026-11-24", {
+          kneeReadiness: "hold",
+        })?.watts,
+      ).toBe(72);
+      expect(
+        rideGoals(zone2, [ride({})], settings, "2026-11-24", {
+          kneeReadiness: "normal",
+        })?.watts,
+      ).toBe(77);
+    });
+
+    it("holds when Zone 2 HR crept up at the same watts this week", () => {
+      const history = [
+        ride({ sessionDate: "2026-11-18", avgHeartRate: 128 }),
+        ride({ sessionDate: "2026-11-21", avgHeartRate: 133 }),
+      ];
+      const goals = rideGoals(zone2, history, settings, "2026-11-24");
+      expect(goals?.watts).toBe(72);
+      expect(goals?.basis).toContain("crept from 128 to 133");
+      const moreWatts = [
+        history[0]!,
+        ride({ sessionDate: "2026-11-21", avgHeartRate: 133, avgOutput: 80 }),
+      ];
+      expect(rideHoldReason(moreWatts, "2026-11-24")).toBeNull();
+    });
+
+    it("never holds a back-off", () => {
+      expect(
+        rideGoals(
+          zone2,
+          [ride({ avgHeartRate: 148 })],
+          settings,
+          "2026-11-24",
+          {
+            kneeReadiness: "hold",
+          },
+        )?.watts,
+      ).toBe(67);
+    });
+
+    it("holds VO2 power too", () => {
+      const vo2 = { kind: "vo2_intervals" as const, minutesMax: 36 };
+      const history = [
+        ride({ sessionKind: "vo2", intervalOutputs: [161, 162, 172, 168] }),
+      ];
+      expect(
+        rideGoals(vo2, history, settings, "2026-11-24", {
+          kneeReadiness: "hold",
+        })?.watts,
+      ).toBe(166);
+    });
   });
 });

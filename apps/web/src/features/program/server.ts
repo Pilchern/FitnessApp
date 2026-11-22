@@ -15,6 +15,7 @@ import {
   lastSetsByExercise,
   leftQuadDrop,
   priorBlockSetsByExercise,
+  RESTING_HR_BASELINE_DAYS,
   rideGoals,
   legExerciseIndex,
   programMilestones,
@@ -116,6 +117,7 @@ function sessionViews(
     | "rawRideDates"
     | "makeUps"
     | "rides"
+    | "restingHr"
   >,
 ): ProgramSessionView[] {
   const { templates, outcomes, settings } = ctx;
@@ -132,11 +134,15 @@ function sessionViews(
       visible: s.visible,
       hiddenReason: s.hiddenReason,
       legBlockReplaced: s.legBlockReplaced,
+      // Optional rides are easy spins with their own HR cap: no power goals.
       ride:
-        s.ride && s.visible
+        s.ride && s.visible && !s.session.isOptional
           ? {
               ...s.ride,
-              goals: rideGoals(s.ride, ctx.rides, settings, plan.date),
+              goals: rideGoals(s.ride, ctx.rides, settings, plan.date, {
+                kneeReadiness: plan.readiness,
+                restingHr: ctx.restingHr,
+              }),
             }
           : s.ride,
       scheduled: isScheduledSession(countable),
@@ -266,6 +272,8 @@ export type ProgramContext = {
   runs: { date: string; runMinutes: number }[];
   /** Cardio rows from the run lookback, for ride goals (rideGoals). */
   rides: RideHistoryEntry[];
+  /** Morning resting HR for the ride-goal hold (rideHoldReason). */
+  restingHr: { checkinDate: string; restingHeartRate: number | null }[];
   /**
    * Days with a logged lift (any sets) not linked to a program session, and
    * with a completed ride.
@@ -321,9 +329,11 @@ export async function loadProgramContext(
       outcomeStart < today ? outcomeStart : today,
       addDays(today, 7),
     ),
+    // Sleep uses the last few nights; the ride hold's resting HR baseline
+    // needs the month before.
     recoveryService.listByDateRange({
       userId: user.id,
-      startDate: addDays(today, -7),
+      startDate: addDays(today, -(RESTING_HR_BASELINE_DAYS + 2)),
       endDate: today,
     }),
     trainingTemplateService.listActiveStrengthTemplates({ userId: user.id }),
@@ -389,6 +399,10 @@ export async function loadProgramContext(
     rideDates: applyRideMakeUps(rawRideDates, makeUps),
     liftIdByDate,
     rides,
+    restingHr: recovery.map((r) => ({
+      checkinDate: r.checkinDate,
+      restingHeartRate: r.restingHeartRate,
+    })),
     runs: rides
       .filter((r) => r.runMinutes != null && r.runMinutes > 0)
       .map((r) => ({
