@@ -528,10 +528,31 @@ describe("mapHealthAutoExport Zone 2 and daylight", () => {
   it("credits Zone 2 by power when the ride has power samples", () => {
     const out = mapHealthAutoExport(
       { data: { workouts: [{ ...ride, cyclingPower }] } },
-      { zone2Bpm: [110, 128], zone2Watts: [97, 130] },
+      { zone2Bpm: [110, 140], zone2Watts: [97, 130] },
     );
     expect(out.workouts[0]?.zone2_minutes).toBe(8);
     expect(out.workouts[0]?.avg_power_watts).toBe(106);
+  });
+
+  it("drops power-band minutes whose heart rate is above the cap", () => {
+    const out = mapHealthAutoExport(
+      { data: { workouts: [{ ...ride, cyclingPower }] } },
+      { zone2Bpm: [110, 128], zone2Watts: [97, 130] },
+    );
+    // Eight minutes in 97-130 W; 131 and 135 bpm are over the 128 cap.
+    expect(out.workouts[0]?.zone2_minutes).toBe(6);
+  });
+
+  it("credits by power alone when the ride has no heart rate", () => {
+    const out = mapHealthAutoExport(
+      {
+        data: {
+          workouts: [{ ...ride, heartRateData: undefined, cyclingPower }],
+        },
+      },
+      { zone2Bpm: [110, 128], zone2Watts: [97, 130] },
+    );
+    expect(out.workouts[0]?.zone2_minutes).toBe(8);
   });
 
   it("credits Zone 2 by heart rate when told to, even with power", () => {
@@ -595,7 +616,8 @@ describe("mapHealthAutoExport Zone 2 and daylight", () => {
     expect(out.workouts[0]).toMatchObject({
       workout_id: "PELO",
       avg_power_watts: 106,
-      zone2_minutes: 8,
+      // The borrowed Watch heart rate caps the power minutes (131, 135 > 128).
+      zone2_minutes: 6,
       avg_heart_rate: 121,
       max_heart_rate: 135,
     });

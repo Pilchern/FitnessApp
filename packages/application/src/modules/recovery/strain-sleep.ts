@@ -63,20 +63,32 @@ export function zone2HeartRateRange(maxHeartRate: number): [number, number] {
 export const CURRENT_FTP_WATTS = 173;
 
 /**
- * Zone 2 by power, the plan's primary band: 56-75% of FTP (97-130 W at 173).
- * Rides that carry power are credited by this band instead of heart rate.
+ * Which band credits Zone 2 minutes. Power since 2026-11-22: heart rate at the
+ * same effort swung 20+ bpm ride to ride (morning vs after a lift), so watts
+ * steer and the Settings heart rate high end (145) caps. Rides with no power
+ * fall back to the heart rate band.
  */
-/**
- * Which band credits Zone 2 minutes. Heart rate until FTP is retested after
- * surgeon clearance: the 173 W FTP predates the July 2026 ACL injury, so its
- * watt band sits above current Zone 2. Switch to "power" with the new FTP.
- */
-export const ZONE2_CREDIT_BY: "power" | "heart_rate" = "heart_rate";
+export const ZONE2_CREDIT_BY: "power" | "heart_rate" = "power";
 
+/**
+ * Provisional Zone 2 watts on this bike until FTP is retested (the 173 W FTP
+ * predates the July 2026 ACL injury). From the rides that held 130-145 bpm:
+ * 65-72 W averages including warm-up, up to about 90 W on fresh days
+ * [inferred, 2026-11-22]. Set to null after the retest so the band comes
+ * from CURRENT_FTP_WATTS again.
+ */
+export const PROVISIONAL_ZONE2_WATTS: [number, number] | null = [65, 90];
+
+/** Zone 2 by power: 56-75% of FTP (97-130 W at 173). */
 export function zone2PowerRange(
   ftpWatts: number = CURRENT_FTP_WATTS,
 ): [number, number] {
   return [Math.round(ftpWatts * 0.56), Math.round(ftpWatts * 0.75)];
+}
+
+/** The watt band that credits Zone 2: provisional until the FTP retest. */
+export function zone2CreditWatts(): [number, number] {
+  return PROVISIONAL_ZONE2_WATTS ?? zone2PowerRange();
 }
 
 export function banisterTrimp(input: {
