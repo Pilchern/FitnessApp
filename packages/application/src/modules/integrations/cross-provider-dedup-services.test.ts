@@ -345,6 +345,31 @@ describe("CardioSessionService.upsertImported cross-provider handling", () => {
     });
   });
 
+  it("fills the outputs on a ride set to VO2 by hand with blank watts", async () => {
+    const id = "77777777-7777-4777-8777-777777777777";
+    const repository = createCardioRepository([]);
+    repository.findByExternalId.mockResolvedValue(
+      storedCardio({ id, sessionKind: "vo2", avgOutput: 86 }),
+    );
+    repository.update.mockResolvedValue(storedCardio({ id }));
+    const service = new CardioSessionService(repository as never);
+
+    await service.upsertImported(userId, {
+      ...importedAppleHealthRide,
+      sessionKind: "vo2",
+      avgOutput: 86,
+      intervalOutputs: [161, 162, 172, 168],
+      intervalStructure: "4 x 3 min work / 3 min recovery",
+    });
+
+    expect(repository.update).toHaveBeenCalledWith({
+      id,
+      userId,
+      intervalOutputs: [161, 162, 172, 168],
+      intervalStructure: "4 x 3 min work / 3 min recovery",
+    });
+  });
+
   it("never replaces interval outputs already on the ride", async () => {
     const repository = createCardioRepository([]);
     repository.findByExternalId.mockResolvedValue(
