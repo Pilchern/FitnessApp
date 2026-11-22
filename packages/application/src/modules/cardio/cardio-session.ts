@@ -34,9 +34,10 @@ function shiftIsoDate(isoDate: string, days: number): string {
 
 /**
  * Measured fields a re-pushed import may refresh: power, the power-derived
- * markers, and Zone 2 minutes. A ride stored as Zone 2 without interval
- * outputs takes the VO2 kind and outputs a re-push found; outputs already
- * on the row (typed in, or from an earlier push) are never replaced.
+ * markers, and Zone 2 minutes. A Zone 2 or VO2 ride without interval
+ * outputs (e.g. set to VO2 by hand with the watts left blank) takes the VO2
+ * kind and the outputs a re-push found; outputs already on the row (typed
+ * in, or from an earlier push) are never replaced.
  * Zone 2 measured by power is never replaced by a heart rate value, so a
  * Watch copy without power can't undo what the Peloton copy recorded.
  */
@@ -94,10 +95,10 @@ function measuredRidePatch(
   if (
     incoming.sessionKind === "vo2" &&
     incoming.intervalOutputs?.length &&
-    existing.sessionKind === "zone2" &&
+    (existing.sessionKind === "zone2" || existing.sessionKind === "vo2") &&
     !existing.intervalOutputs?.length
   ) {
-    patch.sessionKind = "vo2";
+    if (existing.sessionKind !== "vo2") patch.sessionKind = "vo2";
     patch.intervalOutputs = incoming.intervalOutputs;
     patch.intervalStructure =
       existing.intervalStructure ?? incoming.intervalStructure ?? null;
