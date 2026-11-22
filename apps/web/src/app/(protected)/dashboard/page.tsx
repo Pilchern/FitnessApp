@@ -121,8 +121,6 @@ export default async function DashboardPage() {
                 : data.weekPlan
             }
             zone2Minutes={data.zone2Minutes}
-            latestReview={data.latestReview}
-            reviewHref={programToday ? "/program/review" : "/weekly-review"}
           />
           <StrainSleepCard data={data.strainSleep} />
         </div>

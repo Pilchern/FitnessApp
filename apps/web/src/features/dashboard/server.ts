@@ -57,7 +57,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     cardioService,
     recoveryService,
     strengthService,
-    weeklyReviewService,
     trainingTemplateService,
     supplementService,
     supplementLogService,
@@ -84,7 +83,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     cardioThisWeekResult,
     recoveryResult,
     recentBodyResult,
-    recentReviewsResult,
     insightDataResult,
     strengthSessionsResult,
     cardioLast8WeeksResult,
@@ -112,7 +110,6 @@ export async function getDashboardData(): Promise<DashboardData> {
       userId: user.id,
       startDate: daysAgo(90),
     }),
-    weeklyReviewService.listRecent(user.id, 1),
     getActiveInsights(),
     strengthService.listByDateRange({
       userId: user.id,
@@ -156,7 +153,6 @@ export async function getDashboardData(): Promise<DashboardData> {
   const cardioThisWeek = settledOrNull(cardioThisWeekResult) ?? [];
   const recovery = settledOrNull(recoveryResult) ?? [];
   const recentBody = settledOrNull(recentBodyResult) ?? [];
-  const latestReview = (settledOrNull(recentReviewsResult) ?? [])[0] ?? null;
   const insightData = settledOrNull(insightDataResult);
   const strengthSessions = settledOrNull(strengthSessionsResult) ?? [];
   const cardioLast8Weeks = settledOrNull(cardioLast8WeeksResult) ?? [];
@@ -276,7 +272,6 @@ export async function getDashboardData(): Promise<DashboardData> {
     nextDexa,
     latestBodyDate,
     weeklyWeight: buildWeeklyWeightTrend(recentBody, today),
-    latestReview,
     topInsights: (insightData?.topInsights ?? []).slice(0, 2),
     trendNotes,
     habits: {

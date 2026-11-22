@@ -8,7 +8,7 @@ import type {
   TrendNote,
   WeeklyWeightTrend,
 } from "@fitness-app/application";
-import type { Supplement, WeeklyReview } from "@fitness-app/domain";
+import type { Supplement } from "@fitness-app/domain";
 import type { WeekPlan, WeekPlanItem } from "./helpers";
 
 export type HabitsToday = {
@@ -40,7 +40,6 @@ export type DashboardData = {
   latestBodyDate: string | null;
   weeklyWeight: WeeklyWeightTrend;
   /** Protein-hit days over the last 7; null when nothing is logged. */
-  latestReview: WeeklyReview | null;
   topInsights: PersistedInsight[];
   trendNotes: TrendNote[];
   habits: HabitsToday;

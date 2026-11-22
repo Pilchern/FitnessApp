@@ -1,23 +1,14 @@
 import Link from "next/link";
-import type { WeeklyReview } from "@fitness-app/domain";
 import { stripDayPrefix, type WeekPlan } from "../helpers";
 
 type WeekPlanCardProps = {
   plan: WeekPlan;
   zone2Minutes: number;
-  latestReview: WeeklyReview | null;
-  /** The program's Sunday review when there is a program. */
-  reviewHref?: string;
 };
 
 const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-export function WeekPlanCard({
-  plan,
-  zone2Minutes,
-  latestReview,
-  reviewHref = "/weekly-review",
-}: WeekPlanCardProps) {
+export function WeekPlanCard({ plan, zone2Minutes }: WeekPlanCardProps) {
   const scheduled = plan.days.flatMap((d) => d.items);
   if (scheduled.length === 0) return null;
 
@@ -90,15 +81,10 @@ export function WeekPlanCard({
           )}
       </ul>
       <Link
-        href={reviewHref}
+        href="/program/review"
         className="mt-2 flex items-center justify-between border-t border-ink/10 pt-3 text-sm text-ink/70 hover:text-pine"
       >
-        <span>
-          Weekly review
-          {reviewHref === "/weekly-review" && latestReview?.scoreDetails != null
-            ? ` · last score ${latestReview.scoreDetails.totalScore}/100`
-            : ""}
-        </span>
+        <span>Weekly review</span>
         <span aria-hidden="true">→</span>
       </Link>
     </section>
