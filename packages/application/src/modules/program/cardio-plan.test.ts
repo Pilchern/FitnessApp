@@ -7,6 +7,10 @@ import {
 } from "./cardio-plan";
 import { DEFAULT_PROGRAM_SETTINGS } from "./program-settings";
 import { buildDayPlan } from "./program-plan";
+import {
+  loadPlannedVo2Intervals,
+  plannedVo2IntervalMinutes,
+} from "./program-week";
 import { block, gate, session } from "./program-fixtures.test-helpers";
 import type { TrainingProgram } from "@fitness-app/domain";
 
@@ -164,5 +168,55 @@ describe("cardio plan in the day plan", () => {
 
   it("rides Zone 2 while the intervals gate is closed", () => {
     expect(ride(cardioProgram(null), "2026-11-19")?.kind).toBe("zone2");
+  });
+});
+
+describe("planned VO2 intervals for synced rides", () => {
+  const program = cardioProgram("2026-11-17");
+  const minutesOn = (date: string, readiness: "knee_off" | null = null) =>
+    plannedVo2IntervalMinutes(
+      buildDayPlan(program, date, readiness, settings),
+      settings,
+    );
+
+  it("gives the week's work minutes on a VO2 day only", () => {
+    expect(minutesOn("2026-11-17")).toBeNull();
+    expect(minutesOn("2026-11-19")).toBe(3);
+    expect(minutesOn("2026-12-01")).toBe(4);
+  });
+
+  it("drops the VO2 day on a knee day off or before the gate clears", () => {
+    expect(minutesOn("2026-11-19", "knee_off")).toBeNull();
+    const gated = cardioProgram(null);
+    expect(
+      plannedVo2IntervalMinutes(
+        buildDayPlan(gated, "2026-11-19", null, settings),
+        settings,
+      ),
+    ).toBeNull();
+  });
+
+  it("loads a date map from the active program and Settings", async () => {
+    type Service = Parameters<typeof loadPlannedVo2Intervals>[0];
+    const service = {
+      getActiveProgram: async () => program,
+      listSettings: async () => [
+        { key: "cardio_plan_start", value: null, textValue: "2026-11-16" },
+      ],
+      listKneeChecks: async () => [],
+    } as unknown as Service;
+    await expect(
+      loadPlannedVo2Intervals(service, {
+        userId: "u",
+        startDate: "2026-11-16",
+        endDate: "2026-11-25",
+      }),
+    ).resolves.toEqual({ "2026-11-19": 3, "2026-11-24": 3 });
+    await expect(
+      loadPlannedVo2Intervals(
+        { ...service, getActiveProgram: async () => null } as Service,
+        { userId: "u", startDate: "2026-11-16", endDate: "2026-11-25" },
+      ),
+    ).resolves.toEqual({});
   });
 });

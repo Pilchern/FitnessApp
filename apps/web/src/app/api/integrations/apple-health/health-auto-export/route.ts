@@ -18,6 +18,7 @@ import {
 } from "@/lib/server/services";
 import {
   ageOn,
+  loadPlannedVo2Intervals,
   ZONE2_CREDIT_BY,
   maxHeartRateFor,
   MEASURED_MAX_HEART_RATE,
@@ -33,6 +34,7 @@ import {
 import { verifyAppleHealthRequest } from "../verify-request";
 import {
   mapHealthAutoExport,
+  RIDE_PATTERN,
   type HealthAutoExportBody,
   type WalkingDay,
   walkingDaysFromTests,
@@ -227,7 +229,30 @@ export async function POST(request: NextRequest) {
       console.error("Zone 2 band: settings read failed", error);
       return null;
     });
+  // VO2 days the program plans for the rides in this batch (local dates).
+  // Fails soft: without them every ride is saved as Zone 2, as before.
+  const rideDates = (body.data?.workouts ?? [])
+    .filter((w) => w.name && RIDE_PATTERN.test(w.name))
+    .map((w) => /^(\d{4}-\d{2}-\d{2})/.exec(w.start ?? "")?.[1])
+    .filter((d): d is string => d != null)
+    .sort();
+  const vo2IntervalMinutesByDate =
+    rideDates.length === 0
+      ? {}
+      : await createCoreServices()
+          .then(({ programService }) =>
+            loadPlannedVo2Intervals(programService, {
+              userId,
+              startDate: rideDates[0]!,
+              endDate: rideDates[rideDates.length - 1]!,
+            }),
+          )
+          .catch((error) => {
+            console.error("VO2 plan: program read failed", error);
+            return {};
+          });
   const mapped = mapHealthAutoExport(body, {
+    vo2IntervalMinutesByDate,
     zone2Bpm:
       settingsBand ??
       (maxHeartRate != null ? zone2HeartRateRange(maxHeartRate) : null),
