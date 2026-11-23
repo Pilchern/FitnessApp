@@ -30,7 +30,7 @@ export async function getKneePageData(): Promise<KneePageData> {
     .toISOString()
     .slice(0, 10);
   const { programService, strengthService } = await createCoreServices();
-  const [settingRows, tests, program, checks] = await Promise.all([
+  const [settingRows, tests, program, checks, recentLifts] = await Promise.all([
     programService.listSettings(user.id),
     programService.listKneeTests(
       user.id,
@@ -39,7 +39,16 @@ export async function getKneePageData(): Promise<KneePageData> {
     ),
     programService.getActiveProgram(user.id),
     programService.listKneeChecks(user.id, addDays(today, -30), today),
+    // Pogos tolerated: logged pogo sets in the last 30 days.
+    strengthService.listByDateRange({
+      userId: user.id,
+      startDate: addDays(today, -30),
+      endDate: today,
+    }),
   ]);
+  const pogoDates = recentLifts
+    .filter((s) => s.sets.some((set) => /pogo/i.test(set.exerciseName)))
+    .map((s) => s.sessionDate);
   const settings = programSettingsFromRows(settingRows);
   const gates = gateBoards({
     tests,
@@ -48,6 +57,7 @@ export async function getKneePageData(): Promise<KneePageData> {
     today,
     lsiTargets: [settings.lsiTarget1, settings.lsiTarget2, settings.lsiTarget3],
     walkingAsymmetryTargetPct: settings.walkingAsymmetryTargetPct,
+    pogoDates,
   });
 
   const quad = quadLsiByDate(tests);

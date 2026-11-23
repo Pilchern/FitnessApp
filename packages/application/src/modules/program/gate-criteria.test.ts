@@ -126,9 +126,80 @@ describe("gateBoards", () => {
         t("2026-11-08", "step_down", "L", 1),
         t("2026-11-08", "single_leg_sit_to_stand", "L", 9),
         t("2026-11-08", "single_leg_sit_to_stand", "R", 10),
+        t("2026-11-08", "sl_leg_ext_load", "L", 60),
+        t("2026-11-08", "sl_leg_ext_load", "R", 60),
+        t("2026-11-08", "sl_leg_ext_reps", "L", 9),
+        t("2026-11-08", "sl_leg_ext_reps", "R", 10),
       ],
-      gates: [gate("plyo_double", { earliestOn: "2026-11-08" })],
+      gates: [
+        gate("plyo_double", {
+          earliestOn: "2026-11-08",
+          clinicianOkOn: "2026-11-05",
+          clinicianOkBy: "pt",
+        }),
+      ],
     });
-    expect(b.find((x) => x.key === "plyo")?.status).toBe("ready");
+    const plyo = b.find((x) => x.key === "plyo");
+    expect(plyo?.status).toBe("ready");
+    expect(plyo?.criteria.find((c) => c.key === "clinician")?.detail).toBe(
+      "2026-11-05 by PT",
+    );
+  });
+
+  it("is not ready without the clinician OK, and that OK never clears", () => {
+    const b = boards({
+      tests: [
+        t("2026-11-08", "quad_iso_90", "L", 330),
+        t("2026-11-08", "quad_iso_90", "R", 400),
+      ],
+      gates: [gate("jog", { clinicianOkOn: "2026-11-10" })],
+    });
+    // An OK dated after today does not count yet.
+    expect(state(b, "jog", "clinician")).toBe("missing");
+    expect(b[0]?.status).toBe("not_yet");
+  });
+
+  it("keeps a crane test current for 35 days and judges leg extension weekly", () => {
+    const b = boards({
+      tests: [
+        t("2026-10-15", "quad_iso_90", "L", 380),
+        t("2026-10-15", "quad_iso_90", "R", 400),
+        t("2026-10-20", "sl_leg_ext_load", "L", 35),
+        t("2026-10-20", "sl_leg_ext_load", "R", 35),
+        t("2026-10-20", "sl_leg_ext_reps", "L", 26),
+        t("2026-10-20", "sl_leg_ext_reps", "R", 27),
+      ],
+    });
+    expect(state(b, "jog", "quad_lsi")).toBe("pass");
+    // 19 days old: weekly test, stale after 14.
+    expect(state(b, "jog", "leg_ext")).toBe("stale");
+  });
+
+  it("reads AROM flexion when both legs were measured more recently", () => {
+    const b = boards({
+      tests: [
+        t("2026-11-01", "heel_to_butt", "L", 15),
+        t("2026-11-01", "heel_to_butt", "R", 10),
+        t("2026-11-07", "flexion_active", "L", 130),
+        t("2026-11-07", "flexion_active", "R", 133),
+      ],
+    });
+    const flex = b[0]?.criteria.find((c) => c.key === "flexion");
+    expect(flex?.state).toBe("pass");
+    expect(flex?.detail).toBe("L 3° short");
+  });
+
+  it("judges pogos from the next morning's knee check", () => {
+    expect(state(boards({ pogoDates: ["2026-11-07"] }), "jog", "pogo")).toBe(
+      "pass",
+    );
+    expect(state(boards({ pogoDates: ["2026-11-08"] }), "jog", "pogo")).toBe(
+      "missing",
+    );
+    const bad = boards({
+      pogoDates: ["2026-11-06"],
+      checks: [checks[0]!, { ...checks[1]!, swelling: "1+" }, checks[2]!],
+    });
+    expect(state(bad, "jog", "pogo")).toBe("fail");
   });
 });

@@ -85,6 +85,45 @@ export async function setGateAction(
   }
 }
 
+const clinicianOkSchema = z.object({
+  gateKey: z.string().regex(/^[a-z0-9_]{1,40}$/),
+  clinicianOkOn: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .pipe(isoDate.nullable()),
+  clinicianOkBy: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : null))
+    .pipe(z.enum(["pt", "ortho"]).nullable()),
+});
+
+/** Settings: record (or remove) a PT or ortho OK without clearing the gate. */
+export async function setGateClinicianOkAction(
+  _previous: ProgramActionState,
+  formData: FormData,
+): Promise<ProgramActionState> {
+  try {
+    const user = await requireCurrentUser();
+    const intent = formData.get("intent");
+    const parsed = clinicianOkSchema.parse({
+      gateKey: formData.get("gateKey"),
+      clinicianOkOn:
+        intent === "reset" ? "" : (formData.get("clinicianOkOn") ?? undefined),
+      clinicianOkBy:
+        intent === "reset" ? "" : (formData.get("clinicianOkBy") ?? undefined),
+    });
+    const { programService } = await createCoreServices();
+    await programService.setGateClinicianOk({ userId: user.id, ...parsed });
+    revalidateProgramViews();
+    revalidatePath("/settings");
+    return {};
+  } catch (error) {
+    return parseActionError(error);
+  }
+}
+
 const outcomeSchema = z.object({
   programSessionId: z.string().uuid(),
   date: isoDate,

@@ -67,7 +67,10 @@ export function WeeklyScoreboard({ rows }: { rows: ScoreboardRow[] }) {
                 <td className="py-2 pr-3">
                   {num(r.quadLsi, 1, "%")}
                   {r.quadLsiBasis === "right_best" ? (
-                    <span className="text-xs text-ink/45"> vs best-ever R</span>
+                    <span className="text-xs text-ink/45">
+                      {" "}
+                      vs recent best R
+                    </span>
                   ) : null}
                 </td>
                 <td className="py-2 pr-3">{pair(r.thighLIn, r.thighRIn)}</td>

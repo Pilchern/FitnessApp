@@ -158,6 +158,12 @@ export type ProgramGate = {
   clearedBy?: "pt" | "ortho" | "self_criteria" | null;
   /** What has to be true to clear it, in words. */
   criteria?: string | null;
+  /**
+   * A PT or ortho OK on its own (2026-11-23): one criterion on the gate
+   * board, not a clearance. The measured criteria still decide the rest.
+   */
+  clinicianOkOn?: IsoDate | null;
+  clinicianOkBy?: "pt" | "ortho" | null;
   notes: string | null;
 };
 

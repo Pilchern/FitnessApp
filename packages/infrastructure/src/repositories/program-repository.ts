@@ -19,6 +19,7 @@ import type {
   SaveOutcomeInput,
   SaveWeeklyCheckinInput,
   SetGateClearedInput,
+  SetGateClinicianOkInput,
   UpdateSettingInput,
 } from "@fitness-app/application";
 import type {
@@ -80,6 +81,9 @@ const gateRowSchema = z.object({
   // Optional so rows read before the gate-criteria migration still parse.
   cleared_by: z.enum(["pt", "ortho", "self_criteria"]).nullable().optional(),
   criteria: z.string().nullable().optional(),
+  // Optional so rows read before the clinician-OK migration still parse.
+  clinician_ok_on: z.string().nullable().optional(),
+  clinician_ok_by: z.enum(["pt", "ortho"]).nullable().optional(),
   notes: z.string().nullable(),
 });
 
@@ -396,6 +400,8 @@ export class SupabaseProgramRepository implements ProgramRepository {
         earliestOn: g.earliest_on,
         clearedBy: g.cleared_by ?? null,
         criteria: g.criteria ?? null,
+        clinicianOkOn: g.clinician_ok_on ?? null,
+        clinicianOkBy: g.clinician_ok_by ?? null,
         notes: g.notes,
       }));
 
@@ -471,6 +477,21 @@ export class SupabaseProgramRepository implements ProgramRepository {
       .eq("gate_key", input.gateKey)
       .is("deleted_at", null);
     throwOnError(response.error, "Update program gate");
+  }
+
+  async setGateClinicianOk(input: SetGateClinicianOkInput) {
+    const response = await this.client
+      .from("program_gates")
+      .update({
+        clinician_ok_on: input.clinicianOkOn,
+        clinician_ok_by: input.clinicianOkOn
+          ? (input.clinicianOkBy ?? null)
+          : null,
+      })
+      .eq("user_id", input.userId)
+      .eq("gate_key", input.gateKey)
+      .is("deleted_at", null);
+    throwOnError(response.error, "Update program gate clinician OK");
   }
 
   async listKneeChecks(
