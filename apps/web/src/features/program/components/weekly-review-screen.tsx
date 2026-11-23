@@ -122,7 +122,9 @@ function lsiValue(r: WeeklyReviewData["knee"]["quad90"]) {
   if (!r) return "–";
   const src = r.source === "pt_tracker" ? "crane" : "logged";
   const right =
-    r.basis === "right_best" ? `best-ever R ${r.denominator}` : `R ${r.right}`;
+    r.basis === "right_best"
+      ? `recent best R ${r.denominator}`
+      : `R ${r.right}`;
   return `${fmt(r.lsi, "%")} (L ${r.left} / ${right} N, ${formatShortDate(r.date)}, ${src})`;
 }
 

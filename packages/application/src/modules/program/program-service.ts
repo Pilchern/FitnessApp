@@ -21,6 +21,15 @@ export const setGateClearedSchema = z.object({
 
 export type SetGateClearedInput = z.infer<typeof setGateClearedSchema>;
 
+export const setGateClinicianOkSchema = z.object({
+  userId: uuidSchema,
+  gateKey: z.string().regex(/^[a-z0-9_]{1,40}$/),
+  clinicianOkOn: isoDateSchema.nullable(),
+  clinicianOkBy: z.enum(["pt", "ortho"]).nullable().optional(),
+});
+
+export type SetGateClinicianOkInput = z.infer<typeof setGateClinicianOkSchema>;
+
 export const saveKneeCheckSchema = z.object({
   userId: uuidSchema,
   checkinDate: isoDateSchema,
@@ -167,6 +176,7 @@ export interface ProgramRepository {
   /** The active program with blocks, weeks, sessions, exercises and gates. */
   getActiveProgram(userId: UserId): Promise<TrainingProgram | null>;
   setGateCleared(input: SetGateClearedInput): Promise<void>;
+  setGateClinicianOk(input: SetGateClinicianOkInput): Promise<void>;
   /** Knee checks saved on recovery rows between two dates (inclusive). */
   listKneeChecks(
     userId: UserId,
@@ -218,6 +228,12 @@ export class ProgramService {
 
   async setGateCleared(input: unknown) {
     return this.repository.setGateCleared(setGateClearedSchema.parse(input));
+  }
+
+  async setGateClinicianOk(input: unknown) {
+    return this.repository.setGateClinicianOk(
+      setGateClinicianOkSchema.parse(input),
+    );
   }
 
   async listKneeChecks(userId: UserId, startDate: IsoDate, endDate: IsoDate) {

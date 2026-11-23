@@ -10,7 +10,7 @@ import {
   latestHq,
   latestValue,
   lsiPct,
-  RIGHT_SETTLED_SPREAD_N,
+  RIGHT_REFERENCE_TEST_DAYS,
   type SidePair,
 } from "@fitness-app/application";
 import type { KneeTest } from "@fitness-app/domain";
@@ -286,8 +286,8 @@ export async function KneeScreen() {
             {l.lsi != null ? (
               <span className="block text-xs text-ink/60">
                 {l.basis === "right_best"
-                  ? `Denominator: best-ever R, ${l.denominator} N (the right's last 3 test days spread ${RIGHT_SETTLED_SPREAD_N} N or more).`
-                  : `Denominator: same-day R best of 3, ${l.denominator} N.`}
+                  ? `Denominator: an earlier R, ${l.denominator} N (best of the right's last ${RIGHT_REFERENCE_TEST_DAYS} test days).`
+                  : `Denominator: same-day R, ${l.denominator} N (best of the right's last ${RIGHT_REFERENCE_TEST_DAYS} test days).`}
               </span>
             ) : null}
           </p>
@@ -311,9 +311,9 @@ export async function KneeScreen() {
         ) : null}
         <LsiTrend points={data.trend} targets={data.lsiTargets} />
         <p className="mt-1 text-xs text-ink/50">
-          Best of 3 per side, both apps. R is the right&apos;s best to date
-          until its last 3 tests spread under {RIGHT_SETTLED_SPREAD_N} N, then
-          that day&apos;s. Lines: {data.lsiTargets.join(" / ")}%.
+          Best of 3 per side, both apps. R is the right&apos;s best over its
+          last {RIGHT_REFERENCE_TEST_DAYS} test days. Lines:{" "}
+          {data.lsiTargets.join(" / ")}%.
         </p>
       </section>
 

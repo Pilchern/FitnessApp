@@ -110,7 +110,7 @@ describe("LSI and H:Q maths (same rules as the PT Tracker)", () => {
       lsi: 66.7,
       source: "pt_tracker",
       denominator: 480,
-      basis: "right_best",
+      basis: "same_day",
     });
     expect(latestQuadLsi(tests, sessions, 60)).toMatchObject({
       lsi: 62.5,
@@ -153,22 +153,22 @@ describe("LSI and H:Q maths (same rules as the PT Tracker)", () => {
       ...crane("2026-10-25", [400], []),
     ];
     expect(quadLsiTrend(tests)).toEqual([
-      { date: "2026-10-11", lsi: 60.9, denominator: 460, basis: "right_best" },
-      { date: "2026-10-18", lsi: 66.7, denominator: 480, basis: "right_best" },
+      { date: "2026-10-11", lsi: 60.9, denominator: 460, basis: "same_day" },
+      { date: "2026-10-18", lsi: 66.7, denominator: 480, basis: "same_day" },
       // No right pull that day: the right's best to date still divides.
       { date: "2026-10-25", lsi: 83.3, denominator: 480, basis: "right_best" },
     ]);
   });
 });
 
-describe("quad LSI denominator: right best until the right settles", () => {
-  it("uses the right's best to date while the last 3 right days spread 65 N or more", () => {
+describe("quad LSI denominator: the right's best of its last 3 test days", () => {
+  it("divides by an earlier, higher right day inside the last 3", () => {
     const tests = [
       ...crane("2026-10-04", [200], [600]),
       ...crane("2026-10-11", [300], [560]),
       ...crane("2026-10-18", [450], [460]),
     ];
-    // Right spread 600 - 460 = 140 N: not settled, so 450 / 600.
+    // Last 3 right days 600 / 560 / 460: best 600, so 450 / 600.
     expect(quadLsiByDate(tests).at(-1)).toMatchObject({
       lsi: 75,
       denominator: 600,
@@ -176,14 +176,14 @@ describe("quad LSI denominator: right best until the right settles", () => {
     });
   });
 
-  it("switches to the same-day right once the last 3 spread under 65 N", () => {
+  it("drops a high right day once it is 3 test days back", () => {
     const tests = [
       ...crane("2026-10-04", [200], [600]),
       ...crane("2026-10-11", [300], [500]),
       ...crane("2026-10-18", [400], [520]),
       ...crane("2026-10-25", [450], [540]),
     ];
-    // Last 3 right days 500 / 520 / 540: spread 40 N, settled.
+    // 600 is 4 test days back; the last 3 are 500 / 520 / 540.
     expect(quadLsiByDate(tests).at(-1)).toMatchObject({
       lsi: 83.3,
       denominator: 540,
@@ -191,9 +191,17 @@ describe("quad LSI denominator: right best until the right settles", () => {
     });
   });
 
-  it("needs 3 right test days and a right pull that day to settle", () => {
+  it("works with fewer than 3 right days and with no right pull that day", () => {
     expect(quadLsiDenominator([500, 510], 510)).toEqual({
       denominator: 510,
+      basis: "same_day",
+    });
+    expect(quadLsiDenominator([591, 448, 462, 574], 574)).toEqual({
+      denominator: 574,
+      basis: "same_day",
+    });
+    expect(quadLsiDenominator([591, 575, 501], 501)).toEqual({
+      denominator: 591,
       basis: "right_best",
     });
     expect(quadLsiDenominator([500, 510, 520], null)).toEqual({

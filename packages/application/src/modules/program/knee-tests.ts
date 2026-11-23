@@ -28,9 +28,9 @@ export type SidePair = {
 };
 
 /**
- * What the quad LSI divides by. right_best = the right leg's best crane
- * reading to date, used while the right side is still unsettled;
- * same_day = that day's right best.
+ * What the quad LSI divides by: the right leg's best over its last 3 crane
+ * test days. same_day = that best is this day's right; right_best = an
+ * earlier day's right was higher.
  */
 export type LsiBasis = "same_day" | "right_best";
 
@@ -50,11 +50,12 @@ export type QuadLsiPoint = SidePair & {
 };
 
 /**
- * The right leg settles once its last 3 test-day bests sit within this
- * spread (newtons); until then a low right day would inflate the LSI.
+ * The quad LSI divides by the right's best over this many test days. The
+ * right swings 20%+ between sessions, so one low right day must not inflate
+ * the LSI, and one old high day must not hold it down for good (2026-11-23,
+ * replaced "best ever until the last 3 spread under 65 N").
  */
-export const RIGHT_SETTLED_SPREAD_N = 65;
-export const RIGHT_SETTLED_TEST_DAYS = 3;
+export const RIGHT_REFERENCE_TEST_DAYS = 3;
 
 export type QuadDrop = {
   date: IsoDate;
@@ -193,23 +194,20 @@ export function latestValue(
 
 /**
  * The quad LSI denominator for one test day. `rightHistory` is the right
- * leg's best per test day, oldest first, up to and including this day.
- * Same-day right once the last 3 days spread under 65 N, else the best
- * right reading to date.
+ * leg's best per test day, oldest first, up to and including this day. The
+ * best of the last 3 of them.
  */
 export function quadLsiDenominator(
   rightHistory: number[],
   sameDayRight: number | null,
 ): { denominator: number | null; basis: LsiBasis } {
-  const recent = rightHistory.slice(-RIGHT_SETTLED_TEST_DAYS);
-  const settled =
-    sameDayRight != null &&
-    recent.length >= RIGHT_SETTLED_TEST_DAYS &&
-    Math.max(...recent) - Math.min(...recent) < RIGHT_SETTLED_SPREAD_N;
-  if (settled) return { denominator: sameDayRight, basis: "same_day" };
+  const recent = rightHistory.slice(-RIGHT_REFERENCE_TEST_DAYS);
+  if (recent.length === 0) return { denominator: null, basis: "right_best" };
+  const best = Math.max(...recent);
   return {
-    denominator: rightHistory.length > 0 ? Math.max(...rightHistory) : null,
-    basis: "right_best",
+    denominator: best,
+    basis:
+      sameDayRight != null && best === sameDayRight ? "same_day" : "right_best",
   };
 }
 
